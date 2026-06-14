@@ -21,3 +21,6 @@ Thumbs.db
 # Vite
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
+
+# Source repo local paths (per-machine; see src/lib/data/sources.json for the committed snapshot)
+src/lib/data/sources.local.json
