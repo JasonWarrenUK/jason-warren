@@ -13,7 +13,7 @@
 </script>
 
 <svelte:head>
-	<title>{data.project.name} — Jason Warren</title>
+	<title>{data.project.name} | Jason Warren</title>
 	<meta name="description" content={data.project.tagline} />
 </svelte:head>
 

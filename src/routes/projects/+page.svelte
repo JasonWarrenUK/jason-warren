@@ -36,7 +36,7 @@
 </script>
 
 <svelte:head>
-	<title>Projects — Jason Warren</title>
+	<title>Projects | Jason Warren</title>
 	<meta
 		name="description"
 		content="All projects by Jason Warren: solo builds, team contributions, and the libraries extracted from both."

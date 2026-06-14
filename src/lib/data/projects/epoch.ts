@@ -4,9 +4,9 @@ export const epoch: Project = {
 	slug: 'epoch',
 	name: 'Epoch',
 	tagline:
-		'Create a fictional character and see history through their eyes — a personal Wikipedia-sourced timeline of every real event they would have lived through.',
+		'Create a fictional character and see history through their eyes: a personal Wikipedia-sourced timeline of every real event they would have lived through.',
 	description:
-		'[Placeholder] Epoch is the project I return to most often. You give it a name, a birth year, a death year, and a place; it hits the Wikipedia API and builds a collapsible timeline of the real historical events that person would have experienced — filtered, ranked, and deduplicated through a significance-scoring pipeline. The "oral history" feature surfaces stories that were current when your character was 15: what would the elders in their family have talked about?',
+		'[Placeholder] Epoch is the project I return to most often. You give it a name, a birth year, a death year, and a place; it hits the Wikipedia API and builds a collapsible timeline of the real historical events that person would have experienced, filtered, ranked, and deduplicated through a significance-scoring pipeline. The "oral history" feature surfaces stories that were current when your character was 15: what would the elders in their family have talked about?',
 	kind: 'app',
 	contribution: { role: 'solo' },
 	status: 'finished',

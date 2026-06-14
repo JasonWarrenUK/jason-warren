@@ -3,7 +3,7 @@
 </script>
 
 <svelte:head>
-	<title>About — Jason Warren</title>
+	<title>About | Jason Warren</title>
 	<meta
 		name="description"
 		content="Jason Warren is a full-stack developer at Founders and Coders, building tools across Go, TypeScript, Rust, and Svelte."
@@ -22,7 +22,7 @@
 				<div class="section__prose">
 					<p>
 						I'm Jason Warren, a full-stack developer at Founders and Coders. I work across the whole
-						stack — from terminal tools in Go to native desktop apps in Tauri, from graph databases
+						stack, from terminal tools in Go to native desktop apps in Tauri, from graph databases
 						in Neo4j to reactive UIs in Svelte 5. The breadth is deliberate: different problems
 						deserve different tools.
 					</p>
@@ -41,7 +41,7 @@
 					<p>
 						I prefer working close to the problem. That means I often reach for small, focused tools
 						over large frameworks, and I am happy spending time on the parts of a project that most
-						people skip — the data model, the test harness, the git history.
+						people skip: the data model, the test harness, the git history.
 					</p>
 					<p>
 						On team projects, I tend to work at the intersection of architecture and delivery: I

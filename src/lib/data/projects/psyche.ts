@@ -8,7 +8,7 @@ export const psyche: Project = {
 	kind: 'app',
 	contribution: {
 		role: 'lead',
-		contributionNote: '76 of 82 commits — effectively the primary author on this training project.',
+		contributionNote: '76 of 82 commits. Effectively the primary author on this training project.',
 		team: 'FAC-31 cohort'
 	},
 	status: 'archived',

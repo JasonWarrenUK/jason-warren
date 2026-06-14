@@ -16,7 +16,7 @@
 
 <header class="site-header">
 	<nav class="site-nav" aria-label="Site navigation">
-		<a href="{base}/" class="site-nav__home" aria-label="Jason Warren — home">
+		<a href="{base}/" class="site-nav__home" aria-label="Jason Warren, home">
 			<span class="site-nav__initials" aria-hidden="true">JW</span>
 			<span class="site-nav__name">Jason Warren</span>
 		</a>

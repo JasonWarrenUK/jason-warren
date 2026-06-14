@@ -14,7 +14,7 @@
 		<h2 class="threads__title">Libraries from the inside out</h2>
 		<p class="threads__strapline">
 			These projects started as code inside an application. When the problem turned out to be
-			general, the engine was extracted into its own library — consumed by the original app
+			general, the engine was extracted into its own library, consumed by the original app
 			and open to others.
 		</p>
 	</header>

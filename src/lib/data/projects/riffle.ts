@@ -4,7 +4,7 @@ export const riffle: Project = {
 	slug: 'riffle',
 	name: 'Riffle',
 	tagline:
-		'A reactive DendryNexus game engine for SvelteKit — cards, decks, difficulty checks, quality systems, and arena topology, all built on Svelte 5 runes.',
+		'A reactive DendryNexus game engine for SvelteKit: cards, decks, difficulty checks, quality systems, and arena topology, all built on Svelte 5 runes.',
 	description:
 		'[Placeholder] Riffle was extracted from Flyt when the DendryNexus engine became a separable concern. It implements the full StoryNexus-style card/deck/hand mechanics, a quality system with typed display modes, broad and narrow difficulty checks with configurable curves, and a concentric-circle arena topology. The reactive core is Svelte 5 runes; the engine itself has no Svelte UI dependencies.',
 	kind: 'library',

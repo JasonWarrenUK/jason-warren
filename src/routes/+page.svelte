@@ -7,7 +7,7 @@
 </script>
 
 <svelte:head>
-	<title>Jason Warren — Developer</title>
+	<title>Jason Warren, Developer</title>
 	<meta
 		name="description"
 		content="Jason Warren is a full-stack developer with a wide toolkit: TypeScript, Go, Rust, SvelteKit, Tauri, Neo4j, and more."
@@ -21,7 +21,7 @@
 		<p class="page__bio">
 			I build things across the stack: terminal tools in Go, native desktop apps in Tauri,
 			graph-native data models in Neo4j, interactive fiction engines in TypeScript.
-			The range is deliberate — different problems call for different tools.
+			The range is deliberate. Different problems call for different tools.
 		</p>
 	</header>
 

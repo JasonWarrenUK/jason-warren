@@ -6,14 +6,14 @@ export const iris: Project = {
 	tagline:
 		'A three-interface toolkit that converts apprenticeship learner data from CSV into ESFA-compliant ILR XML, with semantic XSD validation.',
 	description:
-		'[Placeholder] Iris solves a real pain point at Founders and Coders: turning messy CSV exports from student management systems into the strict XML format the ESFA requires for funding submissions. The same TypeScript core drives a full-screen TUI, direct CLI commands, and a native desktop app built with Tauri — write the validation logic once, ship three interfaces.',
+		'[Placeholder] Iris solves a real pain point at Founders and Coders: turning messy CSV exports from student management systems into the strict XML format the ESFA requires for funding submissions. The same TypeScript core drives a full-screen TUI, direct CLI commands, and a native desktop app built with Tauri. Write the validation logic once, ship three interfaces.',
 	kind: 'app',
 	contribution: { role: 'solo' },
 	status: 'finished',
 	repoUrl: 'https://github.com/JasonWarrenUK/iris',
 	highlights: [
 		'Single TypeScript core drives three interfaces: OpenTUI terminal UI, direct CLI commands, and a Tauri 2 (Rust) native desktop app.',
-		'Schema-driven validation: parses the real ESFA XSD to build a validation registry with type resolution, cardinality and constraint checking — semantic validation beyond structural XML.',
+		'Schema-driven validation: parses the real ESFA XSD to build a validation registry with type resolution, cardinality and constraint checking. Semantic validation beyond structural XML.',
 		'Header-tolerant CSV parsing handles column reordering; cross-submission consistency checks guard against data drift between submissions.',
 		'Close to 1:1 source-to-test mapping with Vitest and Bun test; round-trip tests cover the full CSV → XML → re-parse cycle.',
 		'Version 5.0.0 across 666 commits; full ADRs, technical specs, dev-log work records, and per-workflow roadmaps.'

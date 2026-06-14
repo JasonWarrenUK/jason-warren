@@ -4,7 +4,7 @@ export const commonsTraybake: Project = {
 	slug: 'commons-traybake',
 	name: 'Commons Traybake',
 	tagline:
-		'A comparative RAG experiment demonstrating that "ethics-neutral" data-processing choices are not neutral — by applying four chunking strategies to UK Parliament (Hansard) data and surfacing what each retrieves.',
+		'A comparative RAG experiment demonstrating that "ethics-neutral" data-processing choices are not neutral, by applying four chunking strategies to UK Parliament (Hansard) data and surfacing what each retrieves.',
 	description:
 		'[Placeholder] Commons Traybake makes an abstract argument tangible: show the same parliamentary debate through four different chunking lenses and let the divergence analysis speak for itself. Only 8-25% of retrieved chunks overlap between strategies, which is the point. The UI makes this visible, not just auditable.',
 	kind: 'app',
@@ -18,7 +18,7 @@ export const commonsTraybake: Project = {
 	repoUrl: 'https://github.com/fac-31/commons-traybake',
 	highlights: [
 		'Four chunking strategies: early (1024 token), early (256 token), late (1024 token blended 70/30 chunk/debate context), late (256 token).',
-		'Late chunking blends embeddings: 70% chunk + 30% debate context — a non-standard approach with measurable retrieval effects.',
+		'Late chunking blends embeddings: 70% chunk + 30% debate context. A non-standard approach with measurable retrieval effects.',
 		'Divergence analysis UI shows only 8-25% overlap between strategies, making the ethics argument concrete.',
 		'Neo4j 5.11+ vector storage with five vector indexes and dual-label schema; OpenAI text-embedding-3-large.',
 		'UK Parliament Hansard API integration with documented request patterns and Bruno/HTTPie test collection.'

@@ -4,7 +4,7 @@ export const chirpdb: Project = {
 	slug: 'chirpdb',
 	name: 'CHIRPdb',
 	tagline:
-		'A production backend API for CHIRP\'s maritime incident-reporting system — ingests UK MAIB accident reports via scraping or PDF upload, structures them, and serves them for semantic search.',
+		'A production backend API for CHIRP\'s maritime incident-reporting system. Ingests UK MAIB accident reports via scraping or PDF upload, structures them, and serves them for semantic search.',
 	description:
 		'[Placeholder] CHIRPdb is commercial client work for Tandem Creative Dev and Zig Zag AI on behalf of CHIRP. The backend handles dual ingestion pipelines (GOV.UK scraping and PDF upload), SHA-256 deduplication, sentence splitting and classification, structured metadata extraction, domain-specific SHIELD-code taxonomy, and client-side 384-dim vector embeddings via Supabase pgvector.',
 	kind: 'app',

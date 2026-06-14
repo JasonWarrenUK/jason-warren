@@ -4,7 +4,7 @@ export const rhea: Project = {
 	slug: 'rhea',
 	name: 'Rhea',
 	tagline:
-		'An AI curriculum generator for peer-led learning cohorts — produces multi-week course structures via Claude, with optional live research so output reflects current industry practice.',
+		'An AI curriculum generator for peer-led learning cohorts. Produces multi-week course structures via Claude, with optional live research so output reflects current industry practice.',
 	description:
 		'[Placeholder] Rhea is the tool that powers curriculum planning at Founders and Coders. It chains together named sub-workflows (Themis for courses, Metis for modules, Theia for import/export) through a shared generation engine backed by the Anthropic SDK and LangChain. Every generated module carries a changelog, confidence scoring, and auto-cited research sources so human reviewers know exactly what to trust.',
 	kind: 'app',

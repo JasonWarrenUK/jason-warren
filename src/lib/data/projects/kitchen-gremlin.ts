@@ -3,7 +3,7 @@ import type { Project } from '../types.js';
 export const kitchenGremlin: Project = {
 	slug: 'kitchen-gremlin',
 	name: 'Kitchen Gremlin',
-	tagline: 'A TypeScript monorepo — under active construction.',
+	tagline: 'A TypeScript monorepo. Under active construction.',
 	description: '[Placeholder] A monorepo project. Details to follow as it takes shape.',
 	kind: 'app',
 	contribution: { role: 'solo' },

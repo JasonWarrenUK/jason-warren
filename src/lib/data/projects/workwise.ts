@@ -4,7 +4,7 @@ export const workwise: Project = {
 	slug: 'workwise',
 	name: 'WorkWise',
 	tagline:
-		'A digital workplace passport that helps neurodivergent employees document their needs and share them with line managers — built for Founders and Coders and the LIFT programme.',
+		'A digital workplace passport that helps neurodivergent employees document their needs and share them with line managers, built for Founders and Coders and the LIFT programme.',
 	description:
 		'[Placeholder] WorkWise is a real social-impact product. Employees use it to document the accommodations that help them work best; managers use it to understand and act on those needs. The engineering challenge is matching the care of the product\'s purpose: RLS-enforced data isolation, magic-link authentication, and a form system that handles the emotional weight of self-disclosure.',
 	kind: 'app',
@@ -18,7 +18,7 @@ export const workwise: Project = {
 	repoUrl: 'https://github.com/foundersandcoders/workwise',
 	highlights: [
 		'Tile-based dashboard layout with responsive grid and collapsible sections (PR #41).',
-		'State-based response handling with creation-date versioning — answers are versioned, not overwritten (PR #28).',
+		'State-based response handling with creation-date versioning: answers are versioned, not overwritten (PR #28).',
 		'Database-driven status indicators: live config, no hardcoded states (PR #36).',
 		'Local Supabase-in-Docker dev loop with two-tier seeding (real questions vs fake test data) and generated TypeScript types from the DB schema.',
 		'Row-Level Security enforces data isolation between employees and managers.'

@@ -3,15 +3,14 @@ import type { Project } from '../types.js';
 export const lyraRose: Project = {
 	slug: 'lyra-rose',
 	name: 'Lyra Rose',
-	tagline:
-		'An animation-heavy personal piece built with GSAP and Supabase on Svelte 5 — under construction.',
+	tagline: 'An animation-heavy personal piece built with GSAP and Supabase on Svelte 5. Under construction.',
 	description: '[Placeholder] A personal creative project. Details to follow.',
 	kind: 'app',
 	contribution: { role: 'solo' },
 	status: 'wip',
 	repoUrl: 'https://github.com/JasonWarrenUK/lyra-rose',
 	highlights: [
-		'Svelte 5.55, Vite 8, TypeScript 6 — bleeding-edge stack.',
+		'Svelte 5.55, Vite 8, TypeScript 6. Bleeding-edge stack.',
 		'GSAP for animation paired with a Supabase backend.',
 		'Targeted for Vercel deployment via @sveltejs/adapter-vercel.'
 	],

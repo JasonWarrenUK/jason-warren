@@ -4,7 +4,7 @@ export const flyt: Project = {
 	slug: 'flyt',
 	name: 'Flyt',
 	tagline:
-		'A Norse interactive fiction game about flyting — ritual insult-poetry contests — where you defend your honour through stat-checked verbal duels.',
+		'A Norse interactive fiction game about flyting (ritual insult-poetry contests) where you defend your honour through stat-checked verbal duels.',
 	description:
 		'[Placeholder] Flyt uses DendryNexus, a niche interactive fiction format by Autumn Chen with StoryNexus-style card and deck mechanics. Rather than waiting for a packaged engine, I reverse-engineered the .dry format specification and built a custom compiler pipeline and reactive runtime. The Riffle engine library emerged from this work.',
 	kind: 'game',

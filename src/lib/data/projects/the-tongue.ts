@@ -6,7 +6,7 @@ export const theTongue: Project = {
 	tagline:
 		'A language-evolution simulator: generate a proto-language from a seed, steer its sound changes, and watch it fracture into a family of daughter languages as geography divides it.',
 	description:
-		'[Placeholder] The Tongue is the most immediately playable thing I have shipped. You pick a numeric seed and get a procedurally generated proto-language — phoneme inventory, syllable template, a 32-word core lexicon, a 4x3 terrain map. Then you spend influence points to apply sound changes, expand territory, and hold off autonomous drift. Over generations, geographically separated communities diverge; the mutual intelligibility matrix tracks how far apart the family has grown.',
+		'[Placeholder] The Tongue is the most immediately playable thing I have shipped. You pick a numeric seed and get a procedurally generated proto-language (phoneme inventory, syllable template, a 32-word core lexicon, a 4x3 terrain map). Then you spend influence points to apply sound changes, expand territory, and hold off autonomous drift. Over generations, geographically separated communities diverge; the mutual intelligibility matrix tracks how far apart the family has grown.',
 	kind: 'game',
 	contribution: { role: 'solo' },
 	status: 'live',

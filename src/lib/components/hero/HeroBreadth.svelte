@@ -26,8 +26,8 @@
 	<header class="hero-breadth__header">
 		<h2 class="hero-breadth__title">A wide toolkit</h2>
 		<p class="hero-breadth__strapline">
-			From Go TUIs to Tauri desktop apps, from Neo4j graph queries to FastAPI microservices —
-			the range is the point.
+			From Go TUIs to Tauri desktop apps, from Neo4j graph queries to FastAPI microservices.
+			The range is the point.
 		</p>
 	</header>
 

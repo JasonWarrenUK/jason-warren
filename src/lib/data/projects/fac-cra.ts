@@ -4,7 +4,7 @@ export const facCra: Project = {
 	slug: 'fac-cra',
 	name: 'FAC CRA',
 	tagline:
-		'The Founders and Coders apprenticeship platform — a large, mature TypeScript monorepo with a GraphQL API, a distribution pipeline, and a learner dashboard.',
+		'The Founders and Coders apprenticeship platform: a large, mature TypeScript monorepo with a GraphQL API, a distribution pipeline, and a learner dashboard.',
 	description:
 		'[Placeholder] FAC CRA is a long-running platform built and maintained by the wider Founders and Coders team. My contributions are self-contained features and careful fixes shipped into an established codebase: the Lead Pool segmentation system, the distribution pipeline improvements, the learner dashboard restructure, and a Playwright E2E test suite.',
 	kind: 'app',
@@ -18,7 +18,7 @@ export const facCra: Project = {
 	repoUrl: 'https://github.com/izaakrogan/fac-cra',
 	highlights: [
 		'Lead Pool multi-axis candidate segmentation: 6 segmentation axes, composable signal groups, hydration orchestrator, pattern-based strength classification (PR #144).',
-		'Full Playwright E2E suite for the learn app — first automated browser tests on the project.',
+		'Full Playwright E2E suite for the learn app. First automated browser tests on the project.',
 		'Learner dashboard restructure: collapsible tiles, health metrics, responsive layout, Article Stats tab (PRs #72, #209, #1298 LOC).',
 		'Distribution pipeline extensions: saved-query folder system, workshop runsheets, batch lead-scoring, markdown email composer.',
 		'Non-invasive audit pass: security hardening, a11y fixes, dead-code removal, 17 unused packages removed.'
