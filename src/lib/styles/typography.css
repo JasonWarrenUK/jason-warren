@@ -1,0 +1,63 @@
+/*
+ * Base typography styles.
+ * Applied globally via app.css.
+ */
+
+body {
+	font-family: var(--font-sans);
+	font-size: var(--text-base);
+	color: var(--color-text);
+	background-color: var(--color-surface);
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+	line-height: 1.2;
+	font-weight: 600;
+	color: var(--color-text);
+}
+
+h1 {
+	font-size: var(--text-4xl);
+}
+h2 {
+	font-size: var(--text-3xl);
+}
+h3 {
+	font-size: var(--text-2xl);
+}
+h4 {
+	font-size: var(--text-xl);
+}
+
+p {
+	line-height: 1.65;
+	color: var(--color-text-subtle);
+}
+
+a:not([class]) {
+	color: var(--color-primary);
+	text-underline-offset: 3px;
+	transition: color var(--transition-fast);
+}
+
+a:not([class]):hover {
+	color: var(--color-primary-text);
+}
+
+code,
+kbd,
+pre {
+	font-family: var(--font-mono);
+	font-size: 0.9em;
+}
+
+:focus-visible {
+	outline: 2px solid var(--color-primary);
+	outline-offset: 3px;
+	border-radius: var(--radius-sm);
+}
