@@ -1,0 +1,31 @@
+import type { Project } from '../types.js';
+
+export const kamino: Project = {
+	slug: 'kamino',
+	name: 'Kamino',
+	tagline:
+		'A universal project template for apprenticeship work: Claude Code config, git hooks for KSB evidence extraction, docs scaffolding, and a /project/init command that wires everything up.',
+	description:
+		'[Placeholder] Kamino is the starting point for every project I build during my Level 4 Software Developer apprenticeship at Founders and Coders. The interesting parts are the automation: a post-commit hook that auto-extracts KSB (Knowledge, Skills, Behaviours) portfolio evidence from commit messages, doc-sync reminders, and a pre-push test validation gate. The /project/init skill scaffolds MCP server connections, a roadmap, and the first ADR.',
+	kind: 'tool',
+	contribution: { role: 'solo' },
+	status: 'finished',
+	repoUrl: 'https://github.com/JasonWarrenUK/kamino',
+	highlights: [
+		'Post-commit hook auto-extracts KSB portfolio evidence from commit messages.',
+		'post-commit-docs hook reminds to sync documentation when source changes.',
+		'pre-push hook validates tests pass before remote pushes.',
+		'/project/init interactive skill: scaffolds MCP servers, roadmap, first ADR.',
+		'Degit-cloneable template with stack-agnostic Claude Code config.'
+	],
+	relationships: [],
+	featured: false,
+	tags: [
+		{ label: 'Shell', kind: 'language' },
+		{ label: 'Claude Code', kind: 'domain' },
+		{ label: 'Developer Tooling', kind: 'domain' }
+	],
+	metrics: {
+		commits: 1
+	}
+};
