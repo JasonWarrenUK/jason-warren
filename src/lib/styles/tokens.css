@@ -159,6 +159,14 @@
 	--color-accent-text: var(--color-jade-2);
 
 	/* --- Status colours --- */
+	/* Lift the base dot colours one shade brighter: the light-tuned -4 shades
+	   read too dark on the dark surface (jade-4 looked near-black). */
+	--color-live: var(--color-jade-3);
+	--color-wip: var(--color-amber-3);
+	--color-finished: var(--color-blue-3);
+	--color-prototype: var(--color-violet-3);
+	--color-archived: var(--color-gray-3);
+
 	--color-live-bg: #16281e;
 	--color-live-text: var(--color-jade-2);
 
@@ -216,6 +224,12 @@
 		--color-accent-text: var(--color-jade-2);
 
 		/* --- Status colours --- */
+		--color-live: var(--color-jade-3);
+		--color-wip: var(--color-amber-3);
+		--color-finished: var(--color-blue-3);
+		--color-prototype: var(--color-violet-3);
+		--color-archived: var(--color-gray-3);
+
 		--color-live-bg: #16281e;
 		--color-live-text: var(--color-jade-2);
 
