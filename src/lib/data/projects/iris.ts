@@ -34,9 +34,10 @@ export const iris: Project = {
 		{ label: 'Tauri', kind: 'framework' },
 		{ label: 'Rust', kind: 'language' },
 		{ label: 'OpenTUI', kind: 'framework' },
-		{ label: 'Vitest', kind: 'domain' },
-		{ label: 'XML / XSD', kind: 'domain' }
+		{ label: 'Vitest', kind: 'tool' },
+		{ label: 'XML / XSD', kind: 'tool' }
 	],
+	lastCommit: '2026-03-12',
 	metrics: {
 		commits: 666,
 		linesAdded: 31500

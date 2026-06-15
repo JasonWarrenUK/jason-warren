@@ -29,11 +29,12 @@ export const sakura: Project = {
 	tags: [
 		{ label: 'C#', kind: 'language' },
 		{ label: 'ASP.NET Core', kind: 'framework' },
-		{ label: 'Entity Framework Core', kind: 'domain' },
-		{ label: 'PostgreSQL', kind: 'domain' },
+		{ label: 'Entity Framework Core', kind: 'database' },
+		{ label: 'PostgreSQL', kind: 'database' },
 		{ label: 'React', kind: 'framework' },
 		{ label: '.NET 8', kind: 'runtime' }
 	],
+	lastCommit: '2024-11-21',
 	metrics: {
 		commits: 159,
 		mergedPrs: 20,

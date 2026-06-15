@@ -25,8 +25,9 @@ export const codeArcana: Project = {
 		{ label: 'SvelteKit', kind: 'framework' },
 		{ label: 'Svelte 5', kind: 'framework' },
 		{ label: 'Deno', kind: 'runtime' },
-		{ label: 'Graph / D3', kind: 'domain' }
+		{ label: 'Graph / D3', kind: 'tool' }
 	],
+	lastCommit: '2026-06-11',
 	metrics: {
 		commits: 2
 	}

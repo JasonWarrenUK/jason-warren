@@ -29,11 +29,12 @@ export const thingsWeDo: Project = {
 		{ label: 'TypeScript', kind: 'language' },
 		{ label: 'React', kind: 'framework' },
 		{ label: 'Next.js', kind: 'framework' },
-		{ label: 'RxDB', kind: 'domain' },
-		{ label: 'Plotly.js', kind: 'domain' },
-		{ label: 'PWA', kind: 'domain' },
+		{ label: 'RxDB', kind: 'database' },
+		{ label: 'Plotly.js', kind: 'tool' },
+		{ label: 'PWA', kind: 'concept' },
 		{ label: 'Tailwind CSS', kind: 'framework' }
 	],
+	lastCommit: '2024-12-19',
 	metrics: {
 		commits: 183,
 		mergedPrs: 21,

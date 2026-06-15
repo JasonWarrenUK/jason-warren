@@ -25,8 +25,9 @@ export const cogni: Project = {
 		{ label: 'Svelte 5', kind: 'framework' },
 		{ label: 'SvelteKit', kind: 'framework' },
 		{ label: 'Bun', kind: 'runtime' },
-		{ label: 'Vitest', kind: 'domain' }
+		{ label: 'Vitest', kind: 'tool' }
 	],
+	lastCommit: '2026-06-11',
 	metrics: {
 		commits: 24
 	}

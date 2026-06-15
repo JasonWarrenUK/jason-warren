@@ -27,6 +27,11 @@ export function getAllProjects(): Project[] {
 	return projects;
 }
 
+/** Projects sorted by most recent commit date, newest first. Projects with no date sort last. */
+export function getAllProjectsByRecency(): Project[] {
+	return [...projects].sort((a, b) => (b.lastCommit ?? '').localeCompare(a.lastCommit ?? ''));
+}
+
 // ---------------------------------------------------------------------------
 // Filters — designed to be composable via the filterable index
 // ---------------------------------------------------------------------------
@@ -74,13 +79,16 @@ export function getAllTags(): string[] {
 
 /**
  * All unique tag labels grouped by TagKind, each group sorted alphabetically.
- * Key order: language → framework → domain → runtime.
+ * Key order: language → framework → database → ai → concept → tool → runtime.
  */
 export function getTagsByKind(): Record<TagKind, string[]> {
 	const buckets: Record<TagKind, Set<string>> = {
 		language: new Set(),
 		framework: new Set(),
-		domain: new Set(),
+		database: new Set(),
+		ai: new Set(),
+		concept: new Set(),
+		tool: new Set(),
 		runtime: new Set()
 	};
 	for (const project of projects) {
@@ -91,7 +99,10 @@ export function getTagsByKind(): Record<TagKind, string[]> {
 	return {
 		language: [...buckets.language].sort(),
 		framework: [...buckets.framework].sort(),
-		domain: [...buckets.domain].sort(),
+		database: [...buckets.database].sort(),
+		ai: [...buckets.ai].sort(),
+		concept: [...buckets.concept].sort(),
+		tool: [...buckets.tool].sort(),
 		runtime: [...buckets.runtime].sort()
 	};
 }

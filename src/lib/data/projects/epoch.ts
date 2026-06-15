@@ -25,10 +25,11 @@ export const epoch: Project = {
 		{ label: 'SvelteKit', kind: 'framework' },
 		{ label: 'Svelte 5', kind: 'framework' },
 		{ label: 'Tailwind CSS', kind: 'framework' },
-		{ label: 'Wikipedia API', kind: 'domain' },
-		{ label: 'Vitest', kind: 'domain' },
+		{ label: 'Wikipedia API', kind: 'tool' },
+		{ label: 'Vitest', kind: 'tool' },
 		{ label: 'Vercel', kind: 'runtime' }
 	],
+	lastCommit: '2026-06-14',
 	metrics: {
 		commits: 56
 	}

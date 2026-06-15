@@ -25,9 +25,10 @@ export const rimewarden: Project = {
 		{ label: 'Svelte 5', kind: 'framework' },
 		{ label: 'SvelteKit', kind: 'framework' },
 		{ label: 'Bun', kind: 'runtime' },
-		{ label: 'D2', kind: 'domain' },
+		{ label: 'D2', kind: 'tool' },
 		{ label: 'Tailwind CSS', kind: 'framework' }
 	],
+	lastCommit: '2026-01-24',
 	metrics: {
 		commits: 2
 	}

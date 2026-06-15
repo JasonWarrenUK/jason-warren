@@ -30,10 +30,11 @@ export const flyt: Project = {
 		{ label: 'TypeScript', kind: 'language' },
 		{ label: 'SvelteKit', kind: 'framework' },
 		{ label: 'Svelte 5', kind: 'framework' },
-		{ label: 'DendryNexus', kind: 'domain' },
-		{ label: 'Interactive Fiction', kind: 'domain' },
+		{ label: 'DendryNexus', kind: 'tool' },
+		{ label: 'Interactive Fiction', kind: 'concept' },
 		{ label: 'Bun', kind: 'runtime' }
 	],
+	lastCommit: '2026-03-11',
 	metrics: {
 		commits: 30
 	}

@@ -27,12 +27,13 @@ export const facCra: Project = {
 	featured: false,
 	tags: [
 		{ label: 'TypeScript', kind: 'language' },
-		{ label: 'GraphQL', kind: 'domain' },
-		{ label: 'PostgreSQL', kind: 'domain' },
-		{ label: 'Playwright', kind: 'domain' },
-		{ label: 'Monorepo', kind: 'domain' },
+		{ label: 'GraphQL', kind: 'database' },
+		{ label: 'PostgreSQL', kind: 'database' },
+		{ label: 'Playwright', kind: 'tool' },
+		{ label: 'Monorepo', kind: 'tool' },
 		{ label: 'Node.js', kind: 'runtime' }
 	],
+	lastCommit: '2026-04-02',
 	metrics: {
 		commits: 320,
 		linesAdded: 31500,

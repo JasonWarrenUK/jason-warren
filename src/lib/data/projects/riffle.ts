@@ -29,9 +29,10 @@ export const riffle: Project = {
 	tags: [
 		{ label: 'TypeScript', kind: 'language' },
 		{ label: 'Svelte 5', kind: 'framework' },
-		{ label: 'DendryNexus', kind: 'domain' },
-		{ label: 'Interactive Fiction', kind: 'domain' }
+		{ label: 'DendryNexus', kind: 'tool' },
+		{ label: 'Interactive Fiction', kind: 'concept' }
 	],
+	lastCommit: '2026-03-12',
 	metrics: {
 		commits: 2
 	}

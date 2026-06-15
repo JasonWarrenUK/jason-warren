@@ -26,8 +26,9 @@ export const thoseWhoCameBefore: Project = {
 		{ label: 'Svelte 5', kind: 'framework' },
 		{ label: 'Deno', kind: 'runtime' },
 		{ label: 'Tailwind CSS v4', kind: 'framework' },
-		{ label: 'Procedural Generation', kind: 'domain' }
+		{ label: 'Procedural Generation', kind: 'concept' }
 	],
+	lastCommit: '2026-02-16',
 	metrics: {
 		commits: 75
 	}

@@ -31,9 +31,10 @@ export const craftAndGraft: Project = {
 		{ label: 'React', kind: 'framework' },
 		{ label: 'Vite', kind: 'framework' },
 		{ label: 'Express', kind: 'framework' },
-		{ label: 'PostgreSQL', kind: 'domain' },
+		{ label: 'PostgreSQL', kind: 'database' },
 		{ label: 'Node.js', kind: 'runtime' }
 	],
+	lastCommit: '2024-10-31',
 	metrics: {
 		commits: 92,
 		mergedPrs: 32

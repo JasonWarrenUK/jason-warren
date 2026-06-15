@@ -30,10 +30,11 @@ export const theWork: Project = {
 		{ label: 'TypeScript', kind: 'language' },
 		{ label: 'SvelteKit', kind: 'framework' },
 		{ label: 'Svelte 5', kind: 'framework' },
-		{ label: 'Ink / inkjs', kind: 'domain' },
-		{ label: 'Interactive Fiction', kind: 'domain' },
+		{ label: 'Ink / inkjs', kind: 'tool' },
+		{ label: 'Interactive Fiction', kind: 'concept' },
 		{ label: 'Bun', kind: 'runtime' }
 	],
+	lastCommit: '2026-05-18',
 	metrics: {
 		commits: 114
 	}

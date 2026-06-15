@@ -29,11 +29,12 @@ export const beacons: Project = {
 	tags: [
 		{ label: 'TypeScript', kind: 'language' },
 		{ label: 'Deno', kind: 'runtime' },
-		{ label: 'Neo4j', kind: 'domain' },
+		{ label: 'Neo4j', kind: 'database' },
 		{ label: 'Oak', kind: 'framework' },
 		{ label: 'React', kind: 'framework' },
-		{ label: 'Supabase', kind: 'domain' }
+		{ label: 'Supabase', kind: 'database' }
 	],
+	lastCommit: '2025-11-06',
 	metrics: {
 		commits: 175,
 		mergedPrs: 21,

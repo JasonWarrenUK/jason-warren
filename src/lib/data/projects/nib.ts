@@ -29,8 +29,9 @@ export const nib: Project = {
 		{ label: 'TypeScript', kind: 'language' },
 		{ label: 'Svelte 5', kind: 'framework' },
 		{ label: 'SvelteKit', kind: 'framework' },
-		{ label: 'Ink / inkjs', kind: 'domain' }
+		{ label: 'Ink / inkjs', kind: 'tool' }
 	],
+	lastCommit: '2026-03-11',
 	metrics: {
 		commits: 1
 	}

@@ -28,9 +28,10 @@ export const redot: Project = {
 	tags: [
 		{ label: 'JavaScript', kind: 'language' },
 		{ label: 'Node.js', kind: 'runtime' },
-		{ label: 'Anthropic SDK', kind: 'domain' },
-		{ label: 'GitHub Actions', kind: 'domain' }
+		{ label: 'Anthropic SDK', kind: 'ai' },
+		{ label: 'GitHub Actions', kind: 'tool' }
 	],
+	lastCommit: '2025-10-13',
 	metrics: {
 		commits: 28,
 		mergedPrs: 6,

@@ -24,11 +24,12 @@ export const rhea: Project = {
 		{ label: 'TypeScript', kind: 'language' },
 		{ label: 'SvelteKit', kind: 'framework' },
 		{ label: 'Svelte 5', kind: 'framework' },
-		{ label: 'Anthropic SDK', kind: 'domain' },
-		{ label: 'LangChain', kind: 'domain' },
-		{ label: 'Zod', kind: 'domain' },
+		{ label: 'Anthropic SDK', kind: 'ai' },
+		{ label: 'LangChain', kind: 'ai' },
+		{ label: 'Zod', kind: 'tool' },
 		{ label: 'Deno', kind: 'runtime' }
 	],
+	lastCommit: '2026-03-25',
 	metrics: {
 		commits: 356,
 		linesAdded: 6000

@@ -29,8 +29,9 @@ export const schemaForge: Project = {
 	tags: [
 		{ label: 'TypeScript', kind: 'language' },
 		{ label: 'Bun', kind: 'runtime' },
-		{ label: 'XML / XSD', kind: 'domain' }
+		{ label: 'XML / XSD', kind: 'tool' }
 	],
+	lastCommit: '2026-03-12',
 	metrics: {
 		commits: 4
 	}

@@ -20,6 +20,7 @@ export const psyche: Project = {
 		{ label: 'TypeScript', kind: 'language' },
 		{ label: 'SvelteKit', kind: 'framework' }
 	],
+	lastCommit: '2025-11-27',
 	metrics: {
 		commits: 76
 	}

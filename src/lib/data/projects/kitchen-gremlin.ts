@@ -18,8 +18,9 @@ export const kitchenGremlin: Project = {
 	tags: [
 		{ label: 'TypeScript', kind: 'language' },
 		{ label: 'Bun', kind: 'runtime' },
-		{ label: 'Monorepo', kind: 'domain' }
+		{ label: 'Monorepo', kind: 'tool' }
 	],
+	lastCommit: '2026-04-28',
 	metrics: {
 		commits: 18
 	}

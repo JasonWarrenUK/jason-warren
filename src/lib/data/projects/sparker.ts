@@ -24,9 +24,10 @@ export const sparker: Project = {
 		{ label: 'TypeScript', kind: 'language' },
 		{ label: 'SvelteKit', kind: 'framework' },
 		{ label: 'Svelte 5', kind: 'framework' },
-		{ label: 'Neo4j', kind: 'domain' },
-		{ label: 'Graph databases', kind: 'domain' }
+		{ label: 'Neo4j', kind: 'database' },
+		{ label: 'Graph databases', kind: 'database' }
 	],
+	lastCommit: '2026-03-05',
 	metrics: {
 		commits: 11
 	}

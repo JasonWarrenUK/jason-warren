@@ -26,6 +26,7 @@ export const topGirls: Project = {
 		{ label: 'Vite', kind: 'runtime' },
 		{ label: 'Bun', kind: 'runtime' }
 	],
+	lastCommit: '2026-06-14',
 	metrics: {
 		commits: 16
 	}

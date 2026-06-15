@@ -17,7 +17,7 @@ export type ProjectStatus = 'live' | 'wip' | 'finished' | 'prototype' | 'archive
 
 export type ProjectKind = 'app' | 'game' | 'website' | 'toy' | 'library' | 'tool' | 'tui';
 
-export type TagKind = 'language' | 'framework' | 'domain' | 'runtime';
+export type TagKind = 'language' | 'framework' | 'database' | 'ai' | 'concept' | 'tool' | 'runtime';
 
 // ---------------------------------------------------------------------------
 // Tech tags
@@ -99,6 +99,8 @@ export interface Project {
 	repoUrl: string;
 	/** URL of a companion repo (e.g. a separate frontend or backend repo for split products). */
 	secondaryRepoUrl?: string;
+	/** ISO date (YYYY-MM-DD) of the most recent commit, from the source drift manifest. */
+	lastCommit?: string;
 	liveUrl?: string;
 	/** 3–5 technically interesting things about this project. */
 	highlights: string[];

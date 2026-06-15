@@ -29,11 +29,12 @@ export const workwise: Project = {
 		{ label: 'TypeScript', kind: 'language' },
 		{ label: 'SvelteKit', kind: 'framework' },
 		{ label: 'Svelte 5', kind: 'framework' },
-		{ label: 'Supabase', kind: 'domain' },
-		{ label: 'PostgreSQL', kind: 'domain' },
+		{ label: 'Supabase', kind: 'database' },
+		{ label: 'PostgreSQL', kind: 'database' },
 		{ label: 'Tailwind CSS', kind: 'framework' },
-		{ label: 'Accessibility', kind: 'domain' }
+		{ label: 'Accessibility', kind: 'concept' }
 	],
+	lastCommit: '2025-11-01',
 	metrics: {
 		commits: 182,
 		mergedPrs: 24,

@@ -31,10 +31,11 @@ export const guardrails: Project = {
 		{ label: 'React', kind: 'framework' },
 		{ label: 'Express', kind: 'framework' },
 		{ label: 'FastAPI', kind: 'framework' },
-		{ label: 'Chrome Extension', kind: 'domain' },
-		{ label: 'NLP / NER', kind: 'domain' },
-		{ label: 'PostgreSQL', kind: 'domain' }
+		{ label: 'Chrome Extension', kind: 'tool' },
+		{ label: 'NLP / NER', kind: 'ai' },
+		{ label: 'PostgreSQL', kind: 'database' }
 	],
+	lastCommit: '2026-06-12',
 	metrics: {
 		commits: 14,
 		mergedPrs: 4,

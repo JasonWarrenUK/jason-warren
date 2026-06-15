@@ -24,11 +24,12 @@ export const historia: Project = {
 		{ label: 'TypeScript', kind: 'language' },
 		{ label: 'SvelteKit', kind: 'framework' },
 		{ label: 'Svelte 5', kind: 'framework' },
-		{ label: 'MapLibre GL', kind: 'domain' },
-		{ label: 'TopoJSON / GIS', kind: 'domain' },
+		{ label: 'MapLibre GL', kind: 'tool' },
+		{ label: 'TopoJSON / GIS', kind: 'tool' },
 		{ label: 'Tailwind CSS v4', kind: 'framework' },
 		{ label: 'Bun', kind: 'runtime' }
 	],
+	lastCommit: '2026-03-14',
 	metrics: {
 		commits: 8
 	}

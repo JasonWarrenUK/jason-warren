@@ -24,10 +24,11 @@ export const wyrdTui: Project = {
 	tags: [
 		{ label: 'Go', kind: 'language' },
 		{ label: 'Bubble Tea', kind: 'framework' },
-		{ label: 'Graph / Cypher', kind: 'domain' },
-		{ label: 'Git', kind: 'domain' },
-		{ label: 'CLI', kind: 'domain' }
+		{ label: 'Graph / Cypher', kind: 'database' },
+		{ label: 'Git', kind: 'tool' },
+		{ label: 'CLI', kind: 'tool' }
 	],
+	lastCommit: '2026-06-15',
 	metrics: {
 		commits: 279,
 		testCoverage: 68.5,

@@ -25,11 +25,12 @@ export const lyraRose: Project = {
 		{ label: 'TypeScript', kind: 'language' },
 		{ label: 'SvelteKit', kind: 'framework' },
 		{ label: 'Svelte 5', kind: 'framework' },
-		{ label: 'GSAP', kind: 'domain' },
-		{ label: 'Web Audio API', kind: 'domain' },
-		{ label: 'Supabase', kind: 'domain' },
+		{ label: 'GSAP', kind: 'tool' },
+		{ label: 'Web Audio API', kind: 'tool' },
+		{ label: 'Supabase', kind: 'database' },
 		{ label: 'Bun', kind: 'runtime' }
 	],
+	lastCommit: '2026-05-18',
 	metrics: {
 		commits: 26
 	}

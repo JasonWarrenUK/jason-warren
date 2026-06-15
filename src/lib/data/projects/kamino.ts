@@ -22,9 +22,10 @@ export const kamino: Project = {
 	featured: false,
 	tags: [
 		{ label: 'Shell', kind: 'language' },
-		{ label: 'Claude Code', kind: 'domain' },
-		{ label: 'Developer Tooling', kind: 'domain' }
+		{ label: 'Claude Code', kind: 'ai' },
+		{ label: 'Developer Tooling', kind: 'concept' }
 	],
+	lastCommit: '2026-01-09',
 	metrics: {
 		commits: 1
 	}

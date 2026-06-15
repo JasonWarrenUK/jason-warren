@@ -21,6 +21,7 @@ export const babyNames: Project = {
 		{ label: 'Svelte 5', kind: 'framework' },
 		{ label: 'Bun', kind: 'runtime' }
 	],
+	lastCommit: '2026-03-14',
 	metrics: {
 		commits: 5
 	}
