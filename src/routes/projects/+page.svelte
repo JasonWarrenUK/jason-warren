@@ -42,6 +42,25 @@
 		}
 		goto(url.toString(), { replaceState: true, keepFocus: true });
 	}
+
+	// Persist filters across navigation: returning from a project (or the
+	// in-page breadcrumb) lands on a bare /projects URL, so restore the last
+	// query string from sessionStorage. The `restored` flag guards the restore
+	// so the save branch cannot clobber the stored value before it is read.
+	const FILTERS_KEY = 'projects:filters';
+	let restored = false;
+	$effect(() => {
+		const search = $page.url.search;
+		if (!restored) {
+			restored = true;
+			const saved = sessionStorage.getItem(FILTERS_KEY);
+			if (!search && saved) {
+				goto(`${base}/projects${saved}`, { replaceState: true, keepFocus: true });
+				return;
+			}
+		}
+		sessionStorage.setItem(FILTERS_KEY, search);
+	});
 </script>
 
 <Seo

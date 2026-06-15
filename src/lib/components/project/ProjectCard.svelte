@@ -15,6 +15,15 @@
 
 <article class="project-card">
 	<a href="{base}/projects/{project.slug}" class="project-card__link" aria-label={project.name}>
+		<img
+			src="{base}/og/{project.slug}.png"
+			alt="{project.name} social card"
+			width="1200"
+			height="630"
+			loading="lazy"
+			class="project-card__thumb"
+		/>
+
 		<header class="project-card__header">
 			<h3 class="project-card__name">{project.name}</h3>
 			<div class="project-card__badges">
@@ -73,6 +82,17 @@
 		flex: 1;
 	}
 
+	/* Pull the thumbnail flush to the card edges, above the padded content. */
+	.project-card__thumb {
+		display: block;
+		width: calc(100% + 2 * var(--space-5));
+		height: auto;
+		aspect-ratio: 1200 / 630;
+		object-fit: cover;
+		margin: calc(-1 * var(--space-5)) calc(-1 * var(--space-5)) var(--space-1);
+		border-bottom: 1px solid var(--color-border);
+	}
+
 	.project-card__header {
 		display: flex;
 		align-items: flex-start;
@@ -98,12 +118,6 @@
 		color: var(--color-text-subtle);
 		line-height: 1.5;
 		margin: 0;
-		/* Clamp to 3 lines on cards */
-		display: -webkit-box;
-		-webkit-line-clamp: 3;
-		line-clamp: 3;
-		-webkit-box-orient: vertical;
-		overflow: hidden;
 	}
 
 	.project-card__footer {
