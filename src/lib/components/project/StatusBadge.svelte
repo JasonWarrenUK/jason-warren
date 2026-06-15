@@ -7,10 +7,12 @@
 
 	let { status }: Props = $props();
 
+	/** Unified label vocabulary — matches filter chip labels exactly. */
 	const labels: Record<ProjectStatus, string> = {
 		live: 'Live',
-		wip: 'In progress',
-		finished: 'Finished',
+		wip: 'Active',
+		finished: 'Complete',
+		prototype: 'Prototype',
 		archived: 'Archived'
 	};
 </script>
@@ -46,6 +48,11 @@
 	.status-badge--finished {
 		color: var(--color-finished-text);
 		background-color: var(--color-finished-bg);
+	}
+
+	.status-badge--prototype {
+		color: var(--color-prototype-text);
+		background-color: var(--color-prototype-bg);
 	}
 
 	.status-badge--archived {

@@ -13,9 +13,9 @@
 
 export type ProjectRole = 'solo' | 'lead' | 'collaborator';
 
-export type ProjectStatus = 'live' | 'wip' | 'finished' | 'archived';
+export type ProjectStatus = 'live' | 'wip' | 'finished' | 'prototype' | 'archived';
 
-export type ProjectKind = 'app' | 'game' | 'library' | 'tool' | 'tui';
+export type ProjectKind = 'app' | 'game' | 'website' | 'toy' | 'library' | 'tool' | 'tui';
 
 export type TagKind = 'language' | 'framework' | 'domain' | 'runtime';
 
@@ -148,4 +148,9 @@ export type ProjectSlug =
 	| 'guardrails'
 	| 'redot'
 	| 'chirpdb'
-	| 'fac-cra';
+	| 'fac-cra'
+	// New entries (FAC team + solo)
+	| 'beacons'
+	| 'craft-and-graft'
+	| 'sakura'
+	| 'rimewarden';

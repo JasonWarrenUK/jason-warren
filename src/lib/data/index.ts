@@ -32,6 +32,10 @@ import { guardrails } from './projects/guardrails.js';
 import { redot } from './projects/redot.js';
 import { chirpdb } from './projects/chirpdb.js';
 import { facCra } from './projects/fac-cra.js';
+import { beacons } from './projects/beacons.js';
+import { craftAndGraft } from './projects/craft-and-graft.js';
+import { sakura } from './projects/sakura.js';
+import { rimewarden } from './projects/rimewarden.js';
 import type { Project } from './types.js';
 
 export type { Project };
@@ -71,5 +75,10 @@ export const projects: Project[] = [
 	guardrails,
 	redot,
 	chirpdb,
-	facCra
+	facCra,
+	// New entries
+	beacons,
+	craftAndGraft,
+	sakura,
+	rimewarden
 ];

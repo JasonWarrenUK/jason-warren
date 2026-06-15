@@ -1,0 +1,42 @@
+import type { Project } from '../types.js';
+
+export const beacons: Project = {
+	slug: 'beacons',
+	name: 'Beacons',
+	tagline:
+		'A graph-native language tool that turns free-text statements into a queryable grammar, backed by Neo4j and deployed on Deno.',
+	description:
+		'[Placeholder] Beacons is a full-stack application that decomposes natural-language statements into a Neo4j graph of subjects and verbs. A Deno/Oak API exposes the graph layer with NLP-driven verb encoding, magic-link authentication, and a cron-scheduled database nudge. A feature-organised React frontend (companion repo) guides users through a statement-building wizard. Jason led the backend, architecting and building the graph query layer, the language pipeline, and the authentication system.',
+	kind: 'app',
+	contribution: {
+		role: 'lead',
+		contributionNote:
+			'Jason architected and built the Neo4j-backed grammar engine: the graph queries, the natural-language verb encoding, the magic-link authentication, and a cron-scheduled database nudge that power the Beacons backend.',
+		team: 'Founders and Coders'
+	},
+	status: 'archived',
+	repoUrl: 'https://github.com/foundersandcoders/beacons-backend',
+	secondaryRepoUrl: 'https://github.com/foundersandcoders/beacons-frontend-v2',
+	highlights: [
+		'Graph-native language model: statements decomposed into subject/verb nodes in Neo4j, with a route that converts free-text input into a structured Grammar object.',
+		'NLP pipeline using the compromise library to dynamically extract and encode verbs from the graph, enabling semantic verb search across the corpus.',
+		'Passwordless magic-link authentication with Neo4j-linked user records and request-level middleware.',
+		'Deno Cron scheduled job (the "DB nudge") keeping the database warm — using Deno\'s unstable cron and KV APIs.',
+		'Feature-organised React frontend with an interactive statement-building wizard, framer-motion transitions, and react-window virtualised lists.'
+	],
+	relationships: [],
+	featured: false,
+	tags: [
+		{ label: 'TypeScript', kind: 'language' },
+		{ label: 'Deno', kind: 'runtime' },
+		{ label: 'Neo4j', kind: 'domain' },
+		{ label: 'Oak', kind: 'framework' },
+		{ label: 'React', kind: 'framework' },
+		{ label: 'Supabase', kind: 'domain' }
+	],
+	metrics: {
+		commits: 175,
+		mergedPrs: 21,
+		linesAdded: 19800
+	}
+};
