@@ -45,14 +45,15 @@
 		<a href="{base}/projects">← All projects</a>
 	</nav>
 
-	<img
-		src="{base}/og/{data.project.slug}.png"
-		alt="{data.project.name} social card"
-		width="1200"
-		height="630"
-		loading="eager"
-		class="page__banner"
-	/>
+	<div class="page__banner">
+		<img
+			src="{base}/og/{data.project.slug}.png"
+			alt="{data.project.name} social card"
+			width="1200"
+			height="630"
+			loading="eager"
+		/>
+	</div>
 
 	<header class="page__header">
 		<div class="page__header-top">
@@ -137,14 +138,21 @@
 		color: var(--color-primary-text);
 	}
 
+	/* The wrapper owns the aspect ratio (reliable across WebViews); the image
+	   fills it, so the banner never crops to a tall sliver. */
 	.page__banner {
 		display: block;
 		width: 100%;
-		height: auto;
 		aspect-ratio: 1200 / 630;
-		object-fit: cover;
+		overflow: hidden;
 		border: 1px solid var(--color-border);
 		border-radius: var(--radius-lg);
+	}
+
+	.page__banner img {
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
 	}
 
 	.page__header {

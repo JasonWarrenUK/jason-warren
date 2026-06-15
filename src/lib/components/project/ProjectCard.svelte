@@ -15,14 +15,15 @@
 
 <article class="project-card">
 	<a href="{base}/projects/{project.slug}" class="project-card__link" aria-label={project.name}>
-		<img
-			src="{base}/og/{project.slug}.png"
-			alt="{project.name} social card"
-			width="1200"
-			height="630"
-			loading="lazy"
-			class="project-card__thumb"
-		/>
+		<div class="project-card__thumb">
+			<img
+				src="{base}/og/{project.slug}.png"
+				alt="{project.name} social card"
+				width="1200"
+				height="630"
+				loading="lazy"
+			/>
+		</div>
 
 		<div class="project-card__body">
 			<header class="project-card__header">
@@ -84,14 +85,20 @@
 	}
 
 	/* Full-bleed thumbnail: as the link's first child it spans the card, and the
-	   card's overflow:hidden + border-radius clip its top corners. */
+	   card's overflow:hidden + border-radius clip its top corners. The wrapper
+	   owns the aspect ratio (reliable across WebViews) and the image fills it. */
 	.project-card__thumb {
 		display: block;
 		width: 100%;
-		margin: 0;
 		aspect-ratio: 1200 / 630;
-		object-fit: cover;
+		overflow: hidden;
 		border-bottom: 1px solid var(--color-border);
+	}
+
+	.project-card__thumb img {
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
 	}
 
 	.project-card__body {

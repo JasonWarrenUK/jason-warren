@@ -136,18 +136,21 @@
 		border-color: var(--color-primary-light);
 	}
 
-	/* Pull the thumbnail flush to the card edges, above the padded content. */
+	/* Pull the thumbnail flush to the card edges, above the padded content. The
+	   link owns the aspect ratio (reliable across WebViews) and the image fills
+	   it, so the card never collapses or crops to a tall sliver. */
 	.flagship__thumb {
 		display: block;
 		margin: calc(-1 * var(--space-7)) calc(-1 * var(--space-7)) 0;
 		border-bottom: 1px solid var(--color-border);
+		aspect-ratio: 1200 / 630;
+		overflow: hidden;
 	}
 
 	.flagship__thumb-img {
 		display: block;
 		width: 100%;
-		height: auto;
-		aspect-ratio: 1200 / 630;
+		height: 100%;
 		object-fit: cover;
 	}
 
