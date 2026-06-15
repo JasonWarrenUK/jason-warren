@@ -70,13 +70,130 @@ function git(args, cwd) {
 	}
 }
 
+// Map a file extension to a canonical language name. Keys match the tag-label
+// spelling the site curates, so the drift report's "ungated" hint lines up with
+// the data model. Config, docs, and assets are deliberately omitted: this list
+// is the exhaustive truth the curated language tags filter, but noise it need
+// not carry.
+const EXTENSION_LANGUAGE = {
+	ts: 'TypeScript',
+	tsx: 'TypeScript',
+	mts: 'TypeScript',
+	cts: 'TypeScript',
+	js: 'JavaScript',
+	jsx: 'JavaScript',
+	mjs: 'JavaScript',
+	cjs: 'JavaScript',
+	py: 'Python',
+	go: 'Go',
+	rs: 'Rust',
+	cs: 'C#',
+	sh: 'Shell',
+	bash: 'Shell',
+	zsh: 'Shell',
+	css: 'CSS',
+	scss: 'CSS',
+	sass: 'CSS',
+	html: 'HTML',
+	htm: 'HTML',
+	c: 'C',
+	h: 'C',
+	cpp: 'C++',
+	cc: 'C++',
+	cxx: 'C++',
+	hpp: 'C++',
+	lua: 'Lua',
+	kt: 'Kotlin',
+	kts: 'Kotlin',
+	swift: 'Swift',
+	rb: 'Ruby',
+	php: 'PHP',
+	ex: 'Elixir',
+	exs: 'Elixir',
+	hs: 'Haskell',
+	scala: 'Scala',
+	dart: 'Dart',
+	zig: 'Zig',
+	ml: 'OCaml',
+	jl: 'Julia',
+	sql: 'SQL',
+	vue: 'Vue',
+	svelte: 'Svelte',
+	astro: 'Astro'
+};
+
+/** Languages present in the repo, ordered by file count (most prevalent first). */
+function detectLanguages(repoPath) {
+	const listing = git('ls-files', repoPath);
+	if (!listing) return [];
+	const counts = new Map();
+	for (const file of listing.split('\n')) {
+		const dot = file.lastIndexOf('.');
+		if (dot < 0) continue;
+		const language = EXTENSION_LANGUAGE[file.slice(dot + 1).toLowerCase()];
+		if (!language) continue;
+		counts.set(language, (counts.get(language) ?? 0) + 1);
+	}
+	return [...counts.entries()].sort((a, b) => b[1] - a[1]).map(([language]) => language);
+}
+
+/** ISO date of the earliest root commit, the project's inception. */
+function getFirstCommit(repoPath) {
+	const roots = git('log --max-parents=0 --format=%cs', repoPath);
+	if (roots) {
+		return roots.split('\n').sort()[0];
+	}
+	const reversed = git('log --reverse --format=%cs', repoPath);
+	return reversed ? reversed.split('\n')[0] : null;
+}
+
 function getFingerprint(repoPath) {
 	if (!existsSync(join(repoPath, '.git'))) return null;
 	const head = git('rev-parse --short HEAD', repoPath);
 	const commits = git('rev-list --count HEAD', repoPath);
 	const lastCommit = git('log -1 --format=%cs', repoPath);
 	if (!head) return null;
-	return { head, commits: Number(commits), lastCommit };
+	return {
+		head,
+		commits: Number(commits),
+		lastCommit,
+		firstCommit: getFirstCommit(repoPath),
+		languages: detectLanguages(repoPath)
+	};
+}
+
+// ---------------------------------------------------------------------------
+// Curated language tags (the significance gate). Read best-effort from the
+// project's data file so the report can flag detected languages that are not
+// yet curated. The app reads only these tags; the scan never feeds the render.
+// ---------------------------------------------------------------------------
+
+const projectsDir = join(repoRoot, 'src/lib/data/projects');
+
+function curatedLanguages(slug) {
+	const file = join(projectsDir, `${slug}.ts`);
+	if (!existsSync(file)) return null;
+	let source;
+	try {
+		source = readFileSync(file, 'utf8');
+	} catch {
+		return null;
+	}
+	const labels = [];
+	const re = /label:\s*'([^']+)',\s*kind:\s*'language'/g;
+	let match;
+	while ((match = re.exec(source)) !== null) {
+		labels.push(match[1]);
+	}
+	return labels;
+}
+
+/** Detected languages not yet present in the project's curated language tags. */
+function ungatedLanguages(slug, detected) {
+	const curated = curatedLanguages(slug);
+	if (curated === null) return [];
+	const gate = new Set(curated);
+	return detected.filter((language) => !gate.has(language));
 }
 
 // ---------------------------------------------------------------------------
@@ -85,6 +202,10 @@ function getFingerprint(repoPath) {
 
 const changed = [];
 const missing = [];
+// Current fingerprint for every repo that resolves, keyed by slug. Used to
+// backfill new fields (firstCommit, languages) on --update even for repos whose
+// head has not moved since the last sync.
+const fresh = {};
 
 for (const [slug, saved] of Object.entries(manifest.sources)) {
 	const repoPath = localPaths[slug];
@@ -99,6 +220,8 @@ for (const [slug, saved] of Object.entries(manifest.sources)) {
 		continue;
 	}
 
+	fresh[slug] = current;
+
 	if (current.head !== saved.head) {
 		const delta = current.commits - saved.commits;
 		changed.push({
@@ -106,7 +229,8 @@ for (const [slug, saved] of Object.entries(manifest.sources)) {
 			path: repoPath,
 			from: { head: saved.head, commits: saved.commits, lastCommit: saved.lastCommit },
 			to: current,
-			delta
+			delta,
+			ungated: ungatedLanguages(slug, current.languages)
 		});
 	}
 }
@@ -209,8 +333,16 @@ if (changed.length === 0 && filteredNew.length === 0 && missing.length === 0) {
 			const dir = r.delta > 0 ? '+' : '';
 			console.log(`  ${CYAN}${r.slug}${RESET}`);
 			console.log(
-				`    ${r.from.head} → ${r.to.head}  (${dir}${r.delta} commits, last: ${r.to.lastCommit})`
+				`    ${r.from.head} → ${r.to.head}  (${dir}${r.delta} commits, first: ${r.to.firstCommit ?? '?'}, last: ${r.to.lastCommit})`
 			);
+			if (r.to.languages.length > 0) {
+				console.log(`    ${DIM}languages: ${r.to.languages.join(', ')}${RESET}`);
+			}
+			if (r.ungated.length > 0) {
+				console.log(
+					`    ${YELLOW}ungated (consider adding to language tags): ${r.ungated.join(', ')}${RESET}`
+				);
+			}
 		}
 		console.log();
 	}
@@ -232,10 +364,12 @@ if (changed.length === 0 && filteredNew.length === 0 && missing.length === 0) {
 	}
 }
 
-if (UPDATE_MODE && changed.length > 0) {
+if (UPDATE_MODE && Object.keys(fresh).length > 0) {
+	// Backfill every resolvable repo, not just those whose head moved, so new
+	// fields (firstCommit, languages) populate across the whole manifest.
 	console.log('Updating sources.json with current fingerprints...');
-	for (const r of changed) {
-		manifest.sources[r.slug] = r.to;
+	for (const [slug, current] of Object.entries(fresh)) {
+		manifest.sources[slug] = current;
 	}
 	const today = new Date().toISOString().slice(0, 10);
 	manifest.lastSyncedAt = today;

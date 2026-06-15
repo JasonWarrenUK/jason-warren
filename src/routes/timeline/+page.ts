@@ -1,15 +1,18 @@
-import { getAllProjectsByRecency } from '$lib/data/queries.js';
+import { getAllProjectsByInception } from '$lib/data/queries.js';
 import { getProjectGraph } from '$lib/data/graph.js';
 
 export function load() {
-	const ordered = getAllProjectsByRecency();
+	const ordered = getAllProjectsByInception();
 
-	const rows = ordered.map((project) => ({
-		slug: project.slug,
-		name: project.name,
-		status: project.status,
-		year: project.lastCommit ? project.lastCommit.slice(0, 4) : null
-	}));
+	const rows = ordered.map((project) => {
+		const inception = project.firstCommit ?? project.lastCommit;
+		return {
+			slug: project.slug,
+			name: project.name,
+			status: project.status,
+			year: inception ? inception.slice(0, 4) : null
+		};
+	});
 
 	const indexBySlug = new Map(ordered.map((project, index) => [project.slug, index]));
 

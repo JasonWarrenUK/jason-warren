@@ -101,6 +101,8 @@ export interface Project {
 	secondaryRepoUrl?: string;
 	/** ISO date (YYYY-MM-DD) of the most recent commit, from the source drift manifest. */
 	lastCommit?: string;
+	/** ISO date (YYYY-MM-DD) of the first (root) commit, from the source drift manifest. Orders the timeline by inception. */
+	firstCommit?: string;
 	liveUrl?: string;
 	/** 3–5 technically interesting things about this project. */
 	highlights: string[];
