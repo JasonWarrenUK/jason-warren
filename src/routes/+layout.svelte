@@ -27,6 +27,9 @@
 				<a href="{base}/projects" class="site-nav__link">Projects</a>
 			</li>
 			<li>
+				<a href="{base}/map" class="site-nav__link">Map</a>
+			</li>
+			<li>
 				<a href="{base}/about" class="site-nav__link">About</a>
 			</li>
 			<li>
