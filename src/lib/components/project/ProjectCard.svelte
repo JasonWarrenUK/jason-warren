@@ -24,15 +24,17 @@
 			class="project-card__thumb"
 		/>
 
-		<header class="project-card__header">
-			<h3 class="project-card__name">{project.name}</h3>
-			<div class="project-card__badges">
-				<StatusBadge status={project.status} />
-				<RoleBadge role={project.contribution.role} />
-			</div>
-		</header>
+		<div class="project-card__body">
+			<header class="project-card__header">
+				<h3 class="project-card__name">{project.name}</h3>
+				<div class="project-card__badges">
+					<StatusBadge status={project.status} />
+					<RoleBadge role={project.contribution.role} />
+				</div>
+			</header>
 
-		<p class="project-card__tagline">{project.tagline}</p>
+			<p class="project-card__tagline">{project.tagline}</p>
+		</div>
 	</a>
 
 	<footer class="project-card__footer">
@@ -76,21 +78,28 @@
 	.project-card__link {
 		display: flex;
 		flex-direction: column;
-		gap: var(--space-3);
-		padding: var(--space-5);
+		padding: 0;
 		text-decoration: none;
 		flex: 1;
 	}
 
-	/* Pull the thumbnail flush to the card edges, above the padded content. */
+	/* Full-bleed thumbnail: as the link's first child it spans the card, and the
+	   card's overflow:hidden + border-radius clip its top corners. */
 	.project-card__thumb {
 		display: block;
-		width: calc(100% + 2 * var(--space-5));
-		height: auto;
+		width: 100%;
+		margin: 0;
 		aspect-ratio: 1200 / 630;
 		object-fit: cover;
-		margin: calc(-1 * var(--space-5)) calc(-1 * var(--space-5)) var(--space-1);
 		border-bottom: 1px solid var(--color-border);
+	}
+
+	.project-card__body {
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-3);
+		padding: var(--space-5);
+		flex: 1;
 	}
 
 	.project-card__header {
