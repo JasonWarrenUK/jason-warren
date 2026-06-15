@@ -29,7 +29,12 @@
 	);
 </script>
 
-<Seo title="{data.project.name} | Jason Warren" description={data.project.tagline} type="article" />
+<Seo
+	title="{data.project.name} | Jason Warren"
+	description={data.project.tagline}
+	image="{SITE_URL}/og/{data.project.slug}.png"
+	type="article"
+/>
 
 <svelte:head>
 	{@html `<script type="application/ld+json">${projectLd}</script>`}
