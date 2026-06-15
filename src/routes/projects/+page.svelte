@@ -29,7 +29,7 @@
 			role: activeRole ?? undefined,
 			kind: activeKind ?? undefined,
 			status: activeStatus ?? undefined
-		})
+		}).sort((a, b) => (b.lastCommit ?? '').localeCompare(a.lastCommit ?? ''))
 	);
 
 	function setParam(key: string, value: string | null): void {
