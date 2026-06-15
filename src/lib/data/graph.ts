@@ -1,0 +1,451 @@
+/**
+ * Graph derivation for the project network.
+ *
+ * The project registry already encodes a relationship graph via each project's
+ * `relationships[]` (see `types.ts`). This module turns that raw, per-project,
+ * often-reciprocal edge list into a single normalised graph that the
+ * presentation layer (map, timeline, neighbourhood views) can render.
+ *
+ * Design principles, mirroring the rest of the data layer:
+ * - Pure functions over the `projects` array; no side effects, easy to test.
+ * - Reciprocal pairs collapse to ONE edge. A `powers` edge and its reciprocal
+ *   `extracted-from` edge describe the same connection, so the graph keeps a
+ *   single directed extraction edge (library → consumer). Mutual `related`
+ *   edges collapse to one undirected edge.
+ * - `computeForceLayout` is deterministic: identical input always yields
+ *   identical coordinates, so the prerendered SVG is reproducible across builds.
+ */
+
+import {
+	forceCenter,
+	forceCollide,
+	forceLink,
+	forceManyBody,
+	forceSimulation,
+	forceX,
+	forceY,
+	type SimulationNodeDatum
+} from 'd3-force';
+import { projects } from './index.js';
+import { EDGE_CATEGORIES } from './types.js';
+import type { EdgeCategory, Project, ProjectSlug } from './types.js';
+
+// ---------------------------------------------------------------------------
+// Graph shape
+// ---------------------------------------------------------------------------
+
+export interface GraphNode {
+	slug: ProjectSlug;
+	project: Project;
+}
+
+/**
+ * A normalised edge. Reciprocal source-data edges are collapsed into one.
+ * - `extraction`: directed, source = library (the `powers` side),
+ *   target = consumer (the `extracted-from` side).
+ * - `related`: undirected; endpoints are canonically ordered so a single
+ *   edge represents the pair regardless of which side declared it.
+ */
+export interface GraphEdge {
+	source: ProjectSlug;
+	target: ProjectSlug;
+	kind: 'extraction' | 'related';
+	note?: string;
+}
+
+export interface ProjectGraph {
+	nodes: GraphNode[];
+	edges: GraphEdge[];
+}
+
+// ---------------------------------------------------------------------------
+// Graph construction
+// ---------------------------------------------------------------------------
+
+/**
+ * Builds the normalised project graph from the relationship data.
+ * One node per project; reciprocal edges collapsed (see GraphEdge).
+ */
+export function getProjectGraph(): ProjectGraph {
+	const nodes: GraphNode[] = projects.map((project) => ({
+		slug: project.slug,
+		project
+	}));
+
+	const edges: GraphEdge[] = [];
+	const seen = new Set<string>();
+
+	for (const project of projects) {
+		for (const rel of project.relationships) {
+			if (rel.kind === 'powers') {
+				// Directed extraction edge, library → consumer.
+				// The reciprocal `extracted-from` on the consumer is the same
+				// connection, so we only ever materialise the `powers` side.
+				const key = `extraction:${project.slug}->${rel.target}`;
+				if (seen.has(key)) continue;
+				seen.add(key);
+				edges.push({
+					source: project.slug,
+					target: rel.target,
+					kind: 'extraction',
+					note: rel.note
+				});
+			} else if (rel.kind === 'related') {
+				// Undirected: canonicalise the endpoint order so A↔B and B↔A
+				// resolve to the same key and collapse to one edge.
+				const [a, b] = [project.slug, rel.target].sort() as [ProjectSlug, ProjectSlug];
+				const key = `related:${a}--${b}`;
+				if (seen.has(key)) continue;
+				seen.add(key);
+				edges.push({ source: a, target: b, kind: 'related', note: rel.note });
+			}
+			// `extracted-from` is intentionally skipped: it is the reciprocal of a
+			// `powers` edge and is validated as such by the data-integrity tests.
+		}
+	}
+
+	return { nodes, edges };
+}
+
+// ---------------------------------------------------------------------------
+// Shared-technology edges
+// ---------------------------------------------------------------------------
+
+/**
+ * A faint, undirected "shares a stack" link, kept separate from the curated
+ * `GraphEdge` relationships so the two never mix. Endpoints are canonically
+ * ordered (source < target). Each edge is keyed to one tag `category`, so the
+ * map can show *why* two projects relate (same runtime vs same data layer) and
+ * let the viewer toggle categories independently. `weight` is the number of
+ * shared tags within that category.
+ */
+export interface SharedTechEdge {
+	source: ProjectSlug;
+	target: ProjectSlug;
+	category: EdgeCategory;
+	weight: number;
+}
+
+export interface SharedTechOptions {
+	/** Minimum shared tags (within a category) for a pair to qualify. */
+	minShared?: number;
+	/** Maximum edges kept per node, per category, strongest first. */
+	maxPerNode?: number;
+}
+
+/**
+ * Derives per-category "shared stack" edges from tag overlap to give the map
+ * structure the sparse curated relationships cannot. One edge type per tag
+ * category (`language` excluded, see `EDGE_CATEGORIES`) so related-by-runtime
+ * reads differently from related-by-data. The hairball is tamed by a per-node,
+ * per-category degree cap that keeps only each project's strongest links in
+ * each category. Deterministic for a fixed registry.
+ */
+export function getSharedTechEdges(options: SharedTechOptions = {}): SharedTechEdge[] {
+	const minShared = options.minShared ?? 1;
+	const maxPerNode = options.maxPerNode ?? 3;
+
+	const edges: SharedTechEdge[] = [];
+
+	for (const category of EDGE_CATEGORIES) {
+		// Tag-label sets restricted to this category, per project, in registry order.
+		const tagSets = projects.map((p) => ({
+			slug: p.slug,
+			labels: new Set(p.tags.filter((t) => t.kind === category).map((t) => t.label))
+		}));
+
+		// All qualifying pairs with their within-category overlap weight.
+		const candidates: SharedTechEdge[] = [];
+		for (let i = 0; i < tagSets.length; i++) {
+			if (tagSets[i].labels.size === 0) continue;
+			for (let j = i + 1; j < tagSets.length; j++) {
+				let weight = 0;
+				for (const label of tagSets[i].labels) {
+					if (tagSets[j].labels.has(label)) weight++;
+				}
+				if (weight >= minShared) {
+					const [source, target] = [tagSets[i].slug, tagSets[j].slug].sort() as [
+						ProjectSlug,
+						ProjectSlug
+					];
+					candidates.push({ source, target, category, weight });
+				}
+			}
+		}
+
+		// Strongest first; ties broken by slug for stable output.
+		candidates.sort(
+			(a, b) =>
+				b.weight - a.weight || a.source.localeCompare(b.source) || a.target.localeCompare(b.target)
+		);
+
+		// Greedily keep an edge only while both endpoints are below the cap for
+		// this category, so common categories (framework, runtime) surface their
+		// best links without dominating the picture.
+		const degree = new Map<ProjectSlug, number>();
+		for (const edge of candidates) {
+			const ds = degree.get(edge.source) ?? 0;
+			const dt = degree.get(edge.target) ?? 0;
+			if (ds >= maxPerNode || dt >= maxPerNode) continue;
+			degree.set(edge.source, ds + 1);
+			degree.set(edge.target, dt + 1);
+			edges.push(edge);
+		}
+	}
+
+	return edges;
+}
+
+// ---------------------------------------------------------------------------
+// Map label selection
+// ---------------------------------------------------------------------------
+
+/** How many project labels the map shows by default (the rest reveal on hover). */
+export const MAP_LABEL_COUNT = 10;
+
+/**
+ * Selects which projects get a standing label on the map. Rather than ranking
+ * on a single metric (which a few hubs would dominate), it rotates through four
+ * importance axes and shifts the front of each into a set in turn, so the names
+ * shown are a *diverse* slice: the freshest, the largest contributions, the
+ * biggest codebases, and the most recently active.
+ *
+ * Axes (all best-first; missing values sort last, ties broken by slug so the
+ * result stays deterministic even when an axis is unpopulated):
+ *   1. most recent commit            (`lastCommit`)
+ *   2. most code contributed by me   (`metrics.linesAdded`)
+ *   3. largest overall codebase      (`metrics.linesOfCode`)
+ *   4. most of my commits, last 4wks (`metrics.commitsRecent`)
+ *
+ * Two of these axes are only populated once the drift pipeline syncs; until
+ * then they contribute ties and selection leans on the populated axes.
+ */
+export function selectLabelledSlugs(
+	projectList: Project[] = projects,
+	count = MAP_LABEL_COUNT
+): Set<ProjectSlug> {
+	const bySlug = (a: Project, b: Project): number => a.slug.localeCompare(b.slug);
+	const byDesc =
+		(value: (p: Project) => number | undefined) =>
+		(a: Project, b: Project): number =>
+			(value(b) ?? -Infinity) - (value(a) ?? -Infinity) || bySlug(a, b);
+
+	const commitTime = (p: Project): number | undefined =>
+		p.lastCommit ? Date.parse(p.lastCommit) : undefined;
+
+	const queues: Project[][] = [
+		[...projectList].sort(byDesc(commitTime)),
+		[...projectList].sort(byDesc((p) => p.metrics?.linesAdded)),
+		[...projectList].sort(byDesc((p) => p.metrics?.linesOfCode)),
+		[...projectList].sort(byDesc((p) => p.metrics?.commitsRecent))
+	];
+
+	const selected = new Set<ProjectSlug>();
+	while (selected.size < count) {
+		let advanced = false;
+		for (const queue of queues) {
+			const next = queue.shift();
+			if (!next) continue;
+			selected.add(next.slug);
+			advanced = true;
+			if (selected.size >= count) break;
+		}
+		if (!advanced) break; // every queue is drained
+	}
+
+	return selected;
+}
+
+// ---------------------------------------------------------------------------
+// Neighbourhoods
+// ---------------------------------------------------------------------------
+
+export interface Neighbour {
+	project: Project;
+	kind: GraphEdge['kind'];
+	/** Relative to the queried project: does the edge leave it or arrive at it? */
+	direction: 'outgoing' | 'incoming';
+	note?: string;
+}
+
+/**
+ * The immediate neighbourhood of a project: every project one edge away,
+ * derived from the normalised graph so reciprocal edges are not double-counted.
+ * For `related` edges, direction is reported as `outgoing` by convention.
+ */
+export function getNeighbours(slug: ProjectSlug): Neighbour[] {
+	const { edges } = getProjectGraph();
+	const bySlug = new Map(projects.map((p) => [p.slug, p]));
+	const neighbours: Neighbour[] = [];
+
+	for (const edge of edges) {
+		if (edge.source === slug) {
+			const project = bySlug.get(edge.target);
+			if (project) {
+				neighbours.push({ project, kind: edge.kind, direction: 'outgoing', note: edge.note });
+			}
+		} else if (edge.target === slug) {
+			const project = bySlug.get(edge.source);
+			if (project) {
+				neighbours.push({ project, kind: edge.kind, direction: 'incoming', note: edge.note });
+			}
+		}
+	}
+
+	return neighbours;
+}
+
+// ---------------------------------------------------------------------------
+// Technology index
+// ---------------------------------------------------------------------------
+
+/**
+ * Maps each technology label to the projects that use it, for tech-centred
+ * cross-navigation ("what I use and where"). Labels are keyed exactly as they
+ * appear on tags; the value preserves project registry order. Sorted by label.
+ */
+export function getTechIndex(): Map<string, ProjectSlug[]> {
+	const index = new Map<string, ProjectSlug[]>();
+
+	for (const project of projects) {
+		for (const tag of project.tags) {
+			const existing = index.get(tag.label);
+			if (existing) {
+				existing.push(project.slug);
+			} else {
+				index.set(tag.label, [project.slug]);
+			}
+		}
+	}
+
+	return new Map([...index.entries()].sort(([a], [b]) => a.localeCompare(b)));
+}
+
+// ---------------------------------------------------------------------------
+// Force-directed layout
+// ---------------------------------------------------------------------------
+
+export interface Point {
+	x: number;
+	y: number;
+}
+
+export interface LayoutResult {
+	positions: Map<ProjectSlug, Point>;
+	width: number;
+	height: number;
+}
+
+interface SimNode extends SimulationNodeDatum {
+	slug: ProjectSlug;
+	radius: number;
+}
+
+interface SimLink {
+	source: string;
+	target: string;
+	distance: number;
+	strength: number;
+}
+
+/** Activity weight for a project, used for collision sizing (mirrors the map's visual scale). */
+function activityWeight(project: Project): number {
+	return project.metrics?.commits ?? (project.metrics?.linesOfCode ?? 0) / 50;
+}
+
+/**
+ * Force-directed layout, run to completion at build time so the prerendered SVG
+ * stays static (no runtime simulation, no JavaScript needed to view it).
+ *
+ * Position reflects connection: curated extraction/related edges pull hard,
+ * shared-stack edges pull gently, charge separates, and collision keeps the
+ * activity-scaled dots from overlapping. Determinism is guaranteed by fixed
+ * initial positions (a ring by registry index), a fixed tick count, and
+ * d3-force's own deterministic PRNG, so identical input yields identical
+ * coordinates across builds.
+ */
+export function computeForceLayout(
+	graph: ProjectGraph,
+	sharedEdges: SharedTechEdge[] = [],
+	size = 1000
+): LayoutResult {
+	const centre = size / 2;
+	const weights = graph.nodes.map((n) => activityWeight(n.project));
+	const maxWeight = Math.max(1, ...weights);
+
+	const radiusOf = (project: Project): number => {
+		const base = 16 + 26 * Math.sqrt(activityWeight(project) / maxWeight);
+		return project.flagship ? Math.max(34, base) : base;
+	};
+
+	// Deterministic initial placement: an even ring, ordered by registry index.
+	const nodes: SimNode[] = graph.nodes.map((node, index) => {
+		const angle = (2 * Math.PI * index) / graph.nodes.length - Math.PI / 2;
+		return {
+			slug: node.slug,
+			radius: radiusOf(node.project),
+			x: centre + size * 0.3 * Math.cos(angle),
+			y: centre + size * 0.3 * Math.sin(angle)
+		};
+	});
+
+	const links: SimLink[] = [
+		...graph.edges.map((edge) => ({
+			source: edge.source,
+			target: edge.target,
+			distance: edge.kind === 'extraction' ? 90 : 140,
+			strength: edge.kind === 'extraction' ? 0.9 : 0.45
+		})),
+		...sharedEdges.map((edge) => ({
+			source: edge.source,
+			target: edge.target,
+			distance: 180,
+			// Gentler than the curated edges, and capped, so the now-denser
+			// per-category web nudges clustering without collapsing the graph.
+			strength: Math.min(0.12, 0.03 * edge.weight)
+		}))
+	];
+
+	const simulation = forceSimulation<SimNode>(nodes)
+		.force(
+			'link',
+			forceLink<SimNode, SimLink>(links)
+				.id((node) => node.slug)
+				.distance((link) => link.distance)
+				.strength((link) => link.strength)
+		)
+		.force('charge', forceManyBody<SimNode>().strength(-320))
+		.force('collide', forceCollide<SimNode>((node) => node.radius + 22).strength(1))
+		.force('centre', forceCenter<SimNode>(centre, centre))
+		.force('x', forceX<SimNode>(centre).strength(0.04))
+		.force('y', forceY<SimNode>(centre).strength(0.04))
+		.stop();
+
+	// Run to convergence synchronously; no animation reaches the client.
+	for (let i = 0; i < 320; i++) simulation.tick();
+
+	// Normalise the settled cloud to fill the canvas with uniform scaling.
+	const xs = nodes.map((n) => n.x ?? centre);
+	const ys = nodes.map((n) => n.y ?? centre);
+	const minX = Math.min(...xs);
+	const maxX = Math.max(...xs);
+	const minY = Math.min(...ys);
+	const maxY = Math.max(...ys);
+	const spanX = maxX - minX || 1;
+	const spanY = maxY - minY || 1;
+	const pad = size * 0.09;
+	const usable = size - 2 * pad;
+	const scale = Math.min(usable / spanX, usable / spanY);
+	const offsetX = pad + (usable - spanX * scale) / 2;
+	const offsetY = pad + (usable - spanY * scale) / 2;
+
+	const positions = new Map<ProjectSlug, Point>();
+	for (const node of nodes) {
+		positions.set(node.slug, {
+			x: offsetX + ((node.x ?? centre) - minX) * scale,
+			y: offsetY + ((node.y ?? centre) - minY) * scale
+		});
+	}
+
+	return { positions, width: size, height: size };
+}

@@ -1,13 +1,26 @@
 <script lang="ts">
 	import { base } from '$app/paths';
+	import Seo from '$lib/components/seo/Seo.svelte';
+	import { AUTHOR, SITE_URL, GITHUB_URL, BLUESKY_URL, BLUESKY_HANDLE } from '$lib/config.js';
+
+	const personLd = JSON.stringify({
+		'@context': 'https://schema.org',
+		'@type': 'Person',
+		name: AUTHOR,
+		url: `${SITE_URL}/about`,
+		jobTitle: 'Full-stack developer',
+		worksFor: { '@type': 'Organization', name: 'Founders and Coders' },
+		sameAs: [GITHUB_URL, BLUESKY_URL]
+	});
 </script>
 
+<Seo
+	title="About | Jason Warren"
+	description="Jason Warren is a full-stack developer at Founders and Coders, building tools across Go, TypeScript, Rust, and Svelte."
+/>
+
 <svelte:head>
-	<title>About | Jason Warren</title>
-	<meta
-		name="description"
-		content="Jason Warren is a full-stack developer at Founders and Coders, building tools across Go, TypeScript, Rust, and Svelte."
-	/>
+	{@html `<script type="application/ld+json">${personLd}</script>`}
 </svelte:head>
 
 <div class="page">
@@ -45,8 +58,8 @@
 					</p>
 					<p>
 						On team projects, I tend to work at the intersection of architecture and delivery: I
-						build the features, but I also care about the shape of the system those features live in.
-						My work on the Lead Pool segmentation feature in fac-cra and the response-state
+						build the features, but I also care about the shape of the system those features live
+						in. My work on the Lead Pool segmentation feature in fac-cra and the response-state
 						architecture in Workwise are both examples of that.
 					</p>
 					<p>
@@ -94,7 +107,11 @@
 						>
 							GitHub
 						</a>
-						where most of this work lives.
+						where most of this work lives, and on
+						<a href={BLUESKY_URL} class="link" target="_blank" rel="noopener noreferrer me">
+							Bluesky
+						</a>
+						at {BLUESKY_HANDLE}.
 					</p>
 				</div>
 			</section>
@@ -123,6 +140,11 @@
 							GitHub
 						</a>
 					</li>
+					<li>
+						<a href={BLUESKY_URL} class="link" target="_blank" rel="noopener noreferrer me">
+							Bluesky
+						</a>
+					</li>
 				</ul>
 			</div>
 
@@ -131,6 +153,12 @@
 				<ul class="aside-card__list">
 					<li>
 						<a href="{base}/projects" class="link">All projects</a>
+					</li>
+					<li>
+						<a href="{base}/map" class="link">Project map</a>
+					</li>
+					<li>
+						<a href="{base}/timeline" class="link">Timeline</a>
 					</li>
 				</ul>
 			</div>

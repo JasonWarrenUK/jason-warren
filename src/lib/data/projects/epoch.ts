@@ -6,7 +6,7 @@ export const epoch: Project = {
 	tagline:
 		'Create a fictional character and see history through their eyes: a personal Wikipedia-sourced timeline of every real event they would have lived through.',
 	description:
-		'[Placeholder] Epoch is the project I return to most often. You give it a name, a birth year, a death year, and a place; it hits the Wikipedia API and builds a collapsible timeline of the real historical events that person would have experienced, filtered, ranked, and deduplicated through a significance-scoring pipeline. The "oral history" feature surfaces stories that were current when your character was 15: what would the elders in their family have talked about?',
+		'Give it a name, a birth year, a death year, and a place, and it queries the Wikipedia API to build a collapsible timeline of the real historical events that person would have lived through. A significance-ranking pipeline scores events using Wikidata sitelink counts, entity-type detection, named-event prefixes, and link density, while aggressive filtering strips sports results, malformed markup, and citation fragments, and a 24-hour TTL cache with batched requests respects Wikipedia rate limits without stalling the UI. The two-level decade-to-year-to-event timeline highlights milestones and generates an "oral history" of the stories that were current when the character was 15. It is deployed to Vercel with a Vitest suite covering the event-filtering pipeline.',
 	kind: 'app',
 	contribution: { role: 'solo' },
 	status: 'finished',
@@ -27,7 +27,9 @@ export const epoch: Project = {
 		{ label: 'Tailwind CSS', kind: 'framework' },
 		{ label: 'Wikipedia API', kind: 'tool' },
 		{ label: 'Vitest', kind: 'tool' },
-		{ label: 'Vercel', kind: 'runtime' }
+		{ label: 'Vercel', kind: 'tool' },
+		{ label: 'Node.js', kind: 'runtime' },
+		{ label: 'Document / JSON', kind: 'data' }
 	],
 	lastCommit: '2026-06-14',
 	metrics: {

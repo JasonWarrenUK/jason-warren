@@ -6,7 +6,7 @@ export const topGirls: Project = {
 	tagline:
 		'A Top Trumps card game for 32 Gilmore Girls characters, with a play loop against the CPU and a sortable gallery. Built with Svelte 5 runes and Atropos card-tilt effects.',
 	description:
-		'[Placeholder] Top Girls is a self-contained browser card game: 32 Gilmore Girls characters, each with six stat scores. You play against a CPU that picks its own highest stat; the round winner chooses the next stat. The gallery mode is sortable by any stat. Generated SVG avatars mean nothing ever 404s.',
+		'A self-contained Top Trumps card game: 32 Gilmore Girls characters, each with six stat scores, all held with their game logic in a single-page Svelte SPA. The play loop pits you against a CPU that selects its own highest stat, with the round winner choosing the next stat, and the gallery mode sorts by any stat. Built with idiomatic Svelte 5 runes ($state, $derived) and no redundant lifecycle flags, it integrates the Atropos 3D card-tilt effect down to its four-div DOM structure requirement. Generated SVG avatars (initials, colour, and a decorative detail) mean nothing ever 404s, and real art can be dropped in via character slugs.',
 	kind: 'game',
 	contribution: { role: 'solo' },
 	status: 'finished',
@@ -23,8 +23,9 @@ export const topGirls: Project = {
 	tags: [
 		{ label: 'TypeScript', kind: 'language' },
 		{ label: 'Svelte 5', kind: 'framework' },
-		{ label: 'Vite', kind: 'runtime' },
-		{ label: 'Bun', kind: 'runtime' }
+		{ label: 'Vite', kind: 'tool' },
+		{ label: 'Bun', kind: 'runtime' },
+		{ label: 'Document / JSON', kind: 'data' }
 	],
 	lastCommit: '2026-06-14',
 	metrics: {

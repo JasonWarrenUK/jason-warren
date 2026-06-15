@@ -7,6 +7,7 @@
 	import { filterProjects } from '$lib/data/queries.js';
 	import ProjectGrid from '$lib/components/project/ProjectGrid.svelte';
 	import FilterBar from '$lib/components/filter/FilterBar.svelte';
+	import Seo from '$lib/components/seo/Seo.svelte';
 
 	let { data } = $props();
 
@@ -41,15 +42,31 @@
 		}
 		goto(url.toString(), { replaceState: true, keepFocus: true });
 	}
+
+	// Persist filters across navigation: returning from a project (or the
+	// in-page breadcrumb) lands on a bare /projects URL, so restore the last
+	// query string from sessionStorage. The `restored` flag guards the restore
+	// so the save branch cannot clobber the stored value before it is read.
+	const FILTERS_KEY = 'projects:filters';
+	let restored = false;
+	$effect(() => {
+		const search = $page.url.search;
+		if (!restored) {
+			restored = true;
+			const saved = sessionStorage.getItem(FILTERS_KEY);
+			if (!search && saved) {
+				goto(`${base}/projects${saved}`, { replaceState: true, keepFocus: true });
+				return;
+			}
+		}
+		sessionStorage.setItem(FILTERS_KEY, search);
+	});
 </script>
 
-<svelte:head>
-	<title>Projects | Jason Warren</title>
-	<meta
-		name="description"
-		content="All projects by Jason Warren: solo builds, team contributions, and the libraries extracted from both."
-	/>
-</svelte:head>
+<Seo
+	title="Projects | Jason Warren"
+	description="All projects by Jason Warren: solo builds, team contributions, and the libraries extracted from both."
+/>
 
 <div class="page">
 	<header class="page__header">

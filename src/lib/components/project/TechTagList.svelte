@@ -9,12 +9,19 @@
 
 	let { tags, limit = 0 }: Props = $props();
 
-	const visible = $derived(limit > 0 ? tags.slice(0, limit) : tags);
-	const hidden = $derived(limit > 0 ? tags.length - limit : 0);
+	// De-duplicate by label so a language and a runtime that share a name
+	// (e.g. Go) render as a single chip. This also keeps the keyed {#each}
+	// key unique: a duplicate key throws during hydration in Svelte 5.
+	const unique = $derived(
+		tags.filter((tag, index) => tags.findIndex((other) => other.label === tag.label) === index)
+	);
+
+	const visible = $derived(limit > 0 ? unique.slice(0, limit) : unique);
+	const hidden = $derived(limit > 0 ? unique.length - limit : 0);
 </script>
 
 <ul class="tag-list" aria-label="Technologies">
-	{#each visible as tag (tag.label)}
+	{#each visible as tag (`${tag.kind}:${tag.label}`)}
 		<li class="tag tag--{tag.kind}">{tag.label}</li>
 	{/each}
 	{#if hidden > 0}

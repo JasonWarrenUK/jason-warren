@@ -6,7 +6,7 @@ export const nib: Project = {
 	tagline:
 		'A minimal, copy-paste Ink runtime for SvelteKit. Drop it into any project and write an onInit function to wire in your game logic.',
 	description:
-		'[Placeholder] Nib was extracted from The Work when it became clear the Ink+Svelte runtime was generically useful. It provides reactive Ink story state via Svelte 5 runes, tag parsing (CLEAR, mood, class), and a clean API surface. The design principle is zero game-specific imports: all customisation is injected via a single onInit callback, so Nib can power any Ink-based SvelteKit project.',
+		'Extracted from The Work once the Ink and Svelte runtime proved generically useful, this is a minimal, copy-paste runtime: drop the directory into any SvelteKit project and write an onInit function to wire in your game logic. Reactive Ink story state runs on Svelte 5 runes ($state, $derived) so the UI updates automatically, and tag parsing turns structured metadata (CLEAR, mood:x, class:x) into typed objects. The governing principle is zero game-specific code, with all customisation injected through a single onInit callback, which lets it power any Ink-based SvelteKit project.',
 	kind: 'library',
 	contribution: { role: 'solo' },
 	status: 'finished',
@@ -27,9 +27,11 @@ export const nib: Project = {
 	featured: false,
 	tags: [
 		{ label: 'TypeScript', kind: 'language' },
+		{ label: 'Node.js', kind: 'runtime' },
 		{ label: 'Svelte 5', kind: 'framework' },
 		{ label: 'SvelteKit', kind: 'framework' },
-		{ label: 'Ink / inkjs', kind: 'tool' }
+		{ label: 'Ink / inkjs', kind: 'tool' },
+		{ label: 'No persistence', kind: 'data' }
 	],
 	lastCommit: '2026-03-11',
 	metrics: {

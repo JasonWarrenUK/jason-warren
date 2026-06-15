@@ -2,6 +2,7 @@
 	import { base } from '$app/paths';
 	import '../app.css';
 	import ThemeToggle from '$lib/components/ui/ThemeToggle.svelte';
+	import { BLUESKY_URL } from '$lib/config.js';
 
 	let { children } = $props();
 </script>
@@ -9,8 +10,8 @@
 <svelte:head>
 	<link rel="icon" href="{base}/favicon.png" />
 	<meta name="author" content="Jason Warren" />
-	<meta property="og:type" content="website" />
 	<meta property="og:site_name" content="Jason Warren" />
+	<link rel="me" href={BLUESKY_URL} />
 </svelte:head>
 
 <a href="#main-content" class="skip-link">Skip to content</a>
@@ -25,6 +26,12 @@
 		<ul class="site-nav__links" role="list">
 			<li>
 				<a href="{base}/projects" class="site-nav__link">Projects</a>
+			</li>
+			<li>
+				<a href="{base}/map" class="site-nav__link">Map</a>
+			</li>
+			<li>
+				<a href="{base}/timeline" class="site-nav__link">Timeline</a>
 			</li>
 			<li>
 				<a href="{base}/about" class="site-nav__link">About</a>
@@ -51,6 +58,9 @@
 				rel="noopener noreferrer"
 			>
 				GitHub
+			</a>. Find me on
+			<a href={BLUESKY_URL} class="site-footer__link" target="_blank" rel="noopener noreferrer me">
+				Bluesky
 			</a>.
 		</p>
 	</div>
@@ -151,6 +161,28 @@
 	.site-nav__link:focus-visible {
 		outline: 2px solid var(--color-primary-text);
 		outline-offset: 2px;
+	}
+
+	/* Tighten the nav on narrow screens so the four links and the theme
+	   toggle stay on one row without pushing the toggle off-screen. */
+	@media (max-width: 40rem) {
+		.site-nav {
+			gap: var(--space-2);
+			padding: 0 var(--space-4);
+		}
+
+		.site-nav__name {
+			display: none;
+		}
+
+		.site-nav__links {
+			gap: 0;
+		}
+
+		.site-nav__link {
+			padding: var(--space-2);
+			font-size: var(--text-xs);
+		}
 	}
 
 	.site-nav__home:focus-visible {

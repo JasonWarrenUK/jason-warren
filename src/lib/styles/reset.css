@@ -25,6 +25,7 @@ svg,
 video {
 	display: block;
 	max-width: 100%;
+	height: auto;
 }
 
 input,
@@ -49,6 +50,12 @@ ul,
 ol {
 	list-style: none;
 	padding: 0;
+	margin: 0;
+}
+
+dl,
+dt,
+dd {
 	margin: 0;
 }
 

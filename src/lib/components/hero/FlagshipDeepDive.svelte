@@ -22,6 +22,22 @@
 	<div class="flagship__grid">
 		{#each projects as project (project.slug)}
 			<article class="flagship__card">
+				<a
+					href="{base}/projects/{project.slug}"
+					class="flagship__thumb"
+					tabindex="-1"
+					aria-hidden="true"
+				>
+					<img
+						src="{base}/og/{project.slug}.png"
+						alt="{project.name} social card"
+						width="1200"
+						height="630"
+						loading="lazy"
+						class="flagship__thumb-img"
+					/>
+				</a>
+
 				<div class="flagship__card-header">
 					<div class="flagship__card-meta">
 						<StatusBadge status={project.status} />
@@ -52,7 +68,9 @@
 						{/if}
 						{#if project.metrics.linesAdded != null}
 							<div class="flagship__metric">
-								<dd class="flagship__metric-value">+{project.metrics.linesAdded.toLocaleString()}</dd>
+								<dd class="flagship__metric-value">
+									+{project.metrics.linesAdded.toLocaleString()}
+								</dd>
 								<dt class="flagship__metric-label">lines added</dt>
 							</div>
 						{/if}
@@ -61,9 +79,7 @@
 
 				<div class="flagship__card-footer">
 					<TechTagList tags={project.tags} limit={4} />
-					<a href="{base}/projects/{project.slug}" class="flagship__cta">
-						Read case study →
-					</a>
+					<a href="{base}/projects/{project.slug}" class="flagship__cta"> Read case study → </a>
 				</div>
 			</article>
 		{/each}
@@ -112,11 +128,30 @@
 		background-color: var(--color-surface-raised);
 		border: 1px solid var(--color-border);
 		border-radius: var(--radius-lg);
+		overflow: hidden;
 		transition: border-color var(--transition-fast);
 	}
 
 	.flagship__card:hover {
 		border-color: var(--color-primary-light);
+	}
+
+	/* Pull the thumbnail flush to the card edges, above the padded content. The
+	   link owns the aspect ratio (reliable across WebViews) and the image fills
+	   it, so the card never collapses or crops to a tall sliver. */
+	.flagship__thumb {
+		display: block;
+		margin: calc(-1 * var(--space-7)) calc(-1 * var(--space-7)) 0;
+		border-bottom: 1px solid var(--color-border);
+		aspect-ratio: 1200 / 630;
+		overflow: hidden;
+	}
+
+	.flagship__thumb-img {
+		display: block;
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
 	}
 
 	.flagship__card-header {
@@ -179,6 +214,7 @@
 	}
 
 	.flagship__metric {
+		flex: 1;
 		display: flex;
 		flex-direction: column;
 		align-items: flex-start;

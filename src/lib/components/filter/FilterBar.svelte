@@ -2,6 +2,19 @@
 	import type { ProjectKind, ProjectRole, ProjectStatus, TagKind } from '$lib/data/types.js';
 	import FilterChip from './FilterChip.svelte';
 
+	// Collapsed on mobile, expanded on desktop. Default closed so the long
+	// filter list does not dominate small screens; desktop expands on mount.
+	let open = $state(false);
+	$effect(() => {
+		const mq = window.matchMedia('(min-width: 48rem)');
+		const apply = (): void => {
+			open = mq.matches;
+		};
+		apply();
+		mq.addEventListener('change', apply);
+		return () => mq.removeEventListener('change', apply);
+	});
+
 	interface Props {
 		/** All ProjectKind values present in the registry. */
 		kinds: ProjectKind[];
@@ -70,80 +83,156 @@
 	const tagKindLabels: Record<TagKind, string> = {
 		language: 'Language',
 		framework: 'Framework',
-		database: 'Database',
+		data: 'Data',
 		ai: 'AI / ML',
 		concept: 'Concept',
 		tool: 'Tool',
 		runtime: 'Runtime'
 	};
 
-	const tagKindOrder: TagKind[] = ['language', 'framework', 'database', 'ai', 'concept', 'tool', 'runtime'];
+	const tagKindOrder: TagKind[] = [
+		'language',
+		'framework',
+		'data',
+		'ai',
+		'concept',
+		'tool',
+		'runtime'
+	];
 </script>
 
-<div class="filter-bar" role="group" aria-label="Filter projects">
-	<details class="filter-group" open={activeRole !== null}>
-		<summary class="filter-group__summary">Role</summary>
-		<div class="filter-group__chips">
-			{#each roles as role (role)}
-				<FilterChip
-					label={roleLabels[role]}
-					active={activeRole === role}
-					onclick={() => onrole(activeRole === role ? null : role)}
-				/>
-			{/each}
-		</div>
-	</details>
-
-	{#if kinds.length > 0}
-		<details class="filter-group" open={activeKind !== null}>
-			<summary class="filter-group__summary">Type</summary>
+<details class="filter-bar__all" bind:open>
+	<summary class="filter-bar__summary">Filters</summary>
+	<div class="filter-bar" role="group" aria-label="Filter projects">
+		<details class="filter-group" open={activeRole !== null}>
+			<summary class="filter-group__summary">Role</summary>
 			<div class="filter-group__chips">
-				{#each kinds.sort((a, b) => kindLabels[a].localeCompare(kindLabels[b])) as kind (kind)}
+				{#each roles as role (role)}
 					<FilterChip
-						label={kindLabels[kind]}
-						active={activeKind === kind}
-						onclick={() => onkind(activeKind === kind ? null : kind)}
+						label={roleLabels[role]}
+						active={activeRole === role}
+						onclick={() => onrole(activeRole === role ? null : role)}
 					/>
 				{/each}
 			</div>
 		</details>
-	{/if}
 
-	{#if statuses.length > 0}
-		<details class="filter-group" open={activeStatus !== null}>
-			<summary class="filter-group__summary">Status</summary>
-			<div class="filter-group__chips">
-				{#each statusOrder.filter((s) => statuses.includes(s)) as s (s)}
-					<FilterChip
-						label={statusLabels[s]}
-						active={activeStatus === s}
-						onclick={() => onstatus(activeStatus === s ? null : s)}
-					/>
-				{/each}
-			</div>
-		</details>
-	{/if}
-
-	{#each tagKindOrder as kind (kind)}
-		{@const tags = tagsByKind[kind]}
-		{#if tags.length > 0}
-			<details class="filter-group" open={activeTag !== null && tags.includes(activeTag)}>
-				<summary class="filter-group__summary">{tagKindLabels[kind]}</summary>
+		{#if kinds.length > 0}
+			<details class="filter-group" open={activeKind !== null}>
+				<summary class="filter-group__summary">Type</summary>
 				<div class="filter-group__chips">
-					{#each tags as tag (tag)}
+					{#each kinds.sort((a, b) => kindLabels[a].localeCompare(kindLabels[b])) as kind (kind)}
 						<FilterChip
-							label={tag}
-							active={activeTag === tag}
-							onclick={() => ontag(activeTag === tag ? null : tag)}
+							label={kindLabels[kind]}
+							active={activeKind === kind}
+							onclick={() => onkind(activeKind === kind ? null : kind)}
 						/>
 					{/each}
 				</div>
 			</details>
 		{/if}
-	{/each}
-</div>
+
+		{#if statuses.length > 0}
+			<details class="filter-group" open={activeStatus !== null}>
+				<summary class="filter-group__summary">Status</summary>
+				<div class="filter-group__chips">
+					{#each statusOrder.filter((s) => statuses.includes(s)) as s (s)}
+						<FilterChip
+							label={statusLabels[s]}
+							active={activeStatus === s}
+							onclick={() => onstatus(activeStatus === s ? null : s)}
+						/>
+					{/each}
+				</div>
+			</details>
+		{/if}
+
+		{#each tagKindOrder as kind (kind)}
+			{@const tags = tagsByKind[kind]}
+			{#if tags.length > 0}
+				<details class="filter-group" open={activeTag !== null && tags.includes(activeTag)}>
+					<summary class="filter-group__summary">{tagKindLabels[kind]}</summary>
+					<div class="filter-group__chips">
+						{#each tags as tag (tag)}
+							<FilterChip
+								label={tag}
+								active={activeTag === tag}
+								onclick={() => ontag(activeTag === tag ? null : tag)}
+							/>
+						{/each}
+					</div>
+				</details>
+			{/if}
+		{/each}
+	</div>
+</details>
 
 <style>
+	.filter-bar__all {
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-3);
+	}
+
+	.filter-bar__summary {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: var(--space-3);
+		padding: var(--space-3) var(--space-4);
+		font-size: var(--text-sm);
+		font-weight: 700;
+		color: var(--color-text);
+		text-transform: uppercase;
+		letter-spacing: 0.06em;
+		cursor: pointer;
+		list-style: none;
+		border: 1px solid var(--color-border);
+		border-radius: var(--radius-md);
+		background-color: var(--color-surface-raised);
+		transition:
+			color var(--transition-fast),
+			background-color var(--transition-fast);
+		user-select: none;
+	}
+
+	/* Remove default disclosure triangle in WebKit */
+	.filter-bar__summary::-webkit-details-marker {
+		display: none;
+	}
+
+	.filter-bar__summary:hover {
+		background-color: var(--color-surface);
+	}
+
+	.filter-bar__summary:focus-visible {
+		outline: 2px solid var(--color-primary-text);
+		outline-offset: 2px;
+	}
+
+	/* Chevron via pseudo-element */
+	.filter-bar__summary::after {
+		content: '';
+		display: inline-block;
+		width: 0.5rem;
+		height: 0.5rem;
+		border-right: 2px solid currentColor;
+		border-bottom: 2px solid currentColor;
+		transform: rotate(45deg);
+		transition: transform var(--transition-fast);
+		flex-shrink: 0;
+	}
+
+	.filter-bar__all[open] .filter-bar__summary::after {
+		transform: rotate(-135deg);
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.filter-bar__summary::after {
+			transition: none;
+		}
+	}
+
 	.filter-bar {
 		display: flex;
 		flex-direction: column;
@@ -171,7 +260,9 @@
 		cursor: pointer;
 		list-style: none;
 		border-radius: var(--radius-md);
-		transition: color var(--transition-fast), background-color var(--transition-fast);
+		transition:
+			color var(--transition-fast),
+			background-color var(--transition-fast);
 		user-select: none;
 	}
 

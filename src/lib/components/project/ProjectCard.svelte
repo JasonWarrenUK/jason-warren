@@ -15,15 +15,27 @@
 
 <article class="project-card">
 	<a href="{base}/projects/{project.slug}" class="project-card__link" aria-label={project.name}>
-		<header class="project-card__header">
-			<h3 class="project-card__name">{project.name}</h3>
-			<div class="project-card__badges">
-				<StatusBadge status={project.status} />
-				<RoleBadge role={project.contribution.role} />
-			</div>
-		</header>
+		<div class="project-card__thumb">
+			<img
+				src="{base}/og/{project.slug}.png"
+				alt="{project.name} social card"
+				width="1200"
+				height="630"
+				loading="lazy"
+			/>
+		</div>
 
-		<p class="project-card__tagline">{project.tagline}</p>
+		<div class="project-card__body">
+			<header class="project-card__header">
+				<h3 class="project-card__name">{project.name}</h3>
+				<div class="project-card__badges">
+					<StatusBadge status={project.status} />
+					<RoleBadge role={project.contribution.role} />
+				</div>
+			</header>
+
+			<p class="project-card__tagline">{project.tagline}</p>
+		</div>
 	</a>
 
 	<footer class="project-card__footer">
@@ -67,9 +79,33 @@
 	.project-card__link {
 		display: flex;
 		flex-direction: column;
+		padding: 0;
+		text-decoration: none;
+		flex: 1;
+	}
+
+	/* Full-bleed thumbnail: as the link's first child it spans the card, and the
+	   card's overflow:hidden + border-radius clip its top corners. The wrapper
+	   owns the aspect ratio (reliable across WebViews) and the image fills it. */
+	.project-card__thumb {
+		display: block;
+		width: 100%;
+		aspect-ratio: 1200 / 630;
+		overflow: hidden;
+		border-bottom: 1px solid var(--color-border);
+	}
+
+	.project-card__thumb img {
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
+	}
+
+	.project-card__body {
+		display: flex;
+		flex-direction: column;
 		gap: var(--space-3);
 		padding: var(--space-5);
-		text-decoration: none;
 		flex: 1;
 	}
 
@@ -98,12 +134,6 @@
 		color: var(--color-text-subtle);
 		line-height: 1.5;
 		margin: 0;
-		/* Clamp to 3 lines on cards */
-		display: -webkit-box;
-		-webkit-line-clamp: 3;
-		line-clamp: 3;
-		-webkit-box-orient: vertical;
-		overflow: hidden;
 	}
 
 	.project-card__footer {

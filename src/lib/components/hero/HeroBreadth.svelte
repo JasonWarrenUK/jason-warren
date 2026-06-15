@@ -1,6 +1,19 @@
 <script lang="ts">
 	import { base } from '$app/paths';
 
+	// Collapsed on mobile, expanded on desktop. Default closed so there is no
+	// flash of a long list on small screens; desktop expands on mount.
+	let open = $state(false);
+	$effect(() => {
+		const mq = window.matchMedia('(min-width: 48rem)');
+		const apply = (): void => {
+			open = mq.matches;
+		};
+		apply();
+		mq.addEventListener('change', apply);
+		return () => mq.removeEventListener('change', apply);
+	});
+
 	// The polyglot stack claim — curated for breadth and distinctiveness
 	const stackGroups = [
 		{
@@ -26,27 +39,28 @@
 	<header class="hero-breadth__header">
 		<h2 class="hero-breadth__title">A wide toolkit</h2>
 		<p class="hero-breadth__strapline">
-			From Go TUIs to Tauri desktop apps, from Neo4j graph queries to FastAPI microservices.
-			The range is the point.
+			From Go TUIs to Tauri desktop apps, from Neo4j graph queries to FastAPI microservices. The
+			range is the point.
 		</p>
 	</header>
 
-	<dl class="hero-breadth__stack">
-		{#each stackGroups as group (group.label)}
-			<div class="hero-breadth__group">
-				<dt class="hero-breadth__group-label">{group.label}</dt>
-				<dd class="hero-breadth__group-items">
-					{#each group.items as item (item)}
-						<span class="hero-breadth__chip">{item}</span>
-					{/each}
-				</dd>
-			</div>
-		{/each}
-	</dl>
+	<details class="hero-breadth__disclosure" bind:open>
+		<summary class="hero-breadth__summary">Languages, frameworks, and tools</summary>
+		<dl class="hero-breadth__stack">
+			{#each stackGroups as group (group.label)}
+				<div class="hero-breadth__group">
+					<dt class="hero-breadth__group-label">{group.label}</dt>
+					<dd class="hero-breadth__group-items">
+						{#each group.items as item (item)}
+							<span class="hero-breadth__chip">{item}</span>
+						{/each}
+					</dd>
+				</div>
+			{/each}
+		</dl>
+	</details>
 
-	<a href="{base}/projects" class="hero-breadth__cta">
-		See all projects →
-	</a>
+	<a href="{base}/projects" class="hero-breadth__cta"> See all projects → </a>
 </section>
 
 <style>
@@ -75,6 +89,72 @@
 		color: var(--color-text-subtle);
 		max-width: 52rem;
 		margin: 0;
+	}
+
+	.hero-breadth__disclosure {
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-6);
+	}
+
+	.hero-breadth__summary {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: var(--space-3);
+		padding: var(--space-3) var(--space-4);
+		font-size: var(--text-sm);
+		font-weight: 600;
+		color: var(--color-text-subtle);
+		text-transform: uppercase;
+		letter-spacing: 0.06em;
+		cursor: pointer;
+		list-style: none;
+		border: 1px solid var(--color-border);
+		border-radius: var(--radius-md);
+		background-color: var(--color-surface-raised);
+		transition:
+			color var(--transition-fast),
+			background-color var(--transition-fast);
+		user-select: none;
+	}
+
+	/* Remove default disclosure triangle in WebKit */
+	.hero-breadth__summary::-webkit-details-marker {
+		display: none;
+	}
+
+	.hero-breadth__summary:hover {
+		color: var(--color-text);
+		background-color: var(--color-surface);
+	}
+
+	.hero-breadth__summary:focus-visible {
+		outline: 2px solid var(--color-primary-text);
+		outline-offset: 2px;
+	}
+
+	/* Chevron via pseudo-element */
+	.hero-breadth__summary::after {
+		content: '';
+		display: inline-block;
+		width: 0.5rem;
+		height: 0.5rem;
+		border-right: 2px solid currentColor;
+		border-bottom: 2px solid currentColor;
+		transform: rotate(45deg);
+		transition: transform var(--transition-fast);
+		flex-shrink: 0;
+	}
+
+	.hero-breadth__disclosure[open] .hero-breadth__summary::after {
+		transform: rotate(-135deg);
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.hero-breadth__summary::after {
+			transition: none;
+		}
 	}
 
 	.hero-breadth__stack {

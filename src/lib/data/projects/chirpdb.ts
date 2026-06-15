@@ -4,9 +4,9 @@ export const chirpdb: Project = {
 	slug: 'chirpdb',
 	name: 'CHIRPdb',
 	tagline:
-		'A production backend API for CHIRP\'s maritime incident-reporting system. Ingests UK MAIB accident reports via scraping or PDF upload, structures them, and serves them for semantic search.',
+		"A production backend API for CHIRP's maritime incident-reporting system. Ingests UK MAIB accident reports via scraping or PDF upload, structures them, and serves them for semantic search.",
 	description:
-		'[Placeholder] CHIRPdb is commercial client work for Tandem Creative Dev and Zig Zag AI on behalf of CHIRP. The backend handles dual ingestion pipelines (GOV.UK scraping and PDF upload), SHA-256 deduplication, sentence splitting and classification, structured metadata extraction, domain-specific SHIELD-code taxonomy, and client-side 384-dim vector embeddings via Supabase pgvector.',
+		'Commercial client work for Tandem Creative Dev and Zig Zag AI on behalf of CHIRP, this backend ingests UK maritime incident reports through two pipelines: GOV.UK URL scraping and direct PDF upload, both producing structured incident records. SHA-256 deduplication prevents duplicate reports across ingestion runs, a domain-specific SHIELD-code taxonomy classifies each incident, and 384-dimension embeddings stored in Supabase pgvector power semantic search. It runs in production behind Cloudflare on Tandem infrastructure. Jason contributed documentation, an understand-anything knowledge graph of the codebase, and Claude Code configuration to support ongoing development.',
 	kind: 'app',
 	contribution: {
 		role: 'collaborator',
@@ -27,9 +27,10 @@ export const chirpdb: Project = {
 	featured: false,
 	tags: [
 		{ label: 'Python', kind: 'language' },
+		{ label: 'CPython', kind: 'runtime' },
 		{ label: 'FastAPI', kind: 'framework' },
-		{ label: 'Supabase', kind: 'database' },
-		{ label: 'pgvector', kind: 'database' },
+		{ label: 'Supabase', kind: 'data' },
+		{ label: 'pgvector', kind: 'data' },
 		{ label: 'Docker', kind: 'tool' }
 	],
 	lastCommit: '2026-06-12',

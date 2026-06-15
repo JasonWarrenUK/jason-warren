@@ -17,7 +17,24 @@ export type ProjectStatus = 'live' | 'wip' | 'finished' | 'prototype' | 'archive
 
 export type ProjectKind = 'app' | 'game' | 'website' | 'toy' | 'library' | 'tool' | 'tui';
 
-export type TagKind = 'language' | 'framework' | 'database' | 'ai' | 'concept' | 'tool' | 'runtime';
+export type TagKind = 'language' | 'framework' | 'data' | 'ai' | 'concept' | 'tool' | 'runtime';
+
+/**
+ * Tag categories that seed "shared stack" map edges. `language` is deliberately
+ * excluded: nearly every project shares TypeScript, so a language edge would
+ * link almost the whole graph into a hairball. Runtime and framework are kept
+ * but tamed by a per-category degree cap in `getSharedTechEdges`.
+ */
+export type EdgeCategory = Exclude<TagKind, 'language'>;
+
+export const EDGE_CATEGORIES: EdgeCategory[] = [
+	'runtime',
+	'framework',
+	'data',
+	'ai',
+	'concept',
+	'tool'
+];
 
 // ---------------------------------------------------------------------------
 // Tech tags
@@ -36,11 +53,16 @@ export interface ProjectMetrics {
 	commits?: number;
 	/** Statement coverage, 0–100 */
 	testCoverage?: number;
+	/** Overall codebase size: total lines across tracked source files, all authors. */
 	linesOfCode?: number;
 	/** Merged pull requests (team projects) */
 	mergedPrs?: number;
+	/** Lines added by Jason (author-filtered churn). */
 	linesAdded?: number;
+	/** Lines removed by Jason (author-filtered churn). */
 	linesRemoved?: number;
+	/** Commits by Jason in the trailing four weeks, from the drift manifest. */
+	commitsRecent?: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -101,6 +123,8 @@ export interface Project {
 	secondaryRepoUrl?: string;
 	/** ISO date (YYYY-MM-DD) of the most recent commit, from the source drift manifest. */
 	lastCommit?: string;
+	/** ISO date (YYYY-MM-DD) of the first (root) commit, from the source drift manifest. Orders the timeline by inception. */
+	firstCommit?: string;
 	liveUrl?: string;
 	/** 3–5 technically interesting things about this project. */
 	highlights: string[];

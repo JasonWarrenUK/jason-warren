@@ -4,7 +4,14 @@
  * so they can be tested and composed freely.
  */
 
-import type { Project, ProjectRole, ProjectSlug, ProjectStatus, ProjectKind, TagKind } from './types.js';
+import type {
+	Project,
+	ProjectRole,
+	ProjectSlug,
+	ProjectStatus,
+	ProjectKind,
+	TagKind
+} from './types.js';
 import { projects } from './index.js';
 
 // ---------------------------------------------------------------------------
@@ -30,6 +37,16 @@ export function getAllProjects(): Project[] {
 /** Projects sorted by most recent commit date, newest first. Projects with no date sort last. */
 export function getAllProjectsByRecency(): Project[] {
 	return [...projects].sort((a, b) => (b.lastCommit ?? '').localeCompare(a.lastCommit ?? ''));
+}
+
+/**
+ * Projects sorted by inception, most recently started first. Falls back to
+ * lastCommit, then empty, so projects without a firstCommit still place
+ * deterministically.
+ */
+export function getAllProjectsByInception(): Project[] {
+	const inception = (p: Project): string => p.firstCommit ?? p.lastCommit ?? '';
+	return [...projects].sort((a, b) => inception(b).localeCompare(inception(a)));
 }
 
 // ---------------------------------------------------------------------------
@@ -79,13 +96,13 @@ export function getAllTags(): string[] {
 
 /**
  * All unique tag labels grouped by TagKind, each group sorted alphabetically.
- * Key order: language → framework → database → ai → concept → tool → runtime.
+ * Key order: language → framework → data → ai → concept → tool → runtime.
  */
 export function getTagsByKind(): Record<TagKind, string[]> {
 	const buckets: Record<TagKind, Set<string>> = {
 		language: new Set(),
 		framework: new Set(),
-		database: new Set(),
+		data: new Set(),
 		ai: new Set(),
 		concept: new Set(),
 		tool: new Set(),
@@ -99,7 +116,7 @@ export function getTagsByKind(): Record<TagKind, string[]> {
 	return {
 		language: [...buckets.language].sort(),
 		framework: [...buckets.framework].sort(),
-		database: [...buckets.database].sort(),
+		data: [...buckets.data].sort(),
 		ai: [...buckets.ai].sort(),
 		concept: [...buckets.concept].sort(),
 		tool: [...buckets.tool].sort(),

@@ -6,7 +6,7 @@ export const theTongue: Project = {
 	tagline:
 		'A language-evolution simulator: generate a proto-language from a seed, steer its sound changes, and watch it fracture into a family of daughter languages as geography divides it.',
 	description:
-		'[Placeholder] The Tongue is the most immediately playable thing I have shipped. You pick a numeric seed and get a procedurally generated proto-language (phoneme inventory, syllable template, a 32-word core lexicon, a 4x3 terrain map). Then you spend influence points to apply sound changes, expand territory, and hold off autonomous drift. Over generations, geographically separated communities diverge; the mutual intelligibility matrix tracks how far apart the family has grown.',
+		'Pick a numeric seed and the game procedurally generates a proto-language: a phoneme inventory, syllable templates, a 32-word core lexicon, and a 4x3 terrain map. From there you steer its evolution, applying sound changes and holding off weighted autonomous drift in which cross-linguistically common rules are weighted higher. As geography divides the territory, communities split by impassable terrain diverge into independent daughter languages, and a mutual intelligibility matrix tracks how far apart the family has grown using normalised edit distance across the shared concept list. Built with Svelte 5 runes and Tailwind CSS v4, it is deployed live at the-tongue.vercel.app.',
 	kind: 'game',
 	contribution: { role: 'solo' },
 	status: 'live',
@@ -27,7 +27,9 @@ export const theTongue: Project = {
 		{ label: 'Svelte 5', kind: 'framework' },
 		{ label: 'Tailwind CSS v4', kind: 'framework' },
 		{ label: 'Procedural Generation', kind: 'concept' },
-		{ label: 'Vercel', kind: 'runtime' }
+		{ label: 'Vercel', kind: 'tool' },
+		{ label: 'Bun', kind: 'runtime' },
+		{ label: 'Document / JSON', kind: 'data' }
 	],
 	lastCommit: '2026-06-14',
 	metrics: {

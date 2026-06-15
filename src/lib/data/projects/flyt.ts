@@ -6,7 +6,7 @@ export const flyt: Project = {
 	tagline:
 		'A Norse interactive fiction game about flyting (ritual insult-poetry contests) where you defend your honour through stat-checked verbal duels.',
 	description:
-		'[Placeholder] Flyt uses DendryNexus, a niche interactive fiction format by Autumn Chen with StoryNexus-style card and deck mechanics. Rather than waiting for a packaged engine, I reverse-engineered the .dry format specification and built a custom compiler pipeline and reactive runtime. The Riffle engine library emerged from this work.',
+		'A Norse interactive fiction game about flyting, the ritual insult-poetry contest, where you defend your honour through stat-checked verbal duels. It is built on DendryNexus, a niche StoryNexus-style card-and-deck format: rather than wait for a packaged engine, Jason wrote a custom compiler that parses the .dry format into a static game.json, consumed by a hand-written reactive runtime with card priority and frequency draw ordering, broad and narrow difficulty checks, and tag-based choice expansion. Around 1,330 lines of authored .dry content span two story areas, the contest and the great-hall, and Claude Code hooks auto-compile .dry files on save to keep the developer loop tight. The reactive engine was later extracted into the standalone Riffle library.',
 	kind: 'game',
 	contribution: { role: 'solo' },
 	status: 'wip',
@@ -32,7 +32,8 @@ export const flyt: Project = {
 		{ label: 'Svelte 5', kind: 'framework' },
 		{ label: 'DendryNexus', kind: 'tool' },
 		{ label: 'Interactive Fiction', kind: 'concept' },
-		{ label: 'Bun', kind: 'runtime' }
+		{ label: 'Bun', kind: 'runtime' },
+		{ label: 'Document / JSON', kind: 'data' }
 	],
 	lastCommit: '2026-03-11',
 	metrics: {

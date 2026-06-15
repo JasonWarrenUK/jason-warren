@@ -23,16 +23,16 @@
 	--color-primary-bg: var(--color-azure-1);
 	--color-primary-text: var(--color-azure-6);
 
-	/* --- Accent (jade — for highlights and CTAs) --- */
-	--color-accent: var(--color-jade-4);
-	--color-accent-light: var(--color-jade-2);
-	--color-accent-bg: var(--color-jade-1);
-	--color-accent-text: var(--color-jade-6);
+	/* --- Accent (emerald — for highlights and CTAs) --- */
+	--color-accent: var(--color-emerald-4);
+	--color-accent-light: var(--color-emerald-2);
+	--color-accent-bg: var(--color-emerald-1);
+	--color-accent-text: var(--color-emerald-6);
 
 	/* --- Status colours --- */
-	--color-live: var(--color-jade-4);
-	--color-live-bg: var(--color-jade-1);
-	--color-live-text: var(--color-jade-6);
+	--color-live: var(--color-emerald-4);
+	--color-live-bg: var(--color-emerald-1);
+	--color-live-text: var(--color-emerald-6);
 
 	--color-wip: var(--color-amber-4);
 	--color-wip-bg: var(--color-amber-1);
@@ -63,6 +63,15 @@
 	--color-collaborator-bg: var(--color-cyan-1);
 	--color-collaborator-text: var(--color-cyan-6);
 
+	/* --- Map edge categories (decorative; distinct hues, kept clear of the
+	   status and role colours so an edge never reads as a status) --- */
+	--color-edge-runtime: var(--color-orange-4);
+	--color-edge-framework: var(--color-purple-4);
+	--color-edge-data: var(--color-teal-4);
+	--color-edge-ai: var(--color-pink-4);
+	--color-edge-concept: var(--color-chartreuse-4);
+	--color-edge-tool: var(--color-sky-4);
+
 	/* --- Surface and foreground --- */
 	--color-surface: var(--color-gray-1);
 	--color-surface-raised: #ffffff;
@@ -80,8 +89,9 @@
 	--layout-gap: 1.5rem;
 
 	/* --- Typography scale --- */
-	--font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif,
-		'Apple Color Emoji', 'Segoe UI Emoji';
+	--font-sans:
+		system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji',
+		'Segoe UI Emoji';
 	--font-mono: 'Cascadia Code', 'Fira Code', 'Cascadia Mono', 'Consolas', monospace;
 
 	--text-xs: 0.75rem;
@@ -101,6 +111,7 @@
 	--space-4: 1rem;
 	--space-5: 1.25rem;
 	--space-6: 1.5rem;
+	--space-7: 1.75rem;
 	--space-8: 2rem;
 	--space-10: 2.5rem;
 	--space-12: 3rem;
@@ -151,15 +162,23 @@
 	--color-primary-bg: #1c2333;
 	--color-primary-text: var(--color-azure-2);
 
-	/* --- Accent (jade) --- */
-	--color-accent: var(--color-jade-3);
-	--color-accent-light: var(--color-jade-5);
+	/* --- Accent (emerald) --- */
+	--color-accent: var(--color-emerald-3);
+	--color-accent-light: var(--color-emerald-5);
 	--color-accent-bg: #162820;
-	--color-accent-text: var(--color-jade-2);
+	--color-accent-text: var(--color-emerald-2);
 
 	/* --- Status colours --- */
+	/* Lift the base dot colours one shade brighter: the light-tuned -4 shades
+	   read too dark on the dark surface (emerald-4 looked near-black). */
+	--color-live: var(--color-emerald-3);
+	--color-wip: var(--color-amber-3);
+	--color-finished: var(--color-blue-3);
+	--color-prototype: var(--color-violet-3);
+	--color-archived: var(--color-gray-3);
+
 	--color-live-bg: #16281e;
-	--color-live-text: var(--color-jade-2);
+	--color-live-text: var(--color-emerald-2);
 
 	--color-wip-bg: #2a2010;
 	--color-wip-text: var(--color-amber-2);
@@ -182,6 +201,15 @@
 
 	--color-collaborator-bg: #142833;
 	--color-collaborator-text: var(--color-cyan-2);
+
+	/* --- Map edge categories --- */
+	/* Lift one shade brighter so thin lines stay legible on the dark surface. */
+	--color-edge-runtime: var(--color-orange-3);
+	--color-edge-framework: var(--color-purple-3);
+	--color-edge-data: var(--color-teal-3);
+	--color-edge-ai: var(--color-pink-3);
+	--color-edge-concept: var(--color-chartreuse-3);
+	--color-edge-tool: var(--color-sky-3);
 
 	/* --- Shadows --- */
 	--shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.3);
@@ -208,15 +236,21 @@
 		--color-primary-bg: #1c2333;
 		--color-primary-text: var(--color-azure-2);
 
-		/* --- Accent (jade) --- */
-		--color-accent: var(--color-jade-3);
-		--color-accent-light: var(--color-jade-5);
+		/* --- Accent (emerald) --- */
+		--color-accent: var(--color-emerald-3);
+		--color-accent-light: var(--color-emerald-5);
 		--color-accent-bg: #162820;
-		--color-accent-text: var(--color-jade-2);
+		--color-accent-text: var(--color-emerald-2);
 
 		/* --- Status colours --- */
+		--color-live: var(--color-emerald-3);
+		--color-wip: var(--color-amber-3);
+		--color-finished: var(--color-blue-3);
+		--color-prototype: var(--color-violet-3);
+		--color-archived: var(--color-gray-3);
+
 		--color-live-bg: #16281e;
-		--color-live-text: var(--color-jade-2);
+		--color-live-text: var(--color-emerald-2);
 
 		--color-wip-bg: #2a2010;
 		--color-wip-text: var(--color-amber-2);
@@ -239,6 +273,15 @@
 
 		--color-collaborator-bg: #142833;
 		--color-collaborator-text: var(--color-cyan-2);
+
+		/* --- Map edge categories --- */
+		/* Lift one shade brighter so thin lines stay legible on the dark surface. */
+		--color-edge-runtime: var(--color-orange-3);
+		--color-edge-framework: var(--color-purple-3);
+		--color-edge-data: var(--color-teal-3);
+		--color-edge-ai: var(--color-pink-3);
+		--color-edge-concept: var(--color-chartreuse-3);
+		--color-edge-tool: var(--color-sky-3);
 
 		/* --- Shadows --- */
 		--shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.3);

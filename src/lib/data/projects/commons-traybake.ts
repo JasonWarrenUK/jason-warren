@@ -6,7 +6,7 @@ export const commonsTraybake: Project = {
 	tagline:
 		'A comparative RAG experiment demonstrating that "ethics-neutral" data-processing choices are not neutral, by applying four chunking strategies to UK Parliament (Hansard) data and surfacing what each retrieves.',
 	description:
-		'[Placeholder] Commons Traybake makes an abstract argument tangible: show the same parliamentary debate through four different chunking lenses and let the divergence analysis speak for itself. Only 8-25% of retrieved chunks overlap between strategies, which is the point. The UI makes this visible, not just auditable.',
+		'The argument that "ethics-neutral" data-processing choices are not neutral is hard to make in the abstract, so this shows the same parliamentary debate through four different chunking lenses and lets the divergence speak for itself. The strategies span early chunking at 1024 and 256 tokens and late chunking that blends embeddings 70% chunk to 30% debate context, a non-standard approach with measurable retrieval effects, all stored across five vector indexes in Neo4j with OpenAI text-embedding-3-large. A divergence-analysis UI shows that only 8 to 25% of retrieved chunks overlap between strategies, making the point concrete rather than merely auditable. Jason implemented the semantic-chunking foundation, the UK Parliament Hansard API integration, and the roadmap and documentation system.',
 	kind: 'toy',
 	contribution: {
 		role: 'lead',
@@ -27,11 +27,12 @@ export const commonsTraybake: Project = {
 	featured: false,
 	tags: [
 		{ label: 'TypeScript', kind: 'language' },
+		{ label: 'Bun', kind: 'runtime' },
 		{ label: 'SvelteKit', kind: 'framework' },
-		{ label: 'Neo4j', kind: 'database' },
+		{ label: 'Neo4j', kind: 'data' },
 		{ label: 'OpenAI Embeddings', kind: 'ai' },
 		{ label: 'RAG', kind: 'ai' },
-		{ label: 'PostgreSQL', kind: 'database' }
+		{ label: 'PostgreSQL', kind: 'data' }
 	],
 	lastCommit: '2025-11-10',
 	metrics: {

@@ -6,7 +6,7 @@ export const rimewarden: Project = {
 	tagline:
 		'A Svelte 5 campaign tracker for Frosthaven that renders your scenario-progression graph as a generated D2 diagram.',
 	description:
-		'[Placeholder] Rimewarden is a personal prototype for tracking a Frosthaven board-game campaign: town resources, party composition, and scenario unlocks. Built with Svelte 5 runes and SvelteKit, its standout feature generates a D2 diagram of the campaign\'s scenario-progression graph directly from saved state. The data model and core logic are in place; an AI-assistant tab is stubbed for future work. An early prototype, not a finished product.',
+		"A personal prototype for tracking a Frosthaven board-game campaign: town resources, party composition, and scenario unlocks. Built with SvelteKit and Svelte 5 runes, it uses a class-based CampaignManager store with localStorage persistence and JSON import/export over a strongly-typed domain model covering resources, building costs, scenario links, and party composition. The standout feature generates a D2 diagram of the campaign's scenario-progression graph directly from saved state, styling completed, pending, and unknown nodes, and deterministic logic such as the affordableBuildings derivation checks resource sufficiency without server involvement. The data model and core logic are in place; this remains an early prototype rather than a finished product.",
 	kind: 'tool',
 	contribution: { role: 'solo' },
 	status: 'prototype',
@@ -26,7 +26,8 @@ export const rimewarden: Project = {
 		{ label: 'SvelteKit', kind: 'framework' },
 		{ label: 'Bun', kind: 'runtime' },
 		{ label: 'D2', kind: 'tool' },
-		{ label: 'Tailwind CSS', kind: 'framework' }
+		{ label: 'Tailwind CSS', kind: 'framework' },
+		{ label: 'Document / JSON', kind: 'data' }
 	],
 	lastCommit: '2026-01-24',
 	metrics: {

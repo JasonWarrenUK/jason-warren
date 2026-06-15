@@ -23,13 +23,7 @@
 	const label = $derived(theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme');
 </script>
 
-<button
-	type="button"
-	class="theme-toggle"
-	aria-label={label}
-	title={label}
-	onclick={toggle}
->
+<button type="button" class="theme-toggle" aria-label={label} title={label} onclick={toggle}>
 	{#if theme === 'dark'}
 		<!-- Sun icon -->
 		<svg
@@ -45,7 +39,9 @@
 			aria-hidden="true"
 		>
 			<circle cx="12" cy="12" r="4" />
-			<path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" />
+			<path
+				d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"
+			/>
 		</svg>
 	{:else}
 		<!-- Moon icon -->

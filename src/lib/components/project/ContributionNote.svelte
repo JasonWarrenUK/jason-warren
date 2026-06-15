@@ -20,7 +20,9 @@
 	{#if contribution.role !== 'solo'}
 		<p class="contribution__note">{contribution.contributionNote}</p>
 	{:else}
-		<p class="contribution__note">Solo project: designed, built, and maintained entirely by Jason.</p>
+		<p class="contribution__note">
+			Solo project: designed, built, and maintained entirely by Jason.
+		</p>
 	{/if}
 </section>
 

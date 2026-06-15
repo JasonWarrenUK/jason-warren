@@ -6,7 +6,7 @@ export const schemaForge: Project = {
 	tagline:
 		'An XSD-driven schema system for TypeScript: parse XSD files into queryable registries, then validate data, map CSV rows to nested schema objects, and generate valid XML.',
 	description:
-		'[Placeholder] Schema Forge is the library that crystallised the XSD validation approach used across the Iris ILR toolkit. It separates the XSD parsing concern (building a schema registry with element trees and lookup maps) from the application concerns (validation, CSV mapping, XML generation). The 17+ built-in transforms cover the most common data-normalisation operations.',
+		'An XSD-driven schema system for TypeScript that crystallised the validation approach used across the Iris ILR toolkit. It separates the parsing concern, building SchemaRegistry objects with element trees, lookup maps, and full constraint metadata, from the application concerns of validation, CSV mapping, and XML generation. Data is validated against XSD-defined types, patterns, cardinality, ranges, and enumerations; flat CSV columns map to nested XSD paths with optional named transforms; and XML is generated from data objects using the schema structure and namespace information. Over 17 built-in transformation functions cover common type conversion, string formatting, and date handling.',
 	kind: 'library',
 	contribution: { role: 'solo' },
 	status: 'wip',
@@ -29,7 +29,8 @@ export const schemaForge: Project = {
 	tags: [
 		{ label: 'TypeScript', kind: 'language' },
 		{ label: 'Bun', kind: 'runtime' },
-		{ label: 'XML / XSD', kind: 'tool' }
+		{ label: 'XML / XSD', kind: 'tool' },
+		{ label: 'No persistence', kind: 'data' }
 	],
 	lastCommit: '2026-03-12',
 	metrics: {

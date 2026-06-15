@@ -6,7 +6,7 @@ export const thoseWhoCameBefore: Project = {
 	tagline:
 		'A browser game where players discover procedurally generated archaeological artefacts, track them on a discovery timeline, and complete mission-based tasks.',
 	description:
-		'[Placeholder] Those Who Came Before runs the full SvelteKit toolchain through Deno rather than Node, deployed to Deno Deploy. The procedural item generator in the backlog uses grammar-based generation with typed definitions for parts, conditions, and materials: a richer system staged for integration into the core game loop.',
+		'A browser game where players discover procedurally generated archaeological artefacts, track them on a discovery timeline, and complete mission-based tasks. It runs SvelteKit through Deno rather than Node, deployed to Deno Deploy via @deno/svelte-adapter, using Svelte 5 runes throughout with Tailwind CSS v4 and DaisyUI v5. A grammar-based procedural artefact generator with typed definitions for item parts, conditions, and materials sits staged for integration into the core loop. The discovery loop itself is complete, with persistence, save/load, and auth on the roadmap, and the architecture decisions are documented in docs/.',
 	kind: 'game',
 	contribution: { role: 'solo' },
 	status: 'prototype',
@@ -26,7 +26,8 @@ export const thoseWhoCameBefore: Project = {
 		{ label: 'Svelte 5', kind: 'framework' },
 		{ label: 'Deno', kind: 'runtime' },
 		{ label: 'Tailwind CSS v4', kind: 'framework' },
-		{ label: 'Procedural Generation', kind: 'concept' }
+		{ label: 'Procedural Generation', kind: 'concept' },
+		{ label: 'Ephemeral / in-memory', kind: 'data' }
 	],
 	lastCommit: '2026-02-16',
 	metrics: {

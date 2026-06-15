@@ -4,7 +4,8 @@ export const psyche: Project = {
 	slug: 'psyche',
 	name: 'Psyche',
 	tagline: 'A training project built during the FAC-31 cohort at Founders and Coders.',
-	description: '[Placeholder] A training project. Details to follow.',
+	description:
+		'A collaborative training project built during the FAC-31 cohort at Founders and Coders, written in TypeScript and SvelteKit. Jason was effectively the primary author, contributing 76 of its 82 commits. The work is now archived.',
 	kind: 'app',
 	contribution: {
 		role: 'lead',
@@ -18,7 +19,9 @@ export const psyche: Project = {
 	featured: false,
 	tags: [
 		{ label: 'TypeScript', kind: 'language' },
-		{ label: 'SvelteKit', kind: 'framework' }
+		{ label: 'Bun', kind: 'runtime' },
+		{ label: 'SvelteKit', kind: 'framework' },
+		{ label: 'Document / JSON', kind: 'data' }
 	],
 	lastCommit: '2025-11-27',
 	metrics: {

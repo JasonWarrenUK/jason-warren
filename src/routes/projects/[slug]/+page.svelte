@@ -8,19 +8,52 @@
 	import ContributionNote from '$lib/components/project/ContributionNote.svelte';
 	import RelatedProjects from '$lib/components/project/RelatedProjects.svelte';
 	import ExternalLink from '$lib/components/ui/ExternalLink.svelte';
+	import Seo from '$lib/components/seo/Seo.svelte';
+	import { AUTHOR, SITE_URL } from '$lib/config.js';
 
 	let { data } = $props();
+
+	const projectLd = $derived(
+		JSON.stringify({
+			'@context': 'https://schema.org',
+			'@type': 'SoftwareSourceCode',
+			name: data.project.name,
+			description: data.project.tagline,
+			codeRepository: data.project.repoUrl,
+			url: `${SITE_URL}/projects/${data.project.slug}`,
+			author: { '@type': 'Person', name: AUTHOR },
+			programmingLanguage: data.project.tags
+				.filter((tag) => tag.kind === 'language')
+				.map((tag) => tag.label)
+		})
+	);
 </script>
 
+<Seo
+	title="{data.project.name} | Jason Warren"
+	description={data.project.tagline}
+	image="{SITE_URL}/og/{data.project.slug}.png"
+	type="article"
+/>
+
 <svelte:head>
-	<title>{data.project.name} | Jason Warren</title>
-	<meta name="description" content={data.project.tagline} />
+	{@html `<script type="application/ld+json">${projectLd}</script>`}
 </svelte:head>
 
 <div class="page">
 	<nav class="page__breadcrumb" aria-label="Breadcrumb">
 		<a href="{base}/projects">← All projects</a>
 	</nav>
+
+	<div class="page__banner">
+		<img
+			src="{base}/og/{data.project.slug}.png"
+			alt="{data.project.name} social card"
+			width="1200"
+			height="630"
+			loading="eager"
+		/>
+	</div>
 
 	<header class="page__header">
 		<div class="page__header-top">
@@ -65,9 +98,7 @@
 		<aside class="page__aside">
 			<ContributionNote contribution={data.project.contribution} />
 
-			{#if data.project.relationships.length > 0}
-				<RelatedProjects relationships={data.project.relationships} />
-			{/if}
+			<RelatedProjects slug={data.project.slug} />
 		</aside>
 	</div>
 </div>
@@ -82,6 +113,17 @@
 		gap: var(--space-10);
 	}
 
+	/* Pin the breadcrumb just below the sticky site header (3.5rem tall) so it
+	   stays reachable while a long case study scrolls underneath. */
+	.page__breadcrumb {
+		position: sticky;
+		top: 3.5rem;
+		z-index: 50;
+		margin: calc(-1 * var(--space-3)) calc(-1 * var(--layout-padding));
+		padding: var(--space-3) var(--layout-padding);
+		background-color: var(--color-surface);
+	}
+
 	.page__breadcrumb a {
 		font-size: var(--text-sm);
 		color: var(--color-text-subtle);
@@ -94,6 +136,23 @@
 
 	.page__breadcrumb a:hover {
 		color: var(--color-primary-text);
+	}
+
+	/* The wrapper owns the aspect ratio (reliable across WebViews); the image
+	   fills it, so the banner never crops to a tall sliver. */
+	.page__banner {
+		display: block;
+		width: 100%;
+		aspect-ratio: 1200 / 630;
+		overflow: hidden;
+		border: 1px solid var(--color-border);
+		border-radius: var(--radius-lg);
+	}
+
+	.page__banner img {
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
 	}
 
 	.page__header {
