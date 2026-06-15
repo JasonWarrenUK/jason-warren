@@ -218,3 +218,30 @@ describe('engine-extraction threads', () => {
 		}
 	});
 });
+
+describe('synced metrics from sources.json', () => {
+	const synced = sourcesManifest.sources as Record<
+		string,
+		{ commits?: number; lastCommit?: string; firstCommit?: string }
+	>;
+
+	it('every manifest slug resolves to a curated project (1:1 mapping)', () => {
+		const unknown = Object.keys(synced).filter((k) => !projectSlugs.has(k as ProjectSlug));
+		expect(unknown, `Manifest slugs with no project: ${unknown.join(', ')}`).toHaveLength(0);
+	});
+
+	it('overlays the manifest commit count and date onto each project (synced wins)', () => {
+		const offenders: string[] = [];
+		for (const project of projects) {
+			const source = synced[project.slug];
+			if (!source) continue;
+			if (source.lastCommit && project.lastCommit !== source.lastCommit) {
+				offenders.push(`${project.slug} lastCommit ${project.lastCommit} != ${source.lastCommit}`);
+			}
+			if (source.commits !== undefined && project.metrics?.commits !== source.commits) {
+				offenders.push(`${project.slug} commits ${project.metrics?.commits} != ${source.commits}`);
+			}
+		}
+		expect(offenders, `Synced metrics not applied:\n${offenders.join('\n')}`).toHaveLength(0);
+	});
+});

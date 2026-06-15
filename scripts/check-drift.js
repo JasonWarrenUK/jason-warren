@@ -70,6 +70,11 @@ function git(args, cwd) {
 	}
 }
 
+// Extended-regex alternation over Jason's git identities across repos, so the
+// "by me" metrics (recent commits, line churn) count his work and not a team's.
+// One editable place: a miss degrades to 0, never an error.
+const AUTHOR_PATTERN = 'Jason Warren|jasonwarren|jason@foundersandcoders\\.com';
+
 // Map a file extension to a canonical language name. Keys match the tag-label
 // spelling the site curates, so the drift report's "ungated" hint lines up with
 // the data model. Config, docs, and assets are deliberately omitted: this list
@@ -137,6 +142,58 @@ function detectLanguages(repoPath) {
 	return [...counts.entries()].sort((a, b) => b[1] - a[1]).map(([language]) => language);
 }
 
+/**
+ * Overall codebase size: total lines across tracked source files (all authors).
+ * Reuses the same extension gate as `detectLanguages`, so config, lockfiles, and
+ * assets stay out of the count.
+ */
+function countLinesOfCode(repoPath) {
+	const listing = git('ls-files', repoPath);
+	if (!listing) return null;
+	let total = 0;
+	for (const file of listing.split('\n')) {
+		const dot = file.lastIndexOf('.');
+		if (dot < 0) continue;
+		if (!EXTENSION_LANGUAGE[file.slice(dot + 1).toLowerCase()]) continue;
+		try {
+			const content = readFileSync(join(repoPath, file), 'utf8');
+			if (content.length === 0) continue;
+			total += content.split('\n').length;
+		} catch {
+			// Unreadable or vanished between ls-files and read — skip it.
+		}
+	}
+	return total;
+}
+
+/** Commits authored by Jason in the trailing four weeks. */
+function countRecentCommits(repoPath) {
+	const out = git(
+		`rev-list --count --extended-regexp --since="4 weeks ago" --author="${AUTHOR_PATTERN}" HEAD`,
+		repoPath
+	);
+	return out === null ? null : Number(out);
+}
+
+/** Line churn authored by Jason across all of history (his additions/removals). */
+function countAuthoredChurn(repoPath) {
+	const out = git(
+		`log --extended-regexp --author="${AUTHOR_PATTERN}" --pretty=tformat: --numstat HEAD`,
+		repoPath
+	);
+	if (out === null) return { linesAdded: null, linesRemoved: null };
+	let added = 0;
+	let removed = 0;
+	for (const line of out.split('\n')) {
+		if (!line.trim()) continue;
+		const [a, r] = line.split('\t');
+		if (a === '-' || r === '-') continue; // binary file, no line counts
+		added += Number(a) || 0;
+		removed += Number(r) || 0;
+	}
+	return { linesAdded: added, linesRemoved: removed };
+}
+
 /** ISO date of the earliest root commit, the project's inception. */
 function getFirstCommit(repoPath) {
 	const roots = git('log --max-parents=0 --format=%cs', repoPath);
@@ -158,7 +215,10 @@ function getFingerprint(repoPath) {
 		commits: Number(commits),
 		lastCommit,
 		firstCommit: getFirstCommit(repoPath),
-		languages: detectLanguages(repoPath)
+		languages: detectLanguages(repoPath),
+		linesOfCode: countLinesOfCode(repoPath),
+		commitsRecent: countRecentCommits(repoPath),
+		...countAuthoredChurn(repoPath)
 	};
 }
 
@@ -334,6 +394,9 @@ if (changed.length === 0 && filteredNew.length === 0 && missing.length === 0) {
 			console.log(`  ${CYAN}${r.slug}${RESET}`);
 			console.log(
 				`    ${r.from.head} → ${r.to.head}  (${dir}${r.delta} commits, first: ${r.to.firstCommit ?? '?'}, last: ${r.to.lastCommit})`
+			);
+			console.log(
+				`    ${DIM}size: ${r.to.linesOfCode ?? '?'} loc · mine: +${r.to.linesAdded ?? '?'}/−${r.to.linesRemoved ?? '?'} · recent: ${r.to.commitsRecent ?? '?'} commits (4w)${RESET}`
 			);
 			if (r.to.languages.length > 0) {
 				console.log(`    ${DIM}languages: ${r.to.languages.join(', ')}${RESET}`);
