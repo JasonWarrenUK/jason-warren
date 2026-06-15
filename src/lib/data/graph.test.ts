@@ -13,9 +13,11 @@ import {
 	getNeighbours,
 	getTechIndex,
 	getSharedTechEdges,
-	computeForceLayout
+	computeForceLayout,
+	selectLabelledSlugs,
+	MAP_LABEL_COUNT
 } from './graph.js';
-import type { ProjectSlug } from './types.js';
+import type { Project, ProjectSlug } from './types.js';
 
 const slugs = new Set<ProjectSlug>(projects.map((p) => p.slug));
 
@@ -122,29 +124,47 @@ describe('getTechIndex', () => {
 });
 
 describe('getSharedTechEdges', () => {
-	it('only links projects that share at least minShared tags', () => {
-		const minShared = 3;
+	it('weights each edge by the shared tags within its own category', () => {
+		const minShared = 1;
 		const edges = getSharedTechEdges({ minShared });
-		const bySlug = new Map(projects.map((p) => [p.slug, new Set(p.tags.map((t) => t.label))]));
+		const labelsByKind = new Map(
+			projects.map((p) => {
+				const byKind = new Map<string, Set<string>>();
+				for (const tag of p.tags) {
+					if (!byKind.has(tag.kind)) byKind.set(tag.kind, new Set());
+					byKind.get(tag.kind)!.add(tag.label);
+				}
+				return [p.slug, byKind];
+			})
+		);
 		for (const edge of edges) {
-			const a = bySlug.get(edge.source)!;
-			const b = bySlug.get(edge.target)!;
+			const a = labelsByKind.get(edge.source)?.get(edge.category) ?? new Set();
+			const b = labelsByKind.get(edge.target)?.get(edge.category) ?? new Set();
 			const shared = [...a].filter((label) => b.has(label)).length;
-			expect(shared, `${edge.source}–${edge.target}`).toBeGreaterThanOrEqual(minShared);
-			expect(edge.weight, `${edge.source}–${edge.target} weight`).toBe(shared);
+			expect(shared, `${edge.source}–${edge.target} (${edge.category})`).toBeGreaterThanOrEqual(
+				minShared
+			);
+			expect(edge.weight, `${edge.source}–${edge.target} (${edge.category}) weight`).toBe(shared);
 		}
 	});
 
-	it('caps each node at maxPerNode edges', () => {
+	it('never emits a language-category edge', () => {
+		const edges = getSharedTechEdges();
+		expect(edges.some((e) => (e.category as string) === 'language')).toBe(false);
+	});
+
+	it('caps each node at maxPerNode edges within a category', () => {
 		const maxPerNode = 3;
 		const edges = getSharedTechEdges({ maxPerNode });
 		const degree = new Map<string, number>();
 		for (const edge of edges) {
-			degree.set(edge.source, (degree.get(edge.source) ?? 0) + 1);
-			degree.set(edge.target, (degree.get(edge.target) ?? 0) + 1);
+			const ks = `${edge.source}:${edge.category}`;
+			const kt = `${edge.target}:${edge.category}`;
+			degree.set(ks, (degree.get(ks) ?? 0) + 1);
+			degree.set(kt, (degree.get(kt) ?? 0) + 1);
 		}
-		for (const [slug, count] of degree) {
-			expect(count, `${slug} exceeds the cap`).toBeLessThanOrEqual(maxPerNode);
+		for (const [key, count] of degree) {
+			expect(count, `${key} exceeds the per-category cap`).toBeLessThanOrEqual(maxPerNode);
 		}
 	});
 
@@ -153,13 +173,90 @@ describe('getSharedTechEdges', () => {
 		const keys = new Set<string>();
 		for (const edge of edges) {
 			expect(edge.source < edge.target, `${edge.source}–${edge.target} not ordered`).toBe(true);
-			keys.add(`${edge.source}--${edge.target}`);
+			keys.add(`${edge.category}:${edge.source}--${edge.target}`);
 		}
 		expect(keys.size).toBe(edges.length);
 	});
 
 	it('is deterministic', () => {
 		expect(getSharedTechEdges()).toEqual(getSharedTechEdges());
+	});
+});
+
+describe('selectLabelledSlugs', () => {
+	// Minimal projects exercising one ranking axis each; only the metric fields
+	// the selector reads matter, so the rest is stubbed.
+	function faux(
+		slug: string,
+		m: { last?: string; linesAdded?: number; linesOfCode?: number; commitsRecent?: number }
+	): Project {
+		return {
+			slug,
+			name: slug,
+			tagline: '',
+			description: '',
+			kind: 'tool',
+			contribution: { role: 'solo' },
+			tags: [],
+			status: 'finished',
+			repoUrl: '',
+			highlights: [],
+			relationships: [],
+			featured: false,
+			lastCommit: m.last,
+			metrics: {
+				linesAdded: m.linesAdded,
+				linesOfCode: m.linesOfCode,
+				commitsRecent: m.commitsRecent
+			}
+		} as unknown as Project;
+	}
+
+	it('returns the configured count for the real registry, all real slugs', () => {
+		const labelled = selectLabelledSlugs();
+		expect(labelled.size).toBe(MAP_LABEL_COUNT);
+		for (const slug of labelled) {
+			expect(slugs.has(slug), `${slug} is not a real slug`).toBe(true);
+		}
+	});
+
+	it('is deterministic', () => {
+		expect([...selectLabelledSlugs()]).toEqual([...selectLabelledSlugs()]);
+	});
+
+	it('rotates through all four axes, one leader from each', () => {
+		const list = [
+			faux('recent', { last: '2026-06-01' }),
+			faux('mine', { linesAdded: 9999 }),
+			faux('big', { linesOfCode: 9999 }),
+			faux('active', { commitsRecent: 9999 }),
+			faux('filler-a', {}),
+			faux('filler-b', {})
+		];
+		const labelled = selectLabelledSlugs(list, 4);
+		expect([...labelled].sort()).toEqual(['active', 'big', 'mine', 'recent']);
+	});
+
+	it('dedupes a project that leads multiple axes, then fills from the rest', () => {
+		const list = [
+			// One project tops both recency and my-contribution.
+			faux('double', { last: '2026-06-10', linesAdded: 9999 }),
+			faux('big', { linesOfCode: 9999 }),
+			faux('active', { commitsRecent: 9999 }),
+			faux('next-recent', { last: '2026-06-09' }),
+			faux('filler', {})
+		];
+		const labelled = selectLabelledSlugs(list, 4) as Set<string>;
+		expect(labelled.size).toBe(4);
+		expect(labelled.has('double')).toBe(true);
+		expect(labelled.has('big')).toBe(true);
+		expect(labelled.has('active')).toBe(true);
+	});
+
+	it('still fills when axes are unpopulated (graceful degradation)', () => {
+		const list = [faux('a', {}), faux('b', {}), faux('c', {})];
+		const labelled = selectLabelledSlugs(list, 2);
+		expect(labelled.size).toBe(2);
 	});
 });
 

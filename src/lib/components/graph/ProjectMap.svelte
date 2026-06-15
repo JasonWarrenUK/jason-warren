@@ -1,8 +1,16 @@
 <script lang="ts">
 	import { base } from '$app/paths';
-	import type { ProjectKind, ProjectStatus } from '$lib/data/types.js';
+	import { EDGE_CATEGORIES, type ProjectKind, type ProjectStatus } from '$lib/data/types.js';
 	import type { GraphEdge, SharedTechEdge } from '$lib/data/graph.js';
-	import { statusColour, statusLabel, statusOrder } from './graph-style.js';
+	import {
+		statusColour,
+		statusLabel,
+		statusOrder,
+		categoryColour,
+		edgeTypeColour,
+		edgeTypeLabel,
+		type EdgeType
+	} from './graph-style.js';
 
 	interface MapNode {
 		slug: string;
@@ -11,6 +19,7 @@
 		status: ProjectStatus;
 		kind: ProjectKind;
 		flagship: boolean;
+		labelled: boolean;
 		lastCommit: string | null;
 		commits: number | null;
 		linesOfCode: number | null;
@@ -41,8 +50,21 @@
 		return map;
 	});
 
-	// The kinds present, for the filter legend.
+	// Node kinds present, for the type toggles.
 	const kinds = $derived([...new Set(nodes.map((n) => n.kind))].sort());
+
+	// Edge types present, curated first then categories in canonical order, so
+	// the connection legend lists exactly what the graph actually draws.
+	const edgeTypes = $derived.by(() => {
+		const present: EdgeType[] = [];
+		for (const kind of ['extraction', 'related'] as const) {
+			if (edges.some((e) => e.kind === kind)) present.push(kind);
+		}
+		for (const category of EDGE_CATEGORIES) {
+			if (sharedEdges.some((e) => e.category === category)) present.push(category);
+		}
+		return present;
+	});
 
 	// Node radius scales with reach (commits, falling back to lines of code),
 	// normalised across the registry; flagships keep a floor so they read as hubs.
@@ -75,31 +97,60 @@
 
 	// Interaction state, only meaningful once JavaScript runs.
 	let activeSlug = $state<string | null>(null);
-	let activeKind = $state<ProjectKind | null>(null);
+	let hiddenKinds = $state(new Set<ProjectKind>());
+	let hiddenEdgeTypes = $state(new Set<EdgeType>());
+	let isolateMode = $state(false);
 
-	function nodeDimmed(node: MapNode): boolean {
-		if (activeKind !== null && node.kind !== activeKind) return true;
-		if (activeSlug !== null) {
-			if (node.slug === activeSlug) return false;
-			if (!adjacency.get(activeSlug)?.has(node.slug)) return true;
-		}
-		return false;
-	}
+	// --- Visibility: legend toggles hide a kind or edge type, or (in isolate
+	// mode) show only the clicked one. ---
 
-	function endpointsDimmed(source: string, target: string): boolean {
-		if (activeKind !== null) {
-			const s = positions.get(source);
-			const t = positions.get(target);
-			if (s?.kind !== activeKind && t?.kind !== activeKind) return true;
+	function applyToggle<T>(current: Set<T>, value: T, all: T[]): Set<T> {
+		if (isolateMode) {
+			const others = all.filter((v) => v !== value);
+			// A second click on an already-isolated item restores everything.
+			const alreadyIsolated = !current.has(value) && others.every((v) => current.has(v));
+			return alreadyIsolated ? new Set<T>() : new Set<T>(others);
 		}
-		if (activeSlug !== null && source !== activeSlug && target !== activeSlug) {
-			return true;
-		}
-		return false;
+		const next = new Set(current);
+		if (next.has(value)) next.delete(value);
+		else next.add(value);
+		return next;
 	}
 
 	function toggleKind(kind: ProjectKind): void {
-		activeKind = activeKind === kind ? null : kind;
+		hiddenKinds = applyToggle(hiddenKinds, kind, kinds);
+	}
+
+	function toggleEdgeType(type: EdgeType): void {
+		hiddenEdgeTypes = applyToggle(hiddenEdgeTypes, type, edgeTypes);
+	}
+
+	function resetFilters(): void {
+		hiddenKinds = new Set();
+		hiddenEdgeTypes = new Set();
+	}
+
+	function nodeHidden(node: MapNode): boolean {
+		return hiddenKinds.has(node.kind);
+	}
+
+	function edgeHidden(source: string, target: string, type: EdgeType): boolean {
+		if (hiddenEdgeTypes.has(type)) return true;
+		// An edge incident on a hidden node has nothing to connect, so it drops too.
+		const s = positions.get(source);
+		const t = positions.get(target);
+		return (!!s && nodeHidden(s)) || (!!t && nodeHidden(t));
+	}
+
+	// --- Dimming: hover/focus lifts a node and its neighbourhood, fading the rest. ---
+
+	function nodeDimmed(node: MapNode): boolean {
+		if (activeSlug === null || node.slug === activeSlug) return false;
+		return !adjacency.get(activeSlug)?.has(node.slug);
+	}
+
+	function edgeDimmed(source: string, target: string): boolean {
+		return activeSlug !== null && source !== activeSlug && target !== activeSlug;
 	}
 </script>
 
@@ -110,15 +161,17 @@
 		role="group"
 		aria-label="Map of projects and the connections between them"
 	>
-		<!-- Shared-tech links: faintest, behind the curated edges. -->
+		<!-- Shared-tech links: faintest, behind the curated edges, coloured by category. -->
 		<g class="map__edges">
-			{#each sharedEdges as edge (`shared:${edge.source}-${edge.target}`)}
+			{#each sharedEdges as edge (`shared:${edge.category}:${edge.source}-${edge.target}`)}
 				{@const a = positions.get(edge.source)}
 				{@const b = positions.get(edge.target)}
 				{#if a && b}
 					<line
 						class="map__edge map__edge--shared"
-						class:map__edge--dim={endpointsDimmed(edge.source, edge.target)}
+						class:map__edge--dim={edgeDimmed(edge.source, edge.target)}
+						class:map__edge--hidden={edgeHidden(edge.source, edge.target, edge.category)}
+						style="stroke: {categoryColour(edge.category)}"
 						x1={a.x}
 						y1={a.y}
 						x2={b.x}
@@ -136,7 +189,8 @@
 				{#if a && b}
 					<line
 						class="map__edge map__edge--{edge.kind}"
-						class:map__edge--dim={endpointsDimmed(edge.source, edge.target)}
+						class:map__edge--dim={edgeDimmed(edge.source, edge.target)}
+						class:map__edge--hidden={edgeHidden(edge.source, edge.target, edge.kind)}
 						x1={a.x}
 						y1={a.y}
 						x2={b.x}
@@ -153,7 +207,8 @@
 				<a
 					class="map__node"
 					class:map__node--dim={nodeDimmed(node)}
-					class:map__node--flagship={node.flagship}
+					class:map__node--hidden={nodeHidden(node)}
+					class:map__node--labelled={node.labelled}
 					href="{base}/projects/{node.slug}"
 					onpointerenter={() => (activeSlug = node.slug)}
 					onpointerleave={() => (activeSlug = null)}
@@ -177,32 +232,53 @@
 	</svg>
 
 	<figcaption class="map__legend">
-		<div class="map__legend-group" aria-hidden="true">
-			<span class="map__legend-title">Connection</span>
-			<span class="map__legend-item"
-				><span class="map__swatch map__swatch--extraction"></span>Extracted into a library</span
-			>
-			<span class="map__legend-item"
-				><span class="map__swatch map__swatch--related"></span>Related</span
-			>
-			<span class="map__legend-item"
-				><span class="map__swatch map__swatch--shared"></span>Shared stack</span
-			>
+		<div class="map__legend-group">
+			<span class="map__legend-title">Connections</span>
+			{#each edgeTypes as type (type)}
+				<button
+					type="button"
+					class="map__toggle"
+					class:map__toggle--off={hiddenEdgeTypes.has(type)}
+					aria-pressed={!hiddenEdgeTypes.has(type)}
+					onclick={() => toggleEdgeType(type)}
+				>
+					<span
+						class="map__swatch map__swatch--line"
+						style="border-top-color: {edgeTypeColour(type)}"
+					></span>
+					{edgeTypeLabel(type)}
+				</button>
+			{/each}
 		</div>
 
 		<div class="map__legend-group">
-			<span class="map__legend-title">Filter by type</span>
+			<span class="map__legend-title">Types</span>
 			{#each kinds as kind (kind)}
 				<button
 					type="button"
-					class="map__kind"
-					class:map__kind--active={activeKind === kind}
-					aria-pressed={activeKind === kind}
+					class="map__toggle"
+					class:map__toggle--off={hiddenKinds.has(kind)}
+					aria-pressed={!hiddenKinds.has(kind)}
 					onclick={() => toggleKind(kind)}
 				>
 					{kind}
 				</button>
 			{/each}
+		</div>
+
+		<div class="map__legend-group">
+			<button
+				type="button"
+				class="map__toggle map__toggle--mode"
+				class:map__toggle--on={isolateMode}
+				aria-pressed={isolateMode}
+				onclick={() => (isolateMode = !isolateMode)}
+			>
+				Isolate
+			</button>
+			{#if hiddenKinds.size > 0 || hiddenEdgeTypes.size > 0}
+				<button type="button" class="map__toggle" onclick={resetFilters}>Reset</button>
+			{/if}
 		</div>
 
 		<div class="map__legend-group" aria-hidden="true">
@@ -215,7 +291,10 @@
 			{/each}
 		</div>
 
-		<p class="map__note">Node size tracks commit activity; fainter dots are older.</p>
+		<p class="map__note">
+			Node size tracks commit activity; fainter dots are older. Click a type or connection to hide
+			it; turn on Isolate to show only the one you click.
+		</p>
 	</figcaption>
 </figure>
 
@@ -253,14 +332,20 @@
 		opacity: 0.6;
 	}
 
+	/* Shared-tech edges carry their category colour inline; this sets weight. */
 	.map__edge--shared {
-		stroke: var(--color-text-muted);
-		stroke-width: 1.2;
-		opacity: 0.4;
+		stroke-width: 1.4;
+		opacity: 0.5;
 	}
 
 	.map__edge--dim {
 		opacity: 0.06;
+	}
+
+	/* Hidden by a legend toggle: removed from the picture entirely. */
+	.map__edge--hidden,
+	.map__node--hidden {
+		display: none;
 	}
 
 	.map__node {
@@ -306,16 +391,16 @@
 
 	/*
 	 * Mobile: the SVG scales down with the viewport, so every label shrinks at
-	 * once and the picture turns to noise. Keep only the flagship labels by
-	 * default and reveal the rest on hover/focus, and enlarge the type so what
-	 * remains stays readable.
+	 * once and the picture turns to noise. Show only the selected "labelled"
+	 * projects (a diverse ten, chosen in the data layer) by default and reveal
+	 * the rest on hover/focus, with larger type so what remains stays readable.
 	 */
 	@media (max-width: 40rem) {
 		.map__label {
-			font-size: 26px;
+			font-size: 22px;
 		}
 
-		.map__node:not(.map__node--flagship) .map__label {
+		.map__node:not(.map__node--labelled) .map__label {
 			opacity: 0;
 			transition: opacity var(--transition-base);
 		}
@@ -365,28 +450,18 @@
 		flex-shrink: 0;
 	}
 
-	.map__swatch--extraction {
-		height: 0;
-		border-top: 2.5px solid var(--color-primary);
-		border-radius: 0;
+	/* A short rule, coloured per edge type via an inline border-top-color. */
+	.map__swatch--line {
 		width: 1.25rem;
+		height: 0;
+		border-radius: 0;
+		border-top: 2.5px solid var(--color-text-muted);
 	}
 
-	.map__swatch--related {
-		height: 0;
-		border-top: 1.6px dashed var(--color-text-subtle);
-		border-radius: 0;
-		width: 1.25rem;
-	}
-
-	.map__swatch--shared {
-		height: 0;
-		border-top: 1.2px solid var(--color-text-muted);
-		border-radius: 0;
-		width: 1.25rem;
-	}
-
-	.map__kind {
+	.map__toggle {
+		display: inline-flex;
+		align-items: center;
+		gap: var(--space-2);
 		font-size: var(--text-sm);
 		font-weight: 500;
 		padding: var(--space-1) var(--space-3);
@@ -399,15 +474,23 @@
 		transition:
 			border-color var(--transition-fast),
 			background-color var(--transition-fast),
-			color var(--transition-fast);
+			color var(--transition-fast),
+			opacity var(--transition-fast);
 	}
 
-	.map__kind:hover {
+	.map__toggle:hover {
 		border-color: var(--color-primary);
 		color: var(--color-text);
 	}
 
-	.map__kind--active {
+	/* Hidden: dimmed and struck through, so its "off" state reads at a glance. */
+	.map__toggle--off {
+		opacity: 0.45;
+		text-decoration: line-through;
+	}
+
+	/* Isolate mode engaged. */
+	.map__toggle--on {
 		background-color: var(--color-primary-bg);
 		border-color: var(--color-primary);
 		color: var(--color-primary-text);

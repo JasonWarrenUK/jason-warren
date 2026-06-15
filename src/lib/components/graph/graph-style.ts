@@ -4,7 +4,7 @@
  * semantic tokens in tokens.css, so every connection view reads the same.
  */
 
-import type { ProjectStatus } from '$lib/data/types.js';
+import type { EdgeCategory, ProjectStatus } from '$lib/data/types.js';
 import type { GraphEdge } from '$lib/data/graph.js';
 
 /** Status colour token, matching the status badges. */
@@ -34,4 +34,40 @@ export const statusOrder: ProjectStatus[] = ['live', 'wip', 'finished', 'prototy
 /** Human-readable label for an edge kind, phrased from source to target. */
 export function edgeLabel(kind: GraphEdge['kind']): string {
 	return kind === 'extraction' ? 'extracted into a library' : 'related';
+}
+
+/**
+ * The full set of toggleable edge types on the map: the two curated kinds plus
+ * one per shared-tech category. Keyed strings so node/edge legends and the
+ * hidden-set state can share one vocabulary.
+ */
+export type EdgeType = GraphEdge['kind'] | EdgeCategory;
+
+/** Colour token for a shared-tech category edge. Decorative, distinct hues. */
+export function categoryColour(category: EdgeCategory): string {
+	return `var(--color-edge-${category})`;
+}
+
+/** Colour token for any edge type, curated or category. */
+export function edgeTypeColour(type: EdgeType): string {
+	if (type === 'extraction') return 'var(--color-primary)';
+	if (type === 'related') return 'var(--color-text-subtle)';
+	return categoryColour(type);
+}
+
+/** Short legend label for a shared-tech category. */
+export const categoryLabel: Record<EdgeCategory, string> = {
+	runtime: 'Runtime',
+	framework: 'Framework',
+	data: 'Data',
+	ai: 'AI',
+	concept: 'Concept',
+	tool: 'Tooling'
+};
+
+/** Legend label for any edge type, curated or category. */
+export function edgeTypeLabel(type: EdgeType): string {
+	if (type === 'extraction') return 'Extraction';
+	if (type === 'related') return 'Related';
+	return categoryLabel[type];
 }

@@ -27,7 +27,8 @@ import {
 	type SimulationNodeDatum
 } from 'd3-force';
 import { projects } from './index.js';
-import type { Project, ProjectSlug } from './types.js';
+import { EDGE_CATEGORIES } from './types.js';
+import type { EdgeCategory, Project, ProjectSlug } from './types.js';
 
 // ---------------------------------------------------------------------------
 // Graph shape
@@ -113,76 +114,146 @@ export function getProjectGraph(): ProjectGraph {
 /**
  * A faint, undirected "shares a stack" link, kept separate from the curated
  * `GraphEdge` relationships so the two never mix. Endpoints are canonically
- * ordered (source < target) and `weight` is the number of shared tag labels.
+ * ordered (source < target). Each edge is keyed to one tag `category`, so the
+ * map can show *why* two projects relate (same runtime vs same data layer) and
+ * let the viewer toggle categories independently. `weight` is the number of
+ * shared tags within that category.
  */
 export interface SharedTechEdge {
 	source: ProjectSlug;
 	target: ProjectSlug;
+	category: EdgeCategory;
 	weight: number;
 }
 
 export interface SharedTechOptions {
-	/** Minimum shared tag labels for a pair to qualify. */
+	/** Minimum shared tags (within a category) for a pair to qualify. */
 	minShared?: number;
-	/** Maximum edges kept per node, strongest first. */
+	/** Maximum edges kept per node, per category, strongest first. */
 	maxPerNode?: number;
 }
 
 /**
- * Derives "shared stack" edges from tag overlap to give the map structure the
- * sparse curated relationships cannot. Two guards stop the dense core (most
- * projects share TypeScript + SvelteKit + Bun) from collapsing into a
- * hairball: a `minShared` floor, and a greedy per-node degree cap that keeps
- * only each project's strongest links. Deterministic for a fixed registry.
+ * Derives per-category "shared stack" edges from tag overlap to give the map
+ * structure the sparse curated relationships cannot. One edge type per tag
+ * category (`language` excluded, see `EDGE_CATEGORIES`) so related-by-runtime
+ * reads differently from related-by-data. The hairball is tamed by a per-node,
+ * per-category degree cap that keeps only each project's strongest links in
+ * each category. Deterministic for a fixed registry.
  */
 export function getSharedTechEdges(options: SharedTechOptions = {}): SharedTechEdge[] {
-	const minShared = options.minShared ?? 3;
+	const minShared = options.minShared ?? 1;
 	const maxPerNode = options.maxPerNode ?? 3;
 
-	// Tag-label sets per project, in registry order.
-	const tagSets = projects.map((p) => ({
-		slug: p.slug,
-		labels: new Set(p.tags.map((t) => t.label))
-	}));
+	const edges: SharedTechEdge[] = [];
 
-	// All qualifying pairs with their overlap weight.
-	const candidates: SharedTechEdge[] = [];
-	for (let i = 0; i < tagSets.length; i++) {
-		for (let j = i + 1; j < tagSets.length; j++) {
-			let weight = 0;
-			for (const label of tagSets[i].labels) {
-				if (tagSets[j].labels.has(label)) weight++;
+	for (const category of EDGE_CATEGORIES) {
+		// Tag-label sets restricted to this category, per project, in registry order.
+		const tagSets = projects.map((p) => ({
+			slug: p.slug,
+			labels: new Set(p.tags.filter((t) => t.kind === category).map((t) => t.label))
+		}));
+
+		// All qualifying pairs with their within-category overlap weight.
+		const candidates: SharedTechEdge[] = [];
+		for (let i = 0; i < tagSets.length; i++) {
+			if (tagSets[i].labels.size === 0) continue;
+			for (let j = i + 1; j < tagSets.length; j++) {
+				let weight = 0;
+				for (const label of tagSets[i].labels) {
+					if (tagSets[j].labels.has(label)) weight++;
+				}
+				if (weight >= minShared) {
+					const [source, target] = [tagSets[i].slug, tagSets[j].slug].sort() as [
+						ProjectSlug,
+						ProjectSlug
+					];
+					candidates.push({ source, target, category, weight });
+				}
 			}
-			if (weight >= minShared) {
-				const [source, target] = [tagSets[i].slug, tagSets[j].slug].sort() as [
-					ProjectSlug,
-					ProjectSlug
-				];
-				candidates.push({ source, target, weight });
-			}
+		}
+
+		// Strongest first; ties broken by slug for stable output.
+		candidates.sort(
+			(a, b) =>
+				b.weight - a.weight || a.source.localeCompare(b.source) || a.target.localeCompare(b.target)
+		);
+
+		// Greedily keep an edge only while both endpoints are below the cap for
+		// this category, so common categories (framework, runtime) surface their
+		// best links without dominating the picture.
+		const degree = new Map<ProjectSlug, number>();
+		for (const edge of candidates) {
+			const ds = degree.get(edge.source) ?? 0;
+			const dt = degree.get(edge.target) ?? 0;
+			if (ds >= maxPerNode || dt >= maxPerNode) continue;
+			degree.set(edge.source, ds + 1);
+			degree.set(edge.target, dt + 1);
+			edges.push(edge);
 		}
 	}
 
-	// Strongest first; ties broken by slug for stable output.
-	candidates.sort(
-		(a, b) =>
-			b.weight - a.weight || a.source.localeCompare(b.source) || a.target.localeCompare(b.target)
-	);
+	return edges;
+}
 
-	// Greedily keep an edge only while both endpoints are below the cap, so the
-	// densest hubs surface their best links without dominating the picture.
-	const degree = new Map<ProjectSlug, number>();
-	const edges: SharedTechEdge[] = [];
-	for (const edge of candidates) {
-		const ds = degree.get(edge.source) ?? 0;
-		const dt = degree.get(edge.target) ?? 0;
-		if (ds >= maxPerNode || dt >= maxPerNode) continue;
-		degree.set(edge.source, ds + 1);
-		degree.set(edge.target, dt + 1);
-		edges.push(edge);
+// ---------------------------------------------------------------------------
+// Map label selection
+// ---------------------------------------------------------------------------
+
+/** How many project labels the map shows by default (the rest reveal on hover). */
+export const MAP_LABEL_COUNT = 10;
+
+/**
+ * Selects which projects get a standing label on the map. Rather than ranking
+ * on a single metric (which a few hubs would dominate), it rotates through four
+ * importance axes and shifts the front of each into a set in turn, so the names
+ * shown are a *diverse* slice: the freshest, the largest contributions, the
+ * biggest codebases, and the most recently active.
+ *
+ * Axes (all best-first; missing values sort last, ties broken by slug so the
+ * result stays deterministic even when an axis is unpopulated):
+ *   1. most recent commit            (`lastCommit`)
+ *   2. most code contributed by me   (`metrics.linesAdded`)
+ *   3. largest overall codebase      (`metrics.linesOfCode`)
+ *   4. most of my commits, last 4wks (`metrics.commitsRecent`)
+ *
+ * Two of these axes are only populated once the drift pipeline syncs; until
+ * then they contribute ties and selection leans on the populated axes.
+ */
+export function selectLabelledSlugs(
+	projectList: Project[] = projects,
+	count = MAP_LABEL_COUNT
+): Set<ProjectSlug> {
+	const bySlug = (a: Project, b: Project): number => a.slug.localeCompare(b.slug);
+	const byDesc =
+		(value: (p: Project) => number | undefined) =>
+		(a: Project, b: Project): number =>
+			(value(b) ?? -Infinity) - (value(a) ?? -Infinity) || bySlug(a, b);
+
+	const commitTime = (p: Project): number | undefined =>
+		p.lastCommit ? Date.parse(p.lastCommit) : undefined;
+
+	const queues: Project[][] = [
+		[...projectList].sort(byDesc(commitTime)),
+		[...projectList].sort(byDesc((p) => p.metrics?.linesAdded)),
+		[...projectList].sort(byDesc((p) => p.metrics?.linesOfCode)),
+		[...projectList].sort(byDesc((p) => p.metrics?.commitsRecent))
+	];
+
+	const selected = new Set<ProjectSlug>();
+	while (selected.size < count) {
+		let advanced = false;
+		for (const queue of queues) {
+			const next = queue.shift();
+			if (!next) continue;
+			selected.add(next.slug);
+			advanced = true;
+			if (selected.size >= count) break;
+		}
+		if (!advanced) break; // every queue is drained
 	}
 
-	return edges;
+	return selected;
 }
 
 // ---------------------------------------------------------------------------
@@ -329,7 +400,9 @@ export function computeForceLayout(
 			source: edge.source,
 			target: edge.target,
 			distance: 180,
-			strength: Math.min(0.18, 0.04 * edge.weight)
+			// Gentler than the curated edges, and capped, so the now-denser
+			// per-category web nudges clustering without collapsing the graph.
+			strength: Math.min(0.12, 0.03 * edge.weight)
 		}))
 	];
 
