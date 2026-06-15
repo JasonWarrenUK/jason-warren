@@ -125,7 +125,7 @@
 	.threads__pair {
 		display: grid;
 		grid-template-columns: 1fr auto 1fr;
-		align-items: center;
+		align-items: stretch;
 		gap: var(--space-4);
 	}
 
@@ -145,6 +145,7 @@
 		height: 1.5rem;
 		color: var(--color-text-muted);
 		flex-shrink: 0;
+		align-self: center;
 	}
 
 	.threads__card {
@@ -204,11 +205,6 @@
 		font-size: var(--text-sm);
 		color: var(--color-text-subtle);
 		line-height: 1.5;
-		display: -webkit-box;
-		-webkit-line-clamp: 2;
-		line-clamp: 2;
-		-webkit-box-orient: vertical;
-		overflow: hidden;
 	}
 
 	.threads__note {
