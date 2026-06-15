@@ -152,7 +152,10 @@ function scanForGitRepos(dir, depth = 0) {
 
 scanForGitRepos(codeRoot);
 
-// Exclude the portfolio repo itself, non-project repos, and known noise
+// Exclude the portfolio repo itself, non-project repos, and known noise.
+// Also exclude sub-repos that belong to split-product portfolio entries
+// (tracked via sources.local.json pointing at the lead sub-repo) and
+// companion repos that are deliberately not tracked separately.
 const EXCLUDED = new Set([
 	'portfolio',        // this repo
 	'jason-warren',     // this repo (alternate name)
@@ -163,6 +166,19 @@ const EXCLUDED = new Set([
 	'seam',                     // Jaz's project, not Jason's
 	'terminal-config',          // dotfiles, not a portfolio project
 	'yalla-gym',                // not a Jason project
+	// Beacons — tracked under slug 'beacons' via beacons-backend
+	'beacons-backend',
+	'beacons-frontend-v2',
+	// Craft and Graft — tracked under slug 'craft-and-graft' via craft-and-graft-front
+	'craft-and-graft-front',
+	'craft-and-graft-api',
+	// Sakura — tracked under slug 'sakura' via sakura-api
+	'sakura-api',
+	'sakura-front',
+	// Mood Time — deliberate exclusion (Jason ~25%, no clear ownership)
+	'mood-time-api',
+	'mood-time-front',
+	'mood-time',
 ]);
 const filteredNew = newRepos.filter((r) => !EXCLUDED.has(r.name) && !EXCLUDED.has(r.normalised));
 

@@ -144,9 +144,29 @@
 			"lastCommit": "2025-11-01"
 		},
 		"wyrd-tui": {
-			"head": "cb2b714",
-			"commits": 279,
-			"lastCommit": "2026-06-14"
+			"head": "d560f68",
+			"commits": 281,
+			"lastCommit": "2026-06-15"
+		},
+		"beacons": {
+			"head": "0102f4a",
+			"commits": 175,
+			"lastCommit": "2025-11-06"
+		},
+		"craft-and-graft": {
+			"head": "6c50037",
+			"commits": 92,
+			"lastCommit": "2024-10-31"
+		},
+		"sakura": {
+			"head": "41e03f7",
+			"commits": 159,
+			"lastCommit": "2024-11-21"
+		},
+		"rimewarden": {
+			"head": "7f4aa57",
+			"commits": 2,
+			"lastCommit": "2026-01-24"
 		}
 	}
 }
