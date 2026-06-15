@@ -157,15 +157,15 @@ scanForGitRepos(codeRoot);
 // (tracked via sources.local.json pointing at the lead sub-repo) and
 // companion repos that are deliberately not tracked separately.
 const EXCLUDED = new Set([
-	'portfolio',        // this repo
-	'jason-warren',     // this repo (alternate name)
+	'portfolio', // this repo
+	'jason-warren', // this repo (alternate name)
 	'node_modules',
 	'.git',
-	'JasonWarrenUK',            // GitHub profile README repo
-	'JasonWarrenUK.github.io',  // GitHub Pages site (not a project)
-	'seam',                     // Jaz's project, not Jason's
-	'terminal-config',          // dotfiles, not a portfolio project
-	'yalla-gym',                // not a Jason project
+	'JasonWarrenUK', // GitHub profile README repo
+	'JasonWarrenUK.github.io', // GitHub Pages site (not a project)
+	'seam', // Jaz's project, not Jason's
+	'terminal-config', // dotfiles, not a portfolio project
+	'yalla-gym', // not a Jason project
 	// Beacons — tracked under slug 'beacons' via beacons-backend
 	'beacons-backend',
 	'beacons-frontend-v2',
@@ -178,7 +178,7 @@ const EXCLUDED = new Set([
 	// Mood Time — deliberate exclusion (Jason ~25%, no clear ownership)
 	'mood-time-api',
 	'mood-time-front',
-	'mood-time',
+	'mood-time'
 ]);
 const filteredNew = newRepos.filter((r) => !EXCLUDED.has(r.name) && !EXCLUDED.has(r.normalised));
 
@@ -194,17 +194,23 @@ const RED = '\x1b[31m';
 const CYAN = '\x1b[36m';
 const DIM = '\x1b[2m';
 
-console.log(`\n${BOLD}Portfolio source drift report${RESET} ${DIM}(${manifest.lastSyncedAt})${RESET}\n`);
+console.log(
+	`\n${BOLD}Portfolio source drift report${RESET} ${DIM}(${manifest.lastSyncedAt})${RESET}\n`
+);
 
 if (changed.length === 0 && filteredNew.length === 0 && missing.length === 0) {
-	console.log(`${GREEN}All ${Object.keys(manifest.sources).length} tracked repos are up to date. No new repos detected.${RESET}`);
+	console.log(
+		`${GREEN}All ${Object.keys(manifest.sources).length} tracked repos are up to date. No new repos detected.${RESET}`
+	);
 } else {
 	if (changed.length > 0) {
 		console.log(`${YELLOW}${BOLD}Changed repos (${changed.length}):${RESET}`);
 		for (const r of changed) {
 			const dir = r.delta > 0 ? '+' : '';
 			console.log(`  ${CYAN}${r.slug}${RESET}`);
-			console.log(`    ${r.from.head} → ${r.to.head}  (${dir}${r.delta} commits, last: ${r.to.lastCommit})`);
+			console.log(
+				`    ${r.from.head} → ${r.to.head}  (${dir}${r.delta} commits, last: ${r.to.lastCommit})`
+			);
 		}
 		console.log();
 	}
@@ -226,7 +232,7 @@ if (changed.length === 0 && filteredNew.length === 0 && missing.length === 0) {
 	}
 }
 
-if (UPDATE_MODE && (changed.length > 0)) {
+if (UPDATE_MODE && changed.length > 0) {
 	console.log('Updating sources.json with current fingerprints...');
 	for (const r of changed) {
 		manifest.sources[r.slug] = r.to;
