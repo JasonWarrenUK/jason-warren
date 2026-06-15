@@ -5,7 +5,7 @@ export const babyNames: Project = {
 	name: 'Baby Names',
 	tagline: 'A small Svelte app for browsing and shortlisting baby names.',
 	description: '[Placeholder] A simple, well-built SvelteKit application.',
-	kind: 'app',
+	kind: 'toy',
 	contribution: { role: 'solo' },
 	status: 'finished',
 	repoUrl: 'https://github.com/JasonWarrenUK/baby-names',

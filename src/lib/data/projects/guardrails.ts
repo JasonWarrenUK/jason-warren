@@ -7,7 +7,7 @@ export const guardrails: Project = {
 		'A PII-redaction guardrail service: prompts pass through a browser extension and a FastAPI/Presidio NER pipeline before reaching Claude or OpenAI, with an org-level admin panel.',
 	description:
 		'[Placeholder] Guardrails is a polyglot microservice product: a Chrome MV3 extension intercepts prompts, a FastAPI service running Microsoft Presidio and Flair NER scans for 10 PII entity types and redacts them, and an Express server handles auth and org management. My contributions focused on making the PII detection smarter and extending the provider coverage.',
-	kind: 'app',
+	kind: 'tool',
 	contribution: {
 		role: 'collaborator',
 		contributionNote:

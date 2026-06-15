@@ -9,7 +9,7 @@ export const cogni: Project = {
 		'[Placeholder] Cogni came out of noticing that most "what methodology should I use?" advice ignores how the person actually thinks. The 17 compasses cover things like risk tolerance, collaboration style, and abstraction preference. Constraint propagation crosshatches quadrant options that would contradict positions you have already set. The output is a portable Markdown report explaining why each methodology fits or causes friction: useful in 1:1s, job evaluations, and retrospectives.',
 	kind: 'app',
 	contribution: { role: 'solo' },
-	status: 'wip',
+	status: 'prototype',
 	repoUrl: 'https://github.com/JasonWarrenUK/cogni',
 	highlights: [
 		'17 two-axis compasses organised in three tiers; constraint propagation crosshatches quadrants that would contradict already-set positions.',

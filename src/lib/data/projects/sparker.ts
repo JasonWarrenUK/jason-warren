@@ -9,7 +9,7 @@ export const sparker: Project = {
 		'[Placeholder] Sparker is a graph-native tool for SEN facilitators. Rather than forcing student observations into rigid table rows, the data model treats each observation as a node connected to a student, a field definition, and a value. Finding correlations ("these two fields co-occur 80% of the time for this student") is a natural Cypher traversal rather than a complex SQL join. The result is a tool that grows smarter the more you use it.',
 	kind: 'app',
 	contribution: { role: 'solo' },
-	status: 'wip',
+	status: 'prototype',
 	repoUrl: 'https://github.com/JasonWarrenUK/sparker',
 	highlights: [
 		'Graph-native data model: (Student)<-[:ABOUT]-(Observation)-[:HAS_FIELD {value}]->(FieldDefinition). Correlation discovery as a Cypher traversal.',

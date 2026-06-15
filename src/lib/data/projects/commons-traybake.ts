@@ -7,7 +7,7 @@ export const commonsTraybake: Project = {
 		'A comparative RAG experiment demonstrating that "ethics-neutral" data-processing choices are not neutral, by applying four chunking strategies to UK Parliament (Hansard) data and surfacing what each retrieves.',
 	description:
 		'[Placeholder] Commons Traybake makes an abstract argument tangible: show the same parliamentary debate through four different chunking lenses and let the divergence analysis speak for itself. Only 8-25% of retrieved chunks overlap between strategies, which is the point. The UI makes this visible, not just auditable.',
-	kind: 'app',
+	kind: 'toy',
 	contribution: {
 		role: 'lead',
 		contributionNote:

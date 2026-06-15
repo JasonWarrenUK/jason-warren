@@ -9,7 +9,7 @@ export const rhea: Project = {
 		'[Placeholder] Rhea is the tool that powers curriculum planning at Founders and Coders. It chains together named sub-workflows (Themis for courses, Metis for modules, Theia for import/export) through a shared generation engine backed by the Anthropic SDK and LangChain. Every generated module carries a changelog, confidence scoring, and auto-cited research sources so human reviewers know exactly what to trust.',
 	kind: 'app',
 	contribution: { role: 'solo' },
-	status: 'wip',
+	status: 'prototype',
 	repoUrl: 'https://github.com/JasonWarrenUK/rhea',
 	highlights: [
 		'Named sub-workflows (Themis/Metis/Theia) share a common generation engine with the Anthropic SDK and LangChain, making each workflow independently maintainable.',

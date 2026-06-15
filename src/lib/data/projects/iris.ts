@@ -7,7 +7,7 @@ export const iris: Project = {
 		'A three-interface toolkit that converts apprenticeship learner data from CSV into ESFA-compliant ILR XML, with semantic XSD validation.',
 	description:
 		'[Placeholder] Iris solves a real pain point at Founders and Coders: turning messy CSV exports from student management systems into the strict XML format the ESFA requires for funding submissions. The same TypeScript core drives a full-screen TUI, direct CLI commands, and a native desktop app built with Tauri. Write the validation logic once, ship three interfaces.',
-	kind: 'app',
+	kind: 'tui',
 	contribution: { role: 'solo' },
 	status: 'finished',
 	repoUrl: 'https://github.com/JasonWarrenUK/iris',

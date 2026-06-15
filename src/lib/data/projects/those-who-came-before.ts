@@ -9,7 +9,7 @@ export const thoseWhoCameBefore: Project = {
 		'[Placeholder] Those Who Came Before runs the full SvelteKit toolchain through Deno rather than Node, deployed to Deno Deploy. The procedural item generator in the backlog uses grammar-based generation with typed definitions for parts, conditions, and materials: a richer system staged for integration into the core game loop.',
 	kind: 'game',
 	contribution: { role: 'solo' },
-	status: 'wip',
+	status: 'prototype',
 	repoUrl: 'https://github.com/JasonWarrenUK/those-who-came-before',
 	highlights: [
 		'Runs SvelteKit through Deno (not Node), deployed to Deno Deploy via @deno/svelte-adapter.',

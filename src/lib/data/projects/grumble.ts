@@ -7,7 +7,7 @@ export const grumble: Project = {
 		'A Gin Rummy scorer with hand-by-hand deadwood calculation, running totals, line and game bonuses, and multi-game match history.',
 	description:
 		'[Placeholder] Grumble follows a strict separation between pure scoring logic (fully tested, framework-free) and the SvelteKit presentation layer. The scoring rules cover the full Gin Rummy ruleset: deadwood, gin bonuses, big gin, undercut, line bonuses, and game bonuses across multi-game matches.',
-	kind: 'app',
+	kind: 'tool',
 	contribution: { role: 'solo' },
 	status: 'finished',
 	repoUrl: 'https://github.com/JasonWarrenUK/grumble',
