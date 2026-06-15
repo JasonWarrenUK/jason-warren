@@ -52,7 +52,9 @@
 						{/if}
 						{#if project.metrics.linesAdded != null}
 							<div class="flagship__metric">
-								<dd class="flagship__metric-value">+{project.metrics.linesAdded.toLocaleString()}</dd>
+								<dd class="flagship__metric-value">
+									+{project.metrics.linesAdded.toLocaleString()}
+								</dd>
 								<dt class="flagship__metric-label">lines added</dt>
 							</div>
 						{/if}
@@ -61,9 +63,7 @@
 
 				<div class="flagship__card-footer">
 					<TechTagList tags={project.tags} limit={4} />
-					<a href="{base}/projects/{project.slug}" class="flagship__cta">
-						Read case study →
-					</a>
+					<a href="{base}/projects/{project.slug}" class="flagship__cta"> Read case study → </a>
 				</div>
 			</article>
 		{/each}

@@ -2,6 +2,7 @@
 	import { base } from '$app/paths';
 	import '../app.css';
 	import ThemeToggle from '$lib/components/ui/ThemeToggle.svelte';
+	import { BLUESKY_URL } from '$lib/config.js';
 
 	let { children } = $props();
 </script>
@@ -9,8 +10,8 @@
 <svelte:head>
 	<link rel="icon" href="{base}/favicon.png" />
 	<meta name="author" content="Jason Warren" />
-	<meta property="og:type" content="website" />
 	<meta property="og:site_name" content="Jason Warren" />
+	<link rel="me" href={BLUESKY_URL} />
 </svelte:head>
 
 <a href="#main-content" class="skip-link">Skip to content</a>
@@ -57,6 +58,9 @@
 				rel="noopener noreferrer"
 			>
 				GitHub
+			</a>. Find me on
+			<a href={BLUESKY_URL} class="site-footer__link" target="_blank" rel="noopener noreferrer me">
+				Bluesky
 			</a>.
 		</p>
 	</div>

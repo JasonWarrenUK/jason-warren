@@ -2,16 +2,25 @@
 	import HeroBreadth from '$lib/components/hero/HeroBreadth.svelte';
 	import FlagshipDeepDive from '$lib/components/hero/FlagshipDeepDive.svelte';
 	import EngineThread from '$lib/components/thread/EngineThread.svelte';
+	import Seo from '$lib/components/seo/Seo.svelte';
+	import { AUTHOR, SITE_URL, GITHUB_URL, BLUESKY_URL, DEFAULT_DESCRIPTION } from '$lib/config.js';
 
 	let { data } = $props();
+
+	const personLd = JSON.stringify({
+		'@context': 'https://schema.org',
+		'@type': 'Person',
+		name: AUTHOR,
+		url: SITE_URL,
+		jobTitle: 'Full-stack developer',
+		sameAs: [GITHUB_URL, BLUESKY_URL]
+	});
 </script>
 
+<Seo title="Jason Warren, Developer" description={DEFAULT_DESCRIPTION} />
+
 <svelte:head>
-	<title>Jason Warren, Developer</title>
-	<meta
-		name="description"
-		content="Jason Warren is a full-stack developer with a wide toolkit: TypeScript, Go, Rust, SvelteKit, Tauri, Neo4j, and more."
-	/>
+	{@html `<script type="application/ld+json">${personLd}</script>`}
 </svelte:head>
 
 <div class="page">
@@ -20,8 +29,8 @@
 		<p class="page__role">Full-stack developer</p>
 		<p class="page__bio">
 			I build things across the stack: terminal tools in Go, native desktop apps in Tauri,
-			graph-native data models in Neo4j, interactive fiction engines in TypeScript.
-			The range is deliberate. Different problems call for different tools.
+			graph-native data models in Neo4j, interactive fiction engines in TypeScript. The range is
+			deliberate. Different problems call for different tools.
 		</p>
 	</header>
 

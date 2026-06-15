@@ -8,13 +8,36 @@
 	import ContributionNote from '$lib/components/project/ContributionNote.svelte';
 	import RelatedProjects from '$lib/components/project/RelatedProjects.svelte';
 	import ExternalLink from '$lib/components/ui/ExternalLink.svelte';
+	import Seo from '$lib/components/seo/Seo.svelte';
+	import { AUTHOR, SITE_URL } from '$lib/config.js';
 
 	let { data } = $props();
+
+	const projectLd = $derived(
+		JSON.stringify({
+			'@context': 'https://schema.org',
+			'@type': 'SoftwareSourceCode',
+			name: data.project.name,
+			description: data.project.tagline,
+			codeRepository: data.project.repoUrl,
+			url: `${SITE_URL}/projects/${data.project.slug}`,
+			author: { '@type': 'Person', name: AUTHOR },
+			programmingLanguage: data.project.tags
+				.filter((tag) => tag.kind === 'language')
+				.map((tag) => tag.label)
+		})
+	);
 </script>
 
+<Seo
+	title="{data.project.name} | Jason Warren"
+	description={data.project.tagline}
+	image="{SITE_URL}/og/{data.project.slug}.png"
+	type="article"
+/>
+
 <svelte:head>
-	<title>{data.project.name} | Jason Warren</title>
-	<meta name="description" content={data.project.tagline} />
+	{@html `<script type="application/ld+json">${projectLd}</script>`}
 </svelte:head>
 
 <div class="page">

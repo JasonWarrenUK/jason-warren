@@ -77,7 +77,15 @@
 		runtime: 'Runtime'
 	};
 
-	const tagKindOrder: TagKind[] = ['language', 'framework', 'database', 'ai', 'concept', 'tool', 'runtime'];
+	const tagKindOrder: TagKind[] = [
+		'language',
+		'framework',
+		'database',
+		'ai',
+		'concept',
+		'tool',
+		'runtime'
+	];
 </script>
 
 <div class="filter-bar" role="group" aria-label="Filter projects">
@@ -171,7 +179,9 @@
 		cursor: pointer;
 		list-style: none;
 		border-radius: var(--radius-md);
-		transition: color var(--transition-fast), background-color var(--transition-fast);
+		transition:
+			color var(--transition-fast),
+			background-color var(--transition-fast);
 		user-select: none;
 	}
 

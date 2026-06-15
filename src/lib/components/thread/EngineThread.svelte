@@ -14,8 +14,8 @@
 		<h2 class="threads__title">Libraries from the inside out</h2>
 		<p class="threads__strapline">
 			These projects started as code inside an application. When the problem turned out to be
-			general, the engine was extracted into its own library, consumed by the original app
-			and open to others.
+			general, the engine was extracted into its own library, consumed by the original app and open
+			to others.
 		</p>
 	</header>
 
@@ -29,7 +29,10 @@
 				</div>
 
 				<div class="threads__pair">
-					<a href="{base}/projects/{thread.consumer.slug}" class="threads__card threads__card--consumer">
+					<a
+						href="{base}/projects/{thread.consumer.slug}"
+						class="threads__card threads__card--consumer"
+					>
 						<span class="threads__card-kind">Application</span>
 						<span class="threads__card-name">{thread.consumer.name}</span>
 						<span class="threads__card-tagline">{thread.consumer.tagline}</span>
@@ -46,7 +49,10 @@
 						<path d="M5 12h14M12 5l7 7-7 7" />
 					</svg>
 
-					<a href="{base}/projects/{thread.library.slug}" class="threads__card threads__card--library">
+					<a
+						href="{base}/projects/{thread.library.slug}"
+						class="threads__card threads__card--library"
+					>
 						<span class="threads__card-kind">Library</span>
 						<span class="threads__card-name">{thread.library.name}</span>
 						<span class="threads__card-tagline">{thread.library.tagline}</span>

@@ -1,16 +1,14 @@
 <script lang="ts">
 	import ProjectMap from '$lib/components/graph/ProjectMap.svelte';
+	import Seo from '$lib/components/seo/Seo.svelte';
 
 	let { data } = $props();
 </script>
 
-<svelte:head>
-	<title>Project map | Jason Warren</title>
-	<meta
-		name="description"
-		content="A map of every project and the connections between them: which libraries were extracted from which applications, and what relates to what."
-	/>
-</svelte:head>
+<Seo
+	title="Project map | Jason Warren"
+	description="A map of every project and the connections between them: which libraries were extracted from which applications, and what relates to what."
+/>
 
 <div class="page">
 	<header class="page__header">

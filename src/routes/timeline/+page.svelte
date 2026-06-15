@@ -1,16 +1,14 @@
 <script lang="ts">
 	import TimelineChart from '$lib/components/graph/TimelineChart.svelte';
+	import Seo from '$lib/components/seo/Seo.svelte';
 
 	let { data } = $props();
 </script>
 
-<svelte:head>
-	<title>Timeline | Jason Warren</title>
-	<meta
-		name="description"
-		content="Every project ordered by most recent activity, with the engine-extraction lineages drawn between them: which libraries came out of which applications, and when."
-	/>
-</svelte:head>
+<Seo
+	title="Timeline | Jason Warren"
+	description="Every project ordered by most recent activity, with the engine-extraction lineages drawn between them: which libraries came out of which applications, and when."
+/>
 
 <div class="page">
 	<header class="page__header">

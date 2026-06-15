@@ -4,7 +4,14 @@
  * so they can be tested and composed freely.
  */
 
-import type { Project, ProjectRole, ProjectSlug, ProjectStatus, ProjectKind, TagKind } from './types.js';
+import type {
+	Project,
+	ProjectRole,
+	ProjectSlug,
+	ProjectStatus,
+	ProjectKind,
+	TagKind
+} from './types.js';
 import { projects } from './index.js';
 
 // ---------------------------------------------------------------------------

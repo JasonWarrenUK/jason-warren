@@ -7,6 +7,7 @@
 	import { filterProjects } from '$lib/data/queries.js';
 	import ProjectGrid from '$lib/components/project/ProjectGrid.svelte';
 	import FilterBar from '$lib/components/filter/FilterBar.svelte';
+	import Seo from '$lib/components/seo/Seo.svelte';
 
 	let { data } = $props();
 
@@ -43,13 +44,10 @@
 	}
 </script>
 
-<svelte:head>
-	<title>Projects | Jason Warren</title>
-	<meta
-		name="description"
-		content="All projects by Jason Warren: solo builds, team contributions, and the libraries extracted from both."
-	/>
-</svelte:head>
+<Seo
+	title="Projects | Jason Warren"
+	description="All projects by Jason Warren: solo builds, team contributions, and the libraries extracted from both."
+/>
 
 <div class="page">
 	<header class="page__header">
