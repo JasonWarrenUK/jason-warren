@@ -97,6 +97,8 @@ export interface Project {
 	tags: TechTag[];
 	status: ProjectStatus;
 	repoUrl: string;
+	/** URL of a companion repo (e.g. a separate frontend or backend repo for split products). */
+	secondaryRepoUrl?: string;
 	liveUrl?: string;
 	/** 3–5 technically interesting things about this project. */
 	highlights: string[];

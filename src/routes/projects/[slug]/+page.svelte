@@ -35,6 +35,9 @@
 
 		<div class="page__links">
 			<ExternalLink href={data.project.repoUrl} label="Repository" variant="repo" />
+			{#if data.project.secondaryRepoUrl}
+				<ExternalLink href={data.project.secondaryRepoUrl} label="Companion repo" variant="repo" />
+			{/if}
 			{#if data.project.liveUrl}
 				<ExternalLink href={data.project.liveUrl} label="Live site" variant="live" />
 			{/if}
