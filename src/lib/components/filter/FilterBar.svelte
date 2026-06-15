@@ -1,10 +1,20 @@
 <script lang="ts">
-	import type { ProjectRole } from '$lib/data/types.js';
+	import type { ProjectKind, ProjectRole, ProjectStatus, TagKind } from '$lib/data/types.js';
 	import FilterChip from './FilterChip.svelte';
 
 	interface Props {
-		/** All tags available across the full project list. */
-		allTags: string[];
+		/** All ProjectKind values present in the registry. */
+		kinds: ProjectKind[];
+		/** Currently active kind filter, or null. */
+		activeKind: ProjectKind | null;
+		onkind: (kind: ProjectKind | null) => void;
+		/** All ProjectStatus values present in the registry. */
+		statuses: ProjectStatus[];
+		/** Currently active status filter, or null. */
+		activeStatus: ProjectStatus | null;
+		onstatus: (status: ProjectStatus | null) => void;
+		/** Tag labels grouped by TagKind. */
+		tagsByKind: Record<TagKind, string[]>;
 		/** Currently active tag filter, or null. */
 		activeTag: string | null;
 		/** Currently active role filter, or null. */
@@ -13,7 +23,19 @@
 		onrole: (role: ProjectRole | null) => void;
 	}
 
-	let { allTags, activeTag, activeRole, ontag, onrole }: Props = $props();
+	let {
+		kinds,
+		activeKind,
+		onkind,
+		statuses,
+		activeStatus,
+		onstatus,
+		tagsByKind,
+		activeTag,
+		activeRole,
+		ontag,
+		onrole
+	}: Props = $props();
 
 	const roles: ProjectRole[] = ['solo', 'lead', 'collaborator'];
 
@@ -22,6 +44,37 @@
 		lead: 'Lead',
 		collaborator: 'Collaborator'
 	};
+
+	const kindLabels: Record<ProjectKind, string> = {
+		app: 'App',
+		game: 'Game',
+		website: 'Website',
+		toy: 'Toy',
+		library: 'Library',
+		tool: 'Tool',
+		tui: 'TUI'
+	};
+
+	/** Unified status labels — matches StatusBadge exactly. */
+	const statusLabels: Record<ProjectStatus, string> = {
+		live: 'Live',
+		wip: 'Active',
+		finished: 'Complete',
+		prototype: 'Prototype',
+		archived: 'Archived'
+	};
+
+	/** Display order for status chips. */
+	const statusOrder: ProjectStatus[] = ['live', 'wip', 'finished', 'prototype', 'archived'];
+
+	const tagKindLabels: Record<TagKind, string> = {
+		language: 'Language',
+		framework: 'Framework',
+		domain: 'Domain',
+		runtime: 'Runtime'
+	};
+
+	const tagKindOrder: TagKind[] = ['language', 'framework', 'domain', 'runtime'];
 </script>
 
 <div class="filter-bar" role="group" aria-label="Filter projects">
@@ -38,18 +91,53 @@
 		</div>
 	</div>
 
-	<div class="filter-group">
-		<span class="filter-group__label">Technology</span>
-		<div class="filter-group__chips">
-			{#each allTags as tag (tag)}
-				<FilterChip
-					label={tag}
-					active={activeTag === tag}
-					onclick={() => ontag(activeTag === tag ? null : tag)}
-				/>
-			{/each}
+	{#if kinds.length > 0}
+		<div class="filter-group">
+			<span class="filter-group__label">Type</span>
+			<div class="filter-group__chips">
+				{#each kinds.sort((a, b) => kindLabels[a].localeCompare(kindLabels[b])) as kind (kind)}
+					<FilterChip
+						label={kindLabels[kind]}
+						active={activeKind === kind}
+						onclick={() => onkind(activeKind === kind ? null : kind)}
+					/>
+				{/each}
+			</div>
 		</div>
-	</div>
+	{/if}
+
+	{#if statuses.length > 0}
+		<div class="filter-group">
+			<span class="filter-group__label">Status</span>
+			<div class="filter-group__chips">
+				{#each statusOrder.filter((s) => statuses.includes(s)) as s (s)}
+					<FilterChip
+						label={statusLabels[s]}
+						active={activeStatus === s}
+						onclick={() => onstatus(activeStatus === s ? null : s)}
+					/>
+				{/each}
+			</div>
+		</div>
+	{/if}
+
+	{#each tagKindOrder as kind (kind)}
+		{@const tags = tagsByKind[kind]}
+		{#if tags.length > 0}
+			<div class="filter-group">
+				<span class="filter-group__label">{tagKindLabels[kind]}</span>
+				<div class="filter-group__chips">
+					{#each tags as tag (tag)}
+						<FilterChip
+							label={tag}
+							active={activeTag === tag}
+							onclick={() => ontag(activeTag === tag ? null : tag)}
+						/>
+					{/each}
+				</div>
+			</div>
+		{/if}
+	{/each}
 </div>
 
 <style>

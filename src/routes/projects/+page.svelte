@@ -3,7 +3,7 @@
 	import { goto } from '$app/navigation';
 	import { base } from '$app/paths';
 	import { page } from '$app/stores';
-	import type { ProjectRole } from '$lib/data/types.js';
+	import type { ProjectKind, ProjectRole, ProjectStatus } from '$lib/data/types.js';
 	import { filterProjects } from '$lib/data/queries.js';
 	import ProjectGrid from '$lib/components/project/ProjectGrid.svelte';
 	import FilterBar from '$lib/components/filter/FilterBar.svelte';
@@ -16,11 +16,19 @@
 	const activeRole = $derived(
 		browser ? ($page.url.searchParams.get('role') as ProjectRole | null) : null
 	);
+	const activeKind = $derived(
+		browser ? ($page.url.searchParams.get('type') as ProjectKind | null) : null
+	);
+	const activeStatus = $derived(
+		browser ? ($page.url.searchParams.get('status') as ProjectStatus | null) : null
+	);
 
 	const filtered = $derived(
 		filterProjects({
 			tag: activeTag ?? undefined,
-			role: activeRole ?? undefined
+			role: activeRole ?? undefined,
+			kind: activeKind ?? undefined,
+			status: activeStatus ?? undefined
 		})
 	);
 
@@ -54,7 +62,13 @@
 
 	<aside class="page__filters">
 		<FilterBar
-			allTags={data.allTags}
+			kinds={data.kinds}
+			{activeKind}
+			onkind={(kind) => setParam('type', kind)}
+			statuses={data.statuses}
+			{activeStatus}
+			onstatus={(s) => setParam('status', s)}
+			tagsByKind={data.tagsByKind}
 			{activeTag}
 			{activeRole}
 			ontag={(tag) => setParam('tag', tag)}

@@ -4,7 +4,7 @@
  * so they can be tested and composed freely.
  */
 
-import type { Project, ProjectRole, ProjectSlug, ProjectStatus, ProjectKind } from './types.js';
+import type { Project, ProjectRole, ProjectSlug, ProjectStatus, ProjectKind, TagKind } from './types.js';
 import { projects } from './index.js';
 
 // ---------------------------------------------------------------------------
@@ -70,6 +70,39 @@ export function getAllTags(): string[] {
 		}
 	}
 	return [...tags].sort();
+}
+
+/**
+ * All unique tag labels grouped by TagKind, each group sorted alphabetically.
+ * Key order: language → framework → domain → runtime.
+ */
+export function getTagsByKind(): Record<TagKind, string[]> {
+	const buckets: Record<TagKind, Set<string>> = {
+		language: new Set(),
+		framework: new Set(),
+		domain: new Set(),
+		runtime: new Set()
+	};
+	for (const project of projects) {
+		for (const tag of project.tags) {
+			buckets[tag.kind].add(tag.label);
+		}
+	}
+	return {
+		language: [...buckets.language].sort(),
+		framework: [...buckets.framework].sort(),
+		domain: [...buckets.domain].sort(),
+		runtime: [...buckets.runtime].sort()
+	};
+}
+
+/** All unique ProjectKind values present in the registry. */
+export function getAllKinds(): ProjectKind[] {
+	const kinds = new Set<ProjectKind>();
+	for (const project of projects) {
+		kinds.add(project.kind);
+	}
+	return [...kinds];
 }
 
 /** All unique roles present in the registry. */
