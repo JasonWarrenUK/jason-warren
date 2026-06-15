@@ -65,9 +65,7 @@
 		<aside class="page__aside">
 			<ContributionNote contribution={data.project.contribution} />
 
-			{#if data.project.relationships.length > 0}
-				<RelatedProjects relationships={data.project.relationships} />
-			{/if}
+			<RelatedProjects slug={data.project.slug} />
 		</aside>
 	</div>
 </div>

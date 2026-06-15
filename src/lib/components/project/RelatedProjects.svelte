@@ -1,42 +1,54 @@
 <script lang="ts">
 	import { base } from '$app/paths';
-	import type { ProjectRelationship } from '$lib/data/types.js';
+	import type { ProjectSlug } from '$lib/data/types.js';
 	import { getBySlug } from '$lib/data/queries.js';
+	import { getNeighbours } from '$lib/data/graph.js';
+	import NeighbourhoodGraph from '$lib/components/graph/NeighbourhoodGraph.svelte';
 
 	interface Props {
-		relationships: ProjectRelationship[];
+		slug: ProjectSlug;
 	}
 
-	let { relationships }: Props = $props();
+	let { slug }: Props = $props();
 
-	const relatedWithData = $derived(
-		relationships
-			.map((rel) => {
-				const target = getBySlug(rel.target);
-				return target ? { rel, target } : null;
-			})
-			.filter((r): r is NonNullable<typeof r> => r !== null)
-	);
+	const project = $derived(getBySlug(slug));
+	const neighbours = $derived(getNeighbours(slug));
 
-	const kindLabels: Record<string, string> = {
-		'extracted-from': 'Extracted into',
-		powers: 'Powers',
-		related: 'Related project'
-	};
+	/**
+	 * Label phrased from the current project's point of view. An outgoing
+	 * extraction edge means this project is the library powering another; an
+	 * incoming one means this project is the application a library was pulled from.
+	 */
+	function label(kind: 'extraction' | 'related', direction: 'outgoing' | 'incoming'): string {
+		if (kind === 'related') return 'Related project';
+		return direction === 'outgoing' ? 'Powers' : 'Extracted into';
+	}
 </script>
 
-{#if relatedWithData.length > 0}
+{#if project && neighbours.length > 0}
 	<section class="related" aria-label="Related projects">
-		<h2 class="related__heading">Related projects</h2>
+		<h2 class="related__heading">Connections</h2>
+
+		<NeighbourhoodGraph
+			centre={{ name: project.name, status: project.status }}
+			neighbours={neighbours.map((n) => ({
+				slug: n.project.slug,
+				name: n.project.name,
+				status: n.project.status,
+				kind: n.kind,
+				direction: n.direction
+			}))}
+		/>
+
 		<ul class="related__list">
-			{#each relatedWithData as { rel, target } (rel.target)}
+			{#each neighbours as neighbour (neighbour.project.slug)}
 				<li class="related__item">
-					<span class="related__kind">{kindLabels[rel.kind] ?? rel.kind}</span>
-					<a href="{base}/projects/{target.slug}" class="related__link">
-						{target.name}
+					<span class="related__kind">{label(neighbour.kind, neighbour.direction)}</span>
+					<a href="{base}/projects/{neighbour.project.slug}" class="related__link">
+						{neighbour.project.name}
 					</a>
-					{#if rel.note}
-						<span class="related__note">{rel.note}</span>
+					{#if neighbour.note}
+						<span class="related__note">{neighbour.note}</span>
 					{/if}
 				</li>
 			{/each}

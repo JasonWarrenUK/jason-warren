@@ -30,6 +30,9 @@
 				<a href="{base}/map" class="site-nav__link">Map</a>
 			</li>
 			<li>
+				<a href="{base}/timeline" class="site-nav__link">Timeline</a>
+			</li>
+			<li>
 				<a href="{base}/about" class="site-nav__link">About</a>
 			</li>
 			<li>
