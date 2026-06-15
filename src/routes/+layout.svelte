@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { base } from '$app/paths';
 	import '../app.css';
+	import ThemeToggle from '$lib/components/ui/ThemeToggle.svelte';
 
 	let { children } = $props();
 </script>
@@ -27,6 +28,9 @@
 			</li>
 			<li>
 				<a href="{base}/about" class="site-nav__link">About</a>
+			</li>
+			<li>
+				<ThemeToggle />
 			</li>
 		</ul>
 	</nav>

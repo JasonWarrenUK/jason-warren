@@ -4,6 +4,22 @@
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
 		<meta name="color-scheme" content="light dark" />
+		<!--
+			No-flash theme script. Runs synchronously before first paint.
+			Reads localStorage.theme and sets data-theme on <html> immediately
+			so the CSS [data-theme='dark'] rule takes effect without a flash.
+			If no preference is stored, the prefers-color-scheme media query governs.
+		-->
+		<script>
+			(function () {
+				try {
+					var t = localStorage.getItem('theme');
+					if (t === 'dark' || t === 'light') {
+						document.documentElement.dataset.theme = t;
+					}
+				} catch (_) {}
+			})();
+		</script>
 		%sveltekit.head%
 	</head>
 	<body data-sveltekit-preload-data="hover">

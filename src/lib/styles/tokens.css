@@ -46,6 +46,10 @@
 	--color-archived-bg: var(--color-gray-1);
 	--color-archived-text: var(--color-gray-6);
 
+	--color-prototype: var(--color-violet-4);
+	--color-prototype-bg: var(--color-violet-1);
+	--color-prototype-text: var(--color-violet-6);
+
 	/* --- Role colours --- */
 	--color-solo: var(--color-azure-4);
 	--color-solo-bg: var(--color-azure-1);
@@ -120,4 +124,125 @@
 	--transition-fast: 120ms ease;
 	--transition-base: 200ms ease;
 	--transition-slow: 350ms ease;
+}
+
+/*
+ * Dark theme — overrides semantic aliases only; never changes RC vars.
+ * Two rules for the same token set:
+ *   1. :root[data-theme='dark']      — explicit override via ThemeToggle
+ *   2. @media prefers dark + :not()  — auto from OS when not overridden to light
+ */
+
+:root[data-theme='dark'] {
+	/* --- Surface and foreground --- */
+	--color-surface: #1a1b1e;
+	--color-surface-raised: #25262b;
+	--color-surface-sunken: #141517;
+	--color-border: var(--color-gray-5);
+	--color-border-strong: var(--color-gray-4);
+
+	--color-text: var(--color-gray-1);
+	--color-text-subtle: var(--color-gray-3);
+	--color-text-muted: var(--color-gray-4);
+
+	/* --- Primary (azure) --- */
+	--color-primary: var(--color-azure-3);
+	--color-primary-light: var(--color-azure-5);
+	--color-primary-bg: #1c2333;
+	--color-primary-text: var(--color-azure-2);
+
+	/* --- Accent (jade) --- */
+	--color-accent: var(--color-jade-3);
+	--color-accent-light: var(--color-jade-5);
+	--color-accent-bg: #162820;
+	--color-accent-text: var(--color-jade-2);
+
+	/* --- Status colours --- */
+	--color-live-bg: #16281e;
+	--color-live-text: var(--color-jade-2);
+
+	--color-wip-bg: #2a2010;
+	--color-wip-text: var(--color-amber-2);
+
+	--color-finished-bg: #151e33;
+	--color-finished-text: var(--color-blue-2);
+
+	--color-prototype-bg: #221a33;
+	--color-prototype-text: var(--color-violet-2);
+
+	--color-archived-bg: #1e1e1e;
+	--color-archived-text: var(--color-gray-3);
+
+	/* --- Role colours --- */
+	--color-solo-bg: #1c2333;
+	--color-solo-text: var(--color-azure-2);
+
+	--color-lead-bg: #221a33;
+	--color-lead-text: var(--color-violet-2);
+
+	--color-collaborator-bg: #142833;
+	--color-collaborator-text: var(--color-cyan-2);
+
+	/* --- Shadows --- */
+	--shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.3);
+	--shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.4), 0 2px 4px -2px rgb(0 0 0 / 0.3);
+	--shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.4), 0 4px 6px -4px rgb(0 0 0 / 0.3);
+}
+
+@media (prefers-color-scheme: dark) {
+	:root:not([data-theme='light']) {
+		/* --- Surface and foreground --- */
+		--color-surface: #1a1b1e;
+		--color-surface-raised: #25262b;
+		--color-surface-sunken: #141517;
+		--color-border: var(--color-gray-5);
+		--color-border-strong: var(--color-gray-4);
+
+		--color-text: var(--color-gray-1);
+		--color-text-subtle: var(--color-gray-3);
+		--color-text-muted: var(--color-gray-4);
+
+		/* --- Primary (azure) --- */
+		--color-primary: var(--color-azure-3);
+		--color-primary-light: var(--color-azure-5);
+		--color-primary-bg: #1c2333;
+		--color-primary-text: var(--color-azure-2);
+
+		/* --- Accent (jade) --- */
+		--color-accent: var(--color-jade-3);
+		--color-accent-light: var(--color-jade-5);
+		--color-accent-bg: #162820;
+		--color-accent-text: var(--color-jade-2);
+
+		/* --- Status colours --- */
+		--color-live-bg: #16281e;
+		--color-live-text: var(--color-jade-2);
+
+		--color-wip-bg: #2a2010;
+		--color-wip-text: var(--color-amber-2);
+
+		--color-finished-bg: #151e33;
+		--color-finished-text: var(--color-blue-2);
+
+		--color-prototype-bg: #221a33;
+		--color-prototype-text: var(--color-violet-2);
+
+		--color-archived-bg: #1e1e1e;
+		--color-archived-text: var(--color-gray-3);
+
+		/* --- Role colours --- */
+		--color-solo-bg: #1c2333;
+		--color-solo-text: var(--color-azure-2);
+
+		--color-lead-bg: #221a33;
+		--color-lead-text: var(--color-violet-2);
+
+		--color-collaborator-bg: #142833;
+		--color-collaborator-text: var(--color-cyan-2);
+
+		/* --- Shadows --- */
+		--shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.3);
+		--shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.4), 0 2px 4px -2px rgb(0 0 0 / 0.3);
+		--shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.4), 0 4px 6px -4px rgb(0 0 0 / 0.3);
+	}
 }
