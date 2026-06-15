@@ -23,8 +23,9 @@ export const topGirls: Project = {
 	tags: [
 		{ label: 'TypeScript', kind: 'language' },
 		{ label: 'Svelte 5', kind: 'framework' },
-		{ label: 'Vite', kind: 'runtime' },
-		{ label: 'Bun', kind: 'runtime' }
+		{ label: 'Vite', kind: 'tool' },
+		{ label: 'Bun', kind: 'runtime' },
+		{ label: 'Document / JSON', kind: 'data' }
 	],
 	lastCommit: '2026-06-14',
 	metrics: {

@@ -28,9 +28,11 @@ export const riffle: Project = {
 	featured: false,
 	tags: [
 		{ label: 'TypeScript', kind: 'language' },
+		{ label: 'Node.js', kind: 'runtime' },
 		{ label: 'Svelte 5', kind: 'framework' },
 		{ label: 'DendryNexus', kind: 'tool' },
-		{ label: 'Interactive Fiction', kind: 'concept' }
+		{ label: 'Interactive Fiction', kind: 'concept' },
+		{ label: 'No persistence', kind: 'data' }
 	],
 	lastCommit: '2026-03-12',
 	metrics: {

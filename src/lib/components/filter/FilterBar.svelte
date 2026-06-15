@@ -83,7 +83,7 @@
 	const tagKindLabels: Record<TagKind, string> = {
 		language: 'Language',
 		framework: 'Framework',
-		database: 'Database',
+		data: 'Data',
 		ai: 'AI / ML',
 		concept: 'Concept',
 		tool: 'Tool',
@@ -93,7 +93,7 @@
 	const tagKindOrder: TagKind[] = [
 		'language',
 		'framework',
-		'database',
+		'data',
 		'ai',
 		'concept',
 		'tool',

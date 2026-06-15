@@ -29,7 +29,8 @@ export const schemaForge: Project = {
 	tags: [
 		{ label: 'TypeScript', kind: 'language' },
 		{ label: 'Bun', kind: 'runtime' },
-		{ label: 'XML / XSD', kind: 'tool' }
+		{ label: 'XML / XSD', kind: 'tool' },
+		{ label: 'No persistence', kind: 'data' }
 	],
 	lastCommit: '2026-03-12',
 	metrics: {

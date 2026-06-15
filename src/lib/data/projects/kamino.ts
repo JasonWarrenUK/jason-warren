@@ -22,8 +22,10 @@ export const kamino: Project = {
 	featured: false,
 	tags: [
 		{ label: 'Shell', kind: 'language' },
+		{ label: 'POSIX shell', kind: 'runtime' },
 		{ label: 'Claude Code', kind: 'ai' },
-		{ label: 'Developer Tooling', kind: 'concept' }
+		{ label: 'Developer Tooling', kind: 'concept' },
+		{ label: 'No persistence', kind: 'data' }
 	],
 	lastCommit: '2026-01-09',
 	metrics: {

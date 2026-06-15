@@ -23,8 +23,10 @@ export const wyrdTui: Project = {
 	flagship: true,
 	tags: [
 		{ label: 'Go', kind: 'language' },
+		{ label: 'Go', kind: 'runtime' },
 		{ label: 'Bubble Tea', kind: 'framework' },
-		{ label: 'Graph / Cypher', kind: 'database' },
+		{ label: 'Graph / Cypher', kind: 'data' },
+		{ label: 'Document / JSON', kind: 'data' },
 		{ label: 'Git', kind: 'tool' },
 		{ label: 'CLI', kind: 'tool' }
 	],

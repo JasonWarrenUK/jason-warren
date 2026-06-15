@@ -32,7 +32,8 @@ export const theWork: Project = {
 		{ label: 'Svelte 5', kind: 'framework' },
 		{ label: 'Ink / inkjs', kind: 'tool' },
 		{ label: 'Interactive Fiction', kind: 'concept' },
-		{ label: 'Bun', kind: 'runtime' }
+		{ label: 'Bun', kind: 'runtime' },
+		{ label: 'Document / JSON', kind: 'data' }
 	],
 	lastCommit: '2026-05-18',
 	metrics: {

@@ -29,7 +29,8 @@ export const redot: Project = {
 		{ label: 'JavaScript', kind: 'language' },
 		{ label: 'Node.js', kind: 'runtime' },
 		{ label: 'Anthropic SDK', kind: 'ai' },
-		{ label: 'GitHub Actions', kind: 'tool' }
+		{ label: 'GitHub Actions', kind: 'tool' },
+		{ label: 'No persistence', kind: 'data' }
 	],
 	lastCommit: '2025-10-13',
 	metrics: {

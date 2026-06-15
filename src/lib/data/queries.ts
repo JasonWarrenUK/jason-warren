@@ -86,13 +86,13 @@ export function getAllTags(): string[] {
 
 /**
  * All unique tag labels grouped by TagKind, each group sorted alphabetically.
- * Key order: language → framework → database → ai → concept → tool → runtime.
+ * Key order: language → framework → data → ai → concept → tool → runtime.
  */
 export function getTagsByKind(): Record<TagKind, string[]> {
 	const buckets: Record<TagKind, Set<string>> = {
 		language: new Set(),
 		framework: new Set(),
-		database: new Set(),
+		data: new Set(),
 		ai: new Set(),
 		concept: new Set(),
 		tool: new Set(),
@@ -106,7 +106,7 @@ export function getTagsByKind(): Record<TagKind, string[]> {
 	return {
 		language: [...buckets.language].sort(),
 		framework: [...buckets.framework].sort(),
-		database: [...buckets.database].sort(),
+		data: [...buckets.data].sort(),
 		ai: [...buckets.ai].sort(),
 		concept: [...buckets.concept].sort(),
 		tool: [...buckets.tool].sort(),

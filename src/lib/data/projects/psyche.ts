@@ -19,7 +19,9 @@ export const psyche: Project = {
 	featured: false,
 	tags: [
 		{ label: 'TypeScript', kind: 'language' },
-		{ label: 'SvelteKit', kind: 'framework' }
+		{ label: 'Bun', kind: 'runtime' },
+		{ label: 'SvelteKit', kind: 'framework' },
+		{ label: 'Document / JSON', kind: 'data' }
 	],
 	lastCommit: '2025-11-27',
 	metrics: {

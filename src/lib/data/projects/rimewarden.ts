@@ -26,7 +26,8 @@ export const rimewarden: Project = {
 		{ label: 'SvelteKit', kind: 'framework' },
 		{ label: 'Bun', kind: 'runtime' },
 		{ label: 'D2', kind: 'tool' },
-		{ label: 'Tailwind CSS', kind: 'framework' }
+		{ label: 'Tailwind CSS', kind: 'framework' },
+		{ label: 'Document / JSON', kind: 'data' }
 	],
 	lastCommit: '2026-01-24',
 	metrics: {

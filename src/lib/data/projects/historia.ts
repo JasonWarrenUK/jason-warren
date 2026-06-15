@@ -27,7 +27,8 @@ export const historia: Project = {
 		{ label: 'MapLibre GL', kind: 'tool' },
 		{ label: 'TopoJSON / GIS', kind: 'tool' },
 		{ label: 'Tailwind CSS v4', kind: 'framework' },
-		{ label: 'Bun', kind: 'runtime' }
+		{ label: 'Bun', kind: 'runtime' },
+		{ label: 'Document / JSON', kind: 'data' }
 	],
 	lastCommit: '2026-03-14',
 	metrics: {

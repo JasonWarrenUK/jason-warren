@@ -27,10 +27,11 @@ export const workwise: Project = {
 	featured: true,
 	tags: [
 		{ label: 'TypeScript', kind: 'language' },
+		{ label: 'Bun', kind: 'runtime' },
 		{ label: 'SvelteKit', kind: 'framework' },
 		{ label: 'Svelte 5', kind: 'framework' },
-		{ label: 'Supabase', kind: 'database' },
-		{ label: 'PostgreSQL', kind: 'database' },
+		{ label: 'Supabase', kind: 'data' },
+		{ label: 'PostgreSQL', kind: 'data' },
 		{ label: 'Tailwind CSS', kind: 'framework' },
 		{ label: 'Accessibility', kind: 'concept' }
 	],

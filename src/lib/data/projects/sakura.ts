@@ -29,8 +29,8 @@ export const sakura: Project = {
 	tags: [
 		{ label: 'C#', kind: 'language' },
 		{ label: 'ASP.NET Core', kind: 'framework' },
-		{ label: 'Entity Framework Core', kind: 'database' },
-		{ label: 'PostgreSQL', kind: 'database' },
+		{ label: 'Entity Framework Core', kind: 'data' },
+		{ label: 'PostgreSQL', kind: 'data' },
 		{ label: 'React', kind: 'framework' },
 		{ label: '.NET 8', kind: 'runtime' }
 	],

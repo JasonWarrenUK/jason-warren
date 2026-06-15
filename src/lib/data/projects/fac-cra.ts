@@ -27,8 +27,8 @@ export const facCra: Project = {
 	featured: false,
 	tags: [
 		{ label: 'TypeScript', kind: 'language' },
-		{ label: 'GraphQL', kind: 'database' },
-		{ label: 'PostgreSQL', kind: 'database' },
+		{ label: 'GraphQL', kind: 'data' },
+		{ label: 'PostgreSQL', kind: 'data' },
 		{ label: 'Playwright', kind: 'tool' },
 		{ label: 'Monorepo', kind: 'tool' },
 		{ label: 'Node.js', kind: 'runtime' }

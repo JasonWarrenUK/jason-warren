@@ -27,9 +27,10 @@ export const chirpdb: Project = {
 	featured: false,
 	tags: [
 		{ label: 'Python', kind: 'language' },
+		{ label: 'CPython', kind: 'runtime' },
 		{ label: 'FastAPI', kind: 'framework' },
-		{ label: 'Supabase', kind: 'database' },
-		{ label: 'pgvector', kind: 'database' },
+		{ label: 'Supabase', kind: 'data' },
+		{ label: 'pgvector', kind: 'data' },
 		{ label: 'Docker', kind: 'tool' }
 	],
 	lastCommit: '2026-06-12',

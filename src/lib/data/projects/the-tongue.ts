@@ -27,7 +27,9 @@ export const theTongue: Project = {
 		{ label: 'Svelte 5', kind: 'framework' },
 		{ label: 'Tailwind CSS v4', kind: 'framework' },
 		{ label: 'Procedural Generation', kind: 'concept' },
-		{ label: 'Vercel', kind: 'runtime' }
+		{ label: 'Vercel', kind: 'tool' },
+		{ label: 'Bun', kind: 'runtime' },
+		{ label: 'Document / JSON', kind: 'data' }
 	],
 	lastCommit: '2026-06-14',
 	metrics: {

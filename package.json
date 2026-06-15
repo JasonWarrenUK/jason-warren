@@ -33,6 +33,11 @@
 		"vitest": "^3.2.4"
 	},
 	"dependencies": {
-		"reasonable-colors": "^0.4.0"
+		"@fontsource/ibm-plex-sans": "^5.2.8",
+		"@fontsource/jetbrains-mono": "^5.2.8",
+		"@fontsource/sora": "^5.2.8",
+		"@fontsource/space-grotesk": "^5.2.10",
+		"reasonable-colors": "^0.4.0",
+		"simple-icons": "^16.23.0"
 	}
 }

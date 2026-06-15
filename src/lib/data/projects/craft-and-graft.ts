@@ -31,7 +31,7 @@ export const craftAndGraft: Project = {
 		{ label: 'React', kind: 'framework' },
 		{ label: 'Vite', kind: 'framework' },
 		{ label: 'Express', kind: 'framework' },
-		{ label: 'PostgreSQL', kind: 'database' },
+		{ label: 'PostgreSQL', kind: 'data' },
 		{ label: 'Node.js', kind: 'runtime' }
 	],
 	lastCommit: '2024-10-31',

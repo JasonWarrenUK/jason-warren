@@ -22,10 +22,11 @@ export const sparker: Project = {
 	featured: false,
 	tags: [
 		{ label: 'TypeScript', kind: 'language' },
+		{ label: 'Bun', kind: 'runtime' },
 		{ label: 'SvelteKit', kind: 'framework' },
 		{ label: 'Svelte 5', kind: 'framework' },
-		{ label: 'Neo4j', kind: 'database' },
-		{ label: 'Graph databases', kind: 'database' }
+		{ label: 'Neo4j', kind: 'data' },
+		{ label: 'Graph databases', kind: 'data' }
 	],
 	lastCommit: '2026-03-05',
 	metrics: {

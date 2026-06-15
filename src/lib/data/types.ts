@@ -17,7 +17,7 @@ export type ProjectStatus = 'live' | 'wip' | 'finished' | 'prototype' | 'archive
 
 export type ProjectKind = 'app' | 'game' | 'website' | 'toy' | 'library' | 'tool' | 'tui';
 
-export type TagKind = 'language' | 'framework' | 'database' | 'ai' | 'concept' | 'tool' | 'runtime';
+export type TagKind = 'language' | 'framework' | 'data' | 'ai' | 'concept' | 'tool' | 'runtime';
 
 // ---------------------------------------------------------------------------
 // Tech tags

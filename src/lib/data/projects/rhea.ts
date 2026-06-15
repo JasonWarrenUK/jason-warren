@@ -27,7 +27,8 @@ export const rhea: Project = {
 		{ label: 'Anthropic SDK', kind: 'ai' },
 		{ label: 'LangChain', kind: 'ai' },
 		{ label: 'Zod', kind: 'tool' },
-		{ label: 'Deno', kind: 'runtime' }
+		{ label: 'Deno', kind: 'runtime' },
+		{ label: 'Document / JSON', kind: 'data' }
 	],
 	lastCommit: '2026-03-25',
 	metrics: {

@@ -27,11 +27,12 @@ export const commonsTraybake: Project = {
 	featured: false,
 	tags: [
 		{ label: 'TypeScript', kind: 'language' },
+		{ label: 'Bun', kind: 'runtime' },
 		{ label: 'SvelteKit', kind: 'framework' },
-		{ label: 'Neo4j', kind: 'database' },
+		{ label: 'Neo4j', kind: 'data' },
 		{ label: 'OpenAI Embeddings', kind: 'ai' },
 		{ label: 'RAG', kind: 'ai' },
-		{ label: 'PostgreSQL', kind: 'database' }
+		{ label: 'PostgreSQL', kind: 'data' }
 	],
 	lastCommit: '2025-11-10',
 	metrics: {

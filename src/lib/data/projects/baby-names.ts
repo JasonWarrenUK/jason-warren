@@ -20,7 +20,8 @@ export const babyNames: Project = {
 		{ label: 'TypeScript', kind: 'language' },
 		{ label: 'SvelteKit', kind: 'framework' },
 		{ label: 'Svelte 5', kind: 'framework' },
-		{ label: 'Bun', kind: 'runtime' }
+		{ label: 'Bun', kind: 'runtime' },
+		{ label: 'Document / JSON', kind: 'data' }
 	],
 	lastCommit: '2026-03-14',
 	metrics: {

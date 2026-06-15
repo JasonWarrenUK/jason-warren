@@ -27,7 +27,7 @@ export const lyraRose: Project = {
 		{ label: 'Svelte 5', kind: 'framework' },
 		{ label: 'GSAP', kind: 'tool' },
 		{ label: 'Web Audio API', kind: 'tool' },
-		{ label: 'Supabase', kind: 'database' },
+		{ label: 'Supabase', kind: 'data' },
 		{ label: 'Bun', kind: 'runtime' }
 	],
 	lastCommit: '2026-05-18',

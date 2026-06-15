@@ -27,7 +27,9 @@ export const epoch: Project = {
 		{ label: 'Tailwind CSS', kind: 'framework' },
 		{ label: 'Wikipedia API', kind: 'tool' },
 		{ label: 'Vitest', kind: 'tool' },
-		{ label: 'Vercel', kind: 'runtime' }
+		{ label: 'Vercel', kind: 'tool' },
+		{ label: 'Node.js', kind: 'runtime' },
+		{ label: 'Document / JSON', kind: 'data' }
 	],
 	lastCommit: '2026-06-14',
 	metrics: {

@@ -19,7 +19,8 @@ export const kitchenGremlin: Project = {
 	tags: [
 		{ label: 'TypeScript', kind: 'language' },
 		{ label: 'Bun', kind: 'runtime' },
-		{ label: 'Monorepo', kind: 'tool' }
+		{ label: 'Monorepo', kind: 'tool' },
+		{ label: 'No persistence', kind: 'data' }
 	],
 	lastCommit: '2026-04-28',
 	metrics: {

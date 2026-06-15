@@ -28,12 +28,13 @@ export const guardrails: Project = {
 	tags: [
 		{ label: 'TypeScript', kind: 'language' },
 		{ label: 'Python', kind: 'language' },
+		{ label: 'CPython', kind: 'runtime' },
 		{ label: 'React', kind: 'framework' },
 		{ label: 'Express', kind: 'framework' },
 		{ label: 'FastAPI', kind: 'framework' },
 		{ label: 'Chrome Extension', kind: 'tool' },
 		{ label: 'NLP / NER', kind: 'ai' },
-		{ label: 'PostgreSQL', kind: 'database' }
+		{ label: 'PostgreSQL', kind: 'data' }
 	],
 	lastCommit: '2026-06-12',
 	metrics: {

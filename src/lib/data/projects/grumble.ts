@@ -23,7 +23,8 @@ export const grumble: Project = {
 		{ label: 'TypeScript', kind: 'language' },
 		{ label: 'SvelteKit', kind: 'framework' },
 		{ label: 'Svelte 5', kind: 'framework' },
-		{ label: 'Bun', kind: 'runtime' }
+		{ label: 'Bun', kind: 'runtime' },
+		{ label: 'Ephemeral / in-memory', kind: 'data' }
 	],
 	lastCommit: '2026-06-14',
 	metrics: {

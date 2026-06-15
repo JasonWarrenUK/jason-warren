@@ -27,9 +27,10 @@ export const thingsWeDo: Project = {
 	featured: false,
 	tags: [
 		{ label: 'TypeScript', kind: 'language' },
+		{ label: 'Bun', kind: 'runtime' },
 		{ label: 'React', kind: 'framework' },
 		{ label: 'Next.js', kind: 'framework' },
-		{ label: 'RxDB', kind: 'database' },
+		{ label: 'RxDB', kind: 'data' },
 		{ label: 'Plotly.js', kind: 'tool' },
 		{ label: 'PWA', kind: 'concept' },
 		{ label: 'Tailwind CSS', kind: 'framework' }

@@ -35,7 +35,8 @@ export const iris: Project = {
 		{ label: 'Rust', kind: 'language' },
 		{ label: 'OpenTUI', kind: 'framework' },
 		{ label: 'Vitest', kind: 'tool' },
-		{ label: 'XML / XSD', kind: 'tool' }
+		{ label: 'XML / XSD', kind: 'tool' },
+		{ label: 'No persistence', kind: 'data' }
 	],
 	lastCommit: '2026-03-12',
 	metrics: {
