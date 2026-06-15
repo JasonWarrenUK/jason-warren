@@ -45,6 +45,15 @@
 		<a href="{base}/projects">← All projects</a>
 	</nav>
 
+	<img
+		src="{base}/og/{data.project.slug}.png"
+		alt="{data.project.name} social card"
+		width="1200"
+		height="630"
+		loading="eager"
+		class="page__banner"
+	/>
+
 	<header class="page__header">
 		<div class="page__header-top">
 			<h1 class="page__title">{data.project.name}</h1>
@@ -103,6 +112,17 @@
 		gap: var(--space-10);
 	}
 
+	/* Pin the breadcrumb just below the sticky site header (3.5rem tall) so it
+	   stays reachable while a long case study scrolls underneath. */
+	.page__breadcrumb {
+		position: sticky;
+		top: 3.5rem;
+		z-index: 50;
+		margin: calc(-1 * var(--space-3)) calc(-1 * var(--layout-padding));
+		padding: var(--space-3) var(--layout-padding);
+		background-color: var(--color-surface);
+	}
+
 	.page__breadcrumb a {
 		font-size: var(--text-sm);
 		color: var(--color-text-subtle);
@@ -115,6 +135,16 @@
 
 	.page__breadcrumb a:hover {
 		color: var(--color-primary-text);
+	}
+
+	.page__banner {
+		display: block;
+		width: 100%;
+		height: auto;
+		aspect-ratio: 1200 / 630;
+		object-fit: cover;
+		border: 1px solid var(--color-border);
+		border-radius: var(--radius-lg);
 	}
 
 	.page__header {
