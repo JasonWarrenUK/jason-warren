@@ -40,13 +40,13 @@ export function getAllProjectsByRecency(): Project[] {
 }
 
 /**
- * Projects sorted by inception, oldest first, so a project appears after the
- * one that spawned it. Falls back to lastCommit, then empty, so projects
- * without a firstCommit still place deterministically.
+ * Projects sorted by inception, most recently started first. Falls back to
+ * lastCommit, then empty, so projects without a firstCommit still place
+ * deterministically.
  */
 export function getAllProjectsByInception(): Project[] {
 	const inception = (p: Project): string => p.firstCommit ?? p.lastCommit ?? '';
-	return [...projects].sort((a, b) => inception(a).localeCompare(inception(b)));
+	return [...projects].sort((a, b) => inception(b).localeCompare(inception(a)));
 }
 
 // ---------------------------------------------------------------------------

@@ -56,7 +56,7 @@
 		class="timeline__svg"
 		viewBox="0 0 {width} {height}"
 		role="group"
-		aria-label="Timeline of projects by most recent activity, newest at the top, with extraction lineages drawn as curves"
+		aria-label="Timeline of projects by first commit, most recently started at the top, with extraction lineages drawn as curves"
 	>
 		<!-- The spine. -->
 		<line class="timeline__spine" x1={spineX} y1={topPad} x2={spineX} y2={height - topPad} />
@@ -81,7 +81,7 @@
 					class="timeline__dot"
 					cx={spineX}
 					cy={rowY(index)}
-					r="7"
+					r="10"
 					style="fill: {statusColour(row.status)}"
 				/>
 
