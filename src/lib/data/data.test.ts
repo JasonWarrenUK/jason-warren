@@ -9,10 +9,19 @@
 import { describe, it, expect } from 'vitest';
 import { projects } from './index.js';
 import { getEngineThreads } from './threads.js';
+import sourcesManifest from './sources.json';
 import type { ProjectSlug } from './types.js';
 
 // Build a lookup for quick slug resolution
 const projectSlugs = new Set<ProjectSlug>(projects.map((p) => p.slug as ProjectSlug));
+
+// The drift manifest's per-repo language lists (the exhaustive truth the curated
+// language tags gate). Empty until the author runs `check-drift.js --update`.
+const sources = sourcesManifest.sources as Record<string, { languages?: string[] }>;
+
+// Curated language labels the extension scan does not emit (different spelling
+// or no file extension of its own). These are exempt from the gate check.
+const SCANNER_BLIND_LANGUAGES = new Set<string>([]);
 
 describe('project registry', () => {
 	it('has at least one project', () => {
@@ -62,6 +71,51 @@ describe('project registry', () => {
 		expect(
 			untagged.map((p) => p.slug),
 			`Projects with no tags: ${untagged.map((p) => p.slug).join(', ')}`
+		).toHaveLength(0);
+	});
+
+	it('no project has two tags with the same (kind, label) pair', () => {
+		// A language and a runtime may share a label (e.g. Go), but an exact
+		// (kind, label) duplicate is a data slip. It also breaks the keyed
+		// {#each} in TechTagList, which throws during hydration.
+		const offenders: string[] = [];
+		for (const project of projects) {
+			const seen = new Set<string>();
+			for (const tag of project.tags) {
+				const key = `${tag.kind}:${tag.label}`;
+				if (seen.has(key)) {
+					offenders.push(`${project.slug} → ${key}`);
+				}
+				seen.add(key);
+			}
+		}
+		expect(offenders, `Duplicate (kind, label) tags:\n${offenders.join('\n')}`).toHaveLength(0);
+	});
+
+	it('every curated language tag is a language the repo actually uses', () => {
+		// The curated `language` tags are a significance gate over the drift
+		// manifest's detected languages: a tag must not claim a language the
+		// repo lacks. Projects whose manifest entry has no languages yet (before
+		// the author runs the drift update) are skipped, so this stays green
+		// until there is truth to check against.
+		const offenders: string[] = [];
+		for (const project of projects) {
+			const detected = sources[project.slug]?.languages;
+			if (!detected || detected.length === 0) continue;
+			const truth = new Set(detected);
+			for (const tag of project.tags) {
+				if (tag.kind !== 'language') continue;
+				if (SCANNER_BLIND_LANGUAGES.has(tag.label)) continue;
+				if (!truth.has(tag.label)) {
+					offenders.push(
+						`${project.slug} → '${tag.label}' not in detected [${detected.join(', ')}]`
+					);
+				}
+			}
+		}
+		expect(
+			offenders,
+			`Language tags not backed by the repo:\n${offenders.join('\n')}`
 		).toHaveLength(0);
 	});
 
