@@ -163,6 +163,28 @@
 		outline-offset: 2px;
 	}
 
+	/* Tighten the nav on narrow screens so the four links and the theme
+	   toggle stay on one row without pushing the toggle off-screen. */
+	@media (max-width: 40rem) {
+		.site-nav {
+			gap: var(--space-2);
+			padding: 0 var(--space-4);
+		}
+
+		.site-nav__name {
+			display: none;
+		}
+
+		.site-nav__links {
+			gap: 0;
+		}
+
+		.site-nav__link {
+			padding: var(--space-2);
+			font-size: var(--text-xs);
+		}
+	}
+
 	.site-nav__home:focus-visible {
 		outline: 2px solid var(--color-primary-text);
 		outline-offset: 2px;
