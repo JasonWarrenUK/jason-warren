@@ -44,12 +44,42 @@ function loadFont(pkg: string, file: string): Buffer {
 }
 
 const fonts = [
-	{ name: 'Inter', data: loadFont('inter', 'inter-latin-400-normal.woff'), weight: 400, style: 'normal' },
-	{ name: 'Inter', data: loadFont('inter', 'inter-latin-700-normal.woff'), weight: 700, style: 'normal' },
-	{ name: 'IBM Plex Sans', data: loadFont('ibm-plex-sans', 'ibm-plex-sans-latin-700-normal.woff'), weight: 700, style: 'normal' },
-	{ name: 'Space Grotesk', data: loadFont('space-grotesk', 'space-grotesk-latin-700-normal.woff'), weight: 700, style: 'normal' },
-	{ name: 'JetBrains Mono', data: loadFont('jetbrains-mono', 'jetbrains-mono-latin-700-normal.woff'), weight: 700, style: 'normal' },
-	{ name: 'Sora', data: loadFont('sora', 'sora-latin-700-normal.woff'), weight: 700, style: 'normal' }
+	{
+		name: 'Inter',
+		data: loadFont('inter', 'inter-latin-400-normal.woff'),
+		weight: 400,
+		style: 'normal'
+	},
+	{
+		name: 'Inter',
+		data: loadFont('inter', 'inter-latin-700-normal.woff'),
+		weight: 700,
+		style: 'normal'
+	},
+	{
+		name: 'IBM Plex Sans',
+		data: loadFont('ibm-plex-sans', 'ibm-plex-sans-latin-700-normal.woff'),
+		weight: 700,
+		style: 'normal'
+	},
+	{
+		name: 'Space Grotesk',
+		data: loadFont('space-grotesk', 'space-grotesk-latin-700-normal.woff'),
+		weight: 700,
+		style: 'normal'
+	},
+	{
+		name: 'JetBrains Mono',
+		data: loadFont('jetbrains-mono', 'jetbrains-mono-latin-700-normal.woff'),
+		weight: 700,
+		style: 'normal'
+	},
+	{
+		name: 'Sora',
+		data: loadFont('sora', 'sora-latin-700-normal.woff'),
+		weight: 700,
+		style: 'normal'
+	}
 ] as const;
 
 const WIDTH = 1200;
@@ -120,7 +150,14 @@ const fallbackIcon =
 
 type DataModel = 'graph' | 'document' | 'vector' | 'relational' | 'ephemeral' | 'none';
 
-const dataModelOrder: DataModel[] = ['graph', 'document', 'vector', 'relational', 'ephemeral', 'none'];
+const dataModelOrder: DataModel[] = [
+	'graph',
+	'document',
+	'vector',
+	'relational',
+	'ephemeral',
+	'none'
+];
 
 const dataModelFont: Record<DataModel, string> = {
 	graph: 'Space Grotesk',
@@ -134,12 +171,22 @@ const dataModelFont: Record<DataModel, string> = {
 /** Classify one data-tag label into a model class. */
 function classifyDataLabel(label: string): DataModel | null {
 	const l = label.toLowerCase();
-	if (l.includes('neo4j') || l.includes('cypher') || (l.includes('graph') && !l.includes('graphql'))) {
+	if (
+		l.includes('neo4j') ||
+		l.includes('cypher') ||
+		(l.includes('graph') && !l.includes('graphql'))
+	) {
 		return 'graph';
 	}
 	if (l.includes('document') || l.includes('json') || l.includes('rxdb')) return 'document';
 	if (l.includes('vector') || l.includes('pgvector')) return 'vector';
-	if (l.includes('postgres') || l.includes('supabase') || l.includes('entity framework') || l.includes('relational') || l.includes('sql')) {
+	if (
+		l.includes('postgres') ||
+		l.includes('supabase') ||
+		l.includes('entity framework') ||
+		l.includes('relational') ||
+		l.includes('sql')
+	) {
 		return 'relational';
 	}
 	if (l.includes('ephemeral') || l.includes('in-memory')) return 'ephemeral';
@@ -213,7 +260,7 @@ function cell(archetype: Archetype, cx: number, cy: number, r: number): string {
 				.join('');
 		case 'node': {
 			const pts = Array.from({ length: 3 }, (_, i) => {
-				const a = (2 * Math.PI / 3) * i - Math.PI / 2;
+				const a = ((2 * Math.PI) / 3) * i - Math.PI / 2;
 				return `${(cx + r * Math.cos(a)).toFixed(1)},${(cy + r * Math.sin(a)).toFixed(1)}`;
 			});
 			return `<polygon points="${pts.join(' ')}" fill="none" />`;
@@ -252,7 +299,7 @@ function cell(archetype: Archetype, cx: number, cy: number, r: number): string {
 function motifDataUri(archetype: Archetype, accent: string, seed: number): string {
 	const step = 132;
 	const r = step * 0.34;
-	const phase = (seed % step);
+	const phase = seed % step;
 	const angle = (seed % 360) - 180;
 
 	const cells: string[] = [];
@@ -273,8 +320,7 @@ function motifDataUri(archetype: Archetype, accent: string, seed: number): strin
 
 /** A single language glyph as a tinted base64 SVG data URI. */
 function iconDataUri(path: string, colour: string): string {
-	const svg =
-		`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="${colour}"><path d="${path}"/></svg>`;
+	const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="${colour}"><path d="${path}"/></svg>`;
 	return `data:image/svg+xml;base64,${Buffer.from(svg).toString('base64')}`;
 }
 
@@ -393,11 +439,13 @@ export async function renderOgCard(card: OgCard): Promise<Buffer> {
 								justifyContent: 'space-between'
 							},
 							children: [
+								// The signature is redundant on the author's own card,
+								// where the title is already the name.
 								{
 									type: 'div',
 									props: {
 										style: { fontSize: 28, fontWeight: 700, color: INK },
-										children: 'Jason Warren'
+										children: card.kind ? 'Jason Warren' : ''
 									}
 								},
 								...(iconPath

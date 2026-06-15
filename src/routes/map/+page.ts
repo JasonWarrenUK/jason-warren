@@ -1,8 +1,9 @@
-import { getProjectGraph, computeLayout } from '$lib/data/graph.js';
+import { getProjectGraph, getSharedTechEdges, computeLayout } from '$lib/data/graph.js';
 
 export function load() {
 	const graph = getProjectGraph();
 	const layout = computeLayout(graph);
+	const sharedEdges = getSharedTechEdges();
 
 	const nodes = graph.nodes.map((node) => {
 		const point = layout.positions.get(node.slug);
@@ -13,6 +14,9 @@ export function load() {
 			status: node.project.status,
 			kind: node.project.kind,
 			flagship: node.project.flagship === true,
+			lastCommit: node.project.lastCommit ?? null,
+			commits: node.project.metrics?.commits ?? null,
+			linesOfCode: node.project.metrics?.linesOfCode ?? null,
 			x: point?.x ?? layout.width / 2,
 			y: point?.y ?? layout.height / 2
 		};
@@ -21,6 +25,7 @@ export function load() {
 	return {
 		nodes,
 		edges: graph.edges,
+		sharedEdges,
 		size: layout.width
 	};
 }

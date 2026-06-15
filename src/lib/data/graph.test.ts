@@ -8,7 +8,13 @@
 
 import { describe, it, expect } from 'vitest';
 import { projects } from './index.js';
-import { getProjectGraph, getNeighbours, getTechIndex, computeLayout } from './graph.js';
+import {
+	getProjectGraph,
+	getNeighbours,
+	getTechIndex,
+	getSharedTechEdges,
+	computeLayout
+} from './graph.js';
 import type { ProjectSlug } from './types.js';
 
 const slugs = new Set<ProjectSlug>(projects.map((p) => p.slug));
@@ -112,6 +118,48 @@ describe('getTechIndex', () => {
 		const labels = [...index.keys()];
 		const sorted = [...labels].sort((a, b) => a.localeCompare(b));
 		expect(labels).toEqual(sorted);
+	});
+});
+
+describe('getSharedTechEdges', () => {
+	it('only links projects that share at least minShared tags', () => {
+		const minShared = 3;
+		const edges = getSharedTechEdges({ minShared });
+		const bySlug = new Map(projects.map((p) => [p.slug, new Set(p.tags.map((t) => t.label))]));
+		for (const edge of edges) {
+			const a = bySlug.get(edge.source)!;
+			const b = bySlug.get(edge.target)!;
+			const shared = [...a].filter((label) => b.has(label)).length;
+			expect(shared, `${edge.source}–${edge.target}`).toBeGreaterThanOrEqual(minShared);
+			expect(edge.weight, `${edge.source}–${edge.target} weight`).toBe(shared);
+		}
+	});
+
+	it('caps each node at maxPerNode edges', () => {
+		const maxPerNode = 3;
+		const edges = getSharedTechEdges({ maxPerNode });
+		const degree = new Map<string, number>();
+		for (const edge of edges) {
+			degree.set(edge.source, (degree.get(edge.source) ?? 0) + 1);
+			degree.set(edge.target, (degree.get(edge.target) ?? 0) + 1);
+		}
+		for (const [slug, count] of degree) {
+			expect(count, `${slug} exceeds the cap`).toBeLessThanOrEqual(maxPerNode);
+		}
+	});
+
+	it('produces canonically ordered, non-self, unique edges', () => {
+		const edges = getSharedTechEdges();
+		const keys = new Set<string>();
+		for (const edge of edges) {
+			expect(edge.source < edge.target, `${edge.source}–${edge.target} not ordered`).toBe(true);
+			keys.add(`${edge.source}--${edge.target}`);
+		}
+		expect(keys.size).toBe(edges.length);
+	});
+
+	it('is deterministic', () => {
+		expect(getSharedTechEdges()).toEqual(getSharedTechEdges());
 	});
 });
 

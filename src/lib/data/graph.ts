@@ -97,6 +97,85 @@ export function getProjectGraph(): ProjectGraph {
 }
 
 // ---------------------------------------------------------------------------
+// Shared-technology edges
+// ---------------------------------------------------------------------------
+
+/**
+ * A faint, undirected "shares a stack" link, kept separate from the curated
+ * `GraphEdge` relationships so the two never mix. Endpoints are canonically
+ * ordered (source < target) and `weight` is the number of shared tag labels.
+ */
+export interface SharedTechEdge {
+	source: ProjectSlug;
+	target: ProjectSlug;
+	weight: number;
+}
+
+export interface SharedTechOptions {
+	/** Minimum shared tag labels for a pair to qualify. */
+	minShared?: number;
+	/** Maximum edges kept per node, strongest first. */
+	maxPerNode?: number;
+}
+
+/**
+ * Derives "shared stack" edges from tag overlap to give the map structure the
+ * sparse curated relationships cannot. Two guards stop the dense core (most
+ * projects share TypeScript + SvelteKit + Bun) from collapsing into a
+ * hairball: a `minShared` floor, and a greedy per-node degree cap that keeps
+ * only each project's strongest links. Deterministic for a fixed registry.
+ */
+export function getSharedTechEdges(options: SharedTechOptions = {}): SharedTechEdge[] {
+	const minShared = options.minShared ?? 3;
+	const maxPerNode = options.maxPerNode ?? 3;
+
+	// Tag-label sets per project, in registry order.
+	const tagSets = projects.map((p) => ({
+		slug: p.slug,
+		labels: new Set(p.tags.map((t) => t.label))
+	}));
+
+	// All qualifying pairs with their overlap weight.
+	const candidates: SharedTechEdge[] = [];
+	for (let i = 0; i < tagSets.length; i++) {
+		for (let j = i + 1; j < tagSets.length; j++) {
+			let weight = 0;
+			for (const label of tagSets[i].labels) {
+				if (tagSets[j].labels.has(label)) weight++;
+			}
+			if (weight >= minShared) {
+				const [source, target] = [tagSets[i].slug, tagSets[j].slug].sort() as [
+					ProjectSlug,
+					ProjectSlug
+				];
+				candidates.push({ source, target, weight });
+			}
+		}
+	}
+
+	// Strongest first; ties broken by slug for stable output.
+	candidates.sort(
+		(a, b) =>
+			b.weight - a.weight || a.source.localeCompare(b.source) || a.target.localeCompare(b.target)
+	);
+
+	// Greedily keep an edge only while both endpoints are below the cap, so the
+	// densest hubs surface their best links without dominating the picture.
+	const degree = new Map<ProjectSlug, number>();
+	const edges: SharedTechEdge[] = [];
+	for (const edge of candidates) {
+		const ds = degree.get(edge.source) ?? 0;
+		const dt = degree.get(edge.target) ?? 0;
+		if (ds >= maxPerNode || dt >= maxPerNode) continue;
+		degree.set(edge.source, ds + 1);
+		degree.set(edge.target, dt + 1);
+		edges.push(edge);
+	}
+
+	return edges;
+}
+
+// ---------------------------------------------------------------------------
 // Neighbourhoods
 // ---------------------------------------------------------------------------
 

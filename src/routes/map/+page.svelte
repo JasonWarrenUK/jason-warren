@@ -15,12 +15,18 @@
 		<h1>Project map</h1>
 		<p class="page__intro">
 			Every project, grouped by what it is, with the connections drawn between them. The solid lines
-			trace the engine-extraction story: a library pulled out of an application and then reused.
-			Hover or focus a project to isolate its neighbourhood, or filter by type.
+			trace the engine-extraction story: a library pulled out of an application and then reused. The
+			faint lines link projects that share a technology stack. Hover or focus a project to isolate
+			its neighbourhood, or filter by type.
 		</p>
 	</header>
 
-	<ProjectMap nodes={data.nodes} edges={data.edges} size={data.size} />
+	<ProjectMap
+		nodes={data.nodes}
+		edges={data.edges}
+		sharedEdges={data.sharedEdges}
+		size={data.size}
+	/>
 </div>
 
 <style>
