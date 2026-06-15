@@ -70,16 +70,19 @@
 	const tagKindLabels: Record<TagKind, string> = {
 		language: 'Language',
 		framework: 'Framework',
-		domain: 'Domain',
+		database: 'Database',
+		ai: 'AI / ML',
+		concept: 'Concept',
+		tool: 'Tool',
 		runtime: 'Runtime'
 	};
 
-	const tagKindOrder: TagKind[] = ['language', 'framework', 'domain', 'runtime'];
+	const tagKindOrder: TagKind[] = ['language', 'framework', 'database', 'ai', 'concept', 'tool', 'runtime'];
 </script>
 
 <div class="filter-bar" role="group" aria-label="Filter projects">
-	<div class="filter-group">
-		<span class="filter-group__label">Role</span>
+	<details class="filter-group" open={activeRole !== null}>
+		<summary class="filter-group__summary">Role</summary>
 		<div class="filter-group__chips">
 			{#each roles as role (role)}
 				<FilterChip
@@ -89,11 +92,11 @@
 				/>
 			{/each}
 		</div>
-	</div>
+	</details>
 
 	{#if kinds.length > 0}
-		<div class="filter-group">
-			<span class="filter-group__label">Type</span>
+		<details class="filter-group" open={activeKind !== null}>
+			<summary class="filter-group__summary">Type</summary>
 			<div class="filter-group__chips">
 				{#each kinds.sort((a, b) => kindLabels[a].localeCompare(kindLabels[b])) as kind (kind)}
 					<FilterChip
@@ -103,12 +106,12 @@
 					/>
 				{/each}
 			</div>
-		</div>
+		</details>
 	{/if}
 
 	{#if statuses.length > 0}
-		<div class="filter-group">
-			<span class="filter-group__label">Status</span>
+		<details class="filter-group" open={activeStatus !== null}>
+			<summary class="filter-group__summary">Status</summary>
 			<div class="filter-group__chips">
 				{#each statusOrder.filter((s) => statuses.includes(s)) as s (s)}
 					<FilterChip
@@ -118,14 +121,14 @@
 					/>
 				{/each}
 			</div>
-		</div>
+		</details>
 	{/if}
 
 	{#each tagKindOrder as kind (kind)}
 		{@const tags = tagsByKind[kind]}
 		{#if tags.length > 0}
-			<div class="filter-group">
-				<span class="filter-group__label">{tagKindLabels[kind]}</span>
+			<details class="filter-group" open={activeTag !== null && tags.includes(activeTag)}>
+				<summary class="filter-group__summary">{tagKindLabels[kind]}</summary>
 				<div class="filter-group__chips">
 					{#each tags as tag (tag)}
 						<FilterChip
@@ -135,7 +138,7 @@
 						/>
 					{/each}
 				</div>
-			</div>
+			</details>
 		{/if}
 	{/each}
 </div>
@@ -144,29 +147,76 @@
 	.filter-bar {
 		display: flex;
 		flex-direction: column;
-		gap: var(--space-4);
+		gap: var(--space-1);
 	}
 
 	.filter-group {
-		display: flex;
-		align-items: baseline;
-		gap: var(--space-3);
-		flex-wrap: wrap;
+		border-radius: var(--radius-md);
 	}
 
-	.filter-group__label {
+	.filter-group[open] {
+		padding-bottom: var(--space-3);
+	}
+
+	.filter-group__summary {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		padding: var(--space-2) var(--space-1);
 		font-size: var(--text-sm);
 		font-weight: 600;
 		color: var(--color-text-subtle);
 		text-transform: uppercase;
 		letter-spacing: 0.06em;
-		min-width: 6rem;
+		cursor: pointer;
+		list-style: none;
+		border-radius: var(--radius-md);
+		transition: color var(--transition-fast), background-color var(--transition-fast);
+		user-select: none;
+	}
+
+	/* Remove default disclosure triangle in WebKit */
+	.filter-group__summary::-webkit-details-marker {
+		display: none;
+	}
+
+	.filter-group__summary:hover {
+		color: var(--color-text);
+		background-color: var(--color-surface);
+	}
+
+	.filter-group__summary:focus-visible {
+		outline: 2px solid var(--color-primary-text);
+		outline-offset: 2px;
+	}
+
+	/* Chevron via pseudo-element */
+	.filter-group__summary::after {
+		content: '';
+		display: inline-block;
+		width: 0.5rem;
+		height: 0.5rem;
+		border-right: 2px solid currentColor;
+		border-bottom: 2px solid currentColor;
+		transform: rotate(45deg);
+		transition: transform var(--transition-fast);
 		flex-shrink: 0;
+	}
+
+	.filter-group[open] .filter-group__summary::after {
+		transform: rotate(-135deg);
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.filter-group__summary::after {
+			transition: none;
+		}
 	}
 
 	.filter-group__chips {
 		display: flex;
 		flex-wrap: wrap;
 		gap: var(--space-2);
+		padding: var(--space-2) var(--space-1) 0;
 	}
 </style>
