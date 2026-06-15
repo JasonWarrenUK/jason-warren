@@ -6,7 +6,7 @@ export const sparker: Project = {
 	tagline:
 		'A SEN observation tracker that uses Neo4j to surface correlations between student behaviours, built for special educational needs facilitators.',
 	description:
-		'[Placeholder] Sparker is a graph-native tool for SEN facilitators. Rather than forcing student observations into rigid table rows, the data model treats each observation as a node connected to a student, a field definition, and a value. Finding correlations ("these two fields co-occur 80% of the time for this student") is a natural Cypher traversal rather than a complex SQL join. The result is a tool that grows smarter the more you use it.',
+		'An observation tracker for special educational needs facilitators, built graph-native on Neo4j. Rather than forcing observations into rigid table rows, the data model treats each one as a node linked to a student, a field definition, and a value, so finding correlations becomes a natural Cypher traversal rather than a complex SQL join. A flexible user-defined field system (text, number, boolean, tags, datetime) adapts to any school\'s vocabulary, and auto-detected co-occurrence correlations surface in per-student insight reports and a global feed ranked by strength. The SvelteKit code keeps a clean server/load separation with all Neo4j access isolated behind typed loaders. This is a v0.1.0 MVP, with temporal patterns, trigger analysis, multi-user auth, and richer visualisation on the roadmap.',
 	kind: 'app',
 	contribution: { role: 'solo' },
 	status: 'prototype',

@@ -72,6 +72,25 @@ describe('project registry', () => {
 			`Projects with no highlights: ${bare.map((p) => p.slug).join(', ')}`
 		).toHaveLength(0);
 	});
+
+	it('no description still carries the [Placeholder] marker', () => {
+		const placeholders = projects.filter((p) => p.description.includes('[Placeholder]'));
+		expect(
+			placeholders.map((p) => p.slug),
+			`Projects with placeholder copy: ${placeholders.map((p) => p.slug).join(', ')}`
+		).toHaveLength(0);
+	});
+
+	it('no copy uses em-dashes (house style: British English, no em-dashes)', () => {
+		const offenders: string[] = [];
+		for (const project of projects) {
+			const fields = [project.tagline, project.description, ...project.highlights];
+			if (fields.some((text) => text.includes('—'))) {
+				offenders.push(project.slug);
+			}
+		}
+		expect(offenders, `Projects with em-dashes: ${offenders.join(', ')}`).toHaveLength(0);
+	});
 });
 
 describe('engine-extraction threads', () => {

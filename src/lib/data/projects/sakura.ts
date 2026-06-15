@@ -6,7 +6,7 @@ export const sakura: Project = {
 	tagline:
 		'A colour-palette manager with a hex-to-name matching engine, built on ASP.NET Core and Entity Framework.',
 	description:
-		'[Placeholder] Sakura is a colour-collection application: an ASP.NET Core 8 and Entity Framework Core API backed by PostgreSQL, paired with a React and Material UI frontend (companion repo). Users collect and organise colour palettes with privacy controls. Jason led the API, designing the data model, the privacy-aware collection endpoints, and a colour-matching engine that converts between hex, RGB and HSL to resolve colours by name.',
+		'A colour-palette manager where users collect and organise palettes with per-collection privacy controls, built on an ASP.NET Core 8 and Entity Framework Core API backed by PostgreSQL, paired with a React frontend in a companion repo. Jason led the API, designing the Entity Framework Core data model (including a ColourCollection join table with explicit ordering and a full migrations history) and the privacy-filtered collections-by-user endpoints scoped to the authenticated user. The centrepiece is the colour-matching engine in ColourSearch.cs, which converts between hex, RGB, and HSL with validation to resolve arbitrary hex codes to the nearest named colour. The REST API is documented with Swagger and secured with ASP.NET Identity authentication.',
 	kind: 'app',
 	contribution: {
 		role: 'lead',

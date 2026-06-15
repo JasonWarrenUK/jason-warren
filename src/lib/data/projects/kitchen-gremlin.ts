@@ -4,7 +4,8 @@ export const kitchenGremlin: Project = {
 	slug: 'kitchen-gremlin',
 	name: 'Kitchen Gremlin',
 	tagline: 'A TypeScript monorepo. Under active construction.',
-	description: '[Placeholder] A monorepo project. Details to follow as it takes shape.',
+	description:
+		'A TypeScript monorepo under active construction, organised into apps/ and packages/ workspaces. It is configured with ESLint, TypeScript, and Bun workspaces, with more to follow as the project takes shape.',
 	kind: 'app',
 	contribution: { role: 'solo' },
 	status: 'wip',

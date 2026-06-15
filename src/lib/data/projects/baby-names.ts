@@ -4,7 +4,8 @@ export const babyNames: Project = {
 	slug: 'baby-names',
 	name: 'Baby Names',
 	tagline: 'A small Svelte app for browsing and shortlisting baby names.',
-	description: '[Placeholder] A simple, well-built SvelteKit application.',
+	description:
+		'A small, well-built SvelteKit app for browsing and shortlisting baby names. It is built with Svelte 5 runes and lucide-svelte over a standard SvelteKit project structure, with ESLint and Prettier configured.',
 	kind: 'toy',
 	contribution: { role: 'solo' },
 	status: 'finished',

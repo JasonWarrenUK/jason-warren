@@ -6,7 +6,7 @@ export const kamino: Project = {
 	tagline:
 		'A universal project template for apprenticeship work: Claude Code config, git hooks for KSB evidence extraction, docs scaffolding, and a /project/init command that wires everything up.',
 	description:
-		'[Placeholder] Kamino is the starting point for every project I build during my Level 4 Software Developer apprenticeship at Founders and Coders. The interesting parts are the automation: a post-commit hook that auto-extracts KSB (Knowledge, Skills, Behaviours) portfolio evidence from commit messages, doc-sync reminders, and a pre-push test validation gate. The /project/init skill scaffolds MCP server connections, a roadmap, and the first ADR.',
+		'A universal project template that serves as the starting point for apprenticeship work, with stack-agnostic Claude Code config that clones cleanly via degit. The value is in the automation: a post-commit hook auto-extracts KSB (Knowledge, Skills, Behaviours) portfolio evidence from commit messages, a docs hook reminds you to sync documentation when source changes, and a pre-push hook validates that tests pass before any remote push. The interactive /project/init skill ties it together, scaffolding MCP server connections, a roadmap, and the first ADR.',
 	kind: 'tool',
 	contribution: { role: 'solo' },
 	status: 'finished',

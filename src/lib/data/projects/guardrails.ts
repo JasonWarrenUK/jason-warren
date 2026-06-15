@@ -6,7 +6,7 @@ export const guardrails: Project = {
 	tagline:
 		'A PII-redaction guardrail service: prompts pass through a browser extension and a FastAPI/Presidio NER pipeline before reaching Claude or OpenAI, with an org-level admin panel.',
 	description:
-		'[Placeholder] Guardrails is a polyglot microservice product: a Chrome MV3 extension intercepts prompts, a FastAPI service running Microsoft Presidio and Flair NER scans for 10 PII entity types and redacts them, and an Express server handles auth and org management. My contributions focused on making the PII detection smarter and extending the provider coverage.',
+		'A PII-redaction guardrail built as a genuine polyglot microservice product: a Chrome MV3 extension intercepts prompts, a FastAPI service running Microsoft Presidio and Flair NER scans for ten PII entity types (PERSON, EMAIL, PHONE, LOCATION, ORG, CREDIT_CARD, SSN, postcode and more) and redacts them before the prompt reaches Claude or OpenAI, and an Express API with a React admin panel handles auth and org management. Jason\'s work focused on making detection smarter and widening provider coverage: he added UK postcode and name-initial detection, brought in Google Gemini as a third AI provider, built the file-attachment warning in the extension sidebar, and added Claude Code skills and Git workflow documentation.',
 	kind: 'tool',
 	contribution: {
 		role: 'collaborator',

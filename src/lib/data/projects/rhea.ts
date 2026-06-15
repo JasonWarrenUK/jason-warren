@@ -6,7 +6,7 @@ export const rhea: Project = {
 	tagline:
 		'An AI curriculum generator for peer-led learning cohorts. Produces multi-week course structures via Claude, with optional live research so output reflects current industry practice.',
 	description:
-		'[Placeholder] Rhea is the tool that powers curriculum planning at Founders and Coders. It chains together named sub-workflows (Themis for courses, Metis for modules, Theia for import/export) through a shared generation engine backed by the Anthropic SDK and LangChain. Every generated module carries a changelog, confidence scoring, and auto-cited research sources so human reviewers know exactly what to trust.',
+		'Peer-led learning cohorts need multi-week course structures, and this generates them through Claude with optional live research so output reflects current industry practice. Named sub-workflows (Themis for courses, Metis for modules, Theia for import and export) share a common generation engine backed by the Anthropic SDK and LangChain, keeping each workflow independently maintainable. A provenance cascade gives every generated module a changelog, a high, medium, or low confidence score, and auto-cited research sources, so reviewers know exactly what to trust, while Zod enforces the output contract with automatic retry up to three attempts on failed generations. Built across 356 commits as a prototype, it deploys via Deno Deploy and spans 31 Svelte components and 66 TypeScript files.',
 	kind: 'app',
 	contribution: { role: 'solo' },
 	status: 'prototype',

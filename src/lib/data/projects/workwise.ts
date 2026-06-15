@@ -6,7 +6,7 @@ export const workwise: Project = {
 	tagline:
 		'A digital workplace passport that helps neurodivergent employees document their needs and share them with line managers, built for Founders and Coders and the LIFT programme.',
 	description:
-		'[Placeholder] WorkWise is a real social-impact product. Employees use it to document the accommodations that help them work best; managers use it to understand and act on those needs. The engineering challenge is matching the care of the product\'s purpose: RLS-enforced data isolation, magic-link authentication, and a form system that handles the emotional weight of self-disclosure.',
+		'A digital workplace passport, built for Founders and Coders and the LIFT programme, that helps neurodivergent employees document their needs and share them with line managers. Employees record the accommodations that help them work best; managers use it to understand and act on those needs, with Row-Level Security enforcing data isolation between the two. Jason led the response-state architecture, where answers are versioned by creation date rather than overwritten, and built the tile-based dashboard layout, database-driven status indicators with no hardcoded states, and a consolidated CSS architecture across 24 merged PRs. The developer loop runs on a local Supabase-in-Docker setup with two-tier seeding and TypeScript types generated from the database schema.',
 	kind: 'app',
 	contribution: {
 		role: 'lead',
