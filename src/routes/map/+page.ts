@@ -1,9 +1,9 @@
-import { getProjectGraph, getSharedTechEdges, computeLayout } from '$lib/data/graph.js';
+import { getProjectGraph, getSharedTechEdges, computeForceLayout } from '$lib/data/graph.js';
 
 export function load() {
 	const graph = getProjectGraph();
-	const layout = computeLayout(graph);
 	const sharedEdges = getSharedTechEdges();
+	const layout = computeForceLayout(graph, sharedEdges);
 
 	const nodes = graph.nodes.map((node) => {
 		const point = layout.positions.get(node.slug);

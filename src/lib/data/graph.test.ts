@@ -13,7 +13,7 @@ import {
 	getNeighbours,
 	getTechIndex,
 	getSharedTechEdges,
-	computeLayout
+	computeForceLayout
 } from './graph.js';
 import type { ProjectSlug } from './types.js';
 
@@ -163,19 +163,22 @@ describe('getSharedTechEdges', () => {
 	});
 });
 
-describe('computeLayout', () => {
+describe('computeForceLayout', () => {
 	const graph = getProjectGraph();
+	const shared = getSharedTechEdges();
 
 	it('positions every node', () => {
-		const layout = computeLayout(graph);
+		const layout = computeForceLayout(graph, shared);
 		for (const node of graph.nodes) {
 			expect(layout.positions.has(node.slug), `${node.slug} has no position`).toBe(true);
 		}
 	});
 
-	it('keeps every node within the canvas bounds', () => {
-		const layout = computeLayout(graph);
+	it('gives every node a finite position within the canvas bounds', () => {
+		const layout = computeForceLayout(graph, shared);
 		for (const [slug, point] of layout.positions) {
+			expect(Number.isFinite(point.x), `${slug}.x not finite`).toBe(true);
+			expect(Number.isFinite(point.y), `${slug}.y not finite`).toBe(true);
 			expect(point.x, `${slug}.x out of bounds`).toBeGreaterThanOrEqual(0);
 			expect(point.x, `${slug}.x out of bounds`).toBeLessThanOrEqual(layout.width);
 			expect(point.y, `${slug}.y out of bounds`).toBeGreaterThanOrEqual(0);
@@ -184,8 +187,8 @@ describe('computeLayout', () => {
 	});
 
 	it('is deterministic: identical input yields identical coordinates', () => {
-		const a = computeLayout(graph);
-		const b = computeLayout(graph);
+		const a = computeForceLayout(graph, shared);
+		const b = computeForceLayout(graph, shared);
 		for (const [slug, point] of a.positions) {
 			expect(b.positions.get(slug)).toEqual(point);
 		}

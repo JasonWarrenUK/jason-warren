@@ -44,31 +44,6 @@
 	// The kinds present, for the filter legend.
 	const kinds = $derived([...new Set(nodes.map((n) => n.kind))].sort());
 
-	const kindLabel: Record<ProjectKind, string> = {
-		app: 'Apps',
-		game: 'Games',
-		website: 'Websites',
-		toy: 'Toys',
-		library: 'Libraries',
-		tool: 'Tools',
-		tui: 'TUIs'
-	};
-
-	// Cluster labels: one per kind, placed above the centroid of its members.
-	const clusters = $derived.by(() => {
-		const groups = new Map<ProjectKind, MapNode[]>();
-		for (const node of nodes) {
-			const bucket = groups.get(node.kind);
-			if (bucket) bucket.push(node);
-			else groups.set(node.kind, [node]);
-		}
-		return [...groups.entries()].map(([kind, members]) => {
-			const cx = members.reduce((sum, n) => sum + n.x, 0) / members.length;
-			const minY = Math.min(...members.map((n) => n.y));
-			return { kind, x: cx, y: minY };
-		});
-	});
-
 	// Node radius scales with reach (commits, falling back to lines of code),
 	// normalised across the registry; flagships keep a floor so they read as hubs.
 	const radiusScale = $derived.by(() => {
@@ -135,19 +110,6 @@
 		role="group"
 		aria-label="Map of projects and the connections between them"
 	>
-		<!-- Cluster labels sit furthest back. -->
-		<g class="map__clusters" aria-hidden="true">
-			{#each clusters as cluster (cluster.kind)}
-				<text
-					class="map__cluster"
-					class:map__cluster--dim={activeKind !== null && activeKind !== cluster.kind}
-					x={cluster.x}
-					y={Math.max(cluster.y - 34, 24)}
-					text-anchor="middle">{kindLabel[cluster.kind]}</text
-				>
-			{/each}
-		</g>
-
 		<!-- Shared-tech links: faintest, behind the curated edges. -->
 		<g class="map__edges">
 			{#each sharedEdges as edge (`shared:${edge.source}-${edge.target}`)}
@@ -272,20 +234,6 @@
 		overflow: visible;
 	}
 
-	.map__cluster {
-		font-size: 26px;
-		font-weight: 700;
-		text-transform: uppercase;
-		letter-spacing: 0.14em;
-		fill: var(--color-text-muted);
-		opacity: 0.32;
-		transition: opacity var(--transition-base);
-	}
-
-	.map__cluster--dim {
-		opacity: 0.1;
-	}
-
 	.map__edge {
 		stroke-linecap: round;
 		transition:
@@ -299,15 +247,16 @@
 	}
 
 	.map__edge--related {
-		stroke: var(--color-border-strong);
-		stroke-width: 1.5;
-		stroke-dasharray: 4 6;
+		stroke: var(--color-text-subtle);
+		stroke-width: 1.6;
+		stroke-dasharray: 5 6;
+		opacity: 0.6;
 	}
 
 	.map__edge--shared {
-		stroke: var(--color-border-strong);
-		stroke-width: 1;
-		opacity: 0.28;
+		stroke: var(--color-text-muted);
+		stroke-width: 1.2;
+		opacity: 0.4;
 	}
 
 	.map__edge--dim {
@@ -364,10 +313,6 @@
 	@media (max-width: 40rem) {
 		.map__label {
 			font-size: 26px;
-		}
-
-		.map__cluster {
-			font-size: 34px;
 		}
 
 		.map__node:not(.map__node--flagship) .map__label {
@@ -429,17 +374,16 @@
 
 	.map__swatch--related {
 		height: 0;
-		border-top: 1.5px dashed var(--color-border-strong);
+		border-top: 1.6px dashed var(--color-text-subtle);
 		border-radius: 0;
 		width: 1.25rem;
 	}
 
 	.map__swatch--shared {
 		height: 0;
-		border-top: 1px solid var(--color-border-strong);
+		border-top: 1.2px solid var(--color-text-muted);
 		border-radius: 0;
 		width: 1.25rem;
-		opacity: 0.5;
 	}
 
 	.map__kind {
@@ -480,7 +424,6 @@
 		.map__edge,
 		.map__node,
 		.map__dot,
-		.map__cluster,
 		.map__label {
 			transition: none;
 		}

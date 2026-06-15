@@ -12,10 +12,20 @@
  *   `extracted-from` edge describe the same connection, so the graph keeps a
  *   single directed extraction edge (library → consumer). Mutual `related`
  *   edges collapse to one undirected edge.
- * - `computeLayout` is deterministic: identical input always yields identical
- *   coordinates, so the prerendered SVG is reproducible across builds.
+ * - `computeForceLayout` is deterministic: identical input always yields
+ *   identical coordinates, so the prerendered SVG is reproducible across builds.
  */
 
+import {
+	forceCenter,
+	forceCollide,
+	forceLink,
+	forceManyBody,
+	forceSimulation,
+	forceX,
+	forceY,
+	type SimulationNodeDatum
+} from 'd3-force';
 import { projects } from './index.js';
 import type { Project, ProjectSlug } from './types.js';
 
@@ -241,7 +251,7 @@ export function getTechIndex(): Map<string, ProjectSlug[]> {
 }
 
 // ---------------------------------------------------------------------------
-// Deterministic layout
+// Force-directed layout
 // ---------------------------------------------------------------------------
 
 export interface Point {
@@ -255,55 +265,114 @@ export interface LayoutResult {
 	height: number;
 }
 
-/** Fixed kind ordering so cluster placement is stable regardless of registry order. */
-const KIND_ORDER: Project['kind'][] = ['app', 'game', 'website', 'tui', 'tool', 'library', 'toy'];
+interface SimNode extends SimulationNodeDatum {
+	slug: ProjectSlug;
+	radius: number;
+}
+
+interface SimLink {
+	source: string;
+	target: string;
+	distance: number;
+	strength: number;
+}
+
+/** Activity weight for a project, used for collision sizing (mirrors the map's visual scale). */
+function activityWeight(project: Project): number {
+	return project.metrics?.commits ?? (project.metrics?.linesOfCode ?? 0) / 50;
+}
 
 /**
- * Deterministic clustered-radial layout. Projects are grouped by `kind`; each
- * kind becomes a cluster whose centre sits on a large ring, and the projects
- * within a cluster fan out on a smaller ring around that centre. Ordering is
- * fixed (kind order, then slug) so the same graph always lays out identically.
+ * Force-directed layout, run to completion at build time so the prerendered SVG
+ * stays static (no runtime simulation, no JavaScript needed to view it).
+ *
+ * Position reflects connection: curated extraction/related edges pull hard,
+ * shared-stack edges pull gently, charge separates, and collision keeps the
+ * activity-scaled dots from overlapping. Determinism is guaranteed by fixed
+ * initial positions (a ring by registry index), a fixed tick count, and
+ * d3-force's own deterministic PRNG, so identical input yields identical
+ * coordinates across builds.
  */
-export function computeLayout(graph: ProjectGraph, size = 1000): LayoutResult {
+export function computeForceLayout(
+	graph: ProjectGraph,
+	sharedEdges: SharedTechEdge[] = [],
+	size = 1000
+): LayoutResult {
 	const centre = size / 2;
-	const clusterRingRadius = size * 0.34;
-	const nodeRingRadius = size * 0.13;
+	const weights = graph.nodes.map((n) => activityWeight(n.project));
+	const maxWeight = Math.max(1, ...weights);
 
-	const byKind = new Map<Project['kind'], GraphNode[]>();
-	for (const node of graph.nodes) {
-		const bucket = byKind.get(node.project.kind);
-		if (bucket) bucket.push(node);
-		else byKind.set(node.project.kind, [node]);
-	}
+	const radiusOf = (project: Project): number => {
+		const base = 16 + 26 * Math.sqrt(activityWeight(project) / maxWeight);
+		return project.flagship ? Math.max(34, base) : base;
+	};
 
-	// Stable kind list: known kinds in fixed order, then any unknown kinds sorted.
-	const presentKinds = [...byKind.keys()];
-	const orderedKinds = [
-		...KIND_ORDER.filter((k) => byKind.has(k)),
-		...presentKinds.filter((k) => !KIND_ORDER.includes(k)).sort()
+	// Deterministic initial placement: an even ring, ordered by registry index.
+	const nodes: SimNode[] = graph.nodes.map((node, index) => {
+		const angle = (2 * Math.PI * index) / graph.nodes.length - Math.PI / 2;
+		return {
+			slug: node.slug,
+			radius: radiusOf(node.project),
+			x: centre + size * 0.3 * Math.cos(angle),
+			y: centre + size * 0.3 * Math.sin(angle)
+		};
+	});
+
+	const links: SimLink[] = [
+		...graph.edges.map((edge) => ({
+			source: edge.source,
+			target: edge.target,
+			distance: edge.kind === 'extraction' ? 90 : 140,
+			strength: edge.kind === 'extraction' ? 0.9 : 0.45
+		})),
+		...sharedEdges.map((edge) => ({
+			source: edge.source,
+			target: edge.target,
+			distance: 180,
+			strength: Math.min(0.18, 0.04 * edge.weight)
+		}))
 	];
 
+	const simulation = forceSimulation<SimNode>(nodes)
+		.force(
+			'link',
+			forceLink<SimNode, SimLink>(links)
+				.id((node) => node.slug)
+				.distance((link) => link.distance)
+				.strength((link) => link.strength)
+		)
+		.force('charge', forceManyBody<SimNode>().strength(-320))
+		.force('collide', forceCollide<SimNode>((node) => node.radius + 22).strength(1))
+		.force('centre', forceCenter<SimNode>(centre, centre))
+		.force('x', forceX<SimNode>(centre).strength(0.04))
+		.force('y', forceY<SimNode>(centre).strength(0.04))
+		.stop();
+
+	// Run to convergence synchronously; no animation reaches the client.
+	for (let i = 0; i < 320; i++) simulation.tick();
+
+	// Normalise the settled cloud to fill the canvas with uniform scaling.
+	const xs = nodes.map((n) => n.x ?? centre);
+	const ys = nodes.map((n) => n.y ?? centre);
+	const minX = Math.min(...xs);
+	const maxX = Math.max(...xs);
+	const minY = Math.min(...ys);
+	const maxY = Math.max(...ys);
+	const spanX = maxX - minX || 1;
+	const spanY = maxY - minY || 1;
+	const pad = size * 0.09;
+	const usable = size - 2 * pad;
+	const scale = Math.min(usable / spanX, usable / spanY);
+	const offsetX = pad + (usable - spanX * scale) / 2;
+	const offsetY = pad + (usable - spanY * scale) / 2;
+
 	const positions = new Map<ProjectSlug, Point>();
-
-	orderedKinds.forEach((kind, clusterIndex) => {
-		const clusterAngle = (2 * Math.PI * clusterIndex) / orderedKinds.length - Math.PI / 2;
-		const clusterX = centre + clusterRingRadius * Math.cos(clusterAngle);
-		const clusterY = centre + clusterRingRadius * Math.sin(clusterAngle);
-
-		const members = [...(byKind.get(kind) ?? [])].sort((a, b) => a.slug.localeCompare(b.slug));
-
-		members.forEach((node, memberIndex) => {
-			if (members.length === 1) {
-				positions.set(node.slug, { x: clusterX, y: clusterY });
-				return;
-			}
-			const nodeAngle = (2 * Math.PI * memberIndex) / members.length - Math.PI / 2;
-			positions.set(node.slug, {
-				x: clusterX + nodeRingRadius * Math.cos(nodeAngle),
-				y: clusterY + nodeRingRadius * Math.sin(nodeAngle)
-			});
+	for (const node of nodes) {
+		positions.set(node.slug, {
+			x: offsetX + ((node.x ?? centre) - minX) * scale,
+			y: offsetY + ((node.y ?? centre) - minY) * scale
 		});
-	});
+	}
 
 	return { positions, width: size, height: size };
 }
