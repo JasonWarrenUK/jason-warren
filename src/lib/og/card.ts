@@ -7,7 +7,7 @@
  * The card is a deterministic graphic, not prose. Four project dimensions
  * each drive one visual variable:
  *   - background colour  ← project kind
- *   - language glyph      ← primary language tag
+ *   - language glyphs     ← one per curated language tag (the significance gate)
  *   - background geometry ← runtime (a categorical archetype)
  *   - the name's typeface  ← data/persistence model (a categorical archetype)
  *
@@ -28,7 +28,24 @@ import {
 	siGo,
 	siRust,
 	siSharp,
-	siGnubash
+	siGnubash,
+	siCss,
+	siHtml5,
+	siC,
+	siCplusplus,
+	siLua,
+	siKotlin,
+	siSwift,
+	siRuby,
+	siPhp,
+	siElixir,
+	siHaskell,
+	siScala,
+	siDart,
+	siZig,
+	siOcaml,
+	siR,
+	siJulia
 } from 'simple-icons';
 import type { Project, ProjectKind } from '$lib/data/types.js';
 
@@ -122,10 +139,16 @@ const kindLabel: Record<ProjectKind, string> = {
 };
 
 // ---------------------------------------------------------------------------
-// Dimension 2: language glyph ← primary language tag.
+// Dimension 2: one glyph per language tag (the significance gate).
+// The curated `language` tags select which of a repo's many languages are worth
+// surfacing; each maps to a filled glyph, rendered as a row on the card.
 // ---------------------------------------------------------------------------
 
-/** Filled 24x24 glyph path per language. Covers every language in the registry. */
+/**
+ * Filled 24x24 glyph path per language label. Keyed by the canonical tag-label
+ * spelling. Covers the registry's curated languages plus the wider vocabulary
+ * curation may add; anything unmapped falls back to the angle-brackets glyph.
+ */
 const languageIcon: Record<string, string> = {
 	TypeScript: siTypescript.path,
 	JavaScript: siJavascript.path,
@@ -134,8 +157,28 @@ const languageIcon: Record<string, string> = {
 	Rust: siRust.path,
 	// No CC0 C# brand mark exists; the musical sharp is an apt, on-brand stand-in.
 	'C#': siSharp.path,
-	Shell: siGnubash.path
+	Shell: siGnubash.path,
+	CSS: siCss.path,
+	HTML: siHtml5.path,
+	C: siC.path,
+	'C++': siCplusplus.path,
+	Lua: siLua.path,
+	Kotlin: siKotlin.path,
+	Swift: siSwift.path,
+	Ruby: siRuby.path,
+	PHP: siPhp.path,
+	Elixir: siElixir.path,
+	Haskell: siHaskell.path,
+	Scala: siScala.path,
+	Dart: siDart.path,
+	Zig: siZig.path,
+	OCaml: siOcaml.path,
+	R: siR.path,
+	Julia: siJulia.path
 };
+
+/** How many language glyphs the card shows before stopping, to avoid clutter. */
+const MAX_LANGUAGE_GLYPHS = 5;
 
 // Generic angle-brackets fallback. Every project has a covered language, so
 // this is only a safety net.
@@ -205,8 +248,9 @@ function getDataModel(project: Project): DataModel {
 	return dataModelOrder.find((m) => models.has(m)) ?? 'none';
 }
 
-function getPrimaryLanguage(project: Project): string | undefined {
-	return project.tags.find((t) => t.kind === 'language')?.label;
+/** Every curated language label, in tag order: the gate the card renders. */
+function getLanguages(project: Project): string[] {
+	return project.tags.filter((t) => t.kind === 'language').map((t) => t.label);
 }
 
 function getRuntime(project: Project): string | undefined {
@@ -335,8 +379,8 @@ export interface OgCard {
 	title: string;
 	/** Project kind, drives the palette. Omitted for the default site card. */
 	kind?: ProjectKind;
-	/** Primary language label, drives the glyph. */
-	language?: string;
+	/** Curated language labels, one glyph each. */
+	languages?: string[];
 	/** Runtime label, drives the background geometry. */
 	runtime?: string;
 	/** Resolved data model, drives the name typeface. */
@@ -351,7 +395,7 @@ export function projectToOgCard(project: Project): OgCard {
 		eyebrow: kindLabel[project.kind],
 		title: project.name,
 		kind: project.kind,
-		language: getPrimaryLanguage(project),
+		languages: getLanguages(project),
 		runtime: getRuntime(project),
 		dataModel: getDataModel(project),
 		seed: project.slug
@@ -367,7 +411,9 @@ export async function renderOgCard(card: OgCard): Promise<Buffer> {
 	const seed = hash(card.seed);
 	const archetype = runtimeArchetype(card.runtime);
 	const nameFont = dataModelFont[card.dataModel ?? 'none'];
-	const iconPath = card.language ? (languageIcon[card.language] ?? fallbackIcon) : null;
+	const iconPaths = (card.languages ?? [])
+		.slice(0, MAX_LANGUAGE_GLYPHS)
+		.map((language) => languageIcon[language] ?? fallbackIcon);
 
 	const svg = await satori(
 		{
@@ -448,18 +494,21 @@ export async function renderOgCard(card: OgCard): Promise<Buffer> {
 										children: card.kind ? 'Jason Warren' : ''
 									}
 								},
-								...(iconPath
-									? [
-											{
-												type: 'img',
-												props: {
-													src: iconDataUri(iconPath, palette.accent),
-													width: 64,
-													height: 64
-												}
+								// One glyph per curated language, right-aligned.
+								{
+									type: 'div',
+									props: {
+										style: { display: 'flex', alignItems: 'center', gap: '20px' },
+										children: iconPaths.map((path) => ({
+											type: 'img',
+											props: {
+												src: iconDataUri(path, palette.accent),
+												width: 64,
+												height: 64
 											}
-										]
-									: [])
+										}))
+									}
+								}
 							]
 						}
 					}
