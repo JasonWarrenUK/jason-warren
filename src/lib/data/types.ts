@@ -50,19 +50,56 @@ export interface TechTag {
 // ---------------------------------------------------------------------------
 
 export interface ProjectMetrics {
+	// ---------------------------------------------------------------------------
+	// Commit grid: all-authors / Jason-only × lifetime / recent
+	// ---------------------------------------------------------------------------
+
+	/** All-authors, lifetime. Headline for solo projects (Jason IS all authors). */
 	commits?: number;
-	/** Statement coverage, 0–100 */
-	testCoverage?: number;
+	/** All-authors, trailing four weeks. */
+	commitsRecentAll?: number;
+	/** Jason only, lifetime. Headline for team projects; overlaid from drift manifest. */
+	commitsMine?: number;
+	/** Jason only, trailing four weeks. */
+	commitsRecent?: number;
+	/**
+	 * Gate output: the all-authors total exposed as context for team projects.
+	 * Set by withSyncedMetrics when role !== 'solo'; used to render "N mine of M total".
+	 * Never authored in project .ts files — populated by the curation gate only.
+	 */
+	commitsAll?: number;
+
+	// ---------------------------------------------------------------------------
+	// Churn grid: Jason-only / all-authors × lifetime / recent (×2 for added/removed)
+	// ---------------------------------------------------------------------------
+
+	/** Lines added by Jason, lifetime. */
+	linesAdded?: number;
+	/** Lines removed by Jason, lifetime. */
+	linesRemoved?: number;
+	/** Lines added by all authors, lifetime. */
+	linesAddedAll?: number;
+	/** Lines removed by all authors, lifetime. */
+	linesRemovedAll?: number;
+	/** Lines added by Jason, trailing four weeks. */
+	linesAddedRecent?: number;
+	/** Lines removed by Jason, trailing four weeks. */
+	linesRemovedRecent?: number;
+	/** Lines added by all authors, trailing four weeks. */
+	linesAddedRecentAll?: number;
+	/** Lines removed by all authors, trailing four weeks. */
+	linesRemovedRecentAll?: number;
+
+	// ---------------------------------------------------------------------------
+	// Other metrics (authored in project .ts files; not from drift manifest)
+	// ---------------------------------------------------------------------------
+
 	/** Overall codebase size: total lines across tracked source files, all authors. */
 	linesOfCode?: number;
+	/** Statement coverage, 0–100 */
+	testCoverage?: number;
 	/** Merged pull requests (team projects) */
 	mergedPrs?: number;
-	/** Lines added by Jason (author-filtered churn). */
-	linesAdded?: number;
-	/** Lines removed by Jason (author-filtered churn). */
-	linesRemoved?: number;
-	/** Commits by Jason in the trailing four weeks, from the drift manifest. */
-	commitsRecent?: number;
 }
 
 // ---------------------------------------------------------------------------

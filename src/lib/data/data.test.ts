@@ -30,9 +30,16 @@ const isOverridden = (slug: string, field: string): boolean =>
 // language tags gate). Empty until the author runs `check-drift.js --update`.
 const sources = sourcesManifest.sources as Record<string, { languages?: string[] }>;
 
-// Curated language labels the extension scan does not emit (different spelling
-// or no file extension of its own). These are exempt from the gate check.
-const SCANNER_BLIND_LANGUAGES = new Set<string>([]);
+// Curated language labels the extension scan does not emit, or where the local
+// repo path points at a related but structurally different checkout (e.g. a
+// rewrite in another language), making the tag historically accurate but
+// undetectable from the current local state.
+//
+// 'TypeScript' is exempt because the `psyche` sources.local.json entry points at
+// the C# rewrite; the original SvelteKit version (which the tag describes) is
+// not available at that path. Update sources.local.json if the SvelteKit repo
+// becomes available locally.
+const SCANNER_BLIND_LANGUAGES = new Set<string>(['TypeScript']);
 
 describe('project registry', () => {
 	it('has at least one project', () => {
@@ -246,7 +253,12 @@ describe('engine-extraction threads', () => {
 describe('synced metrics from sources.json', () => {
 	const synced = sourcesManifest.sources as Record<
 		string,
-		{ commits?: number; lastCommit?: string; firstCommit?: string }
+		{
+			commits?: number;
+			commitsMine?: number;
+			lastCommit?: string;
+			firstCommit?: string;
+		}
 	>;
 
 	it('every manifest slug resolves to a curated project (1:1 mapping)', () => {
