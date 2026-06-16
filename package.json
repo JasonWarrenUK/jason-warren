@@ -14,7 +14,9 @@
 		"test": "vitest run",
 		"test:watch": "vitest",
 		"format": "prettier --write .",
-		"lint": "prettier --check ."
+		"lint": "prettier --check .",
+		"drift": "node scripts/check-drift.js",
+		"drift:update": "node scripts/check-drift.js --update"
 	},
 	"devDependencies": {
 		"@fontsource/inter": "^5.2.8",
