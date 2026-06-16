@@ -2,6 +2,7 @@
 	import HeroBreadth from '$lib/components/hero/HeroBreadth.svelte';
 	import FlagshipDeepDive from '$lib/components/hero/FlagshipDeepDive.svelte';
 	import EngineThread from '$lib/components/thread/EngineThread.svelte';
+	import ThemeTerritories from '$lib/components/toolkit/ThemeTerritories.svelte';
 	import Seo from '$lib/components/seo/Seo.svelte';
 	import { AUTHOR, SITE_URL, GITHUB_URL, BLUESKY_URL, DEFAULT_DESCRIPTION } from '$lib/config.js';
 
@@ -41,6 +42,8 @@
 	{#if data.engineThreads.length > 0}
 		<EngineThread threads={data.engineThreads} />
 	{/if}
+
+	<ThemeTerritories themes={data.themes} variant="compact" />
 </div>
 
 <style>
