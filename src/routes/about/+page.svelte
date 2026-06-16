@@ -34,16 +34,17 @@
 				<h2 class="section__heading">Who I am</h2>
 				<div class="section__prose">
 					<p>
-						I'm Jason Warren, a full-stack developer at Founders and Coders. I work across the whole
-						stack, from terminal tools in Go to native desktop apps in Tauri, from graph databases
-						in Neo4j to reactive UIs in Svelte 5. The breadth is deliberate: different problems
-						deserve different tools.
+						I'm Jason Warren, a full-stack developer at Founders and Coders. "Full-stack" undersells
+						it slightly: in practice I move between Go terminal tools, Tauri desktop apps, Neo4j
+						graph models and Svelte 5 UIs, often inside the same week. I have made peace with the
+						fact that this can look like indecision and is actually appetite.
 					</p>
 					<p>
-						My background is not a conventional computer science path. I came to software through
-						curiosity, apprenticeship, and a lot of side projects. That history shapes how I work: I
-						care about learning in the open, about building things that actually run, and about
-						writing code that someone else (including future me) can read.
+						I did not arrive here through a computer science degree. I came in sideways, through
+						curiosity and apprenticeship and an unreasonable number of side projects, and that route
+						still shapes how I work. I learn in the open, I am suspicious of anything that has never
+						actually run, and I write code on the assumption that someone (usually a baffled future
+						me) will have to read it later.
 					</p>
 				</div>
 			</section>
@@ -52,20 +53,22 @@
 				<h2 class="section__heading">How I work</h2>
 				<div class="section__prose">
 					<p>
-						I prefer working close to the problem. That means I often reach for small, focused tools
-						over large frameworks, and I am happy spending time on the parts of a project that most
-						people skip: the data model, the test harness, the git history.
+						I like working close to the problem. In practice that means I reach for small, sharp
+						tools before large frameworks, and I am genuinely happy in the parts of a project most
+						people would rather skip: the data model, the test harness, the shape of the git
+						history.
 					</p>
 					<p>
-						On team projects, I tend to work at the intersection of architecture and delivery: I
-						build the features, but I also care about the shape of the system those features live
-						in. My work on the Lead Pool segmentation feature in fac-cra and the response-state
-						architecture in Workwise are both examples of that.
+						On team projects I tend to land between architecture and delivery. I will build the
+						feature in front of me, but I cannot help caring about the shape of the system it has to
+						live in. The Lead Pool segmentation work in fac-cra and the response-state architecture
+						in Workwise both came out of exactly that itch.
 					</p>
 					<p>
-						On solo projects, I push harder on craft. Iris reached v5.0.0 across 666 commits with
-						close to 1:1 source-to-test mapping. Wyrd has 68.5% statement coverage across 150 Go
-						files because I wanted to understand what rigour actually felt like.
+						Left to my own devices, I push the craft further than is strictly justified. Iris
+						reached v5.0.0 over 666 commits with very nearly one test for every source file. Wyrd
+						sits at 68.5% statement coverage across 150 Go files, not because anyone asked, but
+						because I wanted to find out what real rigour feels like from the inside.
 					</p>
 				</div>
 			</section>
@@ -74,16 +77,17 @@
 				<h2 class="section__heading">The toolkit</h2>
 				<div class="section__prose">
 					<p>
-						TypeScript is my primary language for anything touching the browser or Node. Go is my
-						choice for terminal tools, CLIs, and anything where performance and binary distribution
-						matter. I have written enough Rust to build a Tauri desktop app; I understand the
-						ownership model and the tradeoffs.
+						TypeScript is my default for anything that touches the browser or Node. Go is what I
+						reach for when something needs to live in the terminal or ship as a single binary. I
+						have written enough Rust to wrestle a Tauri desktop app to completion: enough to respect
+						the ownership model rather than fear it.
 					</p>
 					<p>
-						On the frontend, Svelte (especially Svelte 5 with runes) is my strong preference. For
-						data, I reach for PostgreSQL with row-level security, Neo4j when the relationships are
-						the model, and Supabase when I want both quickly. I test with Vitest, and I have written
-						Playwright end-to-end suites for production applications.
+						On the frontend, Svelte (Svelte 5 with runes especially) is a strong preference rather
+						than a default reflex. For data I reach for PostgreSQL with row-level security, Neo4j
+						when the relationships are the actual model, and Supabase when I want both in a hurry. I
+						test with Vitest, and I have written Playwright end-to-end suites for software that real
+						people depend on.
 					</p>
 				</div>
 			</section>

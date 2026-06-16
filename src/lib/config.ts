@@ -16,4 +16,4 @@ export const BLUESKY_HANDLE = '@neurosocialist.bsky.social';
 
 /** Fallback description for pages that do not set their own. */
 export const DEFAULT_DESCRIPTION =
-	'Jason Warren is a full-stack developer with a wide toolkit: TypeScript, Go, Rust, SvelteKit, Tauri, and Neo4j, building everything from terminal tools to graph-native applications.';
+	'Jason Warren is a full-stack developer whose toolkit runs unusually wide: TypeScript, Go, Rust, SvelteKit, Tauri and Neo4j, across everything from terminal tools to graph-native applications.';

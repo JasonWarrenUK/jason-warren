@@ -40,6 +40,9 @@
 				<a href="{base}/about" class="site-nav__link">About</a>
 			</li>
 			<li>
+				<a href="{base}/colophon" class="site-nav__link">Colophon</a>
+			</li>
+			<li>
 				<ThemeToggle />
 			</li>
 		</ul>
@@ -53,7 +56,8 @@
 <footer class="site-footer">
 	<div class="site-footer__inner">
 		<p class="site-footer__text">
-			Built with SvelteKit 2 and Svelte 5. Source on
+			Built with
+			<a href="{base}/colophon" class="site-footer__link">SvelteKit 2 and Svelte 5</a>. Source on
 			<a
 				href="https://github.com/JasonWarrenUK/jason-warren"
 				class="site-footer__link"

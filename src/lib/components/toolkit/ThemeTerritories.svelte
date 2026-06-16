@@ -32,8 +32,9 @@
 		<header class="themes-teaser__header">
 			<h2 class="themes-teaser__title">Themes the work returns to</h2>
 			<p class="themes-teaser__strapline">
-				Across {themes.length} territories, from narrative engines to graph-native data and human-centred
-				tools.
+				The same {themes.length} territories come up again and again, regardless of what I think I am
+				sitting down to build: narrative engines, graph-native data, tools shaped around how people actually
+				think.
 			</p>
 		</header>
 

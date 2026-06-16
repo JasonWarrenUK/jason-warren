@@ -4,7 +4,7 @@ import { SITE_URL } from '$lib/config.js';
 
 export const prerender = true;
 
-const staticPaths = ['/', '/projects', '/map', '/timeline', '/about'];
+const staticPaths = ['/', '/projects', '/map', '/timeline', '/toolkit', '/about', '/colophon'];
 
 export const GET: RequestHandler = () => {
 	const projectPaths = getAllProjects().map((project) => ({

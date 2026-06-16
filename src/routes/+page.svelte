@@ -29,9 +29,10 @@
 		<h1 class="page__name">Jason Warren</h1>
 		<p class="page__role">Full-stack developer</p>
 		<p class="page__bio">
-			I build things across the stack: terminal tools in Go, native desktop apps in Tauri,
-			graph-native data models in Neo4j, interactive fiction engines in TypeScript. The range is
-			deliberate. Different problems call for different tools.
+			I build across the stack, and the spread is wider than is strictly sensible: Go terminal
+			tools, a Tauri desktop app, graph data models in Neo4j, an interactive-fiction engine in
+			TypeScript. I could claim a grand unifying strategy. The honest version is that a genuinely
+			new sort of problem is the best excuse I know to learn a genuinely new sort of tool.
 		</p>
 	</header>
 
