@@ -45,19 +45,33 @@ export * from './types.js';
 /**
  * One synced fingerprint from the drift manifest. Every field is optional: the
  * manifest is populated incrementally by `scripts/check-drift.js --update`, so
- * a freshly added repo may only carry `head`/`commits`/`lastCommit` until the
- * next full sync.
+ * a freshly added repo may only carry a subset of fields until the next full sync.
+ * Field naming mirrors ProjectMetrics exactly; `commitsAll` is omitted here
+ * because it is produced by the curation gate, not stored in the manifest.
  */
 interface SyncedSource {
 	head?: string;
+	// Commit grid
 	commits?: number;
+	commitsRecentAll?: number;
+	commitsMine?: number;
+	commitsRecent?: number;
+	// Dates
 	lastCommit?: string;
 	firstCommit?: string;
+	// Languages (advisory; not overlaid onto tags — tags are hand-curated)
 	languages?: string[];
+	// Codebase size
 	linesOfCode?: number;
-	commitsRecent?: number;
+	// Churn grid
 	linesAdded?: number;
 	linesRemoved?: number;
+	linesAddedAll?: number;
+	linesRemovedAll?: number;
+	linesAddedRecent?: number;
+	linesRemovedRecent?: number;
+	linesAddedRecentAll?: number;
+	linesRemovedRecentAll?: number;
 }
 
 const sources = sourcesManifest.sources as Record<string, SyncedSource>;
@@ -68,20 +82,57 @@ const sources = sourcesManifest.sources as Record<string, SyncedSource>;
  * only curated projects exist, and the manifest contributes numbers only, never
  * a project or a tag. Precedence is synced-wins-when-present, with the authored
  * `.ts` value as fallback, so nothing regresses before the next drift update.
+ *
+ * ### Curation gate — commit headline
+ *
+ * The `commits` field written into the merged metrics is role-keyed:
+ *
+ * - **solo** — Jason IS all authors, so the headline is the all-authors lifetime
+ *   count (`synced.commits`). No `commitsAll` context field is set.
+ * - **lead / collaborator** — the headline is Jason's scoped count (`synced.commitsMine`,
+ *   falling back to the authored value which is already Jason-scoped by convention).
+ *   The all-authors total is exposed as `commitsAll` for "N mine of M total" UI.
+ *
+ * All other fields (churn, loc, dates) are overlaid unconditionally.
  */
 function withSyncedMetrics(project: Project): Project {
 	const synced = sources[project.slug];
 	if (!synced) return project;
 
 	const authored = project.metrics;
+	const isSolo = project.contribution.role === 'solo';
+
+	// Role-keyed commit headline
+	const headlineCommits = isSolo
+		? (synced.commits ?? authored?.commits) // all-authors for solo
+		: (synced.commitsMine ?? authored?.commits); // Jason-scoped for team
+	const contextCommits = isSolo
+		? undefined // no "of N total" needed for solo
+		: (synced.commits ?? undefined); // all-authors total as context for team
+
 	const merged: ProjectMetrics = {
 		...authored,
-		commits: synced.commits ?? authored?.commits,
+		// Gated headline
+		commits: headlineCommits,
+		// Gate context (team projects only)
+		commitsAll: contextCommits,
+		// Full commit grid (available for future use)
+		commitsRecentAll: synced.commitsRecentAll ?? authored?.commitsRecentAll,
+		commitsMine: synced.commitsMine ?? authored?.commitsMine,
+		commitsRecent: synced.commitsRecent ?? authored?.commitsRecent,
+		// Codebase size
 		linesOfCode: synced.linesOfCode ?? authored?.linesOfCode,
+		// Full churn grid
 		linesAdded: synced.linesAdded ?? authored?.linesAdded,
 		linesRemoved: synced.linesRemoved ?? authored?.linesRemoved,
-		commitsRecent: synced.commitsRecent ?? authored?.commitsRecent
+		linesAddedAll: synced.linesAddedAll ?? authored?.linesAddedAll,
+		linesRemovedAll: synced.linesRemovedAll ?? authored?.linesRemovedAll,
+		linesAddedRecent: synced.linesAddedRecent ?? authored?.linesAddedRecent,
+		linesRemovedRecent: synced.linesRemovedRecent ?? authored?.linesRemovedRecent,
+		linesAddedRecentAll: synced.linesAddedRecentAll ?? authored?.linesAddedRecentAll,
+		linesRemovedRecentAll: synced.linesRemovedRecentAll ?? authored?.linesRemovedRecentAll
 	};
+
 	// Drop keys that resolved to undefined so the metrics object stays tidy
 	// (and absent entirely when there is nothing to show).
 	for (const key of Object.keys(merged) as (keyof ProjectMetrics)[]) {
