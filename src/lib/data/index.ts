@@ -56,9 +56,19 @@ interface SyncedSource {
 	firstCommit?: string;
 	languages?: string[];
 	linesOfCode?: number;
+	// Commit grid (all-authors / Jason-only × lifetime / recent)
+	commitsMine?: number;
 	commitsRecent?: number;
+	commitsRecentAll?: number;
+	// Churn grid (Jason-only / all-authors × lifetime / recent × added/removed)
 	linesAdded?: number;
 	linesRemoved?: number;
+	linesAddedAll?: number;
+	linesRemovedAll?: number;
+	linesAddedRecent?: number;
+	linesRemovedRecent?: number;
+	linesAddedRecentAll?: number;
+	linesRemovedRecentAll?: number;
 }
 
 const sources = sourcesManifest.sources as Record<string, SyncedSource>;
