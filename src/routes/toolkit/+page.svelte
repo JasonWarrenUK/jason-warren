@@ -15,9 +15,9 @@
 	<header class="page__header">
 		<h1>Toolkit</h1>
 		<p class="page__intro">
-			Two views of the same body of work. First, when each tool entered it: the range is deliberate,
-			and this is the order it arrived in. Then, the themes the work keeps returning to, and how
-			often a single project belongs to more than one.
+			Two views of the same body of work. First, the order each tool actually arrived in, which is
+			messier and more opportunistic than any tidy strategy would suggest. Then the themes the work
+			keeps returning to, and how often a single project sits in more than one at once.
 		</p>
 	</header>
 
@@ -36,8 +36,8 @@
 		<header class="page__section-header">
 			<h2 id="themes-heading">Themes the work returns to</h2>
 			<p>
-				Six territories the projects cluster into. The same project often appears in several: that
-				overlap is where the most interesting work sits.
+				Six territories the projects cluster into. Plenty of them turn up in several at once, and
+				that overlap tends to be where the work gets genuinely interesting.
 			</p>
 		</header>
 		<ThemeTerritories themes={data.themes} variant="full" />

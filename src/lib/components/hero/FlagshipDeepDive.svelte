@@ -16,8 +16,8 @@
 	<header class="flagship__header">
 		<h2 class="flagship__title">Built end-to-end</h2>
 		<p class="flagship__strapline">
-			A few projects where depth is the point: complex problems, real constraints, shipped code.
-			Open one to dig in.
+			A few projects I took all the way down: awkward problems, constraints that refused to move,
+			and code that actually runs in front of people. Open one to dig in.
 		</p>
 	</header>
 

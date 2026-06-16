@@ -39,8 +39,9 @@
 	<header class="hero-breadth__header">
 		<h2 class="hero-breadth__title">A wide toolkit</h2>
 		<p class="hero-breadth__strapline">
-			From Go TUIs to Tauri desktop apps, from Neo4j graph queries to FastAPI microservices. The
-			range is the point.
+			Go TUIs, Tauri desktop apps, Neo4j graph queries, FastAPI microservices. A spread this wide is
+			usually a red flag; in my case it is the residue of chasing problems into whatever language
+			they happened to live in.
 		</p>
 	</header>
 
