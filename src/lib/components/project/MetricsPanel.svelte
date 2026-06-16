@@ -10,12 +10,21 @@
 	interface Metric {
 		label: string;
 		value: string;
+		/** Muted secondary line, e.g. "of 309 total" for team-project commit counts. */
+		context?: string;
 	}
 
 	const entries = $derived<Metric[]>(
 		[
 			metrics.commits != null
-				? { label: 'Commits', value: metrics.commits.toLocaleString() }
+				? {
+						label: 'Commits',
+						value: metrics.commits.toLocaleString(),
+						context:
+							metrics.commitsAll != null
+								? `of ${metrics.commitsAll.toLocaleString()} total`
+								: undefined
+					}
 				: null,
 			metrics.testCoverage != null
 				? { label: 'Test coverage', value: `${metrics.testCoverage}%` }
@@ -44,6 +53,9 @@
 				<div class="metrics__item">
 					<dt class="metrics__label">{entry.label}</dt>
 					<dd class="metrics__value">{entry.value}</dd>
+					{#if entry.context}
+						<p class="metrics__context">{entry.context}</p>
+					{/if}
 				</div>
 			{/each}
 		</dl>
@@ -91,6 +103,13 @@
 		font-size: var(--text-2xl);
 		font-weight: 700;
 		color: var(--color-primary-text);
+		font-variant-numeric: tabular-nums;
+	}
+
+	.metrics__context {
+		margin: 0;
+		font-size: var(--text-xs);
+		color: var(--color-text-muted);
 		font-variant-numeric: tabular-nums;
 	}
 </style>

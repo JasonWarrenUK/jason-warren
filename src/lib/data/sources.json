@@ -12,10 +12,23 @@
 			"firstCommit": "2026-03-10"
 		},
 		"chirpdb": {
-			"head": "cd95e42",
-			"commits": 309,
-			"lastCommit": "2026-06-12",
-			"firstCommit": "2025-12-08"
+			"head": "3f946af",
+			"commits": 350,
+			"commitsRecentAll": 69,
+			"commitsMine": 49,
+			"commitsRecent": 49,
+			"lastCommit": "2026-06-16",
+			"firstCommit": "2026-02-23",
+			"languages": ["Python", "SQL", "Shell", "HTML", "JavaScript"],
+			"linesOfCode": 15376,
+			"linesAdded": 48412,
+			"linesRemoved": 40664,
+			"linesAddedAll": 87317,
+			"linesRemovedAll": 58525,
+			"linesAddedRecent": 48412,
+			"linesRemovedRecent": 40664,
+			"linesAddedRecentAll": 51212,
+			"linesRemovedRecentAll": 43742
 		},
 		"code-arcana": {
 			"head": "b0d1669",
@@ -60,10 +73,23 @@
 			"firstCommit": "2026-06-02"
 		},
 		"guardrails": {
-			"head": "09ed0cb",
-			"commits": 107,
-			"lastCommit": "2026-06-12",
-			"firstCommit": "2026-03-18"
+			"head": "9abb954",
+			"commits": 126,
+			"commitsRecentAll": 57,
+			"commitsMine": 32,
+			"commitsRecent": 27,
+			"lastCommit": "2026-06-16",
+			"firstCommit": "2025-12-11",
+			"languages": ["TypeScript", "SQL", "JavaScript", "CSS", "HTML", "Python", "Shell"],
+			"linesOfCode": 22509,
+			"linesAdded": 9677,
+			"linesRemoved": 787,
+			"linesAddedAll": 56257,
+			"linesRemovedAll": 8253,
+			"linesAddedRecent": 5213,
+			"linesRemovedRecent": 624,
+			"linesAddedRecentAll": 7887,
+			"linesRemovedRecentAll": 1737
 		},
 		"historia": {
 			"head": "01f7b8b",
@@ -72,10 +98,23 @@
 			"firstCommit": "2026-03-05"
 		},
 		"iris": {
-			"head": "3a3882c",
-			"commits": 666,
-			"lastCommit": "2026-03-12",
-			"firstCommit": "2025-08-14"
+			"head": "4b922f8",
+			"commits": 675,
+			"commitsRecentAll": 9,
+			"commitsMine": 652,
+			"commitsRecent": 5,
+			"lastCommit": "2026-06-16",
+			"firstCommit": "2026-01-09",
+			"languages": ["TypeScript", "Rust", "Svelte", "HTML", "JavaScript"],
+			"linesOfCode": 21151,
+			"linesAdded": 120410,
+			"linesRemoved": 30332,
+			"linesAddedAll": 126478,
+			"linesRemovedAll": 31411,
+			"linesAddedRecent": 66,
+			"linesRemovedRecent": 61,
+			"linesAddedRecentAll": 702,
+			"linesRemovedRecentAll": 108
 		},
 		"kamino": {
 			"head": "671ae41",
@@ -162,10 +201,23 @@
 			"firstCommit": "2025-12-12"
 		},
 		"top-girls": {
-			"head": "d82d129",
-			"commits": 19,
-			"lastCommit": "2026-06-14",
-			"firstCommit": "2026-05-22"
+			"head": "d27ea40",
+			"commits": 27,
+			"commitsRecentAll": 27,
+			"commitsMine": 27,
+			"commitsRecent": 27,
+			"lastCommit": "2026-06-16",
+			"firstCommit": "2026-06-14",
+			"languages": ["TypeScript", "Svelte", "Shell", "CSS", "HTML", "JavaScript"],
+			"linesOfCode": 3166,
+			"linesAdded": 4261,
+			"linesRemoved": 529,
+			"linesAddedAll": 4261,
+			"linesRemovedAll": 529,
+			"linesAddedRecent": 4261,
+			"linesRemovedRecent": 529,
+			"linesAddedRecentAll": 4261,
+			"linesRemovedRecentAll": 529
 		},
 		"workwise": {
 			"head": "ec6516d",

@@ -37,6 +37,7 @@ import { craftAndGraft } from './projects/craft-and-graft.js';
 import { sakura } from './projects/sakura.js';
 import { rimewarden } from './projects/rimewarden.js';
 import sourcesManifest from './sources.json';
+import overridesManifest from './overrides.json';
 import type { Project, ProjectMetrics } from './types.js';
 
 export type { Project };
@@ -55,12 +56,46 @@ interface SyncedSource {
 	firstCommit?: string;
 	languages?: string[];
 	linesOfCode?: number;
+	// Commit grid (all-authors / Jason-only × lifetime / recent)
+	commitsMine?: number;
 	commitsRecent?: number;
+	commitsRecentAll?: number;
+	// Churn grid (Jason-only / all-authors × lifetime / recent × added/removed)
 	linesAdded?: number;
 	linesRemoved?: number;
+	linesAddedAll?: number;
+	linesRemovedAll?: number;
+	linesAddedRecent?: number;
+	linesRemovedRecent?: number;
+	linesAddedRecentAll?: number;
+	linesRemovedRecentAll?: number;
 }
 
 const sources = sourcesManifest.sources as Record<string, SyncedSource>;
+
+/**
+ * One manual override entry for a single field. Carries the pinned value alongside
+ * the synced baseline at the time the override was authored, so the drift report
+ * can flag when the ground truth has moved without silently overwriting the pin.
+ */
+interface FieldOverride<T = number> {
+	value: T;
+	syncedWhenSet: T | null;
+	syncedField?: string;
+	_setNote?: string;
+}
+
+/**
+ * All manual overrides for one project slug. Keys mirror ProjectMetrics fields
+ * plus the two top-level date fields. The `_note` key is for human annotation only.
+ */
+type SlugOverrides = Partial<Record<keyof ProjectMetrics, FieldOverride>> & {
+	lastCommit?: FieldOverride<string>;
+	firstCommit?: FieldOverride<string>;
+	_note?: string;
+};
+
+const overrides = overridesManifest.overrides as Record<string, SlugOverrides>;
 
 /**
  * Overlays synced git metrics from `sources.json` onto a curated project so the
@@ -71,16 +106,57 @@ const sources = sourcesManifest.sources as Record<string, SyncedSource>;
  */
 function withSyncedMetrics(project: Project): Project {
 	const synced = sources[project.slug];
-	if (!synced) return project;
+	const ov = overrides[project.slug];
+
+	// Return unchanged only when BOTH synced data and manual overrides are absent.
+	// An override on an un-synced repo must still apply.
+	if (!synced && !ov) return project;
 
 	const authored = project.metrics;
+	const isSolo = project.contribution.role === 'solo';
+
+	// Role-keyed commit headline (synced side, before override is applied)
+	const headlineCommits = isSolo
+		? (synced?.commits ?? authored?.commits) // all-authors for solo
+		: (synced?.commitsMine ?? authored?.commits); // Jason-scoped for team
+	const contextCommits = isSolo
+		? undefined // no "of N total" needed for solo
+		: (synced?.commits ?? undefined); // all-authors total as context for team
+
 	const merged: ProjectMetrics = {
 		...authored,
-		commits: synced.commits ?? authored?.commits,
-		linesOfCode: synced.linesOfCode ?? authored?.linesOfCode,
-		linesAdded: synced.linesAdded ?? authored?.linesAdded,
-		linesRemoved: synced.linesRemoved ?? authored?.linesRemoved,
-		commitsRecent: synced.commitsRecent ?? authored?.commitsRecent
+		// Gated headline — override wins; commitsAll stays independent (separate override)
+		commits: ov?.commits?.value ?? headlineCommits,
+		// Gate context (team projects only) — overridable independently
+		commitsAll: ov?.commitsAll?.value ?? contextCommits,
+		// Full commit grid
+		commitsRecentAll:
+			ov?.commitsRecentAll?.value ?? synced?.commitsRecentAll ?? authored?.commitsRecentAll,
+		commitsMine: ov?.commitsMine?.value ?? synced?.commitsMine ?? authored?.commitsMine,
+		commitsRecent: ov?.commitsRecent?.value ?? synced?.commitsRecent ?? authored?.commitsRecent,
+		// Codebase size
+		linesOfCode: ov?.linesOfCode?.value ?? synced?.linesOfCode ?? authored?.linesOfCode,
+		// Full churn grid
+		linesAdded: ov?.linesAdded?.value ?? synced?.linesAdded ?? authored?.linesAdded,
+		linesRemoved: ov?.linesRemoved?.value ?? synced?.linesRemoved ?? authored?.linesRemoved,
+		linesAddedAll: ov?.linesAddedAll?.value ?? synced?.linesAddedAll ?? authored?.linesAddedAll,
+		linesRemovedAll:
+			ov?.linesRemovedAll?.value ?? synced?.linesRemovedAll ?? authored?.linesRemovedAll,
+		linesAddedRecent:
+			ov?.linesAddedRecent?.value ?? synced?.linesAddedRecent ?? authored?.linesAddedRecent,
+		linesRemovedRecent:
+			ov?.linesRemovedRecent?.value ?? synced?.linesRemovedRecent ?? authored?.linesRemovedRecent,
+		linesAddedRecentAll:
+			ov?.linesAddedRecentAll?.value ??
+			synced?.linesAddedRecentAll ??
+			authored?.linesAddedRecentAll,
+		linesRemovedRecentAll:
+			ov?.linesRemovedRecentAll?.value ??
+			synced?.linesRemovedRecentAll ??
+			authored?.linesRemovedRecentAll,
+		// No-synced-source fields: override wins, then authored (these never appear in synced)
+		testCoverage: ov?.testCoverage?.value ?? authored?.testCoverage,
+		mergedPrs: ov?.mergedPrs?.value ?? authored?.mergedPrs
 	};
 	// Drop keys that resolved to undefined so the metrics object stays tidy
 	// (and absent entirely when there is nothing to show).
@@ -90,8 +166,8 @@ function withSyncedMetrics(project: Project): Project {
 
 	return {
 		...project,
-		lastCommit: synced.lastCommit ?? project.lastCommit,
-		firstCommit: synced.firstCommit ?? project.firstCommit,
+		lastCommit: ov?.lastCommit?.value ?? synced?.lastCommit ?? project.lastCommit,
+		firstCommit: ov?.firstCommit?.value ?? synced?.firstCommit ?? project.firstCommit,
 		metrics: Object.keys(merged).length > 0 ? merged : undefined
 	};
 }
