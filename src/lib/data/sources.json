@@ -1,172 +1,207 @@
 {
 	"$schema": "./sources.schema.json",
 	"_note": "Last-synced fingerprints for each source repo. Run `node scripts/check-drift.js` to update. Local paths live in sources.local.json (gitignored).",
+	"_firstCommitNote": "firstCommit values are PROVISIONAL estimates derived from commit volume and lastCommit, seeded so the /toolkit adoption timeline can render before a real sync. `node scripts/check-drift.js --update` overwrites them with true root-commit dates. After syncing, set firstCommitProvisional to false.",
+	"firstCommitProvisional": true,
 	"lastSyncedAt": "2026-06-15",
 	"sources": {
 		"baby-names": {
 			"head": "9f5bdf1",
 			"commits": 5,
-			"lastCommit": "2026-03-14"
+			"lastCommit": "2026-03-14",
+			"firstCommit": "2026-03-10"
 		},
 		"chirpdb": {
 			"head": "cd95e42",
 			"commits": 309,
-			"lastCommit": "2026-06-12"
+			"lastCommit": "2026-06-12",
+			"firstCommit": "2025-12-08"
 		},
 		"code-arcana": {
 			"head": "b0d1669",
 			"commits": 2,
-			"lastCommit": "2026-06-11"
+			"lastCommit": "2026-06-11",
+			"firstCommit": "2026-06-10"
 		},
 		"cogni": {
 			"head": "41ab4ce",
 			"commits": 24,
-			"lastCommit": "2026-06-11"
+			"lastCommit": "2026-06-11",
+			"firstCommit": "2026-05-12"
 		},
 		"commons-traybake": {
 			"head": "a0b3c6b",
 			"commits": 70,
-			"lastCommit": "2025-11-10"
+			"lastCommit": "2025-11-10",
+			"firstCommit": "2025-09-15"
 		},
 		"epoch": {
 			"head": "655d33f",
 			"commits": 56,
-			"lastCommit": "2026-06-14"
+			"lastCommit": "2026-06-14",
+			"firstCommit": "2026-04-20"
 		},
 		"fac-cra": {
 			"head": "649507fa",
 			"commits": 4096,
-			"lastCommit": "2026-04-02"
+			"lastCommit": "2026-04-02",
+			"firstCommit": "2024-09-02"
 		},
 		"flyt": {
 			"head": "b85f752",
 			"commits": 30,
-			"lastCommit": "2026-03-11"
+			"lastCommit": "2026-03-11",
+			"firstCommit": "2026-02-09"
 		},
 		"grumble": {
 			"head": "aac97f2",
 			"commits": 11,
-			"lastCommit": "2026-06-14"
+			"lastCommit": "2026-06-14",
+			"firstCommit": "2026-06-02"
 		},
 		"guardrails": {
 			"head": "09ed0cb",
 			"commits": 107,
-			"lastCommit": "2026-06-12"
+			"lastCommit": "2026-06-12",
+			"firstCommit": "2026-03-18"
 		},
 		"historia": {
 			"head": "01f7b8b",
 			"commits": 8,
-			"lastCommit": "2026-03-14"
+			"lastCommit": "2026-03-14",
+			"firstCommit": "2026-03-05"
 		},
 		"iris": {
 			"head": "3a3882c",
 			"commits": 666,
-			"lastCommit": "2026-03-12"
+			"lastCommit": "2026-03-12",
+			"firstCommit": "2025-08-14"
 		},
 		"kamino": {
 			"head": "671ae41",
 			"commits": 1,
-			"lastCommit": "2026-01-09"
+			"lastCommit": "2026-01-09",
+			"firstCommit": "2026-01-09"
 		},
 		"kitchen-gremlin": {
 			"head": "dfc79c3",
 			"commits": 18,
-			"lastCommit": "2026-04-28"
+			"lastCommit": "2026-04-28",
+			"firstCommit": "2026-04-08"
 		},
 		"lyra-rose": {
 			"head": "421f893",
 			"commits": 26,
-			"lastCommit": "2026-05-18"
+			"lastCommit": "2026-05-18",
+			"firstCommit": "2026-04-16"
 		},
 		"nib": {
 			"head": "d19cc8a",
 			"commits": 1,
-			"lastCommit": "2026-03-11"
+			"lastCommit": "2026-03-11",
+			"firstCommit": "2026-03-11"
 		},
 		"psyche": {
 			"head": "d8aa8d7",
 			"commits": 82,
-			"lastCommit": "2025-11-27"
+			"lastCommit": "2025-11-27",
+			"firstCommit": "2025-09-22"
 		},
 		"redot": {
 			"head": "8a11543",
 			"commits": 79,
-			"lastCommit": "2025-10-13"
+			"lastCommit": "2025-10-13",
+			"firstCommit": "2025-08-04"
 		},
 		"rhea": {
 			"head": "eb42a9d",
 			"commits": 356,
-			"lastCommit": "2026-03-25"
+			"lastCommit": "2026-03-25",
+			"firstCommit": "2025-11-10"
 		},
 		"riffle": {
 			"head": "07aba44",
 			"commits": 2,
-			"lastCommit": "2026-03-12"
+			"lastCommit": "2026-03-12",
+			"firstCommit": "2026-03-11"
 		},
 		"schema-forge": {
 			"head": "14d6c73",
 			"commits": 4,
-			"lastCommit": "2026-03-12"
+			"lastCommit": "2026-03-12",
+			"firstCommit": "2026-03-09"
 		},
 		"sparker": {
 			"head": "d288c8d",
 			"commits": 11,
-			"lastCommit": "2026-03-05"
+			"lastCommit": "2026-03-05",
+			"firstCommit": "2026-02-21"
 		},
 		"the-tongue": {
 			"head": "5482548",
 			"commits": 7,
-			"lastCommit": "2026-06-14"
+			"lastCommit": "2026-06-14",
+			"firstCommit": "2026-06-06"
 		},
 		"the-work": {
 			"head": "e29856b",
 			"commits": 114,
-			"lastCommit": "2026-05-18"
+			"lastCommit": "2026-05-18",
+			"firstCommit": "2026-02-24"
 		},
 		"things-we-do": {
 			"head": "4e47c16",
 			"commits": 990,
-			"lastCommit": "2024-12-19"
+			"lastCommit": "2024-12-19",
+			"firstCommit": "2024-04-08"
 		},
 		"those-who-came-before": {
 			"head": "2a9d7a6",
 			"commits": 75,
-			"lastCommit": "2026-02-16"
+			"lastCommit": "2026-02-16",
+			"firstCommit": "2025-12-12"
 		},
 		"top-girls": {
 			"head": "d82d129",
 			"commits": 19,
-			"lastCommit": "2026-06-14"
+			"lastCommit": "2026-06-14",
+			"firstCommit": "2026-05-22"
 		},
 		"workwise": {
 			"head": "ec6516d",
 			"commits": 566,
-			"lastCommit": "2025-11-01"
+			"lastCommit": "2025-11-01",
+			"firstCommit": "2025-06-16"
 		},
 		"wyrd-tui": {
 			"head": "d560f68",
 			"commits": 281,
-			"lastCommit": "2026-06-15"
+			"lastCommit": "2026-06-15",
+			"firstCommit": "2025-12-29"
 		},
 		"beacons": {
 			"head": "0102f4a",
 			"commits": 175,
-			"lastCommit": "2025-11-06"
+			"lastCommit": "2025-11-06",
+			"firstCommit": "2025-07-21"
 		},
 		"craft-and-graft": {
 			"head": "6c50037",
 			"commits": 92,
-			"lastCommit": "2024-10-31"
+			"lastCommit": "2024-10-31",
+			"firstCommit": "2024-08-19"
 		},
 		"sakura": {
 			"head": "41e03f7",
 			"commits": 159,
-			"lastCommit": "2024-11-21"
+			"lastCommit": "2024-11-21",
+			"firstCommit": "2024-08-26"
 		},
 		"rimewarden": {
 			"head": "7f4aa57",
 			"commits": 2,
-			"lastCommit": "2026-01-24"
+			"lastCommit": "2026-01-24",
+			"firstCommit": "2026-01-23"
 		}
 	}
 }
