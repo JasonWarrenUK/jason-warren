@@ -13,13 +13,7 @@
 			"commitsRecent": 0,
 			"lastCommit": "2026-03-14",
 			"firstCommit": "2026-03-14",
-			"languages": [
-				"TypeScript",
-				"Svelte",
-				"JavaScript",
-				"CSS",
-				"HTML"
-			],
+			"languages": ["TypeScript", "Svelte", "JavaScript", "CSS", "HTML"],
 			"linesOfCode": 2182,
 			"linesAdded": 2815,
 			"linesRemoved": 0,
@@ -31,29 +25,23 @@
 			"linesRemovedRecentAll": 0
 		},
 		"chirpdb": {
-			"head": "751b96d",
-			"commits": 325,
-			"commitsRecentAll": 44,
-			"commitsMine": 44,
-			"commitsRecent": 44,
+			"head": "3f946af",
+			"commits": 350,
+			"commitsRecentAll": 69,
+			"commitsMine": 49,
+			"commitsRecent": 49,
 			"lastCommit": "2026-06-16",
 			"firstCommit": "2026-02-23",
-			"languages": [
-				"Python",
-				"SQL",
-				"Shell",
-				"HTML",
-				"JavaScript"
-			],
-			"linesOfCode": 18621,
-			"linesAdded": 48255,
-			"linesRemoved": 40622,
-			"linesAddedAll": 84360,
-			"linesRemovedAll": 55405,
-			"linesAddedRecent": 48255,
-			"linesRemovedRecent": 40622,
-			"linesAddedRecentAll": 48255,
-			"linesRemovedRecentAll": 40622
+			"languages": ["Python", "SQL", "Shell", "HTML", "JavaScript"],
+			"linesOfCode": 15376,
+			"linesAdded": 48412,
+			"linesRemoved": 40664,
+			"linesAddedAll": 87317,
+			"linesRemovedAll": 58525,
+			"linesAddedRecent": 48412,
+			"linesRemovedRecent": 40664,
+			"linesAddedRecentAll": 51212,
+			"linesRemovedRecentAll": 43742
 		},
 		"code-arcana": {
 			"head": "b0d1669",
@@ -63,13 +51,7 @@
 			"commitsRecent": 2,
 			"lastCommit": "2026-06-11",
 			"firstCommit": "2026-06-11",
-			"languages": [
-				"TypeScript",
-				"Svelte",
-				"JavaScript",
-				"CSS",
-				"HTML"
-			],
+			"languages": ["TypeScript", "Svelte", "JavaScript", "CSS", "HTML"],
 			"linesOfCode": 2041,
 			"linesAdded": 8039,
 			"linesRemoved": 0,
@@ -88,12 +70,7 @@
 			"commitsRecent": 1,
 			"lastCommit": "2026-06-11",
 			"firstCommit": "2026-03-14",
-			"languages": [
-				"TypeScript",
-				"Svelte",
-				"HTML",
-				"JavaScript"
-			],
+			"languages": ["TypeScript", "Svelte", "HTML", "JavaScript"],
 			"linesOfCode": 9412,
 			"linesAdded": 13318,
 			"linesRemoved": 3273,
@@ -112,13 +89,7 @@
 			"commitsRecent": 0,
 			"lastCommit": "2025-11-10",
 			"firstCommit": "2025-10-21",
-			"languages": [
-				"TypeScript",
-				"Svelte",
-				"CSS",
-				"HTML",
-				"JavaScript"
-			],
+			"languages": ["TypeScript", "Svelte", "CSS", "HTML", "JavaScript"],
 			"linesOfCode": 6603,
 			"linesAdded": 6284,
 			"linesRemoved": 270,
@@ -137,12 +108,7 @@
 			"commitsRecent": 2,
 			"lastCommit": "2026-06-14",
 			"firstCommit": "2024-05-17",
-			"languages": [
-				"JavaScript",
-				"Svelte",
-				"CSS",
-				"HTML"
-			],
+			"languages": ["JavaScript", "Svelte", "CSS", "HTML"],
 			"linesOfCode": 2667,
 			"linesAdded": 781,
 			"linesRemoved": 8,
@@ -161,15 +127,7 @@
 			"commitsRecent": 0,
 			"lastCommit": "2026-04-02",
 			"firstCommit": "2023-09-11",
-			"languages": [
-				"JavaScript",
-				"TypeScript",
-				"SQL",
-				"Shell",
-				"HTML",
-				"CSS",
-				"Python"
-			],
+			"languages": ["JavaScript", "TypeScript", "SQL", "Shell", "HTML", "CSS", "Python"],
 			"linesOfCode": 220643,
 			"linesAdded": 31500,
 			"linesRemoved": 28614,
@@ -188,14 +146,7 @@
 			"commitsRecent": 0,
 			"lastCommit": "2026-03-11",
 			"firstCommit": "2023-03-27",
-			"languages": [
-				"Svelte",
-				"TypeScript",
-				"Shell",
-				"JavaScript",
-				"CSS",
-				"HTML"
-			],
+			"languages": ["Svelte", "TypeScript", "Shell", "JavaScript", "CSS", "HTML"],
 			"linesOfCode": 3327,
 			"linesAdded": 12,
 			"linesRemoved": 2,
@@ -214,13 +165,7 @@
 			"commitsRecent": 11,
 			"lastCommit": "2026-06-14",
 			"firstCommit": "2026-06-14",
-			"languages": [
-				"Svelte",
-				"TypeScript",
-				"CSS",
-				"HTML",
-				"JavaScript"
-			],
+			"languages": ["Svelte", "TypeScript", "CSS", "HTML", "JavaScript"],
 			"linesOfCode": 1638,
 			"linesAdded": 2129,
 			"linesRemoved": 88,
@@ -232,31 +177,23 @@
 			"linesRemovedRecentAll": 88
 		},
 		"guardrails": {
-			"head": "2b0a118",
-			"commits": 123,
-			"commitsRecentAll": 54,
-			"commitsMine": 29,
-			"commitsRecent": 24,
+			"head": "9abb954",
+			"commits": 126,
+			"commitsRecentAll": 57,
+			"commitsMine": 32,
+			"commitsRecent": 27,
 			"lastCommit": "2026-06-16",
 			"firstCommit": "2025-12-11",
-			"languages": [
-				"TypeScript",
-				"SQL",
-				"JavaScript",
-				"CSS",
-				"HTML",
-				"Python",
-				"Shell"
-			],
-			"linesOfCode": 21956,
-			"linesAdded": 7669,
-			"linesRemoved": 776,
-			"linesAddedAll": 54249,
-			"linesRemovedAll": 8242,
-			"linesAddedRecent": 3205,
-			"linesRemovedRecent": 613,
-			"linesAddedRecentAll": 5879,
-			"linesRemovedRecentAll": 1726
+			"languages": ["TypeScript", "SQL", "JavaScript", "CSS", "HTML", "Python", "Shell"],
+			"linesOfCode": 22509,
+			"linesAdded": 9677,
+			"linesRemoved": 787,
+			"linesAddedAll": 56257,
+			"linesRemovedAll": 8253,
+			"linesAddedRecent": 5213,
+			"linesRemovedRecent": 624,
+			"linesAddedRecentAll": 7887,
+			"linesRemovedRecentAll": 1737
 		},
 		"historia": {
 			"head": "01f7b8b",
@@ -266,13 +203,7 @@
 			"commitsRecent": 0,
 			"lastCommit": "2026-03-14",
 			"firstCommit": "2026-03-14",
-			"languages": [
-				"Svelte",
-				"TypeScript",
-				"JavaScript",
-				"CSS",
-				"HTML"
-			],
+			"languages": ["Svelte", "TypeScript", "JavaScript", "CSS", "HTML"],
 			"linesOfCode": 3303,
 			"linesAdded": 5309,
 			"linesRemoved": 0,
@@ -284,29 +215,23 @@
 			"linesRemovedRecentAll": 0
 		},
 		"iris": {
-			"head": "2f77802",
-			"commits": 674,
-			"commitsRecentAll": 8,
-			"commitsMine": 651,
-			"commitsRecent": 4,
+			"head": "4b922f8",
+			"commits": 675,
+			"commitsRecentAll": 9,
+			"commitsMine": 652,
+			"commitsRecent": 5,
 			"lastCommit": "2026-06-16",
 			"firstCommit": "2026-01-09",
-			"languages": [
-				"TypeScript",
-				"Rust",
-				"Svelte",
-				"HTML",
-				"JavaScript"
-			],
+			"languages": ["TypeScript", "Rust", "Svelte", "HTML", "JavaScript"],
 			"linesOfCode": 21151,
-			"linesAdded": 120396,
-			"linesRemoved": 30319,
-			"linesAddedAll": 126464,
-			"linesRemovedAll": 31398,
-			"linesAddedRecent": 52,
-			"linesRemovedRecent": 48,
-			"linesAddedRecentAll": 688,
-			"linesRemovedRecentAll": 95
+			"linesAdded": 120410,
+			"linesRemoved": 30332,
+			"linesAddedAll": 126478,
+			"linesRemovedAll": 31411,
+			"linesAddedRecent": 66,
+			"linesRemovedRecent": 61,
+			"linesAddedRecentAll": 702,
+			"linesRemovedRecentAll": 108
 		},
 		"kamino": {
 			"head": "671ae41",
@@ -335,13 +260,7 @@
 			"commitsRecent": 0,
 			"lastCommit": "2026-04-28",
 			"firstCommit": "2026-04-26",
-			"languages": [
-				"TypeScript",
-				"Svelte",
-				"JavaScript",
-				"CSS",
-				"HTML"
-			],
+			"languages": ["TypeScript", "Svelte", "JavaScript", "CSS", "HTML"],
 			"linesOfCode": 3362,
 			"linesAdded": 1166,
 			"linesRemoved": 310,
@@ -360,14 +279,7 @@
 			"commitsRecent": 0,
 			"lastCommit": "2026-06-16",
 			"firstCommit": "2026-04-26",
-			"languages": [
-				"TypeScript",
-				"Svelte",
-				"SQL",
-				"CSS",
-				"HTML",
-				"JavaScript"
-			],
+			"languages": ["TypeScript", "Svelte", "SQL", "CSS", "HTML", "JavaScript"],
 			"linesOfCode": 1968,
 			"linesAdded": 2554,
 			"linesRemoved": 14,
@@ -386,9 +298,7 @@
 			"commitsRecent": 0,
 			"lastCommit": "2026-03-11",
 			"firstCommit": "2026-03-11",
-			"languages": [
-				"TypeScript"
-			],
+			"languages": ["TypeScript"],
 			"linesOfCode": 256,
 			"linesAdded": 0,
 			"linesRemoved": 0,
@@ -407,10 +317,7 @@
 			"commitsRecent": 0,
 			"lastCommit": "2025-11-27",
 			"firstCommit": "2025-11-17",
-			"languages": [
-				"C#",
-				"Shell"
-			],
+			"languages": ["C#", "Shell"],
 			"linesOfCode": 6380,
 			"linesAdded": 17243,
 			"linesRemoved": 383,
@@ -429,10 +336,7 @@
 			"commitsRecent": 0,
 			"lastCommit": "2025-10-13",
 			"firstCommit": "2025-09-29",
-			"languages": [
-				"TypeScript",
-				"JavaScript"
-			],
+			"languages": ["TypeScript", "JavaScript"],
 			"linesOfCode": 35629,
 			"linesAdded": 2386,
 			"linesRemoved": 1091,
@@ -451,13 +355,7 @@
 			"commitsRecent": 0,
 			"lastCommit": "2026-03-25",
 			"firstCommit": "2025-09-12",
-			"languages": [
-				"TypeScript",
-				"Svelte",
-				"HTML",
-				"JavaScript",
-				"CSS"
-			],
+			"languages": ["TypeScript", "Svelte", "HTML", "JavaScript", "CSS"],
 			"linesOfCode": 26503,
 			"linesAdded": 112532,
 			"linesRemoved": 61487,
@@ -476,9 +374,7 @@
 			"commitsRecent": 0,
 			"lastCommit": "2026-03-12",
 			"firstCommit": "2026-03-11",
-			"languages": [
-				"TypeScript"
-			],
+			"languages": ["TypeScript"],
 			"linesOfCode": 1183,
 			"linesAdded": 87,
 			"linesRemoved": 1,
@@ -497,9 +393,7 @@
 			"commitsRecent": 0,
 			"lastCommit": "2026-03-12",
 			"firstCommit": "2026-03-12",
-			"languages": [
-				"TypeScript"
-			],
+			"languages": ["TypeScript"],
 			"linesOfCode": 2057,
 			"linesAdded": 1,
 			"linesRemoved": 0,
@@ -518,13 +412,7 @@
 			"commitsRecent": 0,
 			"lastCommit": "2026-03-05",
 			"firstCommit": "2024-05-17",
-			"languages": [
-				"TypeScript",
-				"Svelte",
-				"CSS",
-				"HTML",
-				"JavaScript"
-			],
+			"languages": ["TypeScript", "Svelte", "CSS", "HTML", "JavaScript"],
 			"linesOfCode": 1759,
 			"linesAdded": 789,
 			"linesRemoved": 8,
@@ -543,13 +431,7 @@
 			"commitsRecent": 7,
 			"lastCommit": "2026-06-14",
 			"firstCommit": "2026-06-14",
-			"languages": [
-				"TypeScript",
-				"Svelte",
-				"CSS",
-				"HTML",
-				"JavaScript"
-			],
+			"languages": ["TypeScript", "Svelte", "CSS", "HTML", "JavaScript"],
 			"linesOfCode": 909,
 			"linesAdded": 2352,
 			"linesRemoved": 25,
@@ -568,13 +450,7 @@
 			"commitsRecent": 0,
 			"lastCommit": "2026-05-18",
 			"firstCommit": "2023-03-23",
-			"languages": [
-				"Svelte",
-				"TypeScript",
-				"HTML",
-				"CSS",
-				"JavaScript"
-			],
+			"languages": ["Svelte", "TypeScript", "HTML", "CSS", "JavaScript"],
 			"linesOfCode": 5050,
 			"linesAdded": 15786,
 			"linesRemoved": 286,
@@ -593,11 +469,7 @@
 			"commitsRecent": 0,
 			"lastCommit": "2024-12-19",
 			"firstCommit": "2024-11-25",
-			"languages": [
-				"TypeScript",
-				"JavaScript",
-				"CSS"
-			],
+			"languages": ["TypeScript", "JavaScript", "CSS"],
 			"linesOfCode": 7403,
 			"linesAdded": 6724,
 			"linesRemoved": 2953,
@@ -616,13 +488,7 @@
 			"commitsRecent": 0,
 			"lastCommit": "2026-02-16",
 			"firstCommit": "2023-09-09",
-			"languages": [
-				"TypeScript",
-				"Svelte",
-				"HTML",
-				"CSS",
-				"JavaScript"
-			],
+			"languages": ["TypeScript", "Svelte", "HTML", "CSS", "JavaScript"],
 			"linesOfCode": 272,
 			"linesAdded": 23279,
 			"linesRemoved": 12584,
@@ -634,28 +500,22 @@
 			"linesRemovedRecentAll": 0
 		},
 		"top-girls": {
-			"head": "bbca0fa",
-			"commits": 26,
-			"commitsRecentAll": 26,
-			"commitsMine": 26,
-			"commitsRecent": 26,
+			"head": "d27ea40",
+			"commits": 27,
+			"commitsRecentAll": 27,
+			"commitsMine": 27,
+			"commitsRecent": 27,
 			"lastCommit": "2026-06-16",
 			"firstCommit": "2026-06-14",
-			"languages": [
-				"TypeScript",
-				"Svelte",
-				"CSS",
-				"HTML",
-				"JavaScript"
-			],
-			"linesOfCode": 3140,
-			"linesAdded": 4138,
+			"languages": ["TypeScript", "Svelte", "Shell", "CSS", "HTML", "JavaScript"],
+			"linesOfCode": 3166,
+			"linesAdded": 4261,
 			"linesRemoved": 529,
-			"linesAddedAll": 4138,
+			"linesAddedAll": 4261,
 			"linesRemovedAll": 529,
-			"linesAddedRecent": 4138,
+			"linesAddedRecent": 4261,
 			"linesRemovedRecent": 529,
-			"linesAddedRecentAll": 4138,
+			"linesAddedRecentAll": 4261,
 			"linesRemovedRecentAll": 529
 		},
 		"workwise": {
@@ -666,15 +526,7 @@
 			"commitsRecent": 0,
 			"lastCommit": "2025-11-01",
 			"firstCommit": "2025-05-28",
-			"languages": [
-				"TypeScript",
-				"Svelte",
-				"SQL",
-				"Shell",
-				"JavaScript",
-				"HTML",
-				"CSS"
-			],
+			"languages": ["TypeScript", "Svelte", "SQL", "Shell", "JavaScript", "HTML", "CSS"],
 			"linesOfCode": 12303,
 			"linesAdded": 16608,
 			"linesRemoved": 9090,
@@ -693,10 +545,7 @@
 			"commitsRecent": 112,
 			"lastCommit": "2026-06-15",
 			"firstCommit": "2026-03-18",
-			"languages": [
-				"Go",
-				"HTML"
-			],
+			"languages": ["Go", "HTML"],
 			"linesOfCode": 43949,
 			"linesAdded": 57962,
 			"linesRemoved": 8415,
@@ -715,9 +564,7 @@
 			"commitsRecent": 0,
 			"lastCommit": "2025-11-06",
 			"firstCommit": "2025-01-14",
-			"languages": [
-				"TypeScript"
-			],
+			"languages": ["TypeScript"],
 			"linesOfCode": 2531,
 			"linesAdded": 20408,
 			"linesRemoved": 15377,
@@ -736,12 +583,7 @@
 			"commitsRecent": 0,
 			"lastCommit": "2024-10-31",
 			"firstCommit": "2024-10-15",
-			"languages": [
-				"TypeScript",
-				"JavaScript",
-				"HTML",
-				"CSS"
-			],
+			"languages": ["TypeScript", "JavaScript", "HTML", "CSS"],
 			"linesOfCode": 1145,
 			"linesAdded": 1599561,
 			"linesRemoved": 1578519,
@@ -760,9 +602,7 @@
 			"commitsRecent": 0,
 			"lastCommit": "2024-11-21",
 			"firstCommit": "2024-11-12",
-			"languages": [
-				"C#"
-			],
+			"languages": ["C#"],
 			"linesOfCode": 5370,
 			"linesAdded": 5202,
 			"linesRemoved": 2404,
@@ -781,13 +621,7 @@
 			"commitsRecent": 0,
 			"lastCommit": "2026-01-24",
 			"firstCommit": "2026-01-24",
-			"languages": [
-				"Svelte",
-				"TypeScript",
-				"JavaScript",
-				"CSS",
-				"HTML"
-			],
+			"languages": ["Svelte", "TypeScript", "JavaScript", "CSS", "HTML"],
 			"linesOfCode": 920,
 			"linesAdded": 1772,
 			"linesRemoved": 21,
