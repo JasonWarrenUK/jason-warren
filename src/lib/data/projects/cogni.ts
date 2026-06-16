@@ -5,6 +5,7 @@ export const cogni: Project = {
 	name: 'Cogni',
 	tagline:
 		'A developer cognition self-assessment: map your style across 17 two-axis compasses, then see which methodologies (TDD, Shape Up, Kanban…) fit you and why.',
+	blurb: 'A self-assessment that maps your developer style to methodologies.',
 	description:
 		'Most advice on choosing a methodology ignores how the person actually thinks, so this maps developer cognition first. Seventeen two-axis compasses, organised across three tiers, capture style choices like risk tolerance, collaboration, and abstraction preference, with constraint propagation crosshatching any quadrant that would contradict a position already set. From that profile it evaluates more than ten methodologies (TDD, Scrum, Shape Up, Kanban, XP and others), explaining per-methodology why each one fits or causes friction, and exports the result as portable Markdown for 1:1s, job evaluations, and retrospectives. The core logic is covered by Vitest unit tests; at v0.6 it is working but pre-1.0, built with Svelte, Bun, and TypeScript.',
 	kind: 'app',

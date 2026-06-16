@@ -7,7 +7,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { getTechAdoption } from './adoption.js';
+import { getTechAdoption, CURATED_FIRST_USED } from './adoption.js';
 import { projects } from './index.js';
 
 describe('getTechAdoption', () => {
@@ -35,14 +35,32 @@ describe('getTechAdoption', () => {
 		}
 	});
 
-	it('firstDate is the earliest firstCommit across projects carrying the tag', () => {
+	it('derived entries use the earliest firstCommit across projects carrying the tag', () => {
 		for (const item of adoption) {
+			if (item.dateSource !== 'derived') continue;
 			const dates = projects
 				.filter((p) => p.tags.some((t) => t.label === item.label))
 				.map((p) => p.firstCommit)
 				.filter((d): d is string => d !== undefined);
 			const earliest = [...dates].sort()[0];
 			expect(item.firstDate).toBe(earliest);
+		}
+	});
+
+	it('curated entries use their authored date', () => {
+		let checked = 0;
+		for (const item of adoption) {
+			if (item.dateSource !== 'curated') continue;
+			expect(item.firstDate).toBe(CURATED_FIRST_USED[item.label]);
+			checked++;
+		}
+		expect(checked).toBeGreaterThan(0);
+	});
+
+	it('marks a label curated exactly when it is in the curated map', () => {
+		for (const item of adoption) {
+			const expected = item.label in CURATED_FIRST_USED ? 'curated' : 'derived';
+			expect(item.dateSource).toBe(expected);
 		}
 	});
 
@@ -56,12 +74,14 @@ describe('getTechAdoption', () => {
 		}
 	});
 
-	it('the introducing project actually carries the tag and the firstDate', () => {
+	it('the introducing project carries the tag (and its firstDate when derived)', () => {
 		for (const item of adoption) {
 			const project = projects.find((p) => p.slug === item.firstProjectSlug);
 			expect(project).toBeDefined();
 			expect(project?.tags.some((t) => t.label === item.label)).toBe(true);
-			expect(project?.firstCommit).toBe(item.firstDate);
+			if (item.dateSource === 'derived') {
+				expect(project?.firstCommit).toBe(item.firstDate);
+			}
 		}
 	});
 

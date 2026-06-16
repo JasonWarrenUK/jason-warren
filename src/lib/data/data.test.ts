@@ -127,6 +127,19 @@ describe('project registry', () => {
 		).toHaveLength(0);
 	});
 
+	it('every project has a short blurb distinct from its tagline', () => {
+		const offenders: string[] = [];
+		for (const project of projects) {
+			if (!project.blurb?.trim()) offenders.push(`${project.slug} (empty)`);
+			else if (project.blurb.trim() === project.tagline.trim()) {
+				offenders.push(`${project.slug} (same as tagline)`);
+			} else if (project.blurb.length >= project.tagline.length) {
+				offenders.push(`${project.slug} (not shorter than tagline)`);
+			}
+		}
+		expect(offenders, `Blurb problems: ${offenders.join(', ')}`).toHaveLength(0);
+	});
+
 	it('no description still carries the [Placeholder] marker', () => {
 		const placeholders = projects.filter((p) => p.description.includes('[Placeholder]'));
 		expect(
@@ -138,7 +151,7 @@ describe('project registry', () => {
 	it('no copy uses em-dashes (house style: British English, no em-dashes)', () => {
 		const offenders: string[] = [];
 		for (const project of projects) {
-			const fields = [project.tagline, project.description, ...project.highlights];
+			const fields = [project.tagline, project.blurb, project.description, ...project.highlights];
 			if (fields.some((text) => text.includes('—'))) {
 				offenders.push(project.slug);
 			}

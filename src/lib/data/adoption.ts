@@ -19,17 +19,59 @@ export interface TechAdoption {
 	label: string;
 	/** Tag kind of the introducing project, used for colour mapping. */
 	kind: TagKind;
-	/** Earliest year (YYYY) any project carrying this tag was started. */
+	/** Adoption year (YYYY): the curated first-used year, or the earliest derived. */
 	firstYear: number;
-	/** ISO date (YYYY-MM-DD) of that earliest first commit. */
+	/** ISO date (YYYY-MM-DD) of adoption: the curated date, or the earliest derived. */
 	firstDate: string;
-	/** The project that introduced this technology (deterministic tiebreak). */
+	/** The earliest project carrying this tag (deterministic tiebreak). */
 	firstProjectSlug: ProjectSlug;
-	/** The introducing project's display name. */
+	/** The earliest project's display name. */
 	firstProjectName: string;
 	/** How many projects use this tag (drives dot weight). */
 	projectCount: number;
+	/** Whether the date is authored (curated) or estimated from project history (derived). */
+	dateSource: 'curated' | 'derived';
 }
+
+/**
+ * Authored first-used dates for the core toolkit. The honest record of when each
+ * technology actually entered the work, which the rough per-project firstCommit
+ * stubs cannot reconstruct. Edit here to correct the timeline; anything absent
+ * falls back to the earliest project that carries the tag. Labels must match the
+ * curated tag labels exactly. Dates are approximate (mid-month).
+ */
+export const CURATED_FIRST_USED: Record<string, string> = {
+	// Languages
+	JavaScript: '2021-09-15',
+	TypeScript: '2022-09-15',
+	Python: '2022-06-15',
+	Shell: '2023-06-15',
+	'C#': '2024-08-15',
+	Rust: '2025-08-15',
+	Go: '2025-12-15',
+	// Runtimes
+	'Node.js': '2021-09-15',
+	CPython: '2022-06-15',
+	'POSIX shell': '2023-06-15',
+	Bun: '2024-05-15',
+	'.NET 8': '2024-08-15',
+	Deno: '2025-07-15',
+	// Frameworks
+	React: '2022-09-15',
+	Express: '2022-11-15',
+	'Next.js': '2023-03-15',
+	'Tailwind CSS': '2023-06-15',
+	Vite: '2024-02-15',
+	SvelteKit: '2024-04-15',
+	FastAPI: '2024-06-15',
+	'ASP.NET Core': '2024-08-15',
+	'Svelte 5': '2024-10-15',
+	'Tailwind CSS v4': '2025-01-15',
+	Oak: '2025-07-15',
+	Tauri: '2025-09-15',
+	OpenTUI: '2025-10-15',
+	'Bubble Tea': '2025-12-15'
+};
 
 /**
  * The kinds that read as a "toolkit" timeline by default: the languages,
@@ -98,15 +140,19 @@ export function getTechAdoption(opts?: { kinds?: TagKind[] }): TechAdoption[] {
 
 	const adoption: TechAdoption[] = [];
 	for (const entry of byLabel.values()) {
-		if (entry.firstDate === '') continue; // no dated project carries this tag
+		// Curated date wins; otherwise fall back to the earliest dated project.
+		const curated = CURATED_FIRST_USED[entry.label];
+		const firstDate = curated ?? (entry.firstDate || undefined);
+		if (firstDate === undefined) continue; // no curated and no dated project
 		adoption.push({
 			label: entry.label,
 			kind: entry.kind,
-			firstYear: Number(entry.firstDate.slice(0, 4)),
-			firstDate: entry.firstDate,
+			firstYear: Number(firstDate.slice(0, 4)),
+			firstDate,
 			firstProjectSlug: entry.firstProjectSlug,
 			firstProjectName: entry.firstProjectName,
-			projectCount: entry.projectCount
+			projectCount: entry.projectCount,
+			dateSource: curated !== undefined ? 'curated' : 'derived'
 		});
 	}
 
