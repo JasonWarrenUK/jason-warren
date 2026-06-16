@@ -75,6 +75,9 @@ function git(args, cwd) {
 // One editable place: a miss degrades to 0, never an error.
 const AUTHOR_PATTERN = 'Jason Warren|jasonwarren|jason@foundersandcoders\\.com';
 
+// Trailing window for "recent" metrics. Appears in report output too.
+const RECENT_WINDOW = '4 weeks ago';
+
 // Map a file extension to a canonical language name. Keys match the tag-label
 // spelling the site curates, so the drift report's "ungated" hint lines up with
 // the data model. Config, docs, and assets are deliberately omitted: this list
@@ -166,22 +169,40 @@ function countLinesOfCode(repoPath) {
 	return total;
 }
 
-/** Commits authored by Jason in the trailing four weeks. */
-function countRecentCommits(repoPath) {
-	const out = git(
-		`rev-list --count --extended-regexp --since="4 weeks ago" --author="${AUTHOR_PATTERN}" HEAD`,
-		repoPath
-	);
+/**
+ * Commit count for a repo, parameterised by author scope and time window.
+ *
+ * @param {string} repoPath
+ * @param {{ mine?: boolean; recent?: boolean }} opts
+ *   mine   — restrict to Jason's commits via AUTHOR_PATTERN (default: all authors)
+ *   recent — restrict to the trailing RECENT_WINDOW (default: all of history)
+ * @returns {number | null}
+ */
+function countCommits(repoPath, { mine = false, recent = false } = {}) {
+	const flags = ['rev-list', '--count'];
+	if (recent) flags.push(`--since="${RECENT_WINDOW}"`);
+	if (mine) flags.push('--extended-regexp', `--author="${AUTHOR_PATTERN}"`);
+	flags.push('HEAD');
+	const out = git(flags.join(' '), repoPath);
 	return out === null ? null : Number(out);
 }
 
-/** Line churn authored by Jason across all of history (his additions/removals). */
-function countAuthoredChurn(repoPath) {
-	const out = git(
-		`log --extended-regexp --author="${AUTHOR_PATTERN}" --pretty=tformat: --numstat HEAD`,
-		repoPath
-	);
-	if (out === null) return { linesAdded: null, linesRemoved: null };
+/**
+ * Line churn for a repo, parameterised by author scope and time window.
+ *
+ * @param {string} repoPath
+ * @param {{ mine?: boolean; recent?: boolean }} opts
+ *   mine   — restrict to Jason's commits via AUTHOR_PATTERN (default: all authors)
+ *   recent — restrict to the trailing RECENT_WINDOW (default: all of history)
+ * @returns {{ added: number | null; removed: number | null }}
+ */
+function countChurn(repoPath, { mine = false, recent = false } = {}) {
+	const flags = ['log'];
+	if (recent) flags.push(`--since="${RECENT_WINDOW}"`);
+	if (mine) flags.push('--extended-regexp', `--author="${AUTHOR_PATTERN}"`);
+	flags.push('--pretty=tformat:', '--numstat', 'HEAD');
+	const out = git(flags.join(' '), repoPath);
+	if (out === null) return { added: null, removed: null };
 	let added = 0;
 	let removed = 0;
 	for (const line of out.split('\n')) {
@@ -191,7 +212,7 @@ function countAuthoredChurn(repoPath) {
 		added += Number(a) || 0;
 		removed += Number(r) || 0;
 	}
-	return { linesAdded: added, linesRemoved: removed };
+	return { added, removed };
 }
 
 /** ISO date of the earliest root commit, the project's inception. */
@@ -207,18 +228,43 @@ function getFirstCommit(repoPath) {
 function getFingerprint(repoPath) {
 	if (!existsSync(join(repoPath, '.git'))) return null;
 	const head = git('rev-parse --short HEAD', repoPath);
-	const commits = git('rev-list --count HEAD', repoPath);
 	const lastCommit = git('log -1 --format=%cs', repoPath);
 	if (!head) return null;
+
+	// Commit grid: all/mine × lifetime/recent
+	const commits = countCommits(repoPath); // all, lifetime
+	const commitsRecentAll = countCommits(repoPath, { recent: true }); // all, recent
+	const commitsMine = countCommits(repoPath, { mine: true }); // mine, lifetime
+	const commitsRecent = countCommits(repoPath, { mine: true, recent: true }); // mine, recent
+
+	// Churn grid: mine/all × lifetime/recent (×2 for added/removed = 8 numbers)
+	const churnMine = countChurn(repoPath, { mine: true }); // mine, lifetime
+	const churnAll = countChurn(repoPath); // all, lifetime
+	const churnMineRecent = countChurn(repoPath, { mine: true, recent: true }); // mine, recent
+	const churnAllRecent = countChurn(repoPath, { recent: true }); // all, recent
+
 	return {
 		head,
-		commits: Number(commits),
+		commits,
+		commitsRecentAll,
+		commitsMine,
+		commitsRecent,
 		lastCommit,
 		firstCommit: getFirstCommit(repoPath),
 		languages: detectLanguages(repoPath),
 		linesOfCode: countLinesOfCode(repoPath),
-		commitsRecent: countRecentCommits(repoPath),
-		...countAuthoredChurn(repoPath)
+		// mine, lifetime
+		linesAdded: churnMine.added,
+		linesRemoved: churnMine.removed,
+		// all, lifetime
+		linesAddedAll: churnAll.added,
+		linesRemovedAll: churnAll.removed,
+		// mine, recent
+		linesAddedRecent: churnMineRecent.added,
+		linesRemovedRecent: churnMineRecent.removed,
+		// all, recent
+		linesAddedRecentAll: churnAllRecent.added,
+		linesRemovedRecentAll: churnAllRecent.removed
 	};
 }
 
@@ -395,8 +441,31 @@ if (changed.length === 0 && filteredNew.length === 0 && missing.length === 0) {
 			console.log(
 				`    ${r.from.head} → ${r.to.head}  (${dir}${r.delta} commits, first: ${r.to.firstCommit ?? '?'}, last: ${r.to.lastCommit})`
 			);
+			// Commits: all/mine × lifetime/recent
+			const cAll = r.to.commits ?? '?';
+			const cMine = r.to.commitsMine ?? '?';
+			const cAllR = r.to.commitsRecentAll ?? '?';
+			const cMineR = r.to.commitsRecent ?? '?';
+			// Churn: mine/all × lifetime/recent
+			const addM = r.to.linesAdded ?? '?';
+			const remM = r.to.linesRemoved ?? '?';
+			const addA = r.to.linesAddedAll ?? '?';
+			const remA = r.to.linesRemovedAll ?? '?';
+			const addMR = r.to.linesAddedRecent ?? '?';
+			const remMR = r.to.linesRemovedRecent ?? '?';
+			const addAR = r.to.linesAddedRecentAll ?? '?';
+			const remAR = r.to.linesRemovedRecentAll ?? '?';
 			console.log(
-				`    ${DIM}size: ${r.to.linesOfCode ?? '?'} loc · mine: +${r.to.linesAdded ?? '?'}/−${r.to.linesRemoved ?? '?'} · recent: ${r.to.commitsRecent ?? '?'} commits (4w)${RESET}`
+				`    ${DIM}size: ${r.to.linesOfCode ?? '?'} loc${RESET}`
+			);
+			console.log(
+				`    ${DIM}commits  lifetime: ${cAll} all / ${cMine} mine  ·  recent (${RECENT_WINDOW}): ${cAllR} all / ${cMineR} mine${RESET}`
+			);
+			console.log(
+				`    ${DIM}churn    mine lifetime: +${addM}/−${remM}  ·  all lifetime: +${addA}/−${remA}${RESET}`
+			);
+			console.log(
+				`    ${DIM}         mine recent:   +${addMR}/−${remMR}  ·  all recent:   +${addAR}/−${remAR}${RESET}`
 			);
 			if (r.to.languages.length > 0) {
 				console.log(`    ${DIM}languages: ${r.to.languages.join(', ')}${RESET}`);
