@@ -35,7 +35,7 @@
 					>
 						<span class="threads__card-kind">Application</span>
 						<span class="threads__card-name">{thread.consumer.name}</span>
-						<span class="threads__card-tagline">{thread.consumer.tagline}</span>
+						<span class="threads__card-tagline">{thread.consumer.blurb}</span>
 					</a>
 
 					<svg
@@ -55,7 +55,7 @@
 					>
 						<span class="threads__card-kind">Library</span>
 						<span class="threads__card-name">{thread.library.name}</span>
-						<span class="threads__card-tagline">{thread.library.tagline}</span>
+						<span class="threads__card-tagline">{thread.library.blurb}</span>
 					</a>
 				</div>
 

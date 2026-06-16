@@ -33,6 +33,7 @@
 	const laneHeight = 30;
 	const charWidth = 7.2; // rough advance for the 13px label font
 	const labelGap = 10; // min horizontal gap between two labels in a lane
+	const maxRadius = 4 + 8 * 0.9; // upper bound of the dot radius (projectCount caps at 8)
 
 	function dayValue(iso: string): number {
 		const [y, m, d] = iso.split('-').map(Number);
@@ -63,7 +64,10 @@
 		}
 
 		const plotLeft = leftPad;
-		const plotRight = width - rightPad;
+		// Reserve room on the right for the widest right-anchored label (plus the
+		// largest dot and its gap) so no label ever clips at the viewBox edge.
+		const maxLabelWidth = Math.max(...items.map((item) => item.label.length)) * charWidth;
+		const plotRight = width - rightPad - maxLabelWidth - maxRadius - 6;
 		const plotWidth = plotRight - plotLeft;
 
 		const days = items.map((item) => dayValue(item.firstDate));
@@ -175,7 +179,9 @@
 					style="--reveal-delay: {Math.min(index * 28, 700)}ms; color: {kindColour(item.kind)}"
 				>
 					<title>
-						{item.label} — first used {item.firstYear} in {item.firstProjectName}, now in {item.projectCount}
+						{item.label}: first used {item.firstYear}{item.dateSource === 'derived'
+							? ` in ${item.firstProjectName}`
+							: ''}, now in {item.projectCount}
 						project{item.projectCount === 1 ? '' : 's'}
 					</title>
 					<circle class="adoption__dot" cx={item.x} cy={item.y} r={item.radius} />
@@ -191,7 +197,9 @@
 	<ul class="adoption__sr">
 		{#each items as item (item.label)}
 			<li>
-				{item.label}: first used in {item.firstYear} ({item.firstProjectName}), now across {item.projectCount}
+				{item.label}: first used in {item.firstYear}{item.dateSource === 'derived'
+					? ` (${item.firstProjectName})`
+					: ''}, now across {item.projectCount}
 				project{item.projectCount === 1 ? '' : 's'}.
 			</li>
 		{/each}
@@ -207,7 +215,7 @@
 		<span class="adoption__legend-note">Dot size reflects how many projects use it.</span>
 		{#if provisional}
 			<span class="adoption__provisional">
-				Adoption dates are provisional estimates pending a repository sync.
+				Dates are approximate; uncurated technologies are estimated from project history.
 			</span>
 		{/if}
 	</figcaption>

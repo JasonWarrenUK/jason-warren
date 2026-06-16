@@ -3,6 +3,7 @@
 	import type { Project } from '$lib/data/types.js';
 	import StatusBadge from '$lib/components/project/StatusBadge.svelte';
 	import TechTagList from '$lib/components/project/TechTagList.svelte';
+	import ExpandableCard from '$lib/components/project/ExpandableCard.svelte';
 
 	interface Props {
 		projects: Project[];
@@ -16,72 +17,65 @@
 		<h2 class="flagship__title">Built end-to-end</h2>
 		<p class="flagship__strapline">
 			A few projects where depth is the point: complex problems, real constraints, shipped code.
+			Open one to dig in.
 		</p>
 	</header>
 
 	<div class="flagship__grid">
 		{#each projects as project (project.slug)}
-			<article class="flagship__card">
-				<a
-					href="{base}/projects/{project.slug}"
-					class="flagship__thumb"
-					tabindex="-1"
-					aria-hidden="true"
-				>
-					<img
-						src="{base}/og/{project.slug}.png"
-						alt="{project.name} social card"
-						width="1200"
-						height="630"
-						loading="lazy"
-						class="flagship__thumb-img"
-					/>
-				</a>
-
-				<div class="flagship__card-header">
-					<div class="flagship__card-meta">
-						<StatusBadge status={project.status} />
-					</div>
-					<h3 class="flagship__card-name">{project.name}</h3>
-					<p class="flagship__card-tagline">{project.tagline}</p>
-				</div>
-
-				<ul class="flagship__highlights" aria-label="Key highlights">
-					{#each project.highlights.slice(0, 3) as highlight}
-						<li class="flagship__highlight">{highlight}</li>
-					{/each}
-				</ul>
-
-				{#if project.metrics}
-					<dl class="flagship__metrics">
-						{#if project.metrics.commits != null}
-							<div class="flagship__metric">
-								<dd class="flagship__metric-value">{project.metrics.commits.toLocaleString()}</dd>
-								<dt class="flagship__metric-label">commits</dt>
+			<ExpandableCard slug={project.slug} name={project.name} blurb={project.blurb}>
+				{#snippet expanded()}
+					<!-- Text region navigates to the case study; the tech-tag footer sits outside it. -->
+					<a href="{base}/projects/{project.slug}" class="flagship__body" aria-label={project.name}>
+						<div class="flagship__card-header">
+							<div class="flagship__card-meta">
+								<StatusBadge status={project.status} />
 							</div>
-						{/if}
-						{#if project.metrics.testCoverage != null}
-							<div class="flagship__metric">
-								<dd class="flagship__metric-value">{project.metrics.testCoverage}%</dd>
-								<dt class="flagship__metric-label">test coverage</dt>
-							</div>
-						{/if}
-						{#if project.metrics.linesAdded != null}
-							<div class="flagship__metric">
-								<dd class="flagship__metric-value">
-									+{project.metrics.linesAdded.toLocaleString()}
-								</dd>
-								<dt class="flagship__metric-label">lines added</dt>
-							</div>
-						{/if}
-					</dl>
-				{/if}
+							<h3 class="flagship__card-name">{project.name}</h3>
+							<p class="flagship__card-tagline">{project.tagline}</p>
+						</div>
 
-				<div class="flagship__card-footer">
-					<TechTagList tags={project.tags} limit={4} />
-					<a href="{base}/projects/{project.slug}" class="flagship__cta"> Read case study → </a>
-				</div>
-			</article>
+						<ul class="flagship__highlights" aria-label="Key highlights">
+							{#each project.highlights.slice(0, 3) as highlight}
+								<li class="flagship__highlight">{highlight}</li>
+							{/each}
+						</ul>
+
+						{#if project.metrics}
+							<dl class="flagship__metrics">
+								{#if project.metrics.commits != null}
+									<div class="flagship__metric">
+										<dd class="flagship__metric-value">
+											{project.metrics.commits.toLocaleString()}
+										</dd>
+										<dt class="flagship__metric-label">commits</dt>
+									</div>
+								{/if}
+								{#if project.metrics.testCoverage != null}
+									<div class="flagship__metric">
+										<dd class="flagship__metric-value">{project.metrics.testCoverage}%</dd>
+										<dt class="flagship__metric-label">test coverage</dt>
+									</div>
+								{/if}
+								{#if project.metrics.linesAdded != null}
+									<div class="flagship__metric">
+										<dd class="flagship__metric-value">
+											+{project.metrics.linesAdded.toLocaleString()}
+										</dd>
+										<dt class="flagship__metric-label">lines added</dt>
+									</div>
+								{/if}
+							</dl>
+						{/if}
+
+						<span class="flagship__cta">Read case study →</span>
+					</a>
+
+					<footer class="flagship__card-footer">
+						<TechTagList tags={project.tags} limit={4} />
+					</footer>
+				{/snippet}
+			</ExpandableCard>
 		{/each}
 	</div>
 </section>
@@ -120,38 +114,12 @@
 		gap: var(--space-6);
 	}
 
-	.flagship__card {
+	.flagship__body {
 		display: flex;
 		flex-direction: column;
 		gap: var(--space-5);
 		padding: var(--space-7);
-		background-color: var(--color-surface-raised);
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-lg);
-		overflow: hidden;
-		transition: border-color var(--transition-fast);
-	}
-
-	.flagship__card:hover {
-		border-color: var(--color-primary-light);
-	}
-
-	/* Pull the thumbnail flush to the card edges, above the padded content. The
-	   link owns the aspect ratio (reliable across WebViews) and the image fills
-	   it, so the card never collapses or crops to a tall sliver. */
-	.flagship__thumb {
-		display: block;
-		margin: calc(-1 * var(--space-7)) calc(-1 * var(--space-7)) 0;
-		border-bottom: 1px solid var(--color-border);
-		aspect-ratio: 1200 / 630;
-		overflow: hidden;
-	}
-
-	.flagship__thumb-img {
-		display: block;
-		width: 100%;
-		height: 100%;
-		object-fit: cover;
+		text-decoration: none;
 	}
 
 	.flagship__card-header {
@@ -171,6 +139,11 @@
 		font-weight: 700;
 		color: var(--color-text);
 		line-height: 1.2;
+		transition: color var(--transition-fast);
+	}
+
+	.flagship__body:hover .flagship__card-name {
+		color: var(--color-primary-text);
 	}
 
 	.flagship__card-tagline {
@@ -236,26 +209,19 @@
 		color: var(--color-text-muted);
 	}
 
+	.flagship__cta {
+		font-size: var(--text-sm);
+		font-weight: 600;
+		color: var(--color-primary-text);
+		white-space: nowrap;
+	}
+
 	.flagship__card-footer {
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
 		gap: var(--space-4);
 		flex-wrap: wrap;
-		margin-top: auto;
-	}
-
-	.flagship__cta {
-		font-size: var(--text-sm);
-		font-weight: 600;
-		color: var(--color-primary-text);
-		text-decoration: none;
-		white-space: nowrap;
-		transition: color var(--transition-fast);
-		flex-shrink: 0;
-	}
-
-	.flagship__cta:hover {
-		color: var(--color-primary);
+		padding: var(--space-4) var(--space-7) var(--space-7);
 	}
 </style>
