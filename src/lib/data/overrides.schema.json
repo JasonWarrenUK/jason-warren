@@ -1,0 +1,102 @@
+{
+	"$schema": "http://json-schema.org/draft-07/schema#",
+	"title": "Portfolio metric overrides",
+	"description": "Manual overrides for synced and authored git metrics. Written by hand; never touched by `scripts/check-drift.js --update`. Each field carries the pinned value alongside the synced baseline at the time the override was set, so the drift report can flag when the ground truth has moved.",
+	"type": "object",
+	"required": ["overrides"],
+	"additionalProperties": false,
+	"properties": {
+		"$schema": { "type": "string" },
+		"_note": { "type": "string" },
+		"overrides": {
+			"type": "object",
+			"description": "Keyed by project slug (matches ProjectSlug in types.ts).",
+			"additionalProperties": {
+				"$ref": "#/$defs/SlugOverrides"
+			}
+		}
+	},
+	"$defs": {
+		"SlugOverrides": {
+			"type": "object",
+			"additionalProperties": false,
+			"description": "Per-field overrides for one project. Keys are field names from ProjectMetrics plus lastCommit and firstCommit.",
+			"properties": {
+				"_note": {
+					"type": "string",
+					"description": "Why this project has manual overrides."
+				},
+				"commits": { "$ref": "#/$defs/NumericOverride", "description": "Headline commit count (all-authors for solo; Jason-scoped for team). Use syncedField: 'commitsMine' for team projects." },
+				"commitsRecentAll": { "$ref": "#/$defs/NumericOverride", "description": "All-authors commit count, trailing 4 weeks." },
+				"commitsMine": { "$ref": "#/$defs/NumericOverride", "description": "Jason-authored commit count, lifetime." },
+				"commitsRecent": { "$ref": "#/$defs/NumericOverride", "description": "Jason-authored commit count, trailing 4 weeks." },
+				"commitsAll": { "$ref": "#/$defs/NumericOverride", "description": "Gate output: all-authors total exposed as context for team projects." },
+				"linesOfCode": { "$ref": "#/$defs/NumericOverride", "description": "Total lines across tracked source files, all authors." },
+				"linesAdded": { "$ref": "#/$defs/NumericOverride", "description": "Lines added by Jason, lifetime." },
+				"linesRemoved": { "$ref": "#/$defs/NumericOverride", "description": "Lines removed by Jason, lifetime." },
+				"linesAddedAll": { "$ref": "#/$defs/NumericOverride", "description": "Lines added by all authors, lifetime." },
+				"linesRemovedAll": { "$ref": "#/$defs/NumericOverride", "description": "Lines removed by all authors, lifetime." },
+				"linesAddedRecent": { "$ref": "#/$defs/NumericOverride", "description": "Lines added by Jason, trailing 4 weeks." },
+				"linesRemovedRecent": { "$ref": "#/$defs/NumericOverride", "description": "Lines removed by Jason, trailing 4 weeks." },
+				"linesAddedRecentAll": { "$ref": "#/$defs/NumericOverride", "description": "Lines added by all authors, trailing 4 weeks." },
+				"linesRemovedRecentAll": { "$ref": "#/$defs/NumericOverride", "description": "Lines removed by all authors, trailing 4 weeks." },
+				"testCoverage": { "$ref": "#/$defs/NumericPinOverride", "description": "Statement coverage, 0–100. No synced source; use syncedWhenSet: null." },
+				"mergedPrs": { "$ref": "#/$defs/NumericPinOverride", "description": "Merged pull requests (team projects). No synced source; use syncedWhenSet: null." },
+				"lastCommit": { "$ref": "#/$defs/DateOverride", "description": "ISO date of the most recent commit." },
+				"firstCommit": { "$ref": "#/$defs/DateOverride", "description": "ISO date of the root commit (project inception)." }
+			}
+		},
+		"NumericOverride": {
+			"type": "object",
+			"description": "Override for a field that has a synced source. syncedWhenSet records the synced value when the override was authored; the drift report flags when current synced !== syncedWhenSet.",
+			"required": ["value", "syncedWhenSet"],
+			"additionalProperties": false,
+			"properties": {
+				"value": { "type": "integer", "minimum": 0, "description": "The pinned value to render." },
+				"syncedWhenSet": {
+					"oneOf": [
+						{ "type": "integer", "minimum": 0 },
+						{ "type": "null" }
+					],
+					"description": "The synced value at the time this override was set. null only for fields with no synced source."
+				},
+				"syncedField": {
+					"type": "string",
+					"description": "The underlying synced field to compare against (defaults to this field's name). Only `commits` ever needs this — set to 'commitsMine' for team projects, 'commits' for solo."
+				},
+				"_setNote": { "type": "string", "description": "Why this value was pinned (context for future-you)." }
+			}
+		},
+		"NumericPinOverride": {
+			"type": "object",
+			"description": "Override for a field with no synced source (testCoverage, mergedPrs). syncedWhenSet must be null — nothing to drift against.",
+			"required": ["value", "syncedWhenSet"],
+			"additionalProperties": false,
+			"properties": {
+				"value": { "type": "integer", "minimum": 0, "description": "The pinned value to render." },
+				"syncedWhenSet": {
+					"type": "null",
+					"description": "Must be null: these fields have no synced source and cannot drift."
+				},
+				"_setNote": { "type": "string", "description": "Why this value was pinned (context for future-you)." }
+			}
+		},
+		"DateOverride": {
+			"type": "object",
+			"description": "Override for a date field (lastCommit, firstCommit). syncedWhenSet records the synced date string when the override was authored.",
+			"required": ["value", "syncedWhenSet"],
+			"additionalProperties": false,
+			"properties": {
+				"value": { "type": "string", "format": "date", "description": "The pinned date to render (YYYY-MM-DD)." },
+				"syncedWhenSet": {
+					"oneOf": [
+						{ "type": "string", "format": "date" },
+						{ "type": "null" }
+					],
+					"description": "The synced date at the time this override was set."
+				},
+				"_setNote": { "type": "string", "description": "Why this date was pinned (context for future-you)." }
+			}
+		}
+	}
+}

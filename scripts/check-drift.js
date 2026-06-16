@@ -28,8 +28,19 @@ const scriptDir = fileURLToPath(new URL('.', import.meta.url));
 const repoRoot = resolve(scriptDir, '..');
 const sourcesPath = join(repoRoot, 'src/lib/data/sources.json');
 const localPath = join(repoRoot, 'src/lib/data/sources.local.json');
+const overridesPath = join(repoRoot, 'src/lib/data/overrides.json');
 
 const UPDATE_MODE = process.argv.includes('--update');
+const ACCEPT_INDEX = process.argv.indexOf('--accept');
+const ACCEPT_MODE = ACCEPT_INDEX !== -1;
+const ACCEPT_ALL = process.argv.includes('--accept-all');
+
+// Guard against combining --accept and --update (opposite contracts: --update must
+// never touch overrides.json; --accept only touches overrides.json)
+if ((ACCEPT_MODE || ACCEPT_ALL) && UPDATE_MODE) {
+	console.error('Cannot combine --accept / --accept-all with --update. Run them separately.');
+	process.exit(1);
+}
 
 // ---------------------------------------------------------------------------
 // Load manifests
@@ -41,6 +52,14 @@ try {
 } catch {
 	console.error(`Cannot read ${sourcesPath}`);
 	process.exit(1);
+}
+
+// Load manual overrides (best-effort: absence is the normal state, no warning).
+let overrideEntries = {};
+try {
+	overrideEntries = JSON.parse(readFileSync(overridesPath, 'utf8')).overrides ?? {};
+} catch {
+	// No overrides file or unreadable — fine.
 }
 
 let localPaths = {};
@@ -262,6 +281,7 @@ function ungatedLanguages(slug, detected) {
 
 const changed = [];
 const missing = [];
+const conflicts = [];
 // Current fingerprint for every repo that resolves, keyed by slug. Used to
 // backfill new fields (firstCommit, languages) on --update even for repos whose
 // head has not moved since the last sync.
@@ -281,6 +301,27 @@ for (const [slug, saved] of Object.entries(manifest.sources)) {
 	}
 
 	fresh[slug] = current;
+
+	// Check for manual overrides whose syncedWhenSet baseline has drifted.
+	// Runs regardless of whether head moved (catches head-static drift too).
+	const slugOverrides = overrideEntries[slug];
+	if (slugOverrides) {
+		for (const [fieldName, entry] of Object.entries(slugOverrides)) {
+			if (fieldName.startsWith('_')) continue; // skip _note, _setNote
+			if (entry.syncedWhenSet === null) continue; // pure pin, no baseline to drift
+			const syncedField = entry.syncedField ?? fieldName;
+			const now = current[syncedField];
+			if (now !== undefined && now !== entry.syncedWhenSet) {
+				conflicts.push({
+					slug,
+					field: fieldName,
+					value: entry.value,
+					was: entry.syncedWhenSet,
+					now
+				});
+			}
+		}
+	}
 
 	if (current.head !== saved.head) {
 		const delta = current.commits - saved.commits;
@@ -382,7 +423,7 @@ console.log(
 	`\n${BOLD}Portfolio source drift report${RESET} ${DIM}(${manifest.lastSyncedAt})${RESET}\n`
 );
 
-if (changed.length === 0 && filteredNew.length === 0 && missing.length === 0) {
+if (changed.length === 0 && filteredNew.length === 0 && missing.length === 0 && conflicts.length === 0) {
 	console.log(
 		`${GREEN}All ${Object.keys(manifest.sources).length} tracked repos are up to date. No new repos detected.${RESET}`
 	);
@@ -410,6 +451,16 @@ if (changed.length === 0 && filteredNew.length === 0 && missing.length === 0) {
 		console.log();
 	}
 
+	if (conflicts.length > 0) {
+		console.log(`${YELLOW}${BOLD}Manual overrides to review (${conflicts.length}):${RESET}`);
+		for (const c of conflicts) {
+			console.log(
+				`  ${YELLOW}${c.slug}.${c.field}: you set ${c.value} when synced was ${c.was}; synced is now ${c.now} — review (npm run drift:accept -- ${c.slug} ${c.field} to keep your value and dismiss)${RESET}`
+			);
+		}
+		console.log();
+	}
+
 	if (filteredNew.length > 0) {
 		console.log(`${GREEN}${BOLD}New repos not yet in portfolio (${filteredNew.length}):${RESET}`);
 		for (const r of filteredNew) {
@@ -424,6 +475,68 @@ if (changed.length === 0 && filteredNew.length === 0 && missing.length === 0) {
 			console.log(`  ${DIM}${r.slug}: ${r.reason}${RESET}`);
 		}
 		console.log();
+	}
+}
+
+// ---------------------------------------------------------------------------
+// --accept / --accept-all: refresh the syncedWhenSet baseline for one or all
+// flagged override fields, keeping the manual value intact.
+// This is the ONE sanctioned write to overrides.json. --update never touches it.
+// ---------------------------------------------------------------------------
+
+if (ACCEPT_MODE || ACCEPT_ALL) {
+	let accepted = 0;
+
+	const fieldsToAccept = ACCEPT_ALL
+		? conflicts.map((c) => ({ slug: c.slug, field: c.field }))
+		: [{ slug: process.argv[ACCEPT_INDEX + 1], field: process.argv[ACCEPT_INDEX + 2] }];
+
+	if (!ACCEPT_ALL && (!fieldsToAccept[0].slug || !fieldsToAccept[0].field)) {
+		console.error('Usage: node scripts/check-drift.js --accept <slug> <field>');
+		process.exit(1);
+	}
+
+	let overridesManifest;
+	try {
+		overridesManifest = JSON.parse(readFileSync(overridesPath, 'utf8'));
+	} catch {
+		console.error(`Cannot read ${overridesPath}`);
+		process.exit(1);
+	}
+
+	for (const { slug, field } of fieldsToAccept) {
+		const slugOv = overridesManifest.overrides?.[slug];
+		if (!slugOv || !slugOv[field] || field.startsWith('_')) {
+			console.error(`No override for ${slug}.${field} in overrides.json`);
+			process.exit(1);
+		}
+
+		const entry = slugOv[field];
+		const syncedField = entry.syncedField ?? field;
+		const fp = fresh[slug];
+		if (!fp) {
+			console.error(
+				`Cannot accept ${slug}.${field}: repo not resolvable on this machine (no local path or not a git repo)`
+			);
+			process.exit(1);
+		}
+		const now = fp[syncedField];
+		if (now === undefined) {
+			console.error(
+				`Cannot accept ${slug}.${field}: synced field '${syncedField}' is absent from the current fingerprint`
+			);
+			process.exit(1);
+		}
+
+		entry.syncedWhenSet = now;
+		console.log(
+			`${GREEN}Accepted ${slug}.${field}: baseline refreshed to ${now}, your value ${entry.value} kept.${RESET}`
+		);
+		accepted++;
+	}
+
+	if (accepted > 0) {
+		writeFileSync(overridesPath, JSON.stringify(overridesManifest, null, '\t') + '\n', 'utf8');
 	}
 }
 
