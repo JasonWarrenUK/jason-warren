@@ -346,9 +346,7 @@ describe('curation gate', () => {
 		expect(iris, 'iris project not found').toBeDefined();
 		if (!iris) return;
 
-		const manifestEntry = (sourcesManifest.sources as Record<string, { commits?: number }>)[
-			'iris'
-		];
+		const manifestEntry = (sourcesManifest.sources as Record<string, { commits?: number }>)['iris'];
 		if (!manifestEntry?.commits) return; // skip if not yet synced
 
 		// For solo: metrics.commits should equal the synced all-authors total
@@ -403,12 +401,24 @@ describe('curation gate', () => {
 describe('manual overrides', () => {
 	// The overridable field allow-list: every ProjectMetrics key plus the two top-level dates.
 	const OVERRIDABLE_FIELDS = new Set([
-		'commits', 'commitsRecentAll', 'commitsMine', 'commitsRecent', 'commitsAll',
+		'commits',
+		'commitsRecentAll',
+		'commitsMine',
+		'commitsRecent',
+		'commitsAll',
 		'linesOfCode',
-		'linesAdded', 'linesRemoved', 'linesAddedAll', 'linesRemovedAll',
-		'linesAddedRecent', 'linesRemovedRecent', 'linesAddedRecentAll', 'linesRemovedRecentAll',
-		'testCoverage', 'mergedPrs',
-		'lastCommit', 'firstCommit'
+		'linesAdded',
+		'linesRemoved',
+		'linesAddedAll',
+		'linesRemovedAll',
+		'linesAddedRecent',
+		'linesRemovedRecent',
+		'linesAddedRecentAll',
+		'linesRemovedRecentAll',
+		'testCoverage',
+		'mergedPrs',
+		'lastCommit',
+		'firstCommit'
 	]);
 
 	it('every override slug resolves to a curated project', () => {
@@ -455,13 +465,15 @@ describe('manual overrides', () => {
 				}
 			}
 		}
-		expect(offenders, `syncedWhenSet contract violations:\n${offenders.join('\n')}`).toHaveLength(0);
+		expect(offenders, `syncedWhenSet contract violations:\n${offenders.join('\n')}`).toHaveLength(
+			0
+		);
 	});
 
 	it('override value wins over synced for each overridden field', () => {
 		// Vacuously green when there are no overrides (nothing to assert).
 		// Verifies requirement 1 (override not overwritten) and requirement 2 (correct precedence).
-		const synced = (sourcesManifest.sources as Record<string, { [k: string]: unknown }>);
+		const synced = sourcesManifest.sources as Record<string, { [k: string]: unknown }>;
 		const offenders: string[] = [];
 
 		for (const [slug, fields] of Object.entries(overrides)) {
@@ -480,9 +492,7 @@ describe('manual overrides', () => {
 				else rendered = project.metrics?.[field as keyof typeof project.metrics];
 
 				if (rendered !== expected) {
-					offenders.push(
-						`${slug}.${field}: expected override value ${expected}, got ${rendered}`
-					);
+					offenders.push(`${slug}.${field}: expected override value ${expected}, got ${rendered}`);
 				}
 			}
 		}
@@ -492,7 +502,7 @@ describe('manual overrides', () => {
 	it('unoverridden fields on a project with overrides still reflect synced data (requirement 3)', () => {
 		// Find a project that has at least one override AND at least one synced field that is NOT
 		// overridden. If no such project exists (empty overrides), the test is vacuously green.
-		const synced = (sourcesManifest.sources as Record<string, { [k: string]: unknown }>);
+		const synced = sourcesManifest.sources as Record<string, { [k: string]: unknown }>;
 
 		for (const [slug, fields] of Object.entries(overrides)) {
 			const project = projects.find((p) => p.slug === slug);

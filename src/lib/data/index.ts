@@ -120,7 +120,8 @@ function withSyncedMetrics(project: Project): Project {
 		// Gate context (team projects only) — overridable independently
 		commitsAll: ov?.commitsAll?.value ?? contextCommits,
 		// Full commit grid
-		commitsRecentAll: ov?.commitsRecentAll?.value ?? synced?.commitsRecentAll ?? authored?.commitsRecentAll,
+		commitsRecentAll:
+			ov?.commitsRecentAll?.value ?? synced?.commitsRecentAll ?? authored?.commitsRecentAll,
 		commitsMine: ov?.commitsMine?.value ?? synced?.commitsMine ?? authored?.commitsMine,
 		commitsRecent: ov?.commitsRecent?.value ?? synced?.commitsRecent ?? authored?.commitsRecent,
 		// Codebase size
@@ -129,11 +130,20 @@ function withSyncedMetrics(project: Project): Project {
 		linesAdded: ov?.linesAdded?.value ?? synced?.linesAdded ?? authored?.linesAdded,
 		linesRemoved: ov?.linesRemoved?.value ?? synced?.linesRemoved ?? authored?.linesRemoved,
 		linesAddedAll: ov?.linesAddedAll?.value ?? synced?.linesAddedAll ?? authored?.linesAddedAll,
-		linesRemovedAll: ov?.linesRemovedAll?.value ?? synced?.linesRemovedAll ?? authored?.linesRemovedAll,
-		linesAddedRecent: ov?.linesAddedRecent?.value ?? synced?.linesAddedRecent ?? authored?.linesAddedRecent,
-		linesRemovedRecent: ov?.linesRemovedRecent?.value ?? synced?.linesRemovedRecent ?? authored?.linesRemovedRecent,
-		linesAddedRecentAll: ov?.linesAddedRecentAll?.value ?? synced?.linesAddedRecentAll ?? authored?.linesAddedRecentAll,
-		linesRemovedRecentAll: ov?.linesRemovedRecentAll?.value ?? synced?.linesRemovedRecentAll ?? authored?.linesRemovedRecentAll,
+		linesRemovedAll:
+			ov?.linesRemovedAll?.value ?? synced?.linesRemovedAll ?? authored?.linesRemovedAll,
+		linesAddedRecent:
+			ov?.linesAddedRecent?.value ?? synced?.linesAddedRecent ?? authored?.linesAddedRecent,
+		linesRemovedRecent:
+			ov?.linesRemovedRecent?.value ?? synced?.linesRemovedRecent ?? authored?.linesRemovedRecent,
+		linesAddedRecentAll:
+			ov?.linesAddedRecentAll?.value ??
+			synced?.linesAddedRecentAll ??
+			authored?.linesAddedRecentAll,
+		linesRemovedRecentAll:
+			ov?.linesRemovedRecentAll?.value ??
+			synced?.linesRemovedRecentAll ??
+			authored?.linesRemovedRecentAll,
 		// No-synced-source fields: override wins, then authored (these never appear in synced)
 		testCoverage: ov?.testCoverage?.value ?? authored?.testCoverage,
 		mergedPrs: ov?.mergedPrs?.value ?? authored?.mergedPrs

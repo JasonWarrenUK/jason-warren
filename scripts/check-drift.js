@@ -423,7 +423,12 @@ console.log(
 	`\n${BOLD}Portfolio source drift report${RESET} ${DIM}(${manifest.lastSyncedAt})${RESET}\n`
 );
 
-if (changed.length === 0 && filteredNew.length === 0 && missing.length === 0 && conflicts.length === 0) {
+if (
+	changed.length === 0 &&
+	filteredNew.length === 0 &&
+	missing.length === 0 &&
+	conflicts.length === 0
+) {
 	console.log(
 		`${GREEN}All ${Object.keys(manifest.sources).length} tracked repos are up to date. No new repos detected.${RESET}`
 	);

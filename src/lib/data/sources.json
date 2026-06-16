@@ -19,13 +19,7 @@
 			"commitsRecent": 49,
 			"lastCommit": "2026-06-16",
 			"firstCommit": "2026-02-23",
-			"languages": [
-				"Python",
-				"SQL",
-				"Shell",
-				"HTML",
-				"JavaScript"
-			],
+			"languages": ["Python", "SQL", "Shell", "HTML", "JavaScript"],
 			"linesOfCode": 15376,
 			"linesAdded": 48412,
 			"linesRemoved": 40664,
@@ -86,15 +80,7 @@
 			"commitsRecent": 27,
 			"lastCommit": "2026-06-16",
 			"firstCommit": "2025-12-11",
-			"languages": [
-				"TypeScript",
-				"SQL",
-				"JavaScript",
-				"CSS",
-				"HTML",
-				"Python",
-				"Shell"
-			],
+			"languages": ["TypeScript", "SQL", "JavaScript", "CSS", "HTML", "Python", "Shell"],
 			"linesOfCode": 22509,
 			"linesAdded": 9677,
 			"linesRemoved": 787,
@@ -119,13 +105,7 @@
 			"commitsRecent": 5,
 			"lastCommit": "2026-06-16",
 			"firstCommit": "2026-01-09",
-			"languages": [
-				"TypeScript",
-				"Rust",
-				"Svelte",
-				"HTML",
-				"JavaScript"
-			],
+			"languages": ["TypeScript", "Rust", "Svelte", "HTML", "JavaScript"],
 			"linesOfCode": 21151,
 			"linesAdded": 120410,
 			"linesRemoved": 30332,
@@ -228,14 +208,7 @@
 			"commitsRecent": 27,
 			"lastCommit": "2026-06-16",
 			"firstCommit": "2026-06-14",
-			"languages": [
-				"TypeScript",
-				"Svelte",
-				"Shell",
-				"CSS",
-				"HTML",
-				"JavaScript"
-			],
+			"languages": ["TypeScript", "Svelte", "Shell", "CSS", "HTML", "JavaScript"],
 			"linesOfCode": 3166,
 			"linesAdded": 4261,
 			"linesRemoved": 529,
