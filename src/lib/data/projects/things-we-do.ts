@@ -5,6 +5,7 @@ export const thingsWeDo: Project = {
 	name: 'Things We Do',
 	tagline:
 		'An installable PWA for managing tasks and emotional wellbeing through mood tracking and personalised coping-strategy toolkits.',
+	blurb: 'A PWA for managing tasks and wellbeing through mood tracking.',
 	description:
 		'An installable, offline-first PWA for managing tasks and emotional wellbeing through mood tracking and personalised coping-strategy toolkits, built by the FAC-30 cohort. Offline support comes from a Serwist service worker over RxDB local storage, which Jason initialised including the schema design. Across 21 merged PRs he built the next-actions feature end-to-end (creation, immediate selection, view, and deletion), designed the insights charts including a 3D mood visualisation in Plotly.js, and implemented ephemeral categories with modal confirmations. The project is now archived.',
 	kind: 'app',

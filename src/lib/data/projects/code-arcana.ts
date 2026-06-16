@@ -5,6 +5,7 @@ export const codeArcana: Project = {
 	name: 'Code Arcana',
 	tagline:
 		'A tarot-based programming philosophy website: all 78 cards written as full essays, with a navigable 250-edge connection graph across suits and arcana.',
+	blurb: 'A tarot-based programming philosophy, 78 essays in a connection graph.',
 	description:
 		'A programming philosophy read through tarot archetypes rather than Taoist ones, with a British aesthetic and a neurodivergent-friendly, anti-authoritarian framing throughout. All 78 cards are written and integrated: 22 Major Arcana and 56 Minor Arcana across the four suits of Cups, Wands, Swords, and Pentacles. Each card carries a full essay, keywords, a one-line coding insight, and links to related cards, and the 250-edge connection graph between them is rendered as a navigable diagram. It is built with SvelteKit on Deno and deployed via Deno Deploy.',
 	kind: 'website',

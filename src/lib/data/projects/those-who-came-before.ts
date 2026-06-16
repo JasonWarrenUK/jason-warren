@@ -5,6 +5,7 @@ export const thoseWhoCameBefore: Project = {
 	name: 'Those Who Came Before',
 	tagline:
 		'A browser game where players discover procedurally generated archaeological artefacts, track them on a discovery timeline, and complete mission-based tasks.',
+	blurb: 'A browser game of procedurally generated archaeological discovery.',
 	description:
 		'A browser game where players discover procedurally generated archaeological artefacts, track them on a discovery timeline, and complete mission-based tasks. It runs SvelteKit through Deno rather than Node, deployed to Deno Deploy via @deno/svelte-adapter, using Svelte 5 runes throughout with Tailwind CSS v4 and DaisyUI v5. A grammar-based procedural artefact generator with typed definitions for item parts, conditions, and materials sits staged for integration into the core loop. The discovery loop itself is complete, with persistence, save/load, and auth on the roadmap, and the architecture decisions are documented in docs/.',
 	kind: 'game',

@@ -34,6 +34,9 @@
 				<a href="{base}/timeline" class="site-nav__link">Timeline</a>
 			</li>
 			<li>
+				<a href="{base}/toolkit" class="site-nav__link">Toolkit</a>
+			</li>
+			<li>
 				<a href="{base}/about" class="site-nav__link">About</a>
 			</li>
 			<li>

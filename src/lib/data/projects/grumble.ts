@@ -5,6 +5,7 @@ export const grumble: Project = {
 	name: 'Grumble',
 	tagline:
 		'A Gin Rummy scorer with hand-by-hand deadwood calculation, running totals, line and game bonuses, and multi-game match history.',
+	blurb: 'A Gin Rummy scorer with deadwood calculation and match history.',
 	description:
 		'A Gin Rummy scorer split cleanly between a pure scoring library and the SvelteKit presentation layer. The scoring code in src/lib/scoring/ has zero Svelte dependencies, can be tested in isolation, and is covered by unit tests via bun:test. It implements the full Gin Rummy ruleset: deadwood calculation, gin, big gin and undercut bonuses, line and game bonuses, and running totals across multi-game match history. Built with SvelteKit and Svelte 5 runes.',
 	kind: 'tool',

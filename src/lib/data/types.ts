@@ -110,8 +110,10 @@ export type Contribution = SoloContribution | TeamContribution;
 export interface Project {
 	slug: ProjectSlug;
 	name: string;
-	/** One-sentence description used in cards and meta tags. */
+	/** One-sentence description used in meta tags, the detail header, and map tooltip. */
 	tagline: string;
+	/** Short card face, roughly a third of the tagline. Cards show this when collapsed. */
+	blurb: string;
 	/** Longer body copy for the case-study page. Placeholder text initially. */
 	description: string;
 	kind: ProjectKind;
