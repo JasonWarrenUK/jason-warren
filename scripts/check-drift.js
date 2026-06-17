@@ -1354,6 +1354,176 @@ function runExclude({ args, manifest, palette }) {
 	);
 }
 
+// ---------------------------------------------------------------------------
+// snapshot verb
+//
+// Shows every current metric for every resolvable project, colourised so
+// changed-vs-saved values stand out from unchanged ones.  Unlike `report`,
+// which shows only deltas, `snapshot` always renders firstCommit and the
+// full metric set. `--full` is accepted for symmetry but is a no-op.
+// ---------------------------------------------------------------------------
+
+/**
+ * Derives per-project snapshot entries from computeDrift's return value.
+ * Pure function — no git work; all data already in `result.fresh`.
+ *
+ * @param {{ fresh: Record<string, object>, missing: object[] }} result
+ * @param {{ sources: Record<string, object> }} manifest
+ * @returns {{ projects: Array<{slug, current, saved, driftedFields: Set<string>}>, missing: object[] }}
+ */
+function computeSnapshot(result, manifest) {
+	const projects = [];
+	for (const [slug, current] of Object.entries(result.fresh)) {
+		const saved = manifest.sources[slug] ?? {};
+		const drifted = new Set(diffFingerprint(saved, current).map((d) => d.field));
+		projects.push({ slug, current, saved, driftedFields: drifted });
+	}
+	// Sort alphabetically for stable output
+	projects.sort((a, b) => a.slug.localeCompare(b.slug));
+	return { projects, missing: result.missing };
+}
+
+/**
+ * Renders the snapshot as markdown (gum path).
+ * Changed fields are highlighted; unchanged fields are shown as regular rows.
+ *
+ * @param {{ projects: Array, missing: object[] }} snapshot
+ * @returns {string}
+ */
+function renderSnapshotMarkdown(snapshot) {
+	const lines = [];
+	lines.push(`# Portfolio snapshot`);
+	lines.push(`_All current metrics for every resolvable project. **Bold** fields have changed since last sync._`);
+	lines.push('');
+	lines.push(`${snapshot.projects.length} resolvable · ${snapshot.missing.length} not resolvable on this machine`);
+	lines.push('');
+
+	for (let i = 0; i < snapshot.projects.length; i++) {
+		const { slug, current, driftedFields } = snapshot.projects[i];
+
+		if (i > 0) lines.push('---');
+		lines.push('');
+		lines.push(`### ${slug}`);
+		lines.push('');
+
+		// Identity line
+		const identity = buildIdentityLine(current);
+		for (const il of identity.split('\n')) lines.push(`_${il}_`);
+		lines.push('');
+
+		// Full metric table: all FINGERPRINT_FIELDS that have a value
+		const rows = FINGERPRINT_FIELDS.filter((f) => current[f] !== undefined);
+		if (rows.length > 0) {
+			lines.push(`| field | value |`);
+			lines.push(`| --- | --- |`);
+			for (const field of rows) {
+				// Skip fields already in identity line to avoid redundancy
+				if (['firstCommit', 'lastCommit', 'commits', 'linesOfCode', 'remote'].includes(field)) continue;
+				const val = Array.isArray(current[field]) ? current[field].join(', ') : String(current[field]);
+				// Bold the field name when it drifted
+				const fieldCell = driftedFields.has(field) ? `**${field}**` : field;
+				lines.push(`| ${fieldCell} | ${val} |`);
+			}
+			lines.push('');
+		}
+	}
+
+	if (snapshot.missing.length > 0) {
+		lines.push('---');
+		lines.push('');
+		lines.push(`## Not resolvable on this machine (${snapshot.missing.length})`);
+		lines.push('');
+		for (const r of snapshot.missing) {
+			lines.push(`- ${r.slug}: ${r.reason}`);
+		}
+		lines.push('');
+	}
+
+	return lines.join('\n');
+}
+
+/**
+ * Plain ANSI fallback for the snapshot.
+ * Changed fields are printed in yellow/bold; unchanged in dim.
+ *
+ * @param {{ projects: Array, missing: object[] }} snapshot
+ * @param {object} palette
+ */
+function runSnapshotPlain(snapshot, palette) {
+	const { RESET, BOLD, YELLOW, CYAN, DIM } = palette;
+
+	console.log(`\n${BOLD}Portfolio snapshot${RESET} ${DIM}(all current metrics — changed fields highlighted)${RESET}\n`);
+	console.log(`${DIM}${snapshot.projects.length} resolvable · ${snapshot.missing.length} not resolvable on this machine${RESET}\n`);
+
+	for (let i = 0; i < snapshot.projects.length; i++) {
+		const { slug, current, driftedFields } = snapshot.projects[i];
+
+		if (i > 0) console.log(`${DIM}${'─'.repeat(60)}${RESET}`);
+		console.log(`${BOLD}${CYAN}${slug}${RESET}`);
+
+		// Identity line
+		const identity = buildIdentityLine(current);
+		for (const il of identity.split('\n')) {
+			console.log(`  ${DIM}${il}${RESET}`);
+		}
+		console.log('');
+
+		// All FINGERPRINT_FIELDS (skip identity fields already in the header)
+		for (const field of FINGERPRINT_FIELDS) {
+			if (current[field] === undefined) continue;
+			if (['firstCommit', 'lastCommit', 'commits', 'linesOfCode', 'remote'].includes(field)) continue;
+			const val = Array.isArray(current[field]) ? current[field].join(', ') : String(current[field]);
+			const changed = driftedFields.has(field);
+			if (changed) {
+				console.log(`  ${YELLOW}${BOLD}${field}${RESET}  ${BOLD}${val}${RESET}`);
+			} else {
+				console.log(`  ${DIM}${field}  ${val}${RESET}`);
+			}
+		}
+		console.log('');
+	}
+
+	if (snapshot.missing.length > 0) {
+		console.log(`${DIM}${BOLD}Not resolvable on this machine (${snapshot.missing.length}):${RESET}`);
+		for (const r of snapshot.missing) {
+			console.log(`  ${DIM}${r.slug}: ${r.reason}${RESET}`);
+		}
+		console.log();
+	}
+}
+
+/**
+ * Entry point for the snapshot verb. Mirrors runReport's structure:
+ * --json first (machine-readable), then gum markdown, then plain ANSI.
+ *
+ * @param {{ result: object, manifest: object, palette: object, json: boolean, useGum: boolean }} opts
+ */
+function runSnapshot({ result, manifest, palette, json, useGum }) {
+	const snapshot = computeSnapshot(result, manifest);
+
+	if (json) {
+		const payload = snapshot.projects.map(({ slug, current, saved, driftedFields }) => ({
+			slug,
+			current,
+			saved,
+			drifted: [...driftedFields]
+		}));
+		process.stdout.write(JSON.stringify(payload, null, 2) + '\n');
+		return;
+	}
+
+	if (useGum && process.stdout.isTTY) {
+		const md = renderSnapshotMarkdown(snapshot);
+		const out = spawnSync('gum', ['format', '--theme', 'pink'], { input: md, encoding: 'utf8' });
+		if (out.status === 0 && out.stdout) {
+			process.stdout.write('\n' + out.stdout + '\n');
+			return;
+		}
+	}
+
+	runSnapshotPlain(snapshot, palette);
+}
+
 // Markdown source for gum-formatted help — rendered via `gum format --theme pink`
 // when interactive. The plain `banners` object below is the fallback.
 // Coverage must stay in parity: any flag or form added here must also appear in
@@ -1761,7 +1931,7 @@ function main() {
 	}
 
 	// Subcommand dispatcher. The first positional is the verb; slug/field follow.
-	const KNOWN_VERBS = new Set(['report', 'update', 'accept', 'accept-all', 'exclude', 'help']);
+	const KNOWN_VERBS = new Set(['report', 'snapshot', 'update', 'accept', 'accept-all', 'exclude', 'help']);
 	const verb = KNOWN_VERBS.has(positionals[0]) ? positionals[0] : 'report';
 	// args[0] = slug, args[1] = field (for accept). When the verb was explicit,
 	// slice it off; when the default 'report' was inferred, positionals are not args.
@@ -1816,10 +1986,21 @@ function main() {
 		return;
 	}
 
-	const result = computeDrift(manifests, { full: values.full, onProgress });
+	// snapshot always needs the full field comparison to compute drift per-project.
+	const needsFullScan = values.full || verb === 'snapshot';
+	const result = computeDrift(manifests, { full: needsFullScan, onProgress });
 	clearProgress();
 
 	switch (verb) {
+		case 'snapshot':
+			runSnapshot({
+				result,
+				manifest: manifests.manifest,
+				palette,
+				json: values.json,
+				useGum
+			});
+			break;
 		case 'update':
 			runUpdate({ result, manifest: manifests.manifest, palette, useGum });
 			break;
