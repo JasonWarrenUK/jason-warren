@@ -909,6 +909,122 @@ function buildCoverageStats(manifest) {
 }
 
 // ---------------------------------------------------------------------------
+// Per-project card renderers
+//
+// A "card" is a self-contained block for one project slug, used by both the
+// field-drift section of `report --full` and the new `snapshot` verb.
+//
+// Design:
+//   - gum/markdown path:  `---` rule between cards + `###` slug heading
+//     renders cleanly under `gum format --theme pink`, giving clear visual
+//     breaks between projects.
+//   - plain-ANSI path:    a dim `───` rule + coloured slug header.
+//
+// Both paths share the same content shape. The palette is passed in so the
+// plain path can colourise individual values.
+// ---------------------------------------------------------------------------
+
+/**
+ * Returns a short identity line for a fingerprint entry.
+ * Always includes firstCommit and lastCommit so they appear as context even
+ * when they did not drift. Remote is included when present.
+ *
+ * @param {Record<string, unknown>} fp  current or saved fingerprint
+ * @returns {string}
+ */
+function buildIdentityLine(fp) {
+	const first = fp?.firstCommit ?? '?';
+	const last = fp?.lastCommit ?? '?';
+	const commits = fp?.commits != null ? `${fp.commits} commits` : null;
+	const loc = fp?.linesOfCode != null ? `${fp.linesOfCode} loc` : null;
+	const remote = fp?.remote ?? null;
+
+	const parts = [`first: ${first}`, `last: ${last}`];
+	if (commits) parts.push(commits);
+	if (loc) parts.push(loc);
+	const line = parts.join(' · ');
+	return remote ? `${remote}\n${line}` : line;
+}
+
+/**
+ * Renders a single project card as markdown lines (gum path).
+ *
+ * @param {object} opts
+ * @param {string}   opts.slug
+ * @param {Record<string, unknown>} opts.current   live fingerprint
+ * @param {Array<{field:string, was:unknown, now:unknown}>} opts.fields
+ *   Fields to render as rows. Pass [] to show identity-only (snapshot for
+ *   unchanged project). Pass drifted fields for the report diff view.
+ *   Pass null to render ALL fields from current (full snapshot mode).
+ * @param {boolean} [opts.firstCard=false]  suppress the leading `---` on first card
+ * @returns {string[]}
+ */
+function renderCardMarkdown({ slug, current, fields, firstCard = false }) {
+	const lines = [];
+
+	if (!firstCard) lines.push('---');
+	lines.push('');
+	lines.push(`### ${slug}`);
+	lines.push('');
+
+	// Identity line: always show firstCommit/lastCommit/remote as context
+	const identity = buildIdentityLine(current);
+	for (const il of identity.split('\n')) lines.push(`_${il}_`);
+	lines.push('');
+
+	if (fields && fields.length > 0) {
+		lines.push(`| field | was | now |`);
+		lines.push(`| --- | --- | --- |`);
+		for (const f of fields) {
+			const was = Array.isArray(f.was) ? f.was.join(', ') : String(f.was ?? '?');
+			const now = Array.isArray(f.now) ? f.now.join(', ') : String(f.now ?? '?');
+			// Mark changed fields with a bullet so gum colour makes them pop
+			lines.push(`| **${f.field}** | ${was} | ${now} |`);
+		}
+		lines.push('');
+	}
+
+	return lines;
+}
+
+/**
+ * Renders a single project card as ANSI console output (plain fallback).
+ * Returns void; writes directly via console.log.
+ *
+ * @param {object} opts
+ * @param {string}   opts.slug
+ * @param {Record<string, unknown>} opts.current   live fingerprint
+ * @param {Array<{field:string, was:unknown, now:unknown}>} opts.fields
+ * @param {boolean}  opts.firstCard   suppress leading rule on first card
+ * @param {object}   opts.palette     ANSI colour codes
+ */
+function renderCardPlain({ slug, current, fields, firstCard = false, palette }) {
+	const { RESET, BOLD, CYAN, DIM, YELLOW } = palette;
+
+	if (!firstCard) {
+		console.log(`${DIM}${'─'.repeat(60)}${RESET}`);
+	}
+
+	console.log(`${BOLD}${CYAN}${slug}${RESET}`);
+
+	// Identity line
+	const identity = buildIdentityLine(current);
+	for (const il of identity.split('\n')) {
+		console.log(`  ${DIM}${il}${RESET}`);
+	}
+
+	if (fields && fields.length > 0) {
+		console.log('');
+		for (const f of fields) {
+			const was = Array.isArray(f.was) ? f.was.join(', ') : (f.was ?? '?');
+			const now = Array.isArray(f.now) ? f.now.join(', ') : (f.now ?? '?');
+			console.log(`  ${YELLOW}${BOLD}${f.field}${RESET}  ${DIM}${was}${RESET} → ${BOLD}${now}${RESET}`);
+		}
+	}
+	console.log('');
+}
+
+// ---------------------------------------------------------------------------
 // Report
 // ---------------------------------------------------------------------------
 
