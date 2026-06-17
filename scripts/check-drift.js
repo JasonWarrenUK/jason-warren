@@ -1808,6 +1808,39 @@ all fields. Does not write anything.${RESET}
 // Single-shot: choose a verb, run it in-process, done.
 // ---------------------------------------------------------------------------
 
+// ANSI Shadow figlet wordmark for the menu header.
+// Generated via `npx figlet-cli -f "ANSI Shadow" DRIFT`; embedded as a
+// hardcoded string so the menu works without figlet at runtime.
+const DRIFT_WORDMARK = [
+	'██████╗ ██████╗ ██╗███████╗████████╗',
+	'██╔══██╗██╔══██╗██║██╔════╝╚══██╔══╝',
+	'██║  ██║██████╔╝██║█████╗     ██║   ',
+	'██║  ██║██╔══██╗██║██╔══╝     ██║   ',
+	'██████╔╝██║  ██║██║██║        ██║   ',
+	'╚═════╝ ╚═╝  ╚═╝╚═╝╚═╝        ╚═╝   ',
+].join('\n');
+
+/**
+ * Renders the DRIFT wordmark inside a rounded, teal-bordered panel.
+ * Prints directly to stdout via gum style. Call immediately before
+ * `gum choose` so the wordmark sits above the interactive list.
+ */
+function printWordmark() {
+	spawnSync(
+		'gum',
+		[
+			'style',
+			'--border', 'rounded',
+			'--border-foreground', '#3E7F96',
+			'--foreground', '#B34480',
+			'--padding', '1 3',
+			'--align', 'center',
+			DRIFT_WORDMARK,
+		],
+		{ stdio: ['ignore', 'inherit', 'inherit'] }
+	);
+}
+
 function runInteractiveMenu({ manifests, palette, useGum, onProgress, clearProgress }) {
 	// Lazy scan helper — runs only when a verb that needs data is selected.
 	const scan = (full) => {
@@ -1837,6 +1870,10 @@ function runInteractiveMenu({ manifests, palette, useGum, onProgress, clearProgr
 	const items = menuRows.map(([name, desc, value]) =>
 		`${name.padEnd(nameWidth + 3)}${desc}:${value}`
 	);
+
+	// Wordmark sits above the interactive list. gum choose takes over the TTY
+	// immediately after, so the wordmark scrolls into history above the picker.
+	printWordmark();
 
 	const choose = spawnSync(
 		'gum',
