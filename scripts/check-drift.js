@@ -1816,17 +1816,27 @@ function runInteractiveMenu({ manifests, palette, useGum, onProgress, clearProgr
 		return r;
 	};
 
-	const items = [
-		'Report:report',
-		'Report - full field scan:report-full',
-		'Snapshot - all current metrics:snapshot',
-		'Update sources.json:update',
-		'Accept an override:accept',
-		'Accept field across all projects:accept-all-projects',
-		'Accept-all:accept-all',
-		'Exclude a slug:exclude',
-		'Help:help'
+	// Menu rows: [visible name, description, return value].
+	// Descriptions must be colon-free (label-delimiter splits on ':').
+	// Values are unchanged from the original menu, so the dispatch switch below
+	// needs no edits.
+	const menuRows = [
+		['Report',                 'Show repos whose metrics drifted since last sync',      'report'],
+		['Report (full scan)',     'Per-field drift across every repo, not just moved HEADs', 'report-full'],
+		['Snapshot',               'Every current metric value, changed fields highlighted', 'snapshot'],
+		['Update',                 'Rewrite sources.json with current git fingerprints',    'update'],
+		['Accept override',        'Clear one drift flag, keeping your pinned value',       'accept'],
+		['Accept field everywhere','Clear one field\'s drift flag on every project',        'accept-all-projects'],
+		['Accept all',             'Clear every flagged override at once',                  'accept-all'],
+		['Exclude',                'Hide a slug from the public site',                      'exclude'],
+		['Help',                   'Show the command reference',                            'help'],
 	];
+
+	// Pad names to a fixed width so descriptions align in a second column.
+	const nameWidth = Math.max(...menuRows.map(([n]) => n.length));
+	const items = menuRows.map(([name, desc, value]) =>
+		`${name.padEnd(nameWidth + 3)}${desc}:${value}`
+	);
 
 	const choose = spawnSync(
 		'gum',
