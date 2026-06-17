@@ -803,17 +803,10 @@ function renderReportMarkdown(result, manifest, full) {
 	if (full && fieldDrift.length > 0) {
 		lines.push(`## Field-level drift - full scan (${fieldDrift.length})`);
 		lines.push('');
-		for (const r of fieldDrift) {
-			lines.push(`### ${r.slug}`);
-			lines.push('');
-			lines.push(`| field | was | now |`);
-			lines.push(`| --- | --- | --- |`);
-			for (const f of r.fields) {
-				const was = Array.isArray(f.was) ? f.was.join(', ') : String(f.was ?? '?');
-				const now = Array.isArray(f.now) ? f.now.join(', ') : String(f.now ?? '?');
-				lines.push(`| ${f.field} | ${was} | ${now} |`);
-			}
-			lines.push('');
+		for (let i = 0; i < fieldDrift.length; i++) {
+			const r = fieldDrift[i];
+			const current = result.fresh?.[r.slug] ?? {};
+			lines.push(...renderCardMarkdown({ slug: r.slug, current, fields: r.fields, firstCard: i === 0 }));
 		}
 	}
 
@@ -1119,15 +1112,12 @@ function runReport({ result, manifest, palette, json, full, useGum }) {
 
 	if (full && fieldDrift.length > 0) {
 		console.log(`${YELLOW}${BOLD}Field-level drift - full scan (${fieldDrift.length}):${RESET}`);
-		for (const r of fieldDrift) {
-			console.log(`  ${CYAN}${r.slug}${RESET}`);
-			for (const f of r.fields) {
-				const was = Array.isArray(f.was) ? f.was.join(', ') : (f.was ?? '?');
-				const now = Array.isArray(f.now) ? f.now.join(', ') : (f.now ?? '?');
-				console.log(`    ${DIM}${f.field}: ${was} → ${now}${RESET}`);
-			}
-		}
 		console.log();
+		for (let i = 0; i < fieldDrift.length; i++) {
+			const r = fieldDrift[i];
+			const current = result.fresh?.[r.slug] ?? {};
+			renderCardPlain({ slug: r.slug, current, fields: r.fields, firstCard: i === 0, palette });
+		}
 	}
 
 	if (full) {
