@@ -1409,7 +1409,9 @@ function runInteractiveMenu({ manifests, palette, useGum, onProgress, clearProgr
 		'Report - full field scan:report-full',
 		'Update sources.json:update',
 		'Accept an override:accept',
+		'Accept field across all projects:accept-all-projects',
 		'Accept-all:accept-all',
+		'Exclude a slug:exclude',
 		'Help:help'
 	];
 
@@ -1488,6 +1490,76 @@ function runInteractiveMenu({ manifests, palette, useGum, onProgress, clearProgr
 			// Slugs are kebab-case, fields are camelCase — neither contains spaces.
 			const [slug, field] = pick.stdout.trim().split(' ');
 			runAccept({ result, args: [slug, field], acceptAll: false, allProjects: false, palette });
+			break;
+		}
+		case 'accept-all-projects': {
+			// Second picker: choose a field name to accept across all projects.
+			const result = scan(false);
+			const { conflicts } = result;
+			if (conflicts.length === 0) {
+				console.log('No flagged overrides to accept.');
+				return;
+			}
+			// Distinct field names across all conflicts.
+			const fields = [...new Set(conflicts.map((c) => c.field))].sort();
+			const fieldItems = fields.map((f) => `${f}:${f}`);
+			const pick = spawnSync(
+				'gum',
+				[
+					'choose',
+					'--label-delimiter=:',
+					'--header=Accept this field across all projects:',
+					'--cursor=> ',
+					'--cursor.foreground=#3E7F96',
+					'--selected.foreground=#3E7F96',
+					'--item.foreground=#B34480',
+					...fieldItems
+				],
+				{ stdio: ['inherit', 'pipe', 'inherit'], encoding: 'utf8' }
+			);
+			if (pick.status !== 0 || !pick.stdout.trim()) return;
+			const chosenField = pick.stdout.trim();
+			runAccept({ result, args: [chosenField], acceptAll: false, allProjects: true, palette });
+			break;
+		}
+		case 'exclude': {
+			// Prompt for a slug to exclude — offer the non-excluded manifest keys.
+			const { excludedSlugs: currentExcluded } = loadExcluded();
+			const manifest = manifests.manifest;
+			const candidateSlugs = Object.keys(manifest.sources)
+				.filter((s) => !currentExcluded.has(s))
+				.sort();
+
+			let chosenSlug;
+			if (candidateSlugs.length > 0) {
+				const slugItems = candidateSlugs.map((s) => `${s}:${s}`);
+				const pick = spawnSync(
+					'gum',
+					[
+						'choose',
+						'--label-delimiter=:',
+						'--header=Choose a slug to exclude:',
+						'--cursor=> ',
+						'--cursor.foreground=#3E7F96',
+						'--selected.foreground=#3E7F96',
+						'--item.foreground=#B34480',
+						...slugItems
+					],
+					{ stdio: ['inherit', 'pipe', 'inherit'], encoding: 'utf8' }
+				);
+				if (pick.status !== 0 || !pick.stdout.trim()) return;
+				chosenSlug = pick.stdout.trim();
+			} else {
+				// Fallback: free-text input when all manifest slugs are already excluded.
+				const input = spawnSync(
+					'gum',
+					['input', '--placeholder', 'slug to exclude'],
+					{ stdio: ['inherit', 'pipe', 'inherit'], encoding: 'utf8' }
+				);
+				if (input.status !== 0 || !input.stdout.trim()) return;
+				chosenSlug = input.stdout.trim();
+			}
+			runExclude({ args: [chosenSlug], manifest, palette });
 			break;
 		}
 	}
