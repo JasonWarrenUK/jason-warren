@@ -784,15 +784,21 @@ overrides.json only.
 // ---------------------------------------------------------------------------
 
 function main() {
-	const { values, positionals } = parseArgs({
-		allowPositionals: true, // verb + optional slug + optional field
-		options: {
-			json: { type: 'boolean', default: false },
-			check: { type: 'boolean', default: false },
-			'no-color': { type: 'boolean', default: false },
-			help: { type: 'boolean', short: 'h', default: false }
-		}
-	});
+	let values, positionals;
+	try {
+		({ values, positionals } = parseArgs({
+			allowPositionals: true, // verb + optional slug + optional field
+			options: {
+				json: { type: 'boolean', default: false },
+				check: { type: 'boolean', default: false },
+				'no-color': { type: 'boolean', default: false },
+				help: { type: 'boolean', short: 'h', default: false }
+			}
+		}));
+	} catch (err) {
+		process.stderr.write(`drift: ${err.message}\nRun \`drift --help\` for usage.\n`);
+		process.exit(1);
+	}
 
 	// Subcommand dispatcher. The first positional is the verb; slug/field follow.
 	// 'promote' is reserved for Phase 6 — leave it out of KNOWN_VERBS for now.
