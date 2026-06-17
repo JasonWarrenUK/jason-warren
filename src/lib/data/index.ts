@@ -1,44 +1,31 @@
 /**
  * Central project registry.
- * Import from this module to access the full project list.
+ *
+ * The manifest (sources.json) is the source of WHICH projects exist: every
+ * non-excluded entry in sources.json.sources appears on the public site.
+ * Authored .ts files (src/lib/data/projects/*.ts) are optional overlays,
+ * keyed by slug. The registry inversion means:
+ *
+ *   git -> sources.json -> manifest-derived Project (defaults.ts)
+ *                       + optional .ts overlay (mergeAuthored)
+ *                       + live metrics/dates (withSyncedMetrics)
+ *
+ * To add a project to the public site: add it to sources.json via drift update.
+ * To exclude a repo: use `drift exclude <slug>` (writes to excluded.json).
+ * To author rich content: create src/lib/data/projects/<slug>.ts.
+ *
+ * WRITE-ISOLATION CONTRACT (enforced by check-drift.js):
+ *   drift update          -> writes ONLY sources.json
+ *   drift accept/accept-all -> writes ONLY overrides.json
+ *   drift exclude         -> writes ONLY excluded.json
+ *   NOTHING auto-writes   -> projects/*.ts
  */
 
-import { iris } from './projects/iris.js';
-import { wyrdTui } from './projects/wyrd-tui.js';
-import { rhea } from './projects/rhea.js';
-import { epoch } from './projects/epoch.js';
-import { theTongue } from './projects/the-tongue.js';
-import { cogni } from './projects/cogni.js';
-import { sparker } from './projects/sparker.js';
-import { theWork } from './projects/the-work.js';
-import { flyt } from './projects/flyt.js';
-import { thoseWhoCameBefore } from './projects/those-who-came-before.js';
-import { historia } from './projects/historia.js';
-import { topGirls } from './projects/top-girls.js';
-import { grumble } from './projects/grumble.js';
-import { codeArcana } from './projects/code-arcana.js';
-import { babyNames } from './projects/baby-names.js';
-import { nib } from './projects/nib.js';
-import { riffle } from './projects/riffle.js';
-import { schemaForge } from './projects/schema-forge.js';
-import { kamino } from './projects/kamino.js';
-import { lyraRose } from './projects/lyra-rose.js';
-import { kitchenGremlin } from './projects/kitchen-gremlin.js';
-import { workwise } from './projects/workwise.js';
-import { commonsTraybake } from './projects/commons-traybake.js';
-import { psyche } from './projects/psyche.js';
-import { thingsWeDo } from './projects/things-we-do.js';
-import { guardrails } from './projects/guardrails.js';
-import { redot } from './projects/redot.js';
-import { chirpdb } from './projects/chirpdb.js';
-import { facCra } from './projects/fac-cra.js';
-import { beacons } from './projects/beacons.js';
-import { craftAndGraft } from './projects/craft-and-graft.js';
-import { sakura } from './projects/sakura.js';
-import { rimewarden } from './projects/rimewarden.js';
 import sourcesManifest from './sources.json';
 import overridesManifest from './overrides.json';
-import type { Project, ProjectMetrics } from './types.js';
+import excludedManifest from './excluded.json';
+import { defaultProjectFromManifest, mergeAuthored } from './defaults.js';
+import type { Project, AuthoredProject, ProjectMetrics } from './types.js';
 
 export type { Project };
 export * from './types.js';
@@ -106,58 +93,114 @@ type SlugOverrides = Partial<Record<keyof ProjectMetrics, FieldOverride>> & {
 
 const overrides = overridesManifest.overrides as Record<string, SlugOverrides>;
 
+// ---------------------------------------------------------------------------
+// Authored overlay discovery via import.meta.glob
+//
+// Discovers every src/lib/data/projects/*.ts module at build time (Vite).
+// Each module contains exactly one named export (a Project or AuthoredProject
+// literal). We key the overlay by its own .slug field, NOT by the camelCase
+// export binding, so the slug is always canonical.
+//
+// Build-time guards catch:
+//   - a module with zero or multiple named exports
+//   - a module whose export lacks a .slug field
+//   - two modules claiming the same slug
+// ---------------------------------------------------------------------------
+
+const authoredModules = import.meta.glob('./projects/*.ts', { eager: true });
+
+const authoredBySlug: Record<string, AuthoredProject> = {};
+
+for (const [filePath, mod] of Object.entries(authoredModules)) {
+	const exports = Object.values(mod as Record<string, unknown>).filter(
+		(v) => v !== null && typeof v === 'object'
+	);
+
+	if (exports.length === 0) {
+		throw new Error(
+			`[registry] ${filePath} has no named exports. ` +
+				`Every project file must export exactly one AuthoredProject object.`
+		);
+	}
+	if (exports.length > 1) {
+		throw new Error(
+			`[registry] ${filePath} has ${exports.length} named exports. ` +
+				`Only one export per file is allowed.`
+		);
+	}
+
+	const overlay = exports[0] as Record<string, unknown>;
+	const slug = overlay['slug'];
+
+	if (typeof slug !== 'string' || !slug) {
+		throw new Error(
+			`[registry] ${filePath}: exported object is missing a string 'slug' field. ` +
+				`Add slug: '...' to the exported object.`
+		);
+	}
+
+	if (authoredBySlug[slug]) {
+		throw new Error(
+			`[registry] Duplicate slug '${slug}' in ${filePath}. ` +
+				`Each slug must appear in exactly one project file.`
+		);
+	}
+
+	authoredBySlug[slug] = overlay as unknown as AuthoredProject;
+}
+
+// ---------------------------------------------------------------------------
+// Exclusion
+// ---------------------------------------------------------------------------
+
+const excludedSlugs = new Set<string>(excludedManifest.slugs);
+
+// ---------------------------------------------------------------------------
+// withSyncedMetrics — overlays live metrics and dates onto a merged project
+// ---------------------------------------------------------------------------
+
 /**
- * Overlays synced git metrics from `sources.json` onto a curated project so the
- * render reads real numbers without hand-transcription. Curation is the gate:
- * only curated projects exist, and the manifest contributes numbers only, never
- * a project or a tag. Precedence is synced-wins-when-present, with the authored
- * `.ts` value as fallback, so nothing regresses before the next drift update.
+ * Overlays synced git metrics from sources.json onto a project object. The
+ * base project is now manifest-derived (not authored), so synced data is always
+ * present for every registry entry; the early-return path is only reached for
+ * slugs in sources.json that somehow lack a synced entry (should not occur after
+ * a full drift update but is handled gracefully).
+ *
+ * Precedence: override > synced > base (authored or default).
  *
  * ### Curation gate — commit headline
  *
- * The `commits` field written into the merged metrics is role-keyed:
- *
- * - **solo** — Jason IS all authors, so the headline is the all-authors lifetime
- *   count (`synced.commits`). No `commitsAll` context field is set.
- * - **lead / collaborator** — the headline is Jason's scoped count (`synced.commitsMine`,
- *   falling back to the authored value which is already Jason-scoped by convention).
- *   The all-authors total is exposed as `commitsAll` for "N mine of M total" UI.
- *
- * All other fields (churn, loc, dates) are overlaid unconditionally.
+ * - solo: headline = all-authors lifetime count (synced.commits). No commitsAll context.
+ * - lead / collaborator: headline = Jason's count (synced.commitsMine). All-authors total
+ *   exposed as commitsAll for "N mine of M total" UI.
  */
 function withSyncedMetrics(project: Project): Project {
 	const synced = sources[project.slug];
 	const ov = overrides[project.slug];
 
 	// Return unchanged only when BOTH synced data and manual overrides are absent.
-	// An override on an un-synced repo must still apply.
 	if (!synced && !ov) return project;
 
+	// The base project's metrics come from the authored overlay (or are absent for
+	// manifest-only projects). withSyncedMetrics adds the synced numbers on top.
 	const authored = project.metrics;
 	const isSolo = project.contribution.role === 'solo';
 
-	// Role-keyed commit headline (synced side, before override is applied)
+	// Role-keyed commit headline
 	const headlineCommits = isSolo
-		? (synced?.commits ?? authored?.commits) // all-authors for solo
-		: (synced?.commitsMine ?? authored?.commits); // Jason-scoped for team
-	const contextCommits = isSolo
-		? undefined // no "of N total" needed for solo
-		: (synced?.commits ?? undefined); // all-authors total as context for team
+		? (synced?.commits ?? authored?.commits)
+		: (synced?.commitsMine ?? authored?.commits);
+	const contextCommits = isSolo ? undefined : (synced?.commits ?? undefined);
 
 	const merged: ProjectMetrics = {
 		...authored,
-		// Gated headline — override wins; commitsAll stays independent (separate override)
 		commits: ov?.commits?.value ?? headlineCommits,
-		// Gate context (team projects only) — overridable independently
 		commitsAll: ov?.commitsAll?.value ?? contextCommits,
-		// Full commit grid
 		commitsRecentAll:
 			ov?.commitsRecentAll?.value ?? synced?.commitsRecentAll ?? authored?.commitsRecentAll,
 		commitsMine: ov?.commitsMine?.value ?? synced?.commitsMine ?? authored?.commitsMine,
 		commitsRecent: ov?.commitsRecent?.value ?? synced?.commitsRecent ?? authored?.commitsRecent,
-		// Codebase size
 		linesOfCode: ov?.linesOfCode?.value ?? synced?.linesOfCode ?? authored?.linesOfCode,
-		// Full churn grid
 		linesAdded: ov?.linesAdded?.value ?? synced?.linesAdded ?? authored?.linesAdded,
 		linesRemoved: ov?.linesRemoved?.value ?? synced?.linesRemoved ?? authored?.linesRemoved,
 		linesAddedAll: ov?.linesAddedAll?.value ?? synced?.linesAddedAll ?? authored?.linesAddedAll,
@@ -175,65 +218,35 @@ function withSyncedMetrics(project: Project): Project {
 			ov?.linesRemovedRecentAll?.value ??
 			synced?.linesRemovedRecentAll ??
 			authored?.linesRemovedRecentAll,
-		// No-synced-source fields: override wins, then authored (these never appear in synced)
 		testCoverage: ov?.testCoverage?.value ?? authored?.testCoverage,
 		mergedPrs: ov?.mergedPrs?.value ?? authored?.mergedPrs
 	};
 
-	// Drop keys that resolved to undefined so the metrics object stays tidy
-	// (and absent entirely when there is nothing to show).
 	for (const key of Object.keys(merged) as (keyof ProjectMetrics)[]) {
 		if (merged[key] === undefined) delete merged[key];
 	}
 
 	return {
 		...project,
+		// Date overlay: override > synced > base default (empty string for manifest-only)
 		lastCommit: ov?.lastCommit?.value ?? synced?.lastCommit ?? project.lastCommit,
 		firstCommit: ov?.firstCommit?.value ?? synced?.firstCommit ?? project.firstCommit,
 		metrics: Object.keys(merged).length > 0 ? merged : undefined
 	};
 }
 
-const curatedProjects: Project[] = [
-	// Solo flagships
-	iris,
-	wyrdTui,
-	rhea,
-	epoch,
-	theTongue,
-	cogni,
-	sparker,
-	// Solo narrative / games
-	theWork,
-	flyt,
-	thoseWhoCameBefore,
-	historia,
-	topGirls,
-	grumble,
-	codeArcana,
-	babyNames,
-	// Solo libraries
-	nib,
-	riffle,
-	schemaForge,
-	// Solo tooling / WIP
-	kamino,
-	lyraRose,
-	kitchenGremlin,
-	// Team projects
-	workwise,
-	commonsTraybake,
-	psyche,
-	thingsWeDo,
-	guardrails,
-	redot,
-	chirpdb,
-	facCra,
-	// New entries
-	beacons,
-	craftAndGraft,
-	sakura,
-	rimewarden
-];
+// ---------------------------------------------------------------------------
+// The registry
+//
+// Object.keys(sources) order = insertion order in sources.json (deterministic).
+// Site ordering comes from query sorters (getAllProjectsByInception, etc.) and
+// the force-layout ring; registry order only affects the map ring seed and
+// tie-breaks. This is a deliberate one-time shift vs the prior curatedProjects
+// order — document it so the map diff is expected.
+// ---------------------------------------------------------------------------
 
-export const projects: Project[] = curatedProjects.map(withSyncedMetrics);
+export const projects: Project[] = Object.keys(sources)
+	.filter((slug) => !excludedSlugs.has(slug))
+	.map((slug) =>
+		withSyncedMetrics(mergeAuthored(defaultProjectFromManifest(slug, sources[slug]), authoredBySlug[slug]))
+	);
