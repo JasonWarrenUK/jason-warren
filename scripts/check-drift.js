@@ -922,15 +922,25 @@ function buildCoverageStats(manifest) {
  * Always includes firstCommit and lastCommit so they appear as context even
  * when they did not drift. Remote is included when present.
  *
+ * The optional `marker` callback receives (field, renderedValue) and returns
+ * the value string with any desired emphasis applied (e.g. bold markdown or
+ * ANSI colour). The default is the identity function, so callers that pass
+ * nothing are byte-for-byte unchanged.
+ *
+ * Each caller constructs its own marker using whatever drift set and escape
+ * codes are appropriate for its render path.
+ *
  * @param {Record<string, unknown>} fp  current or saved fingerprint
+ * @param {object} [opts]
+ * @param {(field: string, value: string) => string} [opts.marker]  emphasis callback
  * @returns {string}
  */
-function buildIdentityLine(fp) {
-	const first = fp?.firstCommit ?? '?';
-	const last = fp?.lastCommit ?? '?';
-	const commits = fp?.commits != null ? `${fp.commits} commits` : null;
-	const loc = fp?.linesOfCode != null ? `${fp.linesOfCode} loc` : null;
-	const remote = fp?.remote ?? null;
+function buildIdentityLine(fp, { marker = (_f, v) => v } = {}) {
+	const first = marker('firstCommit', fp?.firstCommit ?? '?');
+	const last = marker('lastCommit', fp?.lastCommit ?? '?');
+	const commits = fp?.commits != null ? marker('commits', `${fp.commits} commits`) : null;
+	const loc = fp?.linesOfCode != null ? marker('linesOfCode', `${fp.linesOfCode} loc`) : null;
+	const remote = fp?.remote != null ? marker('remote', fp.remote) : null;
 
 	const parts = [`first: ${first}`, `last: ${last}`];
 	if (commits) parts.push(commits);
@@ -960,8 +970,12 @@ function renderCardMarkdown({ slug, current, fields, firstCard = false }) {
 	lines.push(`### ${slug}`);
 	lines.push('');
 
-	// Identity line: always show firstCommit/lastCommit/remote as context
-	const identity = buildIdentityLine(current);
+	// Identity line: always show firstCommit/lastCommit/remote as context.
+	// Bold any token whose field drifted vs saved, mirroring the field table below.
+	const driftedIdentity = new Set((fields ?? []).map((f) => f.field));
+	const identity = buildIdentityLine(current, {
+		marker: (field, v) => (driftedIdentity.has(field) ? `**${v}**` : v),
+	});
 	for (const il of identity.split('\n')) lines.push(`_${il}_`);
 	lines.push('');
 
@@ -1000,8 +1014,14 @@ function renderCardPlain({ slug, current, fields, firstCard = false, palette }) 
 
 	console.log(`${BOLD}${CYAN}${slug}${RESET}`);
 
-	// Identity line
-	const identity = buildIdentityLine(current);
+	// Identity line: bold+yellow any token whose field drifted vs saved.
+	// The whole line is wrapped in DIM by the console.log below; after a
+	// marker reset, re-open DIM so the rest of the line stays dim.
+	const driftedIdentity = new Set((fields ?? []).map((f) => f.field));
+	const identity = buildIdentityLine(current, {
+		marker: (field, v) =>
+			driftedIdentity.has(field) ? `${YELLOW}${BOLD}${v}${RESET}${DIM}` : v,
+	});
 	for (const il of identity.split('\n')) {
 		console.log(`  ${DIM}${il}${RESET}`);
 	}
@@ -1406,8 +1426,10 @@ function renderSnapshotMarkdown(snapshot) {
 		lines.push(`### ${slug}`);
 		lines.push('');
 
-		// Identity line
-		const identity = buildIdentityLine(current);
+		// Identity line: bold any token whose field drifted vs saved.
+		const identity = buildIdentityLine(current, {
+			marker: (field, v) => (driftedFields.has(field) ? `**${v}**` : v),
+		});
 		for (const il of identity.split('\n')) lines.push(`_${il}_`);
 		lines.push('');
 
@@ -1461,8 +1483,12 @@ function runSnapshotPlain(snapshot, palette) {
 		if (i > 0) console.log(`${DIM}${'─'.repeat(60)}${RESET}`);
 		console.log(`${BOLD}${CYAN}${slug}${RESET}`);
 
-		// Identity line
-		const identity = buildIdentityLine(current);
+		// Identity line: yellow+bold any token whose field drifted vs saved.
+		// After each marker reset, re-open DIM so the rest of the line stays dim.
+		const identity = buildIdentityLine(current, {
+			marker: (field, v) =>
+				driftedFields.has(field) ? `${YELLOW}${BOLD}${v}${RESET}${DIM}` : v,
+		});
 		for (const il of identity.split('\n')) {
 			console.log(`  ${DIM}${il}${RESET}`);
 		}
