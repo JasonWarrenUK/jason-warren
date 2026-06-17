@@ -34,6 +34,7 @@ const repoRoot = resolve(scriptDir, '..');
 const sourcesPath = join(repoRoot, 'src/lib/data/sources.json');
 const localPath = join(repoRoot, 'src/lib/data/sources.local.json');
 const overridesPath = join(repoRoot, 'src/lib/data/overrides.json');
+const excludedPath = join(repoRoot, 'src/lib/data/excluded.json');
 const projectsDir = join(repoRoot, 'src/lib/data/projects');
 
 // ---------------------------------------------------------------------------
@@ -309,36 +310,31 @@ function curatedStatus(slug) {
 }
 
 // ---------------------------------------------------------------------------
-// Exclude the portfolio repo itself, non-project repos, and known noise.
-// Also exclude sub-repos that belong to split-product portfolio entries
-// (tracked via sources.local.json pointing at the lead sub-repo) and
-// companion repos that are deliberately not tracked separately.
+// Exclusion list — read from excluded.json (committed; editable via `drift exclude`).
+// Two axes:
+//   repoNames — gates the directory scan by folder name (before a slug exists)
+//   slugs     — gates the public site by manifest slug (after fingerprinting)
 // ---------------------------------------------------------------------------
 
-const EXCLUDED = new Set([
-	'portfolio', // this repo
-	'jason-warren', // this repo (alternate name)
-	'node_modules',
-	'.git',
-	'JasonWarrenUK', // GitHub profile README repo
-	'JasonWarrenUK.github.io', // GitHub Pages site (not a project)
-	'seam', // Jaz's project, not Jason's
-	'terminal-config', // dotfiles, not a portfolio project
-	'yalla-gym', // not a Jason project
-	// Beacons — tracked under slug 'beacons' via beacons-backend
-	'beacons-backend',
-	'beacons-frontend-v2',
-	// Craft and Graft — tracked under slug 'craft-and-graft' via craft-and-graft-front
-	'craft-and-graft-front',
-	'craft-and-graft-api',
-	// Sakura — tracked under slug 'sakura' via sakura-api
-	'sakura-api',
-	'sakura-front',
-	// Mood Time — deliberate exclusion (Jason ~25%, no clear ownership)
-	'mood-time-api',
-	'mood-time-front',
-	'mood-time'
-]);
+/**
+ * Load the exclusion list from excluded.json.
+ * Best-effort: returns empty Sets and warns on stderr if the file is missing
+ * or malformed. Never crashes the CLI.
+ */
+function loadExcluded() {
+	try {
+		const raw = JSON.parse(readFileSync(excludedPath, 'utf8'));
+		return {
+			excludedRepoNames: new Set(raw.repoNames ?? []),
+			excludedSlugs: new Set(raw.slugs ?? [])
+		};
+	} catch {
+		process.stderr.write(
+			`[drift] Warning: could not read excluded.json at ${excludedPath}. Exclusions disabled.\n`
+		);
+		return { excludedRepoNames: new Set(), excludedSlugs: new Set() };
+	}
+}
 
 // ---------------------------------------------------------------------------
 // Colour palette. Honour NO_COLOR (https://no-color.org) and non-TTY output:
@@ -433,6 +429,8 @@ function computeDrift(
 	{ manifest, overrideEntries, localPaths },
 	{ full = false, onProgress = null } = {}
 ) {
+	const { excludedRepoNames } = loadExcluded();
+
 	const changed = [];
 	const missing = [];
 	const conflicts = [];
@@ -552,7 +550,9 @@ function computeDrift(
 
 	scanForGitRepos(codeRoot);
 
-	const filteredNew = newRepos.filter((r) => !EXCLUDED.has(r.name) && !EXCLUDED.has(r.normalised));
+	const filteredNew = newRepos.filter(
+		(r) => !excludedRepoNames.has(r.name) && !excludedRepoNames.has(r.normalised)
+	);
 
 	return { changed, missing, conflicts, fresh, filteredNew, fieldDrift };
 }
