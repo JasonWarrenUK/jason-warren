@@ -817,6 +817,16 @@ function renderReportMarkdown(result, manifest, full) {
 		}
 	}
 
+	if (full) {
+		const { line1, line2 } = buildCoverageStats(manifest);
+		lines.push(`## Coverage`);
+		lines.push('');
+		lines.push(line1);
+		lines.push('');
+		lines.push(line2);
+		lines.push('');
+	}
+
 	if (conflicts.length > 0) {
 		lines.push(`## Manual overrides to review (${conflicts.length})`);
 		lines.push('');
@@ -852,6 +862,50 @@ function renderReportMarkdown(result, manifest, full) {
 	}
 
 	return lines.join('\n');
+}
+
+// ---------------------------------------------------------------------------
+// Coverage summary (used by both the gum markdown and plain ANSI paths)
+// ---------------------------------------------------------------------------
+
+/**
+ * Computes coverage stats for the --full report.
+ * Reads excluded.json and the projects/ directory at call time (cheap; called
+ * once per report run) so the numbers always reflect the current state on disk.
+ *
+ * Returns two strings — callers format them for their output mode.
+ *
+ * Example:
+ *   line1: "47 manifest slugs · 2 excluded · 33 with .ts overlay, 12 manifest-only"
+ *   line2: "fields populated: languages 45, runtime 30, framework 28, database 14"
+ */
+function buildCoverageStats(manifest) {
+	const manifestSlugs = Object.keys(manifest.sources);
+	const total = manifestSlugs.length;
+
+	const { excludedSlugs } = loadExcluded();
+	const excludedCount = manifestSlugs.filter((s) => excludedSlugs.has(s)).length;
+
+	// Count slugs that have a hand-authored .ts overlay in projects/
+	const overlayFiles = new Set(
+		readdirSync(projectsDir)
+			.filter((f) => f.endsWith('.ts'))
+			.map((f) => f.slice(0, -3))
+	);
+	const withOverlay = manifestSlugs.filter((s) => overlayFiles.has(s)).length;
+	const manifestOnly = total - excludedCount - withOverlay;
+
+	// Count how many manifest entries carry each dependency field
+	const src = manifest.sources;
+	const hasLanguages = manifestSlugs.filter((s) => (src[s].languages ?? []).length > 0).length;
+	const hasRuntime = manifestSlugs.filter((s) => (src[s].runtime ?? []).length > 0).length;
+	const hasFramework = manifestSlugs.filter((s) => (src[s].framework ?? []).length > 0).length;
+	const hasDatabase = manifestSlugs.filter((s) => (src[s].database ?? []).length > 0).length;
+
+	return {
+		line1: `${total} manifest slugs · ${excludedCount} excluded · ${withOverlay} with .ts overlay, ${manifestOnly} manifest-only`,
+		line2: `fields populated: languages ${hasLanguages}, runtime ${hasRuntime}, framework ${hasFramework}, database ${hasDatabase}`
+	};
 }
 
 // ---------------------------------------------------------------------------
@@ -957,6 +1011,14 @@ function runReport({ result, manifest, palette, json, full, useGum }) {
 				console.log(`    ${DIM}${f.field}: ${was} → ${now}${RESET}`);
 			}
 		}
+		console.log();
+	}
+
+	if (full) {
+		const { line1, line2 } = buildCoverageStats(manifest);
+		console.log(`${BOLD}Coverage:${RESET}`);
+		console.log(`  ${DIM}${line1}${RESET}`);
+		console.log(`  ${DIM}${line2}${RESET}`);
 		console.log();
 	}
 
