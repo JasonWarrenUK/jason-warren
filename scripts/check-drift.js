@@ -79,8 +79,17 @@ const FINGERPRINT_FIELDS = [
 	'linesAddedRecent',
 	'linesRemovedRecent',
 	'linesAddedRecentAll',
-	'linesRemovedRecentAll'
+	'linesRemovedRecentAll',
+	// Dependency-manifest fields (Phase 6)
+	'remote',
+	'runtime',
+	'database',
+	'framework'
 ];
+
+// Array-typed fingerprint fields. Compared by sorted join so element-order
+// differences in detection do not produce spurious drift.
+const ARRAY_FINGERPRINT_FIELDS = new Set(['languages', 'runtime', 'database', 'framework']);
 
 // EXTENSION_LANGUAGE is imported from src/lib/data/tag-taxonomy.js above.
 // That module is the single source of truth shared between the CLI and the app.
@@ -180,6 +189,152 @@ function getFirstCommit(repoPath) {
 	return reversed ? reversed.split('\n')[0] : null;
 }
 
+/**
+ * Detects runtime, framework, and database dependencies from manifest files
+ * in the repo. Each sub-detection is wrapped in try/catch — missing files are
+ * normal; a failure degrades inference gracefully, never crashes.
+ *
+ * The identity strings returned MUST equal the keys in RUNTIME_TAGS,
+ * FRAMEWORK_TAGS, and DATABASE_TAGS in tag-taxonomy.js — that is the single
+ * contract binding the CLI parser to the app's tag inference.
+ *
+ * @param {string} repoPath
+ * @returns {{ runtime: string[], framework: string[], database: string[] }}
+ */
+function detectDependencies(repoPath) {
+	const runtime = [];
+	const framework = [];
+	const database = [];
+
+	// -----------------------------------------------------------------------
+	// package.json: JS/TS ecosystem
+	// -----------------------------------------------------------------------
+	try {
+		const pkgPath = join(repoPath, 'package.json');
+		const pkg = JSON.parse(readFileSync(pkgPath, 'utf8'));
+		const allDeps = {
+			...(pkg.dependencies ?? {}),
+			...(pkg.devDependencies ?? {})
+		};
+
+		// Runtime detection: lock-file presence wins over package.json alone.
+		// Check lock files first; fall back to package.json existence for Node.
+		const hasBunLock = existsSync(join(repoPath, 'bun.lock')) || existsSync(join(repoPath, 'bun.lockb')) || existsSync(join(repoPath, 'bunfig.toml'));
+		const hasDenoLock = existsSync(join(repoPath, 'deno.json')) || existsSync(join(repoPath, 'deno.lock'));
+		if (hasBunLock) runtime.push('bun');
+		else if (hasDenoLock) runtime.push('deno');
+		else runtime.push('node'); // package.json present, no bun/deno markers
+
+		// Framework detection from deps
+		// SvelteKit wins over bare Svelte if both present
+		if ('@sveltejs/kit' in allDeps) {
+			framework.push('@sveltejs/kit');
+		} else if ('svelte' in allDeps) {
+			framework.push('svelte');
+		}
+		if ('next' in allDeps) framework.push('next');
+		else if ('react' in allDeps && !('@sveltejs/kit' in allDeps) && !('svelte' in allDeps)) {
+			framework.push('react');
+		}
+		if ('express' in allDeps) framework.push('express');
+		if ('@opentui/core' in allDeps) framework.push('@opentui/core');
+		if ('@tauri-apps/api' in allDeps || 'tauri' in allDeps) framework.push('tauri');
+
+		// Database detection from deps
+		if ('pg' in allDeps) database.push('pg');
+		else if ('postgres' in allDeps) database.push('postgres');
+		if ('@supabase/supabase-js' in allDeps) database.push('@supabase/supabase-js');
+		if ('neo4j-driver' in allDeps) database.push('neo4j-driver');
+		if ('mongodb' in allDeps) database.push('mongodb');
+		if ('rxdb' in allDeps) database.push('rxdb');
+	} catch {
+		// No package.json or malformed JSON — continue to other manifest types.
+	}
+
+	// -----------------------------------------------------------------------
+	// Go: go.mod
+	// -----------------------------------------------------------------------
+	try {
+		if (existsSync(join(repoPath, 'go.mod'))) {
+			if (!runtime.includes('go')) runtime.push('go');
+		}
+	} catch {
+		// Ignore
+	}
+
+	// -----------------------------------------------------------------------
+	// Python: pyproject.toml or requirements.txt
+	// -----------------------------------------------------------------------
+	try {
+		const hasPyproject = existsSync(join(repoPath, 'pyproject.toml'));
+		const hasRequirements = existsSync(join(repoPath, 'requirements.txt'));
+		if (hasPyproject || hasRequirements) {
+			if (!runtime.includes('python')) runtime.push('python');
+
+			// Framework detection from pyproject.toml dependencies
+			if (hasPyproject) {
+				const pyproject = readFileSync(join(repoPath, 'pyproject.toml'), 'utf8');
+				if (/fastapi/i.test(pyproject)) framework.push('fastapi');
+				else if (/flask/i.test(pyproject)) framework.push('flask');
+				else if (/django/i.test(pyproject)) framework.push('django');
+
+				// Database detection
+				if (/psycopg2|psycopg/i.test(pyproject)) database.push('psycopg');
+				if (/sqlalchemy/i.test(pyproject)) database.push('sqlalchemy');
+			}
+			if (hasRequirements) {
+				const req = readFileSync(join(repoPath, 'requirements.txt'), 'utf8');
+				if (!framework.some((f) => ['fastapi', 'flask', 'django'].includes(f))) {
+					if (/fastapi/i.test(req)) framework.push('fastapi');
+					else if (/flask/i.test(req)) framework.push('flask');
+					else if (/django/i.test(req)) framework.push('django');
+				}
+				if (!database.includes('psycopg') && /psycopg/i.test(req)) database.push('psycopg');
+				if (!database.includes('sqlalchemy') && /sqlalchemy/i.test(req)) database.push('sqlalchemy');
+			}
+		}
+	} catch {
+		// Ignore
+	}
+
+	// -----------------------------------------------------------------------
+	// Rust: Cargo.toml
+	// -----------------------------------------------------------------------
+	try {
+		if (existsSync(join(repoPath, 'Cargo.toml'))) {
+			// Rust projects may also be detected as having Tauri via Cargo.toml
+			const cargo = readFileSync(join(repoPath, 'Cargo.toml'), 'utf8');
+			if (/tauri/i.test(cargo) && !framework.includes('tauri')) {
+				framework.push('tauri');
+			}
+		}
+	} catch {
+		// Ignore
+	}
+
+	return { runtime, framework, database };
+}
+
+/**
+ * Normalises a git remote URL to HTTPS form.
+ * Converts SSH git@github.com:org/repo.git -> https://github.com/org/repo.
+ * Strips trailing .git from HTTPS remotes.
+ * Returns null when remote is absent or malformed.
+ *
+ * @param {string | null} rawRemote
+ * @returns {string | null}
+ */
+function normaliseRemote(rawRemote) {
+	if (!rawRemote) return null;
+	const trimmed = rawRemote.trim();
+	// SSH form: git@github.com:org/repo.git
+	const sshMatch = trimmed.match(/^git@([^:]+):(.+?)(?:\.git)?$/);
+	if (sshMatch) return `https://${sshMatch[1]}/${sshMatch[2]}`;
+	// HTTPS form: https://github.com/org/repo.git
+	if (trimmed.startsWith('https://')) return trimmed.replace(/\.git$/, '');
+	return null;
+}
+
 function getFingerprint(repoPath) {
 	if (!existsSync(join(repoPath, '.git'))) return null;
 	const head = git('rev-parse --short HEAD', repoPath);
@@ -197,6 +352,10 @@ function getFingerprint(repoPath) {
 	const churnAll = countChurn(repoPath); // all, lifetime
 	const churnMineRecent = countChurn(repoPath, { mine: true, recent: true }); // mine, recent
 	const churnAllRecent = countChurn(repoPath, { recent: true }); // all, recent
+
+	const { runtime, framework, database } = detectDependencies(repoPath);
+	const rawRemote = git('remote get-url origin', repoPath);
+	const remote = normaliseRemote(rawRemote);
 
 	return {
 		head,
@@ -219,7 +378,12 @@ function getFingerprint(repoPath) {
 		linesRemovedRecent: churnMineRecent.removed,
 		// all, recent
 		linesAddedRecentAll: churnAllRecent.added,
-		linesRemovedRecentAll: churnAllRecent.removed
+		linesRemovedRecentAll: churnAllRecent.removed,
+		// Dependency-manifest fields
+		...(remote && { remote }),
+		...(runtime.length > 0 && { runtime }),
+		...(framework.length > 0 && { framework }),
+		...(database.length > 0 && { database })
 	};
 }
 
@@ -246,10 +410,12 @@ function diffFingerprint(saved, current) {
 	for (const field of FINGERPRINT_FIELDS) {
 		const now = current[field];
 		const was = saved ? saved[field] : undefined;
-		if (field === 'languages') {
-			// Compare by ordered join — array ordering (by file count) is meaningful.
-			const a = Array.isArray(was) ? was.join(',') : '';
-			const b = Array.isArray(now) ? now.join(',') : '';
+		if (ARRAY_FINGERPRINT_FIELDS.has(field)) {
+			// `languages` order (by file count) is meaningful — join preserves it.
+			// `runtime`/`database`/`framework` order is not meaningful — sort before joining.
+			const sortFn = field === 'languages' ? (a) => a : (a) => [...a].sort();
+			const a = Array.isArray(was) ? sortFn(was).join(',') : '';
+			const b = Array.isArray(now) ? sortFn(now).join(',') : '';
 			if (a !== b) diffs.push({ field, was: was ?? null, now: now ?? null });
 			continue;
 		}
