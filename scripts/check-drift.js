@@ -1536,6 +1536,7 @@ Compare synced fingerprints against current git state and surface new repos.
 ## Usage
 
 - \`drift [report] [--json] [--full] [--check] [--no-color]\`
+- \`drift snapshot [--json] [--no-color]\`
 - \`drift update\`
 - \`drift accept <slug> <field>\`
 - \`drift accept --all-projects <field>\`
@@ -1544,7 +1545,8 @@ Compare synced fingerprints against current git state and surface new repos.
 
 ## Verbs
 
-- \`report\` · compare synced fingerprints to current git state (default)
+- \`report\` · compare synced fingerprints to current git state (default); shows only deltas
+- \`snapshot\` · show ALL current metrics for every project, colourised changed vs unchanged
 - \`update\` · rewrite sources.json with current fingerprints
 - \`accept\` · refresh one override's synced baseline, keeping your value
 - \`accept-all\` · refresh every flagged override baseline at once
@@ -1636,6 +1638,25 @@ drift exclude <slug>
 \`\`\`
 drift exclude mood-time
 drift exclude some-private-experiment
+\`\`\``,
+
+	snapshot: `# drift snapshot · view all current metrics
+
+Shows every metric's current value for every resolvable project, colourised
+so changed-vs-saved fields (since the last \`drift update\`) stand out from
+unchanged ones. Unlike \`report\`, which shows only deltas, snapshot always
+shows firstCommit, the full commit grid, churn grid, languages, and
+dependency fields.
+
+Projects with no local path are listed separately as not resolvable.
+
+\`--full\` is accepted for symmetry but is a no-op: snapshot always covers
+all fields regardless. Does not write anything.
+
+## Usage
+
+\`\`\`
+drift snapshot [--json] [--no-color]
 \`\`\``
 };
 
@@ -1657,6 +1678,7 @@ function printHelp(verb, palette, useGum) {
 
 ${BOLD}Usage:${RESET}
   drift [report] [--json] [--full] [--check] [--no-color]
+  drift snapshot [--json] [--no-color]
   drift update
   drift accept <slug> <field>
   drift accept --all-projects <field>
@@ -1664,7 +1686,8 @@ ${BOLD}Usage:${RESET}
   drift exclude <slug>
 
 ${BOLD}Verbs:${RESET}
-  report        Compare synced fingerprints to current git state (default).
+  report        Compare synced fingerprints to current git state (default). Shows only deltas.
+  snapshot      Show ALL current metrics for every project, colourised changed vs unchanged.
   update        Rewrite sources.json with current fingerprints.
   accept        Refresh one override's synced baseline, keeping your value.
   accept-all    Refresh every flagged override baseline at once.
@@ -1724,7 +1747,20 @@ the site to apply the exclusion.
 ${DIM}Warns when the slug is not yet in sources.json.${RESET}
 
   Usage:   drift exclude <slug>
-  Example: drift exclude some-private-experiment`
+  Example: drift exclude some-private-experiment`,
+
+		snapshot: `${BOLD}drift snapshot${RESET} - view all current metrics
+
+Shows every metric's current value for every resolvable project, colourised
+so changed-vs-saved fields (since the last drift update) stand out from
+unchanged ones. Unlike report, which shows only deltas, snapshot always
+shows firstCommit, the full commit and churn grid, languages, and
+dependency fields.
+
+${DIM}--full is accepted for symmetry but is a no-op: snapshot always covers
+all fields. Does not write anything.${RESET}
+
+  Usage: drift snapshot [--json] [--no-color]`
 	};
 	process.stdout.write((banners[verb] ?? banners.report) + '\n');
 }
@@ -1745,6 +1781,7 @@ function runInteractiveMenu({ manifests, palette, useGum, onProgress, clearProgr
 	const items = [
 		'Report:report',
 		'Report - full field scan:report-full',
+		'Snapshot - all current metrics:snapshot',
 		'Update sources.json:update',
 		'Accept an override:accept',
 		'Accept field across all projects:accept-all-projects',
@@ -1792,6 +1829,15 @@ function runInteractiveMenu({ manifests, palette, useGum, onProgress, clearProgr
 				palette,
 				json: false,
 				full: true,
+				useGum
+			});
+			break;
+		case 'snapshot':
+			runSnapshot({
+				result: scan(true),
+				manifest: manifests.manifest,
+				palette,
+				json: false,
 				useGum
 			});
 			break;
