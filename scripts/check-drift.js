@@ -23,6 +23,7 @@ import { join, resolve } from 'path';
 import { fileURLToPath } from 'url';
 import { homedir } from 'os';
 import { parseArgs } from 'node:util';
+import { EXTENSION_LANGUAGE } from '../src/lib/data/tag-taxonomy.js';
 
 // ---------------------------------------------------------------------------
 // Resolve paths
@@ -80,57 +81,8 @@ const FINGERPRINT_FIELDS = [
 	'linesRemovedRecentAll'
 ];
 
-// Map a file extension to a canonical language name. Keys match the tag-label
-// spelling the site curates, so the drift report's "ungated" hint lines up with
-// the data model. Config, docs, and assets are deliberately omitted: this list
-// is the exhaustive truth the curated language tags filter, but noise it need
-// not carry.
-const EXTENSION_LANGUAGE = {
-	ts: 'TypeScript',
-	tsx: 'TypeScript',
-	mts: 'TypeScript',
-	cts: 'TypeScript',
-	js: 'JavaScript',
-	jsx: 'JavaScript',
-	mjs: 'JavaScript',
-	cjs: 'JavaScript',
-	py: 'Python',
-	go: 'Go',
-	rs: 'Rust',
-	cs: 'C#',
-	sh: 'Shell',
-	bash: 'Shell',
-	zsh: 'Shell',
-	css: 'CSS',
-	scss: 'CSS',
-	sass: 'CSS',
-	html: 'HTML',
-	htm: 'HTML',
-	c: 'C',
-	h: 'C',
-	cpp: 'C++',
-	cc: 'C++',
-	cxx: 'C++',
-	hpp: 'C++',
-	lua: 'Lua',
-	kt: 'Kotlin',
-	kts: 'Kotlin',
-	swift: 'Swift',
-	rb: 'Ruby',
-	php: 'PHP',
-	ex: 'Elixir',
-	exs: 'Elixir',
-	hs: 'Haskell',
-	scala: 'Scala',
-	dart: 'Dart',
-	zig: 'Zig',
-	ml: 'OCaml',
-	jl: 'Julia',
-	sql: 'SQL',
-	vue: 'Vue',
-	svelte: 'Svelte',
-	astro: 'Astro'
-};
+// EXTENSION_LANGUAGE is imported from src/lib/data/tag-taxonomy.js above.
+// That module is the single source of truth shared between the CLI and the app.
 
 /** Languages present in the repo, ordered by file count (most prevalent first). */
 function detectLanguages(repoPath) {
