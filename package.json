@@ -16,9 +16,9 @@
 		"format": "prettier --write .",
 		"lint": "prettier --check .",
 		"drift": "node scripts/check-drift.js",
-		"drift:update": "node scripts/check-drift.js --update",
-		"drift:accept": "node scripts/check-drift.js --accept",
-		"drift:accept-all": "node scripts/check-drift.js --accept-all"
+		"drift:update": "node scripts/check-drift.js update",
+		"drift:accept": "node scripts/check-drift.js accept",
+		"drift:accept-all": "node scripts/check-drift.js accept-all"
 	},
 	"devDependencies": {
 		"@fontsource/inter": "^5.2.8",
