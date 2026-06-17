@@ -1433,21 +1433,26 @@ function renderSnapshotMarkdown(snapshot) {
 		for (const il of identity.split('\n')) lines.push(`_${il}_`);
 		lines.push('');
 
-		// Full metric table: all FINGERPRINT_FIELDS that have a value
-		const rows = FINGERPRINT_FIELDS.filter((f) => current[f] !== undefined);
-		if (rows.length > 0) {
-			lines.push(`| field | value |`);
-			lines.push(`| --- | --- |`);
-			for (const field of rows) {
-				// Skip fields already in identity line to avoid redundancy
-				if (['firstCommit', 'lastCommit', 'commits', 'linesOfCode', 'remote'].includes(field)) continue;
-				const val = Array.isArray(current[field]) ? current[field].join(', ') : String(current[field]);
-				// Bold the field name when it drifted
-				const fieldCell = driftedFields.has(field) ? `**${field}**` : field;
-				lines.push(`| ${fieldCell} | ${val} |`);
-			}
-			lines.push('');
+		// Full metric table: every FINGERPRINT_FIELD, including absent ones.
+		// Absent or empty-array fields render as `-` so their absence is visible.
+		const IDENTITY_FIELDS = new Set(['firstCommit', 'lastCommit', 'commits', 'linesOfCode', 'remote']);
+		lines.push(`| field | value |`);
+		lines.push(`| --- | --- |`);
+		for (const field of FINGERPRINT_FIELDS) {
+			// Skip fields already shown in the identity line above
+			if (IDENTITY_FIELDS.has(field)) continue;
+			const raw = current[field];
+			const val =
+				raw === undefined || (Array.isArray(raw) && raw.length === 0)
+					? '-'
+					: Array.isArray(raw)
+						? raw.join(', ')
+						: String(raw);
+			// Bold the field name when it drifted
+			const fieldCell = driftedFields.has(field) ? `**${field}**` : field;
+			lines.push(`| ${fieldCell} | ${val} |`);
 		}
+		lines.push('');
 	}
 
 	if (snapshot.missing.length > 0) {
@@ -1494,11 +1499,18 @@ function runSnapshotPlain(snapshot, palette) {
 		}
 		console.log('');
 
-		// All FINGERPRINT_FIELDS (skip identity fields already in the header)
+		// All FINGERPRINT_FIELDS, including absent ones (skip identity fields).
+		// Absent or empty-array fields render as `-` so their absence is visible.
+		const IDENTITY_FIELDS = new Set(['firstCommit', 'lastCommit', 'commits', 'linesOfCode', 'remote']);
 		for (const field of FINGERPRINT_FIELDS) {
-			if (current[field] === undefined) continue;
-			if (['firstCommit', 'lastCommit', 'commits', 'linesOfCode', 'remote'].includes(field)) continue;
-			const val = Array.isArray(current[field]) ? current[field].join(', ') : String(current[field]);
+			if (IDENTITY_FIELDS.has(field)) continue;
+			const raw = current[field];
+			const val =
+				raw === undefined || (Array.isArray(raw) && raw.length === 0)
+					? '-'
+					: Array.isArray(raw)
+						? raw.join(', ')
+						: String(raw);
 			const changed = driftedFields.has(field);
 			if (changed) {
 				console.log(`  ${YELLOW}${BOLD}${field}${RESET}  ${BOLD}${val}${RESET}`);
