@@ -13,9 +13,9 @@
 
 export type ProjectRole = 'solo' | 'lead' | 'collaborator';
 
-export type ProjectStatus = 'live' | 'wip' | 'finished' | 'prototype' | 'archived';
+export type ProjectStatus = 'live' | 'wip' | 'finished' | 'prototype' | 'archived' | 'uncategorised';
 
-export type ProjectKind = 'app' | 'game' | 'website' | 'toy' | 'library' | 'tool' | 'tui';
+export type ProjectKind = 'app' | 'game' | 'website' | 'toy' | 'library' | 'tool' | 'tui' | 'repo';
 
 export type TagKind = 'language' | 'framework' | 'data' | 'ai' | 'concept' | 'tool' | 'runtime';
 

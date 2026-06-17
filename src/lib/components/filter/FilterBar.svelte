@@ -65,7 +65,8 @@
 		toy: 'Toy',
 		library: 'Library',
 		tool: 'Tool',
-		tui: 'TUI'
+		tui: 'TUI',
+		repo: 'Repo'
 	};
 
 	/** Unified status labels — matches StatusBadge exactly. */
@@ -74,11 +75,12 @@
 		wip: 'Active',
 		finished: 'Complete',
 		prototype: 'Prototype',
-		archived: 'Archived'
+		archived: 'Archived',
+		uncategorised: 'Uncategorised'
 	};
 
-	/** Display order for status chips. */
-	const statusOrder: ProjectStatus[] = ['live', 'wip', 'finished', 'prototype', 'archived'];
+	/** Display order for status chips. Uncategorised appears last — it's a placeholder. */
+	const statusOrder: ProjectStatus[] = ['live', 'wip', 'finished', 'prototype', 'archived', 'uncategorised'];
 
 	const tagKindLabels: Record<TagKind, string> = {
 		language: 'Language',

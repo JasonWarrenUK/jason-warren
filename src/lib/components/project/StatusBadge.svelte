@@ -13,7 +13,8 @@
 		wip: 'Active',
 		finished: 'Complete',
 		prototype: 'Prototype',
-		archived: 'Archived'
+		archived: 'Archived',
+		uncategorised: 'Uncategorised'
 	};
 </script>
 
@@ -58,5 +59,10 @@
 	.status-badge--archived {
 		color: var(--color-archived-text);
 		background-color: var(--color-archived-bg);
+	}
+
+	.status-badge--uncategorised {
+		color: var(--color-uncategorised-text);
+		background-color: var(--color-uncategorised-bg);
 	}
 </style>

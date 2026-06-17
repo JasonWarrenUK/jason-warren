@@ -14,7 +14,8 @@ export function statusColour(status: ProjectStatus): string {
 		wip: 'var(--color-wip)',
 		finished: 'var(--color-finished)',
 		prototype: 'var(--color-prototype)',
-		archived: 'var(--color-archived)'
+		archived: 'var(--color-archived)',
+		uncategorised: 'var(--color-uncategorised)'
 	};
 	return map[status];
 }
@@ -25,11 +26,12 @@ export const statusLabel: Record<ProjectStatus, string> = {
 	wip: 'Active',
 	finished: 'Complete',
 	prototype: 'Prototype',
-	archived: 'Archived'
+	archived: 'Archived',
+	uncategorised: 'Uncategorised'
 };
 
-/** Ordered status list for legends. */
-export const statusOrder: ProjectStatus[] = ['live', 'wip', 'finished', 'prototype', 'archived'];
+/** Ordered status list for legends. Uncategorised last — it's a placeholder. */
+export const statusOrder: ProjectStatus[] = ['live', 'wip', 'finished', 'prototype', 'archived', 'uncategorised'];
 
 /** Human-readable label for an edge kind, phrased from source to target. */
 export function edgeLabel(kind: GraphEdge['kind']): string {
