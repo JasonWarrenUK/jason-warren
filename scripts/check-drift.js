@@ -1138,6 +1138,54 @@ function applyCheckExit(result, palette, full) {
 // Help
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// drift exclude — mark a slug as excluded from the public site
+// ---------------------------------------------------------------------------
+
+/**
+ * Appends a slug to excluded.json.slugs. Writes ONLY excluded.json.
+ * Friendly no-op when already present; warns if slug is not a manifest key.
+ *
+ * @param {{ args: string[], manifest: object, palette: object }} options
+ */
+function runExclude({ args, manifest, palette }) {
+	const { GREEN, RED, YELLOW, BOLD, RESET } = palette;
+	const slug = args[0]?.trim();
+
+	if (!slug) {
+		process.stderr.write(`${RED}Usage: drift exclude <slug>${RESET}\n`);
+		process.exit(1);
+	}
+
+	// Warn if the slug is not in the manifest (it might not be fingerprinted yet).
+	if (!manifest.sources[slug]) {
+		process.stdout.write(
+			`${YELLOW}Warning: '${slug}' is not a key in sources.json. ` +
+				`It will be added to excluded.json but will have no effect until the slug is in the manifest.${RESET}\n`
+		);
+	}
+
+	let excluded;
+	try {
+		excluded = JSON.parse(readFileSync(excludedPath, 'utf8'));
+	} catch {
+		process.stderr.write(`${RED}Error: could not read excluded.json at ${excludedPath}${RESET}\n`);
+		process.exit(1);
+	}
+
+	if (excluded.slugs.includes(slug)) {
+		process.stdout.write(`${YELLOW}'${slug}' is already in excluded.json.slugs — nothing to do.${RESET}\n`);
+		return;
+	}
+
+	excluded.slugs = [...excluded.slugs, slug].sort();
+	writeFileSync(excludedPath, JSON.stringify(excluded, null, '\t') + '\n', 'utf8');
+	process.stdout.write(
+		`${GREEN}${BOLD}Excluded:${RESET} '${slug}' added to excluded.json.slugs.\n` +
+			`Rebuild the site to remove it from the public portfolio.\n`
+	);
+}
+
 // Markdown source for gum-formatted help — rendered via `gum format --theme pink`
 // when interactive. The plain `banners` object below is the fallback.
 // Coverage must stay in parity: any flag or form added here must also appear in
@@ -1154,6 +1202,7 @@ Compare synced fingerprints against current git state and surface new repos.
 - \`drift accept <slug> <field>\`
 - \`drift accept --all-projects <field>\`
 - \`drift accept-all\`
+- \`drift exclude <slug>\`
 
 ## Verbs
 
@@ -1161,6 +1210,7 @@ Compare synced fingerprints against current git state and surface new repos.
 - \`update\` · rewrite sources.json with current fingerprints
 - \`accept\` · refresh one override's synced baseline, keeping your value
 - \`accept-all\` · refresh every flagged override baseline at once
+- \`exclude\` · mark a slug as excluded from the public site (writes excluded.json)
 
 ## Flags
 
@@ -1226,6 +1276,28 @@ field across projects (rather than every field across all projects).
 
 \`\`\`
 drift accept-all
+\`\`\``,
+
+	exclude: `# drift exclude · remove a slug from the public site
+
+Appends a slug to \`excluded.json.slugs\`. Excluded slugs are absent from the
+projects registry, all filter views, the map, the timeline, the sitemap, and
+OG prerender. Writes excluded.json only.
+
+Warns when the slug is not yet in sources.json (exclusion will take effect
+once the slug is fingerprinted).
+
+## Usage
+
+\`\`\`
+drift exclude <slug>
+\`\`\`
+
+## Examples
+
+\`\`\`
+drift exclude mood-time
+drift exclude some-private-experiment
 \`\`\``
 };
 
@@ -1251,12 +1323,14 @@ ${BOLD}Usage:${RESET}
   drift accept <slug> <field>
   drift accept --all-projects <field>
   drift accept-all
+  drift exclude <slug>
 
 ${BOLD}Verbs:${RESET}
   report        Compare synced fingerprints to current git state (default).
   update        Rewrite sources.json with current fingerprints.
   accept        Refresh one override's synced baseline, keeping your value.
   accept-all    Refresh every flagged override baseline at once.
+  exclude       Mark a slug as excluded from the public site (writes excluded.json).
 
 ${BOLD}Flags:${RESET}
   --full        Field-level diff across ALL resolvable repos (surfaces windowed decay
@@ -1302,7 +1376,17 @@ overrides.json only.
 ${DIM}Differs from \`accept --all-projects <field>\`, which targets a single named
 field across projects rather than every field.${RESET}
 
-  Usage: drift accept-all`
+  Usage: drift accept-all`,
+
+		exclude: `${BOLD}drift exclude <slug>${RESET} - remove a slug from the public site
+
+Appends a slug to excluded.json.slugs. Writes excluded.json only. Rebuild
+the site to apply the exclusion.
+
+${DIM}Warns when the slug is not yet in sources.json.${RESET}
+
+  Usage:   drift exclude <slug>
+  Example: drift exclude some-private-experiment`
 	};
 	process.stdout.write((banners[verb] ?? banners.report) + '\n');
 }
@@ -1437,8 +1521,7 @@ function main() {
 	}
 
 	// Subcommand dispatcher. The first positional is the verb; slug/field follow.
-	// 'promote' is reserved for Phase 6 — leave it out of KNOWN_VERBS for now.
-	const KNOWN_VERBS = new Set(['report', 'update', 'accept', 'accept-all', 'help']);
+	const KNOWN_VERBS = new Set(['report', 'update', 'accept', 'accept-all', 'exclude', 'help']);
 	const verb = KNOWN_VERBS.has(positionals[0]) ? positionals[0] : 'report';
 	// args[0] = slug, args[1] = field (for accept). When the verb was explicit,
 	// slice it off; when the default 'report' was inferred, positionals are not args.
@@ -1484,6 +1567,12 @@ function main() {
 
 	if (bare && useGum) {
 		runInteractiveMenu({ manifests, palette, useGum, onProgress, clearProgress });
+		return;
+	}
+
+	// exclude does not need a drift scan — run it immediately and return.
+	if (verb === 'exclude') {
+		runExclude({ args, manifest: manifests.manifest, palette });
 		return;
 	}
 
