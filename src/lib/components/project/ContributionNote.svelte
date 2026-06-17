@@ -17,8 +17,10 @@
 		{/if}
 	</header>
 
-	{#if contribution.role !== 'solo'}
+	{#if contribution.role !== 'solo' && contribution.contributionNote}
 		<p class="contribution__note">{contribution.contributionNote}</p>
+	{:else if contribution.role !== 'solo'}
+		<!-- No contribution note yet; project was auto-listed from the manifest. -->
 	{:else}
 		<p class="contribution__note">
 			Solo project: designed, built, and maintained entirely by Jason.
