@@ -802,7 +802,7 @@ function main() {
 
 	// Subcommand dispatcher. The first positional is the verb; slug/field follow.
 	// 'promote' is reserved for Phase 6 — leave it out of KNOWN_VERBS for now.
-	const KNOWN_VERBS = new Set(['report', 'update', 'accept', 'accept-all']);
+	const KNOWN_VERBS = new Set(['report', 'update', 'accept', 'accept-all', 'help']);
 	const verb = KNOWN_VERBS.has(positionals[0]) ? positionals[0] : 'report';
 	// args[0] = slug, args[1] = field (for accept). When the verb was explicit,
 	// slice it off; when the default 'report' was inferred, positionals are not args.
@@ -810,8 +810,11 @@ function main() {
 
 	const palette = makePalette(colourEnabled(values));
 
-	if (values.help) {
-		printHelp(verb, palette);
+	if (verb === 'help' || values.help) {
+		// `drift help [verb]` and `drift [verb] --help` both work.
+		// When `drift help update` is used, the target verb is in args[0].
+		const helpTarget = verb === 'help' ? (args[0] ?? 'report') : verb;
+		printHelp(helpTarget, palette);
 		return;
 	}
 
