@@ -452,7 +452,7 @@ function loadManifests() {
 		try {
 			localPaths = JSON.parse(readFileSync(localPath, 'utf8')).paths ?? {};
 		} catch {
-			process.stderr.write(`Cannot parse ${localPath} — continuing without local path overrides\n`);
+			process.stderr.write(`Cannot parse ${localPath}: continuing without local path overrides\n`);
 		}
 	} else {
 		process.stderr.write(
@@ -683,7 +683,7 @@ function renderReportMarkdown(result, manifest, full) {
 	}
 
 	if (full && fieldDrift.length > 0) {
-		lines.push(`## Field-level drift — full scan (${fieldDrift.length})`);
+		lines.push(`## Field-level drift - full scan (${fieldDrift.length})`);
 		lines.push('');
 		for (const r of fieldDrift) {
 			lines.push(`### ${r.slug}`);
@@ -830,7 +830,7 @@ function runReport({ result, manifest, palette, json, full, useGum }) {
 	}
 
 	if (full && fieldDrift.length > 0) {
-		console.log(`${YELLOW}${BOLD}Field-level drift — full scan (${fieldDrift.length}):${RESET}`);
+		console.log(`${YELLOW}${BOLD}Field-level drift - full scan (${fieldDrift.length}):${RESET}`);
 		for (const r of fieldDrift) {
 			console.log(`  ${CYAN}${r.slug}${RESET}`);
 			for (const f of r.fields) {
@@ -866,7 +866,7 @@ function runReport({ result, manifest, palette, json, full, useGum }) {
 			console.log(`  ${DIM}${r.slug}: ${r.reason}${RESET}`);
 			if (r.statusHint) {
 				console.log(
-					`  ${YELLOW}  still marked '${r.statusHint}' — consider reviewing its status in src/lib/data/projects/${r.slug}.ts${RESET}`
+					`  ${YELLOW}  still marked '${r.statusHint}': consider reviewing its status in src/lib/data/projects/${r.slug}.ts${RESET}`
 				);
 			}
 		}
@@ -1056,7 +1056,7 @@ Run \`drift help <verb>\` for verb-specific help. With no flags in an interactiv
 
 	update: `# drift update · rewrite sources.json with current fingerprints
 
-Backfills every resolvable repo — not only those whose HEAD moved — so new
+Backfills every resolvable repo (not only those whose HEAD moved) so new
 fields populate across the whole manifest. Writes sources.json only; never
 touches overrides.json.
 
@@ -1125,7 +1125,7 @@ function printHelp(verb, palette, useGum) {
 	// Plain ANSI fallback — byte-identical to pre-gum output (+ Phase B additions).
 	const { BOLD, RESET, DIM } = palette;
 	const banners = {
-		report: `${BOLD}drift${RESET} — portfolio source drift checker
+		report: `${BOLD}drift${RESET} - portfolio source drift checker
 
 ${BOLD}Usage:${RESET}
   drift [report] [--json] [--full] [--check] [--no-color]
@@ -1151,7 +1151,7 @@ ${BOLD}Flags:${RESET}
 ${DIM}Run \`drift help <verb>\` for verb-specific help. With no flags in an interactive
 terminal (and gum installed), drift opens a menu.${RESET}`,
 
-		update: `${BOLD}drift update${RESET} — rewrite sources.json with current fingerprints
+		update: `${BOLD}drift update${RESET} - rewrite sources.json with current fingerprints
 
 Backfills every resolvable repo (not only those whose HEAD moved), so new
 fields populate across the whole manifest. Writes sources.json only; never
@@ -1163,7 +1163,7 @@ confirmation before writing.${RESET}
 
   Usage: drift update`,
 
-		accept: `${BOLD}drift accept <slug> <field>${RESET} — dismiss one override-drift flag
+		accept: `${BOLD}drift accept <slug> <field>${RESET} - dismiss one override-drift flag
 
 Refreshes the override's syncedWhenSet baseline to the current synced value,
 keeping your manual value intact. Writes overrides.json only.
@@ -1176,7 +1176,7 @@ flagged for it. Differs from accept-all (which accepts every flagged field).${RE
   Example: drift accept lyra-rose commitsMine
            drift accept --all-projects commitsMine`,
 
-		'accept-all': `${BOLD}drift accept-all${RESET} — dismiss every override-drift flag at once
+		'accept-all': `${BOLD}drift accept-all${RESET} - dismiss every override-drift flag at once
 
 Refreshes the baseline for all currently flagged override fields. Writes
 overrides.json only.
@@ -1194,10 +1194,17 @@ field across projects rather than every field.${RESET}
 // Single-shot: choose a verb, run it in-process, done.
 // ---------------------------------------------------------------------------
 
-function runInteractiveMenu({ result, manifests, palette, useGum }) {
+function runInteractiveMenu({ manifests, palette, useGum, onProgress, clearProgress }) {
+	// Lazy scan helper — runs only when a verb that needs data is selected.
+	const scan = (full) => {
+		const r = computeDrift(manifests, { full, onProgress });
+		clearProgress();
+		return r;
+	};
+
 	const items = [
 		'Report:report',
-		'Report — full field scan:report-full',
+		'Report - full field scan:report-full',
 		'Update sources.json:update',
 		'Accept an override:accept',
 		'Accept-all:accept-all',
@@ -1218,14 +1225,17 @@ function runInteractiveMenu({ result, manifests, palette, useGum }) {
 		{ stdio: ['inherit', 'pipe', 'inherit'], encoding: 'utf8' }
 	);
 
-	if (choose.status !== 0 || !choose.stdout.trim()) return; // Esc or Ctrl-C
+	if (choose.status !== 0 || !choose.stdout.trim()) return; // Esc or Ctrl-C — no scan
 
 	const verb = choose.stdout.trim();
 
 	switch (verb) {
+		case 'help':
+			printHelp('report', palette, useGum); // no scan
+			break;
 		case 'report':
 			runReport({
-				result,
+				result: scan(false),
 				manifest: manifests.manifest,
 				palette,
 				json: false,
@@ -1234,18 +1244,23 @@ function runInteractiveMenu({ result, manifests, palette, useGum }) {
 			});
 			break;
 		case 'report-full':
-			runReport({ result, manifest: manifests.manifest, palette, json: false, full: true, useGum });
+			runReport({
+				result: scan(true),
+				manifest: manifests.manifest,
+				palette,
+				json: false,
+				full: true,
+				useGum
+			});
 			break;
 		case 'update':
-			runUpdate({ result, manifest: manifests.manifest, palette, useGum });
+			runUpdate({ result: scan(false), manifest: manifests.manifest, palette, useGum });
 			break;
 		case 'accept-all':
-			runAccept({ result, args: [], acceptAll: true, allProjects: false, palette });
-			break;
-		case 'help':
-			printHelp('report', palette, useGum);
+			runAccept({ result: scan(false), args: [], acceptAll: true, allProjects: false, palette });
 			break;
 		case 'accept': {
+			const result = scan(false);
 			const { conflicts } = result;
 			if (conflicts.length === 0) {
 				console.log('No flagged overrides to accept.');
@@ -1333,15 +1348,14 @@ function main() {
 		process.stderr.isTTY && !values.json
 			? ({ index, total, slug }) => process.stderr.write(`\r[${index}/${total}] ${slug}`.padEnd(60))
 			: null;
+	const clearProgress = () => {
+		if (onProgress) process.stderr.write('\r' + ' '.repeat(60) + '\r');
+	};
 
-	const result = computeDrift(manifests, { full: values.full, onProgress });
-
-	// Clear the progress line so it does not bleed into the report.
-	if (onProgress) process.stderr.write('\r' + ' '.repeat(60) + '\r');
-
-	// Bare invocation in an interactive TTY with gum: launch the menu instead of
-	// the plain report. "Bare" means: no explicit verb, no positionals, no flags
-	// that select a non-default output mode.
+	// Bare invocation in an interactive TTY with gum: launch the menu BEFORE any
+	// scan. Each menu selection runs only the scan level it needs.
+	// "Bare" means: no explicit verb, no positionals, no flags that select a
+	// non-default output mode.
 	const bare =
 		!KNOWN_VERBS.has(positionals[0]) &&
 		positionals.length === 0 &&
@@ -1351,9 +1365,12 @@ function main() {
 		!values['all-projects'];
 
 	if (bare && useGum) {
-		runInteractiveMenu({ result, manifests, palette, useGum });
+		runInteractiveMenu({ manifests, palette, useGum, onProgress, clearProgress });
 		return;
 	}
+
+	const result = computeDrift(manifests, { full: values.full, onProgress });
+	clearProgress();
 
 	switch (verb) {
 		case 'update':
