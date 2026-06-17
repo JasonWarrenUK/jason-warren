@@ -50,7 +50,7 @@ export * from './types.js';
  * Field naming mirrors ProjectMetrics exactly; `commitsAll` is omitted here
  * because it is produced by the curation gate, not stored in the manifest.
  */
-interface SyncedSource {
+export interface SyncedSource {
 	head?: string;
 	// Commit grid
 	commits?: number;
@@ -60,7 +60,7 @@ interface SyncedSource {
 	// Dates
 	lastCommit?: string;
 	firstCommit?: string;
-	// Languages (advisory; not overlaid onto tags — tags are hand-curated)
+	// Languages (advisory; not overlaid onto tags but now also fed to inferTags)
 	languages?: string[];
 	// Codebase size
 	linesOfCode?: number;
@@ -73,6 +73,11 @@ interface SyncedSource {
 	linesRemovedRecent?: number;
 	linesAddedRecentAll?: number;
 	linesRemovedRecentAll?: number;
+	// Repo identity and dependency-manifest fields (Phase 2 / Phase 6)
+	remote?: string;
+	runtime?: string[];
+	database?: string[];
+	framework?: string[];
 }
 
 const sources = sourcesManifest.sources as Record<string, SyncedSource>;

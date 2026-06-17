@@ -115,6 +115,25 @@
 					"type": "integer",
 					"minimum": 0,
 					"description": "Lines removed by all authors, trailing 4 weeks."
+				},
+				"remote": {
+					"type": "string",
+					"description": "HTTPS URL of the primary git remote (git remote get-url origin), normalised from any SSH form. Used as the default repoUrl for un-authored projects."
+				},
+				"runtime": {
+					"type": "array",
+					"items": { "type": "string" },
+					"description": "Runtime identity strings detected by the dependency-manifest parser (e.g. 'bun', 'deno', 'node', 'python', 'go'). Keys match RUNTIME_TAGS in tag-taxonomy.js."
+				},
+				"database": {
+					"type": "array",
+					"items": { "type": "string" },
+					"description": "Database package identities detected by the dependency-manifest parser (e.g. 'pg', '@supabase/supabase-js'). Keys match DATABASE_TAGS in tag-taxonomy.js."
+				},
+				"framework": {
+					"type": "array",
+					"items": { "type": "string" },
+					"description": "Framework package identities detected by the dependency-manifest parser (e.g. 'svelte', '@sveltejs/kit', 'react'). Keys match FRAMEWORK_TAGS in tag-taxonomy.js."
 				}
 			}
 		}
