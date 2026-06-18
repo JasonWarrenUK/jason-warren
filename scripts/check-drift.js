@@ -1210,16 +1210,54 @@ function runReport({ result, manifest, palette, json, full, useGum }) {
 // every resolvable repo regardless of HEAD movement.
 // ---------------------------------------------------------------------------
 
-function runUpdate({ result, manifest, palette, useGum }) {
+function runUpdate({ result, manifest, palette, useGum, args = [], dryRun = false }) {
 	const { fresh } = result;
-	const { GREEN, YELLOW, RESET } = palette;
+	const { GREEN, YELLOW, RESET, DIM } = palette;
 
 	if (Object.keys(fresh).length === 0) return;
 
+	// Per-repo scoping: if slug args were provided, restrict to those slugs only.
+	// Unknown slugs get a soft warning (not an abort) so a typo doesn't block a batch.
+	let scopedFresh = fresh;
+	const isScoped = args.length > 0;
+	if (isScoped) {
+		for (const slug of args) {
+			if (!fresh[slug]) {
+				process.stdout.write(
+					`${YELLOW}Warning: '${slug}' is not resolvable on this machine — skipped.${RESET}\n`
+				);
+			}
+		}
+		scopedFresh = Object.fromEntries(
+			args.filter((slug) => fresh[slug]).map((slug) => [slug, fresh[slug]])
+		);
+		if (Object.keys(scopedFresh).length === 0) {
+			console.log('No resolvable repos in the provided slugs — nothing to update.');
+			return;
+		}
+	}
+
+	// Dry-run: show a field-level diff for each scoped repo and return without writing.
+	if (dryRun) {
+		const slugs = Object.keys(scopedFresh);
+		console.log(
+			`${DIM}Dry run — showing what ${slugs.length} repo${slugs.length === 1 ? '' : 's'} would change. Nothing will be written.${RESET}\n`
+		);
+		let firstCard = true;
+		for (const [slug, current] of Object.entries(scopedFresh)) {
+			const saved = manifest.sources[slug] ?? {};
+			const fields = diffFingerprint(saved, current);
+			renderCardPlain({ slug, current, fields, firstCard, palette });
+			firstCard = false;
+		}
+		return;
+	}
+
 	// gum confirm gate — only when interactive. Writes nothing on cancel.
 	if (useGum && process.stdout.isTTY) {
-		const n = Object.keys(fresh).length;
-		const res = spawnSync('gum', ['confirm', `Rewrite sources.json with ${n} fingerprints?`], {
+		const n = Object.keys(scopedFresh).length;
+		const scope = isScoped ? `${n} scoped repo${n === 1 ? '' : 's'}` : `${n} fingerprints`;
+		const res = spawnSync('gum', ['confirm', `Rewrite sources.json with ${scope}?`], {
 			stdio: 'inherit'
 		});
 		if (res.status !== 0) {
@@ -1228,12 +1266,12 @@ function runUpdate({ result, manifest, palette, useGum }) {
 		}
 	}
 
-	// Backfill every resolvable repo, not just those whose head moved, so new
-	// fields (firstCommit, languages) populate across the whole manifest.
+	// Backfill every resolvable repo (or the scoped subset), not just those whose
+	// head moved, so new fields (firstCommit, languages) populate across the manifest.
 	// Field-merge: only overwrite when the fresh value is non-null, so a transient
 	// git failure cannot clobber previously-good data with a null.
 	console.log('Updating sources.json with current fingerprints...');
-	for (const [slug, current] of Object.entries(fresh)) {
+	for (const [slug, current] of Object.entries(scopedFresh)) {
 		const saved = manifest.sources[slug] ?? {};
 		const merged = { ...saved };
 		const preserved = [];
@@ -1253,6 +1291,15 @@ function runUpdate({ result, manifest, palette, useGum }) {
 	}
 	const today = new Date().toISOString().slice(0, 10);
 	manifest.lastSyncedAt = today;
+
+	// Only a full (un-scoped) update can declare all firstCommit values authoritative.
+	// A scoped partial update touching one repo must not flip the provisional flag for
+	// repos it never examined.
+	if (!isScoped && manifest.firstCommitProvisional) {
+		manifest.firstCommitProvisional = false;
+		console.log(`${DIM}firstCommitProvisional cleared — firstCommit values are now authoritative.${RESET}`);
+	}
+
 	writeJson(sourcesPath, manifest);
 	console.log(`${GREEN}sources.json updated.${RESET}`);
 }
@@ -2003,7 +2050,7 @@ function runInteractiveMenu({ manifests, palette, useGum, onProgress, clearProgr
 			});
 			break;
 		case 'update':
-			runUpdate({ result: scan(false), manifest: manifests.manifest, palette, useGum });
+			runUpdate({ result: scan(false), manifest: manifests.manifest, palette, useGum, args: [], dryRun: false });
 			break;
 		case 'accept-all':
 			runAccept({ result: scan(false), args: [], acceptAll: true, allProjects: false, palette });
@@ -2127,6 +2174,7 @@ function main() {
 				check: { type: 'boolean', default: false },
 				full: { type: 'boolean', default: false },
 				'all-projects': { type: 'boolean', default: false },
+				'dry-run': { type: 'boolean', default: false },
 				'no-color': { type: 'boolean', default: false },
 				help: { type: 'boolean', short: 'h', default: false }
 			}
@@ -2215,7 +2263,7 @@ function main() {
 			});
 			break;
 		case 'update':
-			runUpdate({ result, manifest: manifests.manifest, palette, useGum });
+			runUpdate({ result, manifest: manifests.manifest, palette, useGum, args, dryRun: values['dry-run'] });
 			break;
 		case 'accept':
 			runAccept({ result, args, acceptAll: false, allProjects: values['all-projects'], palette });
