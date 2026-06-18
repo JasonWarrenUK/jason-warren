@@ -1,225 +1,201 @@
-# Action Plan: Improving `scripts/check-drift.js`
+# Drift Improvement Plan
+
+> This plan was authored before implementation began. The actual build reordered
+> phases, added unplanned scope, and made choices that the original sequencing
+> did not anticipate. The document has been reconciled against the real git
+> history (`build/enhance-drift-checker`). The source of truth for what is and
+> is not built is the code, not this file.
+
+---
+
+## Status legend
+
+| Symbol | Meaning |
+|--------|---------|
+| ✅ | Complete |
+| 🟡 | Partial — some bullets shipped, some remain |
+| ⬜ | Not started |
+
+---
 
 ## Context
 
-`check-drift.js` reconciles the git reality of ~33 source repos against the last-synced fingerprints in `src/lib/data/sources.json`, and is the middle tier of the render-time metric stack (`override.value ?? synced ?? authored`, merged in `src/lib/data/index.ts:123-176`).
-
-Exploration surfaced weaknesses across three axes:
-
-- **Automation**: ~429 git subprocesses + a full `~/Code` filesystem walk + hundreds of synchronous `readFileSync` calls, run **serially on every Claude SessionStart** (startup, resume, clear, compact) with zero caching, dumping raw ANSI into model context.
-- **CLI**: hand-rolled `process.argv` parsing, no `--help`, no `--json`, no `--only`, no `NO_COLOR`/TTY handling, fragile positional `--accept` parsing, always exits 0 (no CI gate), undocumented in README/CLAUDE.md.
-- **Functionality**: `HEAD`-only measurement silently tracks whatever branch is parked; `--update` clobbers good values with `null` from transient git failures and is all-or-nothing; multi-repo slugs (`beacons`, `craft-and-graft`, `sakura`) count only one of their two repos; no dirty/removed/moved detection; no way to track in-progress work on unmerged branches.
+`check-drift.js` reconciles the git reality of ~33 source repos against the last-synced fingerprints in `src/lib/data/sources.json`, and is the middle tier of the render-time metric stack (`override.value ?? synced ?? authored`, merged in `src/lib/data/index.ts`).
 
 ### Decisions taken (these shape the whole plan)
 
-1. **Drop the Claude Code SessionStart hook entirely.** Drift becomes a first-class **interactive CLI tool**, invoked deliberately (`drift`, `drift update`, `drift promote …`). The hook's only unique power was injecting repo-state into the model's context unprompted; everything else the CLI does better, and the hook can't write safely anyway. **Accepted tradeoff:** Claude loses proactive session-start awareness (the lyra-rose/top-girls report that fired at the start of this session will no longer appear automatically). Repo state reaches the model only when the user runs the CLI. Optional, non-Claude automation (a git `post-commit`/`post-merge` hook in source repos that refreshes the cache) can keep numbers warm without any session-start cost. This is the user's chosen direction.
+1. **Drop the Claude Code SessionStart hook entirely.** Drift is a first-class **interactive CLI tool**, invoked deliberately. The hook's only unique power was injecting repo-state into the model's context unprompted; everything else the CLI does better, and the hook can't write safely anyway. **Accepted tradeoff:** Claude loses proactive session-start awareness. Repo state reaches the model only when the user runs the CLI. Optional, non-Claude automation (a git `post-commit`/`post-merge` hook in source repos) can keep numbers warm without any session-start cost.
 
-2. **`gum` is a required dependency for interactive UX, TTY-gated.** Mirrors the user's own `_wot-interactive` idiom in `~/code/personal/utils/terminal-config/my-tools/commands.sh:93-95`: `command -v gum && [[ -t 0 && -t 1 ]]`. Interactive runs get gum pickers/confirms/styled output; non-TTY paths (pipes, CI, scripts) fall back to plain text. "Required" means a documented prerequisite + a capability check, not crash-on-absent. Reuse the user's brand palette (`_wot-choose`: cursor/selected `#3E7F96` teal, items `#B34480` pink).
+2. **`gum` is a required dependency for interactive UX, TTY-gated.** Mirrors the user's own `_wot-interactive` idiom. Interactive runs get gum pickers/confirms/styled output; non-TTY paths (pipes, CI, scripts) fall back to plain text. "Required" means a documented prerequisite + a capability check, not crash-on-absent.
 
-3. **In-progress store is a separate committed `in-progress.json`** (third sibling to `sources.json`/`overrides.json`), with a per-entry `visibility: "public" | "local"` field for case-by-case site exposure. See Phase 6.
+3. **In-progress store is a separate committed `in-progress.json`** (third sibling to `sources.json`/`overrides.json`), with a per-entry `visibility: "public" | "local"` field. See Phase 6 (⬜ not yet built).
 
-Verified environment: Node v25.2.1 (`node:util` `parseArgs` available); `git rev-parse --abbrev-ref origin/HEAD` resolves the default branch cleanly (`origin/main` on the portfolio repo); `gum` 0.17.0, `glow`, `vhs` all installed; the user's `wot` functions are the reference gum idiom (`_wot-interactive`, `_wot-choose`, `_wot-choose-described`, gradient-header + static-fallback pattern).
+Verified environment: Node v25.2.1 (`node:util` `parseArgs` available); `gum` 0.17.0, `glow`, `vhs` all installed.
 
----
+### Guiding constraints
 
-## Guiding constraints
-
-- The core script stays dependency-free in `node:*` terms (no npm deps). `gum`/`glow` are external binaries invoked via child process, capability-gated. The non-TTY path must work without them.
+- The core script stays dependency-free in `node:*` terms. `gum`/`glow` are external binaries invoked via child process, capability-gated.
 - British spelling, tabs for indentation, no em-dashes (CLAUDE.md).
-- Preserve write-isolation: `update` never touches `overrides.json` or `in-progress.json`; `accept` only touches `overrides.json`; `promote` only touches `in-progress.json` (and triggers a normal synced update).
-- Keep the top-of-file contract comment and the JSON `_note` blocks in sync with behaviour.
-- A subcommand-style CLI (`drift <verb>`) reads better than flag soup now that the hook is gone and a human is the primary caller. Migrate `--update`/`--accept` to `update`/`accept` verbs, keeping the old flags as deprecated aliases for one cycle.
+- Preserve write-isolation: `update` never touches `overrides.json`; `accept` only touches `overrides.json`.
+- A subcommand-style CLI (`drift <verb>`) reads better than flag soup. `--update`/`--accept` are migrated to verbs.
 
 ---
 
-## Phase 1 — `refactor/drift-cli-foundation`
+## Shipped (not originally planned phases)
 
-**Goal:** turn the script into a proper interactive CLI. This is now the centre of gravity, not polish.
+Work that landed during the build but was not part of any numbered phase in the original plan.
 
-- Migrate `process.argv` hand-parsing (`check-drift.js:33-36`) to `node:util` `parseArgs`, and introduce a **subcommand dispatcher**: `drift [report]` (default), `drift update`, `drift accept`, `drift accept-all`, `drift promote` (Phase 6). Keep `--update`/`--accept` working as deprecated aliases.
-- Add `--help`/`-h` per verb with a usage banner covering every mode (current JSDoc at `check-drift.js:12-15` documents only `--update`).
-- Fix the fragile positional `--accept <slug> <field>` reading (`check-drift.js:539` blindly reads `argv[index+1/+2]`); with `parseArgs` the positionals are validated and a following flag can no longer be misread as the slug.
-- Extract ANSI constants (`check-drift.js:435-441`) behind a `colour()` helper that no-ops when `process.env.NO_COLOR` is set or `!process.stdout.isTTY`. Strip escapes when piped, so `drift --json | jq` and redirects stay clean.
-- Add `--json` output mode emitting `{ changed, conflicts, filteredNew, missing, inProgress }` as machine-readable JSON. Substrate for scripting and the gum/glow rendering in Phase 7.
-- Exit-code semantics: `--check` exits non-zero when drift/new/conflicts are detected (CI gate). Default report stays exit 0.
-
-**Files:** `scripts/check-drift.js`, `package.json` (rename script aliases to verbs: `drift`, `drift:update`, `drift:accept`, `drift:accept-all`, `drift:promote`).
-
-**Commits:** `refactor(drift): parse args with node:util parseArgs`; `feat(drift): subcommand dispatcher (report/update/accept)`; `feat(drift): per-verb --help`; `feat(drift): respect NO_COLOR and non-TTY`; `feat(drift): --json output mode`; `feat(drift): --check exit-code gating`.
-
----
-
-## Phase 2 — `perf/drift-fingerprint`
-
-**Goal:** make the fingerprint pass fast and robust, now for CLI responsiveness rather than a session-start budget. Add an optional cache so repeated runs and source-repo git hooks are cheap.
-
-- **Async + parallel.** Convert `git()` from `execSync` to async `execFile`, replace the serial `for` loop (`check-drift.js:315`) with bounded-concurrency fan-out over repos. Drops wall-clock from ~serial-429-subprocess to concurrency-limited.
-- **De-duplicate the double `ls-files`.** `detectLanguages` (`check-drift.js:142`) and `countLinesOfCode` (`check-drift.js:156`) each run `ls-files`; fetch once, share.
-- **HEAD-SHA cache.** A gitignored `src/lib/data/.drift-cache.json` storing per-repo `head` + last-run timestamp. Skip a repo's full fingerprint when `HEAD` is unchanged (one cheap `rev-parse` vs 13 subprocesses). `--no-cache`/`--force` bypass; `update` always bypasses.
-- **Optional source-repo git hook (the replacement automation).** Provide a documented, opt-in `post-commit`/`post-merge` snippet for source repos that runs `drift update --only <thisRepo>` (or just refreshes the cache). This keeps numbers warm without any Claude/session involvement. Ship it as a documented example, not auto-installed.
-
-**Files:** `scripts/check-drift.js`, `.gitignore` (add `.drift-cache.json`), a `docs/` example git hook, `src/lib/data/sources.local.json.example` (note the cache).
-
-**Commits:** `perf(drift): async execFile git helper`; `perf(drift): parallelise per-repo fingerprinting`; `perf(drift): share single ls-files`; `feat(drift): HEAD-SHA cache with --no-cache`; `docs(drift): example source-repo git hook for warm cache`.
+- **`snapshot` verb** (`2f41f3e`, `3c61dc3`, `a1d8493`) — shows all current metrics for every configured repo in a card-per-project layout; absent fields shown with a placeholder.
+- **Shared tag taxonomy module** (`789facc`, `772ab88`) — `src/lib/data/tag-taxonomy.js` + `.d.ts`; `EXTENSION_LANGUAGE`, `LANGUAGE_TAGS`, `RUNTIME_TAGS`, `FRAMEWORK_TAGS`, `DATABASE_TAGS` extracted from the CLI so both the app and the script share one source of truth.
+- **Per-project card renderer** (`ab9f195`, `ed2cd11`) — `renderProjectCard()` shared between the `report` and `snapshot` paths; field-level drift markers, two-column metric grid.
+- **Manifest-driven registry inversion** (`4b7cf7e`, `685dd13`) — `sources.json` manifest is now the authoritative source of slugs; registry builder (`defaultProjectFromManifest`) and `mergeAuthored` overlay.
+- **Committed exclusion list** (`7976320`, `6bd0800`) — `src/lib/data/excluded.json` for repos and slugs to suppress; loaded at scan time, editable via `drift exclude`.
+- **DRIFT wordmark above interactive menu** (`05b487f`) — gum-rendered ASCII wordmark sits above the `gum choose` picker on bare invocation.
+- **`exclude` verb** (`f8d50d2`) — appends a slug to `excluded.json.slugs`; interactive gum confirm gate.
+- **Coverage summary** (`50b3bd9`) — counts manifest slugs, excluded, overlay vs manifest-only; printed at the foot of every report.
+- **Tag taxonomy: SQL as data tag** — `DATABASE_TAGS['SQL']` entry; `inferTags()` special-case routes `.sql` file detection to `kind: 'data'` so `classifyDataLabel` resolves the relational model without a driver dependency.
+- **Cleanup: SessionStart hook removed** — `.claude/settings.local.json` `hooks` block is empty; `Bash(node scripts/check-drift.js*)` allow-entry kept for frictionless manual invocation.
 
 ---
 
-## Phase 3 — `fix/drift-update-safety`
+## Phase 1 — ✅ CLI foundation (`refactor/drift-cli-foundation`)
+
+All bullets landed in `932868f` (Phase 1 baseline) and subsequent commits on the branch.
+
+- ✅ Migrated `process.argv` to `node:util` `parseArgs` + subcommand dispatcher
+- ✅ `KNOWN_VERBS` set; `verb` / `args` derived cleanly; `--update`/`--accept` aliases removed (one cycle elapsed)
+- ✅ Per-verb `--help` / `drift help <verb>` with gum-rendered markdown
+- ✅ `NO_COLOR` + non-TTY detection; colour helper no-ops when piped
+- ✅ `--json` output mode
+- ✅ `--check` exit-code gate (non-zero on drift / new / conflicts)
+
+---
+
+## Phase 2 — ⬜ Fingerprint performance (`perf/drift-fingerprint`)
+
+**Goal:** make the fingerprint pass fast and responsive. Add an optional cache so repeated runs are cheap.
+
+- Convert `git()` from `execSync` to async `execFile`; replace the serial `for` loop with bounded-concurrency fan-out. Drops wall-clock from ~serial-N-subprocess to concurrency-limited.
+- De-duplicate the double `ls-files` (`detectLanguages` and `countLinesOfCode` each run it; fetch once, share).
+- HEAD-SHA cache: a gitignored `src/lib/data/.drift-cache.json` storing per-repo `head` + last-run timestamp. Skip a repo's full fingerprint when `HEAD` is unchanged. `--no-cache`/`--force` bypass; `update` always bypasses.
+- Optional source-repo git hook: document an opt-in `post-commit`/`post-merge` snippet for source repos that runs `drift update --only <thisRepo>`. Ship as a `docs/` example, not auto-installed.
+
+**Files:** `scripts/check-drift.js`, `.gitignore`, `docs/`.
+
+---
+
+## Phase 3 — ⬜ Write safety (`fix/drift-update-safety`)
 
 **Goal:** make writes safe and targeted.
 
-- **Discriminated `git()` result.** Capture stderr (currently discarded, `check-drift.js:83`) and return `{ ok: true, out } | { ok: false, err }`, so a true `0` is distinguishable from a git failure (lock file, dubious-ownership `safe.directory`, mid-rebase). Drives the null-safe merge and a `--verbose` diagnostic.
-- **Null-safe `update`.** Replace whole-object replacement (`check-drift.js:595`) with a field-merge that only overwrites when the fresh value is non-null, preserving prior good data; warn which fields were preserved.
-- **Per-repo `update <slug...>`.** Refresh one repo without rewriting all 33. Composes with `--only` (Phase 4).
+- **Discriminated `git()` result.** Capture stderr (currently discarded) and return `{ ok: true, out } | { ok: false, err }`, so a git failure (lock file, dubious-ownership `safe.directory`, mid-rebase) is distinguishable from a true empty result.
+- **Null-safe `update`.** Replace whole-object replacement with a field-merge that only overwrites when the fresh value is non-null; warn which fields were preserved.
+- **Per-repo `update <slug...>`.** Refresh one repo without rewriting all N.
 - **`--dry-run`.** Field-level diff of what `update` would change, before writing.
-- **Clear `firstCommitProvisional`.** `update` currently never flips it (`sources.json:5`) despite `_firstCommitNote` saying it should; set it false once real root-commit dates are written.
+- **Clear `firstCommitProvisional`.** `update` should flip it false once real root-commit dates are written.
 
 **Files:** `scripts/check-drift.js`.
 
-**Commits:** `refactor(drift): discriminated ok/err git result`; `fix(drift): preserve good values on null fresh reads`; `feat(drift): per-repo update <slug>`; `feat(drift): --dry-run diff for update`; `fix(drift): clear firstCommitProvisional after real sync`.
+---
+
+## Phase 4 — 🟡 Detection and targeting (`feat/drift-detection-and-targeting`)
+
+**Shipped:**
+- ✅ Runtime, database, framework, and remote detection (`detectDependencies`, `9444c0d`)
+- ✅ `exclude` verb; committed exclusion list
+
+**Remaining:**
+- `--only <slug...>` scoping for `report`, `update`, and `accept`
+- Dirty working-tree detection via `git status --porcelain`; advisory report section
+- Removed-vs-never-configured split (currently both land in `missing`)
+- Rename/move hint: correlate `missing` with `filteredNew` to suggest "looks like X moved to Y?"
+- Multi-repo slugs: let a slug aggregate fingerprints across a `secondaryRepoUrl` companion
+
+**Files:** `scripts/check-drift.js`.
 
 ---
 
-## Phase 4 — `feat/drift-detection-and-targeting`
+## Phase 5 — ⬜ Branch awareness (`feat/drift-branch-awareness`)
 
-**Goal:** richer detection plus the `--only` filter.
+**Goal:** stop measuring whatever branch is parked; resolve the default branch.
 
-- **`--only <slug...>`** scoping for the report, `update`, and `accept`.
-- **Dirty working-tree detection** via `git status --porcelain`; advisory report section. Catches work drift currently misses entirely because `head` is unchanged.
-- **Removed-vs-never-configured split.** The report conflates "deleted local repo" with "no local path configured" (both land in `missing`, `check-drift.js:318/323`). Split into two sections.
-- **Rename/move hint.** Correlate `missing` (path gone) with `filteredNew` (new repo) to emit "looks like `X` moved to `Y`?".
-- **Multi-repo slugs.** Let a slug aggregate fingerprints across its `secondaryRepoUrl` companion (`beacons`→`beacons-backend`+`beacons-frontend-v2`, etc., currently the frontend is entirely uncounted). Extend `sources.local.json` to allow an array of paths per slug; `getFingerprint` sums across them.
+- **Resolve default branch instead of `HEAD`.** Add `defaultBranch(repoPath)`: try `git rev-parse --abbrev-ref origin/HEAD`, fall back to local `main`/`master`, fall back to `HEAD`. Measure against the resolved ref.
+- **Record `measuredRef`** in the fingerprint so the manifest is self-describing; warn in the report when it fell back to `HEAD`.
+- **Guard `delta` maths.** `current.commits - saved.commits` can go negative on history rewrites/branch switches; annotate instead of a misleading bare `-N`.
 
-**Files:** `scripts/check-drift.js`, `src/lib/data/sources.local.json.example` (array-of-paths note).
+**Note:** The delta guard is the Phase 5 item the PR review flagged. It is intentionally deferred here because the root cause (measuring arbitrary `HEAD` instead of the default branch) is the whole point of Phase 5. Annotating the symptom without fixing the measurement would be premature.
 
-**Commits:** `feat(drift): --only slug filter`; `feat(drift): flag dirty working trees`; `feat(drift): split removed from unconfigured`; `feat(drift): hint renamed/moved repos`; `feat(drift): aggregate multi-repo slugs`.
+**Files:** `scripts/check-drift.js`, `src/lib/data/sources.schema.json` (`measuredRef`), `src/lib/data/index.ts`.
 
 ---
 
-## Phase 5 — `feat/drift-branch-awareness`
+## Phase 6 — ⬜ Staging pipeline (`feat/drift-staging-pipeline`)
 
-**Goal:** stop measuring whatever branch is parked; resolve the default branch. Prerequisite for Phase 6.
+**Goal:** track in-progress work on unmerged branches as provisional, opt-in metrics.
 
-- **Resolve default branch instead of `HEAD`.** Every fingerprint command hardcodes `HEAD` (`check-drift.js:187,205,231,232`, plus `getFirstCommit`). Add `defaultBranch(repoPath)`: try `git rev-parse --abbrev-ref origin/HEAD` (verified to return `origin/main`), fall back to local `main`/`master`, fall back to `HEAD`. Measure against the resolved ref. Fixes silent stat corruption on feature branches.
-- **Record `measuredRef`** in the fingerprint so the manifest is self-describing; the report warns when it fell back to HEAD (detached/unknown-default).
-- **Guard `delta` maths.** `current.commits - saved.commits` (`check-drift.js:352`) can go negative on history rewrites/branch switches; clamp/annotate instead of a misleading `+`.
-
-**Files:** `scripts/check-drift.js`, `src/lib/data/sources.schema.json` (`measuredRef`), `src/lib/data/index.ts` (`SyncedSource` interface).
-
-**Commits:** `feat(drift): resolve default branch via origin/HEAD`; `feat(drift): record measuredRef`; `fix(drift): annotate non-monotonic deltas`.
-
----
-
-## Phase 6 — `feat/drift-staging-pipeline` (headline new capability)
-
-**Goal:** track in-progress work on unmerged branches as **provisional, opt-in** metrics, stored distinctly, with detection of when a property graduates into `main` (or `staging → main`).
-
-### Model — separate committed `in-progress.json`, per-entry visibility
-
-A third sibling to `sources.json` (script-owned) and `overrides.json` (hand-owned). NOT props on `sources.json`, because: (1) `update` rewrites `sources.json` wholesale and this hand-authored data must survive it (the same write-isolation reason `overrides.json` exists); (2) the shape differs (branch/pipeline/per-property tracking vs a flat fingerprint); (3) the lifecycle differs (transient until graduation vs permanent). The case-by-case "show on site?" choice is a per-entry field, so it does not force the data into `sources.json`.
+A third committed data file `in-progress.json` (sibling to `sources.json` / `overrides.json`). Per-entry `visibility: "public" | "local"` for case-by-case site exposure.
 
 ```jsonc
 {
   "lyra-rose": {
     "branch": "feat/new-thing",
-    "pipeline": ["feat/new-thing", "main"],   // 2 (branch->main) or 3 (branch->staging->main) stages
-    "visibility": "public",                    // "public" = render surfaces it (opt-in); "local" = report-only, never ships
-    "tracked": {                               // opt-in per property — only these may surface from the branch
-      "commitsMine": { "value": 27, "baseOnMain": 21 },
-      "linesAddedRecent": { "value": 0 }
-    },
-    "_note": "why this branch's work is surfaced early"
+    "pipeline": ["feat/new-thing", "main"],
+    "visibility": "public",
+    "tracked": {
+      "commitsMine": { "value": 27, "baseOnMain": 21 }
+    }
   }
 }
 ```
 
-### Graduation detection (core algorithm)
+- Graduation detection: per tracked property, `git merge-base --is-ancestor <branchTip> <nextStage>` to test whether the branch has landed.
+- New `drift promote <slug> [field]` verb: fold the value into the normal synced flow on the next `update` and remove the in-progress entry.
+- New report section "In-progress work (N):" with each tracked property's pipeline position.
+- `index.ts` gains a third input; provisional values surface only for `visibility: "public"` entries.
 
-For each in-progress slug, per pipeline stage:
-
-1. Resolve each stage ref (`feat/x`, optional `staging`, `main`).
-2. Per `tracked` property, measure on the branch and the next stage down; use `git merge-base --is-ancestor <branchTip> <nextStage>` to test whether the branch has landed, and `git log <stage>..<branch>` for the not-yet-merged delta.
-3. **Graduation event:** when the branch's tracked work becomes reachable from the next stage, the property has moved into it. Report: "`lyra-rose.commitsMine`: feat/new-thing merged into main; `drift promote lyra-rose commitsMine`".
-4. **Both topologies:** 2-stage tests branch→main directly; 3-stage tracks two hops and reports partial graduation ("merged to staging, not yet main") distinctly from full graduation.
-
-### Lifecycle + CLI
-
-- New report section **"In-progress work (N):"** with each tracked property's pipeline position (on-branch / merged-to-staging / merged-to-main).
-- New verb **`drift promote <slug> [field]`** (mirrors `accept`): on graduation, fold the value into the normal synced flow on the next `update` and remove the in-progress entry. Until promoted, provisional values stay in the distinct store. `update` reads `in-progress.json` read-only and never writes it.
-
-### Render integration
-
-- `index.ts` gains a third input. Precedence: shipped synced/override stay authoritative for headline stats; in-progress surfaces only for `visibility: "public"` entries, where the UI opts in (e.g. a "currently building" badge), never silently replacing a shipped figure. `local` entries are ignored at render. Add `in-progress.schema.json` mirroring existing schema discipline; extend `types.ts` for the provisional fields that render.
-
-**Files:** `scripts/check-drift.js`, new `src/lib/data/in-progress.json` (committed) + `in-progress.schema.json`, `src/lib/data/index.ts`, `src/lib/data/types.ts`.
-
-**Commits:** `feat(data): in-progress store and schema`; `feat(drift): measure tracked properties on unmerged branches`; `feat(drift): detect branch->main and branch->staging->main graduation`; `feat(drift): report in-progress pipeline position`; `feat(drift): promote verb to graduate a property`; `feat(data): surface public in-progress metrics at render`.
+**Files:** `scripts/check-drift.js`, new `src/lib/data/in-progress.json` + `in-progress.schema.json`, `src/lib/data/index.ts`, `src/lib/data/types.ts`.
 
 ---
 
-## Phase 7 — `feat/drift-gum-cli`
+## Phase 7 — ✅ Gum interactive layer (`feat/drift-gum-cli`)
 
-**Goal:** the interactive layer, built on the user's existing `wot` gum idiom. `gum` is a required prerequisite; every gum call is TTY-gated with a plain fallback so non-interactive paths (pipes, CI, the optional git hook) still work.
+Substantially complete. `gum` capability gate mirrors the `_wot-interactive` idiom.
 
-- **Capability gate** `_driftInteractive()` mirroring `_wot-interactive` (`commands.sh:93-95`): `command -v gum && isTTY(stdin) && isTTY(stdout)`. False → plain-text path.
-- **Reuse the `wot` styling helpers' shape:** a `driftChoose` wrapper matching `_wot-choose` (`commands.sh:757-763`) with the brand palette (cursor/selected `#3E7F96`, items `#B34480`), and a described-picker matching `_wot-choose-described` (`commands.sh:767-785`) for `key  description` items returning the key.
-- **`gum choose`** for `accept`/`promote` when run interactively with pending conflicts/graduations and no slug given, instead of erroring on missing positionals.
-- **`gum confirm`** before any `update` write (especially the all-repos form), showing the `--dry-run` diff first.
-- **`gum spin`** around the parallel fingerprint pass for interactive runs; **`gum style`/`gum format`**, or pipe `--json` through `glow`, for a styled human report.
-- **Document gum as a prerequisite** (it is already in the user's `_WOT_BREW_CATS` "tui" set), and have the script print a clear one-line install hint (`brew install gum`) when interactive is requested but gum is absent, then fall back to plain text rather than crashing.
+- ✅ TTY-gated capability check (`gumPath()` + `stdin`/`stdout` TTY guards)
+- ✅ `gum format --theme pink` for styled report / snapshot / help output
+- ✅ `gum confirm` before `update` writes (shows fingerprint count before committing)
+- ✅ `gum choose` interactive menu on bare invocation; two-column described picker
+- ✅ DRIFT wordmark above the picker (`gum style`)
+- ⬜ `gum spin` spinner during the fingerprint pass (Phase 2 dependency; serial pass currently too fast to need it, but relevant once async)
 
 **Files:** `scripts/check-drift.js`.
 
-**Commits:** `feat(drift): TTY-gated gum capability check`; `feat(drift): gum pickers for accept/promote`; `feat(drift): gum confirm before update writes`; `feat(drift): styled report via gum/glow`.
-
 ---
 
-## Phase 8 — `docs/drift-workflow`
+## Phase 8 — ⬜ Documentation (`docs/drift-workflow`)
 
-**Goal:** close the documentation gap (README/CLAUDE.md currently have zero mention of drift, `sources.local.json` bootstrap, the now-removed hook, or any npm script beyond the basics).
+**Goal:** close the documentation gap (README and CLAUDE.md currently have zero mention of drift).
 
-- README "Commands" section: add the `drift*` verbs and a "Source drift" subsection explaining the synced/override/in-progress stack, the `gum` prerequisite, and that drift is now a deliberate CLI tool (no session hook).
+- README "Commands" section: add the `drift*` verbs and a "Source drift" subsection explaining the synced/override stack, the `gum` prerequisite, and that drift is a deliberate CLI tool (no session hook).
 - Fresh-machine bootstrap: install `gum`, copy `sources.local.json.example` → `sources.local.json`, fill paths, run `drift`.
-- Note the optional source-repo git hook for a warm cache.
-- A `mermaid` diagram of the metric precedence + graduation lifecycle (CLAUDE.md doc conventions).
+- Note the optional source-repo git hook for a warm cache (Phase 2).
+- A mermaid diagram of the metric precedence lifecycle.
 
-**Files:** `README.md`, possibly `docs/drift.md`, top-of-file comment in `check-drift.js`.
-
-**Commits:** `docs(drift): document CLI workflow, gum prereq, bootstrap`; `docs(drift): precedence + graduation diagram`.
+**Files:** `README.md`, top-of-file comment in `check-drift.js`.
 
 ---
 
-## Cleanup: remove the hook
+## Suggested sequencing (revised)
 
-As part of Phase 1 (or a tiny standalone `chore/remove-drift-hook` commit), delete the `SessionStart` block from `.claude/settings.local.json:15-27`. Keep the `Bash(node scripts/check-drift.js*)` permission allow-entry so manual invocation stays frictionless.
+Phase 3 (write safety) is now the highest-value near-term work: null clobber on a failed git subprocess is an active risk. Phase 2 (performance) becomes more relevant once Phase 6's multi-repo support makes the scan larger. Phase 5 unblocks Phase 6. Phase 8 last.
 
----
-
-## Testing / verification
-
-The script is currently untested. Add Vitest coverage as phases land (`tests/fixtures/<module>.ts` pattern per CLAUDE.md):
-
-- **Unit:** `defaultBranch` resolution; null-safe field-merge; graduation detection (both topologies); discriminated `git()` result; multi-repo aggregation. Mock git via fixture command outputs.
-- **Integration:** build a throwaway temp git repo (init, commit on `main`, branch, commit, merge) and assert graduation flips at the right moment. Critical-path test for Phase 6.
-- **Manual smoke per phase:**
-  - P1: `drift`, `drift --help`, `drift update --help`, `drift --json | jq`, `NO_COLOR=1 drift | cat` (no escapes), `drift --check; echo $?`.
-  - P2: time warm-cache vs cold; confirm `--no-cache` forces a full pass.
-  - P3: drop an `index.lock` in a repo, run `drift update --dry-run` then `update`, confirm no null clobber.
-  - P4: confirm a multi-repo slug sums both repos; dirty a tree and confirm the flag.
-  - P5: park a repo on a feature branch, confirm the report measures `main` not the branch.
-  - P6: on `lyra-rose` (live feature work), add an in-progress entry, confirm provisional value surfaces distinctly for `public`, hidden for `local`; merge the branch, confirm graduation announced and `drift promote` folds it in.
-  - P7: run interactively (gum pickers/confirm appear); run `| cat` (plain, no prompts); temporarily shadow `gum` off PATH and confirm graceful fallback + install hint.
-- **Regression:** `npm run check` and `npm run test` green after each phase (Phases 5-6 touch `index.ts`/`types.ts`).
+`3 → 2 → 4 (remaining) → 5 → 6 → 7 (gum spin) → 8`
 
 ---
-
-## Suggested sequencing
-
-`1 → 2 → 3 → 4 → 5 → 6 → 7 → 8`. Phases 1-4 are independently shippable and low-risk. Phase 5 is a prerequisite for Phase 6 (the headline feature). Phase 7 depends on the CLI seams from Phase 1 and the verbs from Phases 1/3/6. Phase 8 last. Each phase is its own branch with atomic commits per CLAUDE.md conventions.
 
 ## Unresolved questions
 
 Both have sensible defaults to pick at implementation time.
 
 1. **Cache file location:** default `src/lib/data/.drift-cache.json` (next to the data, gitignored) vs OS temp. Leaning to the data dir for discoverability.
-2. **CLI binary name:** keep invoking via `npm run drift` / `node scripts/check-drift.js`, or add a thin `drift` shell shim (matching the `wot` ergonomics) sourced from terminal-config? The plan assumes `npm run` verbs; a shim is a small add if wanted.
+2. **CLI binary name:** keep invoking via `npm run drift` / `node scripts/check-drift.js`, or add a thin `drift` shell shim? The plan assumes `npm run` verbs; a shim is a small add if wanted.
