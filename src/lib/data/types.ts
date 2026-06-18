@@ -13,7 +13,13 @@
 
 export type ProjectRole = 'solo' | 'lead' | 'collaborator';
 
-export type ProjectStatus = 'live' | 'wip' | 'finished' | 'prototype' | 'archived' | 'uncategorised';
+export type ProjectStatus =
+	| 'live'
+	| 'wip'
+	| 'finished'
+	| 'prototype'
+	| 'archived'
+	| 'uncategorised';
 
 export type ProjectKind = 'app' | 'game' | 'website' | 'toy' | 'library' | 'tool' | 'tui' | 'repo';
 

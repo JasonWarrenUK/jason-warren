@@ -219,8 +219,12 @@ function detectDependencies(repoPath) {
 
 		// Runtime detection: lock-file presence wins over package.json alone.
 		// Check lock files first; fall back to package.json existence for Node.
-		const hasBunLock = existsSync(join(repoPath, 'bun.lock')) || existsSync(join(repoPath, 'bun.lockb')) || existsSync(join(repoPath, 'bunfig.toml'));
-		const hasDenoLock = existsSync(join(repoPath, 'deno.json')) || existsSync(join(repoPath, 'deno.lock'));
+		const hasBunLock =
+			existsSync(join(repoPath, 'bun.lock')) ||
+			existsSync(join(repoPath, 'bun.lockb')) ||
+			existsSync(join(repoPath, 'bunfig.toml'));
+		const hasDenoLock =
+			existsSync(join(repoPath, 'deno.json')) || existsSync(join(repoPath, 'deno.lock'));
 		if (hasBunLock) runtime.push('bun');
 		else if (hasDenoLock) runtime.push('deno');
 		else runtime.push('node'); // package.json present, no bun/deno markers
@@ -290,7 +294,8 @@ function detectDependencies(repoPath) {
 					else if (/django/i.test(req)) framework.push('django');
 				}
 				if (!database.includes('psycopg') && /psycopg/i.test(req)) database.push('psycopg');
-				if (!database.includes('sqlalchemy') && /sqlalchemy/i.test(req)) database.push('sqlalchemy');
+				if (!database.includes('sqlalchemy') && /sqlalchemy/i.test(req))
+					database.push('sqlalchemy');
 			}
 		}
 	} catch {
@@ -806,7 +811,9 @@ function renderReportMarkdown(result, manifest, full) {
 		for (let i = 0; i < fieldDrift.length; i++) {
 			const r = fieldDrift[i];
 			const current = result.fresh?.[r.slug] ?? {};
-			lines.push(...renderCardMarkdown({ slug: r.slug, current, fields: r.fields, firstCard: i === 0 }));
+			lines.push(
+				...renderCardMarkdown({ slug: r.slug, current, fields: r.fields, firstCard: i === 0 })
+			);
 		}
 	}
 
@@ -974,7 +981,7 @@ function renderCardMarkdown({ slug, current, fields, firstCard = false }) {
 	// Bold any token whose field drifted vs saved, mirroring the field table below.
 	const driftedIdentity = new Set((fields ?? []).map((f) => f.field));
 	const identity = buildIdentityLine(current, {
-		marker: (field, v) => (driftedIdentity.has(field) ? `**${v}**` : v),
+		marker: (field, v) => (driftedIdentity.has(field) ? `**${v}**` : v)
 	});
 	for (const il of identity.split('\n')) lines.push(`_${il}_`);
 	lines.push('');
@@ -1019,8 +1026,7 @@ function renderCardPlain({ slug, current, fields, firstCard = false, palette }) 
 	// marker reset, re-open DIM so the rest of the line stays dim.
 	const driftedIdentity = new Set((fields ?? []).map((f) => f.field));
 	const identity = buildIdentityLine(current, {
-		marker: (field, v) =>
-			driftedIdentity.has(field) ? `${YELLOW}${BOLD}${v}${RESET}${DIM}` : v,
+		marker: (field, v) => (driftedIdentity.has(field) ? `${YELLOW}${BOLD}${v}${RESET}${DIM}` : v)
 	});
 	for (const il of identity.split('\n')) {
 		console.log(`  ${DIM}${il}${RESET}`);
@@ -1031,7 +1037,9 @@ function renderCardPlain({ slug, current, fields, firstCard = false, palette }) 
 		for (const f of fields) {
 			const was = Array.isArray(f.was) ? f.was.join(', ') : (f.was ?? '?');
 			const now = Array.isArray(f.now) ? f.now.join(', ') : (f.now ?? '?');
-			console.log(`  ${YELLOW}${BOLD}${f.field}${RESET}  ${DIM}${was}${RESET} → ${BOLD}${now}${RESET}`);
+			console.log(
+				`  ${YELLOW}${BOLD}${f.field}${RESET}  ${DIM}${was}${RESET} → ${BOLD}${now}${RESET}`
+			);
 		}
 	}
 	console.log('');
@@ -1362,7 +1370,9 @@ function runExclude({ args, manifest, palette }) {
 	}
 
 	if (excluded.slugs.includes(slug)) {
-		process.stdout.write(`${YELLOW}'${slug}' is already in excluded.json.slugs — nothing to do.${RESET}\n`);
+		process.stdout.write(
+			`${YELLOW}'${slug}' is already in excluded.json.slugs — nothing to do.${RESET}\n`
+		);
 		return;
 	}
 
@@ -1413,9 +1423,13 @@ function computeSnapshot(result, manifest) {
 function renderSnapshotMarkdown(snapshot) {
 	const lines = [];
 	lines.push(`# Portfolio snapshot`);
-	lines.push(`_All current metrics for every resolvable project. **Bold** fields have changed since last sync._`);
+	lines.push(
+		`_All current metrics for every resolvable project. **Bold** fields have changed since last sync._`
+	);
 	lines.push('');
-	lines.push(`${snapshot.projects.length} resolvable · ${snapshot.missing.length} not resolvable on this machine`);
+	lines.push(
+		`${snapshot.projects.length} resolvable · ${snapshot.missing.length} not resolvable on this machine`
+	);
 	lines.push('');
 
 	for (let i = 0; i < snapshot.projects.length; i++) {
@@ -1428,14 +1442,20 @@ function renderSnapshotMarkdown(snapshot) {
 
 		// Identity line: bold any token whose field drifted vs saved.
 		const identity = buildIdentityLine(current, {
-			marker: (field, v) => (driftedFields.has(field) ? `**${v}**` : v),
+			marker: (field, v) => (driftedFields.has(field) ? `**${v}**` : v)
 		});
 		for (const il of identity.split('\n')) lines.push(`_${il}_`);
 		lines.push('');
 
 		// Full metric table: every FINGERPRINT_FIELD, including absent ones.
 		// Absent or empty-array fields render as `-` so their absence is visible.
-		const IDENTITY_FIELDS = new Set(['firstCommit', 'lastCommit', 'commits', 'linesOfCode', 'remote']);
+		const IDENTITY_FIELDS = new Set([
+			'firstCommit',
+			'lastCommit',
+			'commits',
+			'linesOfCode',
+			'remote'
+		]);
 		lines.push(`| field | value |`);
 		lines.push(`| --- | --- |`);
 		for (const field of FINGERPRINT_FIELDS) {
@@ -1479,8 +1499,12 @@ function renderSnapshotMarkdown(snapshot) {
 function runSnapshotPlain(snapshot, palette) {
 	const { RESET, BOLD, YELLOW, CYAN, DIM } = palette;
 
-	console.log(`\n${BOLD}Portfolio snapshot${RESET} ${DIM}(all current metrics — changed fields highlighted)${RESET}\n`);
-	console.log(`${DIM}${snapshot.projects.length} resolvable · ${snapshot.missing.length} not resolvable on this machine${RESET}\n`);
+	console.log(
+		`\n${BOLD}Portfolio snapshot${RESET} ${DIM}(all current metrics — changed fields highlighted)${RESET}\n`
+	);
+	console.log(
+		`${DIM}${snapshot.projects.length} resolvable · ${snapshot.missing.length} not resolvable on this machine${RESET}\n`
+	);
 
 	for (let i = 0; i < snapshot.projects.length; i++) {
 		const { slug, current, driftedFields } = snapshot.projects[i];
@@ -1491,8 +1515,7 @@ function runSnapshotPlain(snapshot, palette) {
 		// Identity line: yellow+bold any token whose field drifted vs saved.
 		// After each marker reset, re-open DIM so the rest of the line stays dim.
 		const identity = buildIdentityLine(current, {
-			marker: (field, v) =>
-				driftedFields.has(field) ? `${YELLOW}${BOLD}${v}${RESET}${DIM}` : v,
+			marker: (field, v) => (driftedFields.has(field) ? `${YELLOW}${BOLD}${v}${RESET}${DIM}` : v)
 		});
 		for (const il of identity.split('\n')) {
 			console.log(`  ${DIM}${il}${RESET}`);
@@ -1501,7 +1524,13 @@ function runSnapshotPlain(snapshot, palette) {
 
 		// All FINGERPRINT_FIELDS, including absent ones (skip identity fields).
 		// Absent or empty-array fields render as `-` so their absence is visible.
-		const IDENTITY_FIELDS = new Set(['firstCommit', 'lastCommit', 'commits', 'linesOfCode', 'remote']);
+		const IDENTITY_FIELDS = new Set([
+			'firstCommit',
+			'lastCommit',
+			'commits',
+			'linesOfCode',
+			'remote'
+		]);
 		for (const field of FINGERPRINT_FIELDS) {
 			if (IDENTITY_FIELDS.has(field)) continue;
 			const raw = current[field];
@@ -1522,7 +1551,9 @@ function runSnapshotPlain(snapshot, palette) {
 	}
 
 	if (snapshot.missing.length > 0) {
-		console.log(`${DIM}${BOLD}Not resolvable on this machine (${snapshot.missing.length}):${RESET}`);
+		console.log(
+			`${DIM}${BOLD}Not resolvable on this machine (${snapshot.missing.length}):${RESET}`
+		);
 		for (const r of snapshot.missing) {
 			console.log(`  ${DIM}${r.slug}: ${r.reason}${RESET}`);
 		}
@@ -1817,7 +1848,7 @@ const DRIFT_WORDMARK = [
 	'██║  ██║██████╔╝██║█████╗     ██║   ',
 	'██║  ██║██╔══██╗██║██╔══╝     ██║   ',
 	'██████╔╝██║  ██║██║██║        ██║   ',
-	'╚═════╝ ╚═╝  ╚═╝╚═╝╚═╝        ╚═╝   ',
+	'╚═════╝ ╚═╝  ╚═╝╚═╝╚═╝        ╚═╝   '
 ].join('\n');
 
 /**
@@ -1830,12 +1861,17 @@ function printWordmark() {
 		'gum',
 		[
 			'style',
-			'--border', 'rounded',
-			'--border-foreground', '#3E7F96',
-			'--foreground', '#B34480',
-			'--padding', '1 3',
-			'--align', 'center',
-			DRIFT_WORDMARK,
+			'--border',
+			'rounded',
+			'--border-foreground',
+			'#3E7F96',
+			'--foreground',
+			'#B34480',
+			'--padding',
+			'1 3',
+			'--align',
+			'center',
+			DRIFT_WORDMARK
 		],
 		{ stdio: ['ignore', 'inherit', 'inherit'] }
 	);
@@ -1854,21 +1890,29 @@ function runInteractiveMenu({ manifests, palette, useGum, onProgress, clearProgr
 	// Values are unchanged from the original menu, so the dispatch switch below
 	// needs no edits.
 	const menuRows = [
-		['Report',                 'Show repos whose metrics drifted since last sync',      'report'],
-		['Report (full scan)',     'Per-field drift across every repo, not just moved HEADs', 'report-full'],
-		['Snapshot',               'Every current metric value, changed fields highlighted', 'snapshot'],
-		['Update',                 'Rewrite sources.json with current git fingerprints',    'update'],
-		['Accept override',        'Clear one drift flag, keeping your pinned value',       'accept'],
-		['Accept field everywhere','Clear one field\'s drift flag on every project',        'accept-all-projects'],
-		['Accept all',             'Clear every flagged override at once',                  'accept-all'],
-		['Exclude',                'Hide a slug from the public site',                      'exclude'],
-		['Help',                   'Show the command reference',                            'help'],
+		['Report', 'Show repos whose metrics drifted since last sync', 'report'],
+		[
+			'Report (full scan)',
+			'Per-field drift across every repo, not just moved HEADs',
+			'report-full'
+		],
+		['Snapshot', 'Every current metric value, changed fields highlighted', 'snapshot'],
+		['Update', 'Rewrite sources.json with current git fingerprints', 'update'],
+		['Accept override', 'Clear one drift flag, keeping your pinned value', 'accept'],
+		[
+			'Accept field everywhere',
+			"Clear one field's drift flag on every project",
+			'accept-all-projects'
+		],
+		['Accept all', 'Clear every flagged override at once', 'accept-all'],
+		['Exclude', 'Hide a slug from the public site', 'exclude'],
+		['Help', 'Show the command reference', 'help']
 	];
 
 	// Pad names to a fixed width so descriptions align in a second column.
 	const nameWidth = Math.max(...menuRows.map(([n]) => n.length));
-	const items = menuRows.map(([name, desc, value]) =>
-		`${name.padEnd(nameWidth + 3)}${desc}:${value}`
+	const items = menuRows.map(
+		([name, desc, value]) => `${name.padEnd(nameWidth + 3)}${desc}:${value}`
 	);
 
 	// Wordmark sits above the interactive list. gum choose takes over the TTY
@@ -2020,11 +2064,10 @@ function runInteractiveMenu({ manifests, palette, useGum, onProgress, clearProgr
 				chosenSlug = pick.stdout.trim();
 			} else {
 				// Fallback: free-text input when all manifest slugs are already excluded.
-				const input = spawnSync(
-					'gum',
-					['input', '--placeholder', 'slug to exclude'],
-					{ stdio: ['inherit', 'pipe', 'inherit'], encoding: 'utf8' }
-				);
+				const input = spawnSync('gum', ['input', '--placeholder', 'slug to exclude'], {
+					stdio: ['inherit', 'pipe', 'inherit'],
+					encoding: 'utf8'
+				});
 				if (input.status !== 0 || !input.stdout.trim()) return;
 				chosenSlug = input.stdout.trim();
 			}
@@ -2062,7 +2105,15 @@ function main() {
 	}
 
 	// Subcommand dispatcher. The first positional is the verb; slug/field follow.
-	const KNOWN_VERBS = new Set(['report', 'snapshot', 'update', 'accept', 'accept-all', 'exclude', 'help']);
+	const KNOWN_VERBS = new Set([
+		'report',
+		'snapshot',
+		'update',
+		'accept',
+		'accept-all',
+		'exclude',
+		'help'
+	]);
 	const verb = KNOWN_VERBS.has(positionals[0]) ? positionals[0] : 'report';
 	// args[0] = slug, args[1] = field (for accept). When the verb was explicit,
 	// slice it off; when the default 'report' was inferred, positionals are not args.

@@ -80,7 +80,14 @@
 	};
 
 	/** Display order for status chips. Uncategorised appears last — it's a placeholder. */
-	const statusOrder: ProjectStatus[] = ['live', 'wip', 'finished', 'prototype', 'archived', 'uncategorised'];
+	const statusOrder: ProjectStatus[] = [
+		'live',
+		'wip',
+		'finished',
+		'prototype',
+		'archived',
+		'uncategorised'
+	];
 
 	const tagKindLabels: Record<TagKind, string> = {
 		language: 'Language',

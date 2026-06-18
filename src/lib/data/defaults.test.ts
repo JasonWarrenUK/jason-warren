@@ -94,9 +94,7 @@ describe('inferTags', () => {
 		// 'pg' and 'postgres' both map to { label: 'PostgreSQL', kind: 'data' }
 		const manifest: SyncedSource = { database: ['pg', 'postgres'] };
 		const tags = inferTags(manifest);
-		const postgresCount = tags.filter(
-			(t) => t.kind === 'data' && t.label === 'PostgreSQL'
-		).length;
+		const postgresCount = tags.filter((t) => t.kind === 'data' && t.label === 'PostgreSQL').length;
 		expect(postgresCount).toBe(1);
 	});
 

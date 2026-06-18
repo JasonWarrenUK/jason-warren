@@ -10,11 +10,11 @@
 
 ## Status legend
 
-| Symbol | Meaning |
-|--------|---------|
-| ✅ | Complete |
-| 🟡 | Partial — some bullets shipped, some remain |
-| ⬜ | Not started |
+| Symbol | Meaning                                     |
+| ------ | ------------------------------------------- |
+| ✅     | Complete                                    |
+| 🟡     | Partial — some bullets shipped, some remain |
+| ⬜     | Not started                                 |
 
 ---
 
@@ -101,10 +101,12 @@ All bullets landed in `932868f` (Phase 1 baseline) and subsequent commits on the
 ## Phase 4 — 🟡 Detection and targeting (`feat/drift-detection-and-targeting`)
 
 **Shipped:**
+
 - ✅ Runtime, database, framework, and remote detection (`detectDependencies`, `9444c0d`)
 - ✅ `exclude` verb; committed exclusion list
 
 **Remaining:**
+
 - `--only <slug...>` scoping for `report`, `update`, and `accept`
 - Dirty working-tree detection via `git status --porcelain`; advisory report section
 - Removed-vs-never-configured split (currently both land in `missing`)
@@ -137,14 +139,14 @@ A third committed data file `in-progress.json` (sibling to `sources.json` / `ove
 
 ```jsonc
 {
-  "lyra-rose": {
-    "branch": "feat/new-thing",
-    "pipeline": ["feat/new-thing", "main"],
-    "visibility": "public",
-    "tracked": {
-      "commitsMine": { "value": 27, "baseOnMain": 21 }
-    }
-  }
+	"lyra-rose": {
+		"branch": "feat/new-thing",
+		"pipeline": ["feat/new-thing", "main"],
+		"visibility": "public",
+		"tracked": {
+			"commitsMine": { "value": 27, "baseOnMain": 21 }
+		}
+	}
 }
 ```
 

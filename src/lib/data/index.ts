@@ -248,5 +248,7 @@ function withSyncedMetrics(project: Project): Project {
 export const projects: Project[] = Object.keys(sources)
 	.filter((slug) => !excludedSlugs.has(slug))
 	.map((slug) =>
-		withSyncedMetrics(mergeAuthored(defaultProjectFromManifest(slug, sources[slug]), authoredBySlug[slug]))
+		withSyncedMetrics(
+			mergeAuthored(defaultProjectFromManifest(slug, sources[slug]), authoredBySlug[slug])
+		)
 	);

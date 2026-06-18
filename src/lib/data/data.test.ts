@@ -99,9 +99,10 @@ describe('project registry', () => {
 				}
 			}
 		}
-		expect(missing, `Authored team projects missing contributionNote: ${missing.join(', ')}`).toHaveLength(
-			0
-		);
+		expect(
+			missing,
+			`Authored team projects missing contributionNote: ${missing.join(', ')}`
+		).toHaveLength(0);
 	});
 
 	it('all authored projects have at least one tag', () => {
@@ -172,9 +173,7 @@ describe('project registry', () => {
 
 	it('all authored projects have at least one highlight', () => {
 		// Manifest-only projects legitimately have empty highlights until authored.
-		const bare = projects.filter(
-			(p) => authoredSlugs.has(p.slug) && p.highlights.length === 0
-		);
+		const bare = projects.filter((p) => authoredSlugs.has(p.slug) && p.highlights.length === 0);
 		expect(
 			bare.map((p) => p.slug),
 			`Authored projects with no highlights: ${bare.map((p) => p.slug).join(', ')}`
@@ -319,10 +318,7 @@ describe('synced metrics from sources.json', () => {
 		const unknown = projects
 			.map((p) => p.slug)
 			.filter((slug) => !Object.prototype.hasOwnProperty.call(synced, slug));
-		expect(
-			unknown,
-			`Project slugs not in sources.json: ${unknown.join(', ')}`
-		).toHaveLength(0);
+		expect(unknown, `Project slugs not in sources.json: ${unknown.join(', ')}`).toHaveLength(0);
 	});
 
 	it('overlays lastCommit date onto each project (synced wins)', () => {

@@ -18,12 +18,7 @@
 
 import type { Project, AuthoredProject, Contribution, TechTag } from './types.js';
 import type { SyncedSource } from './index.js';
-import {
-	LANGUAGE_TAGS,
-	RUNTIME_TAGS,
-	FRAMEWORK_TAGS,
-	DATABASE_TAGS
-} from './tag-taxonomy.js';
+import { LANGUAGE_TAGS, RUNTIME_TAGS, FRAMEWORK_TAGS, DATABASE_TAGS } from './tag-taxonomy.js';
 
 // ---------------------------------------------------------------------------
 // Name humanisation
@@ -226,9 +221,7 @@ export function mergeAuthored(base: Project, authored: AuthoredProject | undefin
 		status: authored.status !== undefined ? authored.status : base.status,
 		repoUrl: authored.repoUrl !== undefined ? authored.repoUrl : base.repoUrl,
 		secondaryRepoUrl:
-			authored.secondaryRepoUrl !== undefined
-				? authored.secondaryRepoUrl
-				: base.secondaryRepoUrl,
+			authored.secondaryRepoUrl !== undefined ? authored.secondaryRepoUrl : base.secondaryRepoUrl,
 		liveUrl: authored.liveUrl !== undefined ? authored.liveUrl : base.liveUrl,
 		highlights: authored.highlights !== undefined ? authored.highlights : base.highlights,
 		relationships:

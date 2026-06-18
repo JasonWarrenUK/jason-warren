@@ -31,7 +31,14 @@ export const statusLabel: Record<ProjectStatus, string> = {
 };
 
 /** Ordered status list for legends. Uncategorised last — it's a placeholder. */
-export const statusOrder: ProjectStatus[] = ['live', 'wip', 'finished', 'prototype', 'archived', 'uncategorised'];
+export const statusOrder: ProjectStatus[] = [
+	'live',
+	'wip',
+	'finished',
+	'prototype',
+	'archived',
+	'uncategorised'
+];
 
 /** Human-readable label for an edge kind, phrased from source to target. */
 export function edgeLabel(kind: GraphEdge['kind']): string {
