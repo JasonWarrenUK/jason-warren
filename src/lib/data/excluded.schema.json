@@ -1,0 +1,24 @@
+{
+	"$schema": "http://json-schema.org/draft-07/schema#",
+	"title": "Portfolio exclusion list",
+	"description": "Two-axis exclusion list. repoNames excludes by folder name during the directory scan (before a slug exists); slugs excludes by manifest slug on the public site (after a repo is fingerprinted). Written by `drift exclude <slug>` for the slugs array; repoNames is maintained by hand.",
+	"type": "object",
+	"required": ["repoNames", "slugs"],
+	"additionalProperties": false,
+	"properties": {
+		"$schema": { "type": "string" },
+		"_note": { "type": "string" },
+		"repoNames": {
+			"type": "array",
+			"items": { "type": "string" },
+			"description": "Repository folder names excluded from the directory scan. Used to filter out the portfolio repo itself, non-project repos, split-product sub-repos, and companion repos that are not tracked separately.",
+			"uniqueItems": true
+		},
+		"slugs": {
+			"type": "array",
+			"items": { "type": "string" },
+			"description": "Project slugs (matching sources.json keys) excluded from the public site. A slug here is absent from the projects array, all filter views, the map, the timeline, the sitemap, and OG prerender.",
+			"uniqueItems": true
+		}
+	}
+}

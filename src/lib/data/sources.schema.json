@@ -1,0 +1,141 @@
+{
+	"$schema": "http://json-schema.org/draft-07/schema#",
+	"title": "Portfolio sources manifest",
+	"description": "Last-synced git fingerprints for each portfolio source repo. Written by `scripts/check-drift.js --update`.",
+	"type": "object",
+	"required": ["lastSyncedAt", "sources"],
+	"additionalProperties": false,
+	"properties": {
+		"$schema": { "type": "string" },
+		"_note": { "type": "string" },
+		"_firstCommitNote": { "type": "string" },
+		"firstCommitProvisional": {
+			"type": "boolean",
+			"description": "True while firstCommit values are provisional estimates. Set to false after a real --update sync."
+		},
+		"lastSyncedAt": {
+			"type": "string",
+			"format": "date",
+			"description": "ISO date of the last `--update` run (YYYY-MM-DD)."
+		},
+		"sources": {
+			"type": "object",
+			"description": "Keyed by project slug (matches ProjectSlug in types.ts).",
+			"additionalProperties": {
+				"$ref": "#/$defs/SyncedSource"
+			}
+		}
+	},
+	"$defs": {
+		"SyncedSource": {
+			"type": "object",
+			"additionalProperties": false,
+			"description": "Git fingerprint for one source repo. All fields optional — populated incrementally by check-drift.js.",
+			"properties": {
+				"head": {
+					"type": "string",
+					"description": "Short SHA of HEAD at last sync."
+				},
+				"lastCommit": {
+					"type": "string",
+					"format": "date",
+					"description": "ISO date of the most recent commit."
+				},
+				"firstCommit": {
+					"type": "string",
+					"format": "date",
+					"description": "ISO date of the root commit (project inception)."
+				},
+				"languages": {
+					"type": "array",
+					"items": { "type": "string" },
+					"description": "Languages present in the repo, ordered by file count. Advisory only — language tags are hand-curated."
+				},
+				"linesOfCode": {
+					"type": "integer",
+					"minimum": 0,
+					"description": "Total lines across tracked source files, all authors."
+				},
+				"commits": {
+					"type": "integer",
+					"minimum": 0,
+					"description": "All-authors commit count, lifetime."
+				},
+				"commitsRecentAll": {
+					"type": "integer",
+					"minimum": 0,
+					"description": "All-authors commit count, trailing 4 weeks."
+				},
+				"commitsMine": {
+					"type": "integer",
+					"minimum": 0,
+					"description": "Jason-authored commit count, lifetime."
+				},
+				"commitsRecent": {
+					"type": "integer",
+					"minimum": 0,
+					"description": "Jason-authored commit count, trailing 4 weeks."
+				},
+				"linesAdded": {
+					"type": "integer",
+					"minimum": 0,
+					"description": "Lines added by Jason, lifetime."
+				},
+				"linesRemoved": {
+					"type": "integer",
+					"minimum": 0,
+					"description": "Lines removed by Jason, lifetime."
+				},
+				"linesAddedAll": {
+					"type": "integer",
+					"minimum": 0,
+					"description": "Lines added by all authors, lifetime."
+				},
+				"linesRemovedAll": {
+					"type": "integer",
+					"minimum": 0,
+					"description": "Lines removed by all authors, lifetime."
+				},
+				"linesAddedRecent": {
+					"type": "integer",
+					"minimum": 0,
+					"description": "Lines added by Jason, trailing 4 weeks."
+				},
+				"linesRemovedRecent": {
+					"type": "integer",
+					"minimum": 0,
+					"description": "Lines removed by Jason, trailing 4 weeks."
+				},
+				"linesAddedRecentAll": {
+					"type": "integer",
+					"minimum": 0,
+					"description": "Lines added by all authors, trailing 4 weeks."
+				},
+				"linesRemovedRecentAll": {
+					"type": "integer",
+					"minimum": 0,
+					"description": "Lines removed by all authors, trailing 4 weeks."
+				},
+				"remote": {
+					"type": "string",
+					"description": "HTTPS URL of the primary git remote (git remote get-url origin), normalised from any SSH form. Used as the default repoUrl for un-authored projects."
+				},
+				"runtime": {
+					"type": "array",
+					"items": { "type": "string" },
+					"description": "Runtime identity strings detected by the dependency-manifest parser (e.g. 'bun', 'deno', 'node', 'python', 'go'). Keys match RUNTIME_TAGS in tag-taxonomy.js."
+				},
+				"database": {
+					"type": "array",
+					"items": { "type": "string" },
+					"description": "Database package identities detected by the dependency-manifest parser (e.g. 'pg', '@supabase/supabase-js'). Keys match DATABASE_TAGS in tag-taxonomy.js."
+				},
+				"framework": {
+					"type": "array",
+					"items": { "type": "string" },
+					"description": "Framework package identities detected by the dependency-manifest parser (e.g. 'svelte', '@sveltejs/kit', 'react'). Keys match FRAMEWORK_TAGS in tag-taxonomy.js."
+				}
+			}
+		}
+	}
+}

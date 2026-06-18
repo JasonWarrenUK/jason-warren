@@ -123,7 +123,9 @@ const kindPalette: Record<ProjectKind, Palette> = {
 	toy: { bg: '#241603', accent: '#fbbf24' },
 	library: { bg: '#06231a', accent: '#34d399' },
 	tool: { bg: '#240f16', accent: '#fb7185' },
-	tui: { bg: '#0f1908', accent: '#a3e635' }
+	tui: { bg: '#0f1908', accent: '#a3e635' },
+	// Neutral dark background for repos that haven't been editorially categorised yet.
+	repo: { bg: '#13171d', accent: '#8aa0b8' }
 };
 
 const defaultPalette: Palette = { bg: '#11161f', accent: '#6ea8ff' };
@@ -135,7 +137,8 @@ const kindLabel: Record<ProjectKind, string> = {
 	toy: 'Toy',
 	library: 'Library',
 	tool: 'Tool',
-	tui: 'TUI'
+	tui: 'TUI',
+	repo: 'Repo'
 };
 
 // ---------------------------------------------------------------------------

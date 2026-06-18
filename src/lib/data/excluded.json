@@ -1,0 +1,25 @@
+{
+	"$schema": "./excluded.schema.json",
+	"_note": "Two-axis exclusion list. repoNames gates the directory scan (by repository folder name, before a slug exists). slugs gates the public site (by manifest slug, after a repo has been fingerprinted). Neither list auto-writes project .ts files. Use `drift exclude <slug>` to append to slugs.",
+	"repoNames": [
+		"portfolio",
+		"jason-warren",
+		"node_modules",
+		".git",
+		"JasonWarrenUK",
+		"JasonWarrenUK.github.io",
+		"seam",
+		"terminal-config",
+		"yalla-gym",
+		"beacons-backend",
+		"beacons-frontend-v2",
+		"craft-and-graft-front",
+		"craft-and-graft-api",
+		"sakura-api",
+		"sakura-front",
+		"mood-time-api",
+		"mood-time-front",
+		"mood-time"
+	],
+	"slugs": []
+}

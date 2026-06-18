@@ -50,6 +50,11 @@
 	--color-prototype-bg: var(--color-violet-1);
 	--color-prototype-text: var(--color-violet-6);
 
+	/* Neutral grey for auto-listed repos not yet editorially reviewed. */
+	--color-uncategorised: var(--color-gray-3);
+	--color-uncategorised-bg: var(--color-gray-1);
+	--color-uncategorised-text: var(--color-gray-5);
+
 	/* --- Role colours --- */
 	--color-solo: var(--color-azure-4);
 	--color-solo-bg: var(--color-azure-1);
@@ -192,6 +197,10 @@
 	--color-archived-bg: #1e1e1e;
 	--color-archived-text: var(--color-gray-3);
 
+	--color-uncategorised: var(--color-gray-3);
+	--color-uncategorised-bg: #1a1a1a;
+	--color-uncategorised-text: var(--color-gray-3);
+
 	/* --- Role colours --- */
 	--color-solo-bg: #1c2333;
 	--color-solo-text: var(--color-azure-2);
@@ -263,6 +272,10 @@
 
 		--color-archived-bg: #1e1e1e;
 		--color-archived-text: var(--color-gray-3);
+
+		--color-uncategorised: var(--color-gray-3);
+		--color-uncategorised-bg: #1a1a1a;
+		--color-uncategorised-text: var(--color-gray-3);
 
 		/* --- Role colours --- */
 		--color-solo-bg: #1c2333;

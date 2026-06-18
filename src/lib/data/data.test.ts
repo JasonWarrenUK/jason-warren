@@ -7,11 +7,27 @@
  */
 
 import { describe, it, expect } from 'vitest';
+import { readdirSync } from 'node:fs';
+import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { projects } from './index.js';
 import { getEngineThreads } from './threads.js';
 import sourcesManifest from './sources.json';
 import overridesManifest from './overrides.json';
+import excludedManifest from './excluded.json';
 import type { ProjectSlug } from './types.js';
+
+// Slugs that have a hand-authored .ts file in src/lib/data/projects/.
+// Tests that assert on authored content (highlights, blurb quality, etc.) are
+// gated to these slugs; manifest-only projects legitimately have empty prose.
+const projectsDir = join(fileURLToPath(import.meta.url), '../../data/projects');
+const authoredSlugs = new Set<string>(
+	readdirSync(projectsDir)
+		.filter((f) => f.endsWith('.ts') && !f.endsWith('.test.ts'))
+		.map((f) => f.replace(/\.ts$/, ''))
+);
+
+const excludedSlugs = new Set<string>(excludedManifest.slugs);
 
 // Build a lookup for quick slug resolution
 const projectSlugs = new Set<ProjectSlug>(projects.map((p) => p.slug as ProjectSlug));
@@ -70,25 +86,32 @@ describe('project registry', () => {
 		expect(broken, `Dangling relationship targets:\n${broken.join('\n')}`).toHaveLength(0);
 	});
 
-	it('every team project has a non-empty contributionNote', () => {
+	it('every authored team project has a non-empty contributionNote', () => {
+		// Manifest-only team projects legitimately have no contributionNote: it is
+		// optional on TeamContribution since Phase 1.1 (inferContribution cannot
+		// produce prose). Only authored .ts files are expected to supply a note.
 		const missing: string[] = [];
 		for (const project of projects) {
+			if (!authoredSlugs.has(project.slug)) continue;
 			if (project.contribution.role !== 'solo') {
 				if (!project.contribution.contributionNote?.trim()) {
 					missing.push(project.slug);
 				}
 			}
 		}
-		expect(missing, `Team projects missing contributionNote: ${missing.join(', ')}`).toHaveLength(
-			0
-		);
+		expect(
+			missing,
+			`Authored team projects missing contributionNote: ${missing.join(', ')}`
+		).toHaveLength(0);
 	});
 
-	it('all projects have at least one tag', () => {
-		const untagged = projects.filter((p) => p.tags.length === 0);
+	it('all authored projects have at least one tag', () => {
+		// Manifest-only projects may have no tags until a drift update populates
+		// the languages/runtime/framework/database fields for tag inference.
+		const untagged = projects.filter((p) => authoredSlugs.has(p.slug) && p.tags.length === 0);
 		expect(
 			untagged.map((p) => p.slug),
-			`Projects with no tags: ${untagged.map((p) => p.slug).join(', ')}`
+			`Authored projects with no tags: ${untagged.map((p) => p.slug).join(', ')}`
 		).toHaveLength(0);
 	});
 
@@ -137,17 +160,31 @@ describe('project registry', () => {
 		).toHaveLength(0);
 	});
 
-	it('all projects have at least one highlight', () => {
-		const bare = projects.filter((p) => p.highlights.length === 0);
+	it('every project has a non-empty name and a repoUrl', () => {
+		// Safety contract: the builder must always produce these two required fields.
+		// Empty name or repoUrl means the default builder or overlay merge has a bug.
+		const offenders: string[] = [];
+		for (const project of projects) {
+			if (!project.name.trim()) offenders.push(`${project.slug} (empty name)`);
+			if (!project.repoUrl.trim()) offenders.push(`${project.slug} (empty repoUrl)`);
+		}
+		expect(offenders, `Projects missing name or repoUrl: ${offenders.join(', ')}`).toHaveLength(0);
+	});
+
+	it('all authored projects have at least one highlight', () => {
+		// Manifest-only projects legitimately have empty highlights until authored.
+		const bare = projects.filter((p) => authoredSlugs.has(p.slug) && p.highlights.length === 0);
 		expect(
 			bare.map((p) => p.slug),
-			`Projects with no highlights: ${bare.map((p) => p.slug).join(', ')}`
+			`Authored projects with no highlights: ${bare.map((p) => p.slug).join(', ')}`
 		).toHaveLength(0);
 	});
 
-	it('every project has a short blurb distinct from its tagline', () => {
+	it('every authored project has a short blurb distinct from its tagline', () => {
+		// Manifest-only projects legitimately have empty blurb/tagline (both are '').
 		const offenders: string[] = [];
 		for (const project of projects) {
+			if (!authoredSlugs.has(project.slug)) continue;
 			if (!project.blurb?.trim()) offenders.push(`${project.slug} (empty)`);
 			else if (project.blurb.trim() === project.tagline.trim()) {
 				offenders.push(`${project.slug} (same as tagline)`);
@@ -158,8 +195,11 @@ describe('project registry', () => {
 		expect(offenders, `Blurb problems: ${offenders.join(', ')}`).toHaveLength(0);
 	});
 
-	it('no description still carries the [Placeholder] marker', () => {
-		const placeholders = projects.filter((p) => p.description.includes('[Placeholder]'));
+	it('no authored description still carries the [Placeholder] marker', () => {
+		// Manifest-only descriptions are '' (empty), which does not contain [Placeholder].
+		const placeholders = projects.filter(
+			(p) => authoredSlugs.has(p.slug) && p.description.includes('[Placeholder]')
+		);
 		expect(
 			placeholders.map((p) => p.slug),
 			`Projects with placeholder copy: ${placeholders.map((p) => p.slug).join(', ')}`
@@ -261,12 +301,27 @@ describe('synced metrics from sources.json', () => {
 		}
 	>;
 
-	it('every manifest slug resolves to a curated project (1:1 mapping)', () => {
-		const unknown = Object.keys(synced).filter((k) => !projectSlugs.has(k as ProjectSlug));
-		expect(unknown, `Manifest slugs with no project: ${unknown.join(', ')}`).toHaveLength(0);
+	it('every non-excluded manifest slug appears in the project registry', () => {
+		// After the registry inversion, sources.json drives inclusion:
+		// every manifest slug that is NOT in excluded.json.slugs must be in projects.
+		const missing = Object.keys(synced).filter(
+			(k) => !excludedSlugs.has(k) && !projectSlugs.has(k as ProjectSlug)
+		);
+		expect(
+			missing,
+			`Non-excluded manifest slugs absent from registry: ${missing.join(', ')}`
+		).toHaveLength(0);
 	});
 
-	it('overlays the manifest commit count and date onto each project (synced wins)', () => {
+	it('every project slug is a key in the manifest', () => {
+		// All projects must come from the manifest (no authored-only ghosts).
+		const unknown = projects
+			.map((p) => p.slug)
+			.filter((slug) => !Object.prototype.hasOwnProperty.call(synced, slug));
+		expect(unknown, `Project slugs not in sources.json: ${unknown.join(', ')}`).toHaveLength(0);
+	});
+
+	it('overlays lastCommit date onto each project (synced wins)', () => {
 		const offenders: string[] = [];
 		for (const project of projects) {
 			const source = synced[project.slug];

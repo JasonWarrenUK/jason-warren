@@ -13,9 +13,15 @@
 
 export type ProjectRole = 'solo' | 'lead' | 'collaborator';
 
-export type ProjectStatus = 'live' | 'wip' | 'finished' | 'prototype' | 'archived';
+export type ProjectStatus =
+	| 'live'
+	| 'wip'
+	| 'finished'
+	| 'prototype'
+	| 'archived'
+	| 'uncategorised';
 
-export type ProjectKind = 'app' | 'game' | 'website' | 'toy' | 'library' | 'tool' | 'tui';
+export type ProjectKind = 'app' | 'game' | 'website' | 'toy' | 'library' | 'tool' | 'tui' | 'repo';
 
 export type TagKind = 'language' | 'framework' | 'data' | 'ai' | 'concept' | 'tool' | 'runtime';
 
@@ -132,8 +138,12 @@ interface SoloContribution {
 
 interface TeamContribution {
 	role: 'lead' | 'collaborator';
-	/** Specific verified contributions (PRs, features, line stats). Required. */
-	contributionNote: string;
+	/**
+	 * Specific verified contributions (PRs, features, line stats). Optional because
+	 * manifest-derived team projects have role inferred from commit share but no authored
+	 * note yet. Absent on auto-listed projects; present once editorially authored.
+	 */
+	contributionNote?: string;
 	/** Team or client name, optional. */
 	team?: string;
 }
@@ -141,7 +151,44 @@ interface TeamContribution {
 export type Contribution = SoloContribution | TeamContribution;
 
 // ---------------------------------------------------------------------------
-// Project
+// AuthoredProject — optional overlay written by a human
+// ---------------------------------------------------------------------------
+
+/**
+ * The shape of a hand-authored project overlay (the .ts files under
+ * src/lib/data/projects/). Every field is optional except `slug`, which is
+ * required so the glob assembler can key the overlay without relying on the
+ * camelCase binding name.
+ *
+ * The merged output type (Project) stays fully required: the builder in
+ * defaults.ts fills every field with a safe default derived from the manifest,
+ * then mergeAuthored overlays any field the human actually authored.
+ *
+ * Date fields (firstCommit, lastCommit) are intentionally absent: they come
+ * from the drift manifest only, never from authored files.
+ */
+export interface AuthoredProject {
+	slug: ProjectSlug;
+	name?: string;
+	tagline?: string;
+	blurb?: string;
+	description?: string;
+	kind?: ProjectKind;
+	contribution?: Contribution;
+	tags?: TechTag[];
+	status?: ProjectStatus;
+	repoUrl?: string;
+	secondaryRepoUrl?: string;
+	liveUrl?: string;
+	highlights?: string[];
+	relationships?: ProjectRelationship[];
+	featured?: boolean;
+	flagship?: boolean;
+	metrics?: ProjectMetrics;
+}
+
+// ---------------------------------------------------------------------------
+// Project — the complete merged output; all fields required (never undefined)
 // ---------------------------------------------------------------------------
 
 export interface Project {
@@ -176,46 +223,21 @@ export interface Project {
 }
 
 // ---------------------------------------------------------------------------
-// ProjectSlug — the canonical list; cross-links are compile-time checked.
+// ProjectSlug — dynamic string; safety enforced at build time
 // ---------------------------------------------------------------------------
 
-export type ProjectSlug =
-	// Solo flagships
-	| 'iris'
-	| 'wyrd-tui'
-	| 'rhea'
-	| 'epoch'
-	| 'the-tongue'
-	| 'cogni'
-	| 'sparker'
-	// Solo narrative / games
-	| 'the-work'
-	| 'flyt'
-	| 'those-who-came-before'
-	| 'historia'
-	| 'top-girls'
-	| 'grumble'
-	| 'code-arcana'
-	| 'baby-names'
-	// Solo libraries — engine extraction
-	| 'nib'
-	| 'riffle'
-	| 'schema-forge'
-	// Solo tooling / WIP
-	| 'kamino'
-	| 'lyra-rose'
-	| 'kitchen-gremlin'
-	// Team projects
-	| 'workwise'
-	| 'commons-traybake'
-	| 'psyche'
-	| 'things-we-do'
-	| 'guardrails'
-	| 'redot'
-	| 'chirpdb'
-	| 'fac-cra'
-	// New entries (FAC team + solo)
-	| 'beacons'
-	| 'craft-and-graft'
-	| 'sakura'
-	| 'rimewarden';
+/**
+ * Previously a hand-maintained string-literal union that gave compile-time
+ * cross-link safety. Now a plain string because manifest slugs are discovered
+ * dynamically at build time and cannot be enumerated in a closed union.
+ *
+ * Type safety is preserved at build time through two mechanisms:
+ *   1. themes.ts throws during prerender when a relationship target is not in
+ *      the project registry (the build fails on dangling links).
+ *   2. data.test.ts asserts that every relationship target is a known slug
+ *      (the test suite fails on typos before the build runs).
+ *
+ * What is lost: editor autocomplete on slug string literals. What is kept:
+ * build-time failure on actual typos in overlay files and themes.
+ */
+export type ProjectSlug = string;

@@ -7,16 +7,16 @@
 
 <Seo
 	title="Timeline | Jason Warren"
-	description="Every project ordered by most recent activity, with the engine-extraction lineages drawn between them: which libraries came out of which applications, and when."
+	description="Every project ordered by when it started, most recently begun at the top. Extraction lineages are drawn between them: which libraries came out of which applications, and when."
 />
 
 <div class="page">
 	<header class="page__header">
 		<h1>Timeline</h1>
 		<p class="page__intro">
-			Projects ordered by their most recent activity, newest first. The curves trace extraction
-			lineages: where a library was pulled out of an application, you can see the two threads and
-			how far apart in time they sit.
+			Projects ordered by their inception date, most recently begun at the top. The curves trace
+			extraction lineages: where a library was pulled out of an application, you can see the two
+			threads and how far apart in time they sit.
 		</p>
 	</header>
 
