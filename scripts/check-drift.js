@@ -2099,7 +2099,6 @@ function main() {
 	// "Bare" means: no explicit verb, no positionals, no flags that select a
 	// non-default output mode.
 	const bare =
-		!KNOWN_VERBS.has(positionals[0]) &&
 		positionals.length === 0 &&
 		!values.json &&
 		!values.check &&
