@@ -53,7 +53,7 @@ Work that landed during the build but was not part of any numbered phase in the 
 - **DRIFT wordmark above interactive menu** (`05b487f`) — gum-rendered ASCII wordmark sits above the `gum choose` picker on bare invocation.
 - **`exclude` verb** (`f8d50d2`) — appends a slug to `excluded.json.slugs`; interactive gum confirm gate.
 - **Coverage summary** (`50b3bd9`) — counts manifest slugs, excluded, overlay vs manifest-only; printed at the foot of every report.
-- **Tag taxonomy: SQL as data tag** — `DATABASE_TAGS['SQL']` entry; `inferTags()` special-case routes `.sql` file detection to `kind: 'data'` so `classifyDataLabel` resolves the relational model without a driver dependency.
+- **Tag taxonomy: SQL as data tag** (`fb1cd0d`) — `SQL: { label: 'SQL', kind: 'data' }` entry in `tag-taxonomy.js`; `inferTags()` special-cases the `.sql` file-extension scan to surface SQL as a data signal so the relational model resolves without a driver dependency.
 - **Cleanup: SessionStart hook removed** — `.claude/settings.local.json` `hooks` block is empty; `Bash(node scripts/check-drift.js*)` allow-entry kept for frictionless manual invocation.
 
 ---
