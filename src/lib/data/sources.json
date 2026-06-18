@@ -13,13 +13,7 @@
 			"commitsRecent": 0,
 			"lastCommit": "2026-03-14",
 			"firstCommit": "2026-03-14",
-			"languages": [
-				"TypeScript",
-				"Svelte",
-				"JavaScript",
-				"CSS",
-				"HTML"
-			],
+			"languages": ["TypeScript", "Svelte", "JavaScript", "CSS", "HTML"],
 			"linesOfCode": 2182,
 			"linesAdded": 2815,
 			"linesRemoved": 0,
@@ -30,44 +24,30 @@
 			"linesAddedRecentAll": 0,
 			"linesRemovedRecentAll": 0,
 			"remote": "https://github.com/JasonWarrenUK/baby-names",
-			"runtime": [
-				"bun"
-			],
-			"framework": [
-				"@sveltejs/kit"
-			]
+			"runtime": ["bun"],
+			"framework": ["@sveltejs/kit"]
 		},
 		"chirpdb": {
-			"head": "3650ba7",
-			"commits": 351,
-			"commitsRecentAll": 70,
-			"commitsMine": 50,
-			"commitsRecent": 50,
+			"head": "dc05eaf",
+			"commits": 354,
+			"commitsRecentAll": 73,
+			"commitsMine": 53,
+			"commitsRecent": 53,
 			"lastCommit": "2026-06-18",
 			"firstCommit": "2026-02-23",
-			"languages": [
-				"Python",
-				"SQL",
-				"Shell",
-				"HTML",
-				"JavaScript"
-			],
+			"languages": ["Python", "SQL", "Shell", "HTML", "JavaScript"],
 			"linesOfCode": 15694,
-			"linesAdded": 48412,
-			"linesRemoved": 40664,
-			"linesAddedAll": 87317,
-			"linesRemovedAll": 58525,
-			"linesAddedRecent": 48412,
-			"linesRemovedRecent": 40664,
-			"linesAddedRecentAll": 51212,
-			"linesRemovedRecentAll": 43742,
+			"linesAdded": 48786,
+			"linesRemoved": 40720,
+			"linesAddedAll": 87691,
+			"linesRemovedAll": 58581,
+			"linesAddedRecent": 48786,
+			"linesRemovedRecent": 40720,
+			"linesAddedRecentAll": 51586,
+			"linesRemovedRecentAll": 43798,
 			"remote": "https://github.com/ZigZag-Technology/CHIRPdb",
-			"runtime": [
-				"python"
-			],
-			"framework": [
-				"fastapi"
-			]
+			"runtime": ["python"],
+			"framework": ["fastapi"]
 		},
 		"code-arcana": {
 			"head": "b0d1669",
@@ -77,13 +57,7 @@
 			"commitsRecent": 2,
 			"lastCommit": "2026-06-11",
 			"firstCommit": "2026-06-11",
-			"languages": [
-				"TypeScript",
-				"Svelte",
-				"JavaScript",
-				"CSS",
-				"HTML"
-			],
+			"languages": ["TypeScript", "Svelte", "JavaScript", "CSS", "HTML"],
 			"linesOfCode": 2041,
 			"linesAdded": 8039,
 			"linesRemoved": 0,
@@ -94,12 +68,8 @@
 			"linesAddedRecentAll": 8039,
 			"linesRemovedRecentAll": 0,
 			"remote": "https://github.com/JasonWarrenUK/code-arcana",
-			"runtime": [
-				"deno"
-			],
-			"framework": [
-				"@sveltejs/kit"
-			]
+			"runtime": ["deno"],
+			"framework": ["@sveltejs/kit"]
 		},
 		"cogni": {
 			"head": "41ab4ce",
@@ -109,12 +79,7 @@
 			"commitsRecent": 1,
 			"lastCommit": "2026-06-11",
 			"firstCommit": "2026-03-14",
-			"languages": [
-				"TypeScript",
-				"Svelte",
-				"HTML",
-				"JavaScript"
-			],
+			"languages": ["TypeScript", "Svelte", "HTML", "JavaScript"],
 			"linesOfCode": 9412,
 			"linesAdded": 13318,
 			"linesRemoved": 3273,
@@ -125,12 +90,8 @@
 			"linesAddedRecentAll": 2284,
 			"linesRemovedRecentAll": 3031,
 			"remote": "https://github.com/JasonWarrenUK/cogni",
-			"runtime": [
-				"bun"
-			],
-			"framework": [
-				"@sveltejs/kit"
-			]
+			"runtime": ["bun"],
+			"framework": ["@sveltejs/kit"]
 		},
 		"commons-traybake": {
 			"head": "a0b3c6b",
@@ -140,13 +101,7 @@
 			"commitsRecent": 0,
 			"lastCommit": "2025-11-10",
 			"firstCommit": "2025-10-21",
-			"languages": [
-				"TypeScript",
-				"Svelte",
-				"CSS",
-				"HTML",
-				"JavaScript"
-			],
+			"languages": ["TypeScript", "Svelte", "CSS", "HTML", "JavaScript"],
 			"linesOfCode": 6603,
 			"linesAdded": 6284,
 			"linesRemoved": 270,
@@ -157,16 +112,9 @@
 			"linesAddedRecentAll": 0,
 			"linesRemovedRecentAll": 0,
 			"remote": "https://github.com/fac-31/commons-traybake",
-			"runtime": [
-				"node"
-			],
-			"framework": [
-				"@sveltejs/kit",
-				"express"
-			],
-			"database": [
-				"neo4j-driver"
-			]
+			"runtime": ["node"],
+			"framework": ["@sveltejs/kit", "express"],
+			"database": ["neo4j-driver"]
 		},
 		"epoch": {
 			"head": "655d33f",
@@ -176,12 +124,7 @@
 			"commitsRecent": 2,
 			"lastCommit": "2026-06-14",
 			"firstCommit": "2024-05-17",
-			"languages": [
-				"JavaScript",
-				"Svelte",
-				"CSS",
-				"HTML"
-			],
+			"languages": ["JavaScript", "Svelte", "CSS", "HTML"],
 			"linesOfCode": 2667,
 			"linesAdded": 781,
 			"linesRemoved": 8,
@@ -192,12 +135,8 @@
 			"linesAddedRecentAll": 533,
 			"linesRemovedRecentAll": 55,
 			"remote": "https://github.com/JasonWarrenUK/epoch",
-			"runtime": [
-				"node"
-			],
-			"framework": [
-				"@sveltejs/kit"
-			]
+			"runtime": ["node"],
+			"framework": ["@sveltejs/kit"]
 		},
 		"fac-cra": {
 			"head": "649507fa",
@@ -207,15 +146,7 @@
 			"commitsRecent": 0,
 			"lastCommit": "2026-04-02",
 			"firstCommit": "2023-09-11",
-			"languages": [
-				"JavaScript",
-				"TypeScript",
-				"SQL",
-				"Shell",
-				"HTML",
-				"CSS",
-				"Python"
-			],
+			"languages": ["JavaScript", "TypeScript", "SQL", "Shell", "HTML", "CSS", "Python"],
 			"linesOfCode": 220643,
 			"linesAdded": 31500,
 			"linesRemoved": 28614,
@@ -226,16 +157,9 @@
 			"linesAddedRecentAll": 0,
 			"linesRemovedRecentAll": 0,
 			"remote": "https://github.com/izaakrogan/fac-cra",
-			"runtime": [
-				"node"
-			],
-			"framework": [
-				"react",
-				"express"
-			],
-			"database": [
-				"pg"
-			]
+			"runtime": ["node"],
+			"framework": ["react", "express"],
+			"database": ["pg"]
 		},
 		"flyt": {
 			"head": "b85f752",
@@ -245,14 +169,7 @@
 			"commitsRecent": 0,
 			"lastCommit": "2026-03-11",
 			"firstCommit": "2023-03-27",
-			"languages": [
-				"Svelte",
-				"TypeScript",
-				"Shell",
-				"JavaScript",
-				"CSS",
-				"HTML"
-			],
+			"languages": ["Svelte", "TypeScript", "Shell", "JavaScript", "CSS", "HTML"],
 			"linesOfCode": 3327,
 			"linesAdded": 12,
 			"linesRemoved": 2,
@@ -263,12 +180,8 @@
 			"linesAddedRecentAll": 0,
 			"linesRemovedRecentAll": 0,
 			"remote": "https://github.com/JasonWarrenUK/flyt",
-			"runtime": [
-				"node"
-			],
-			"framework": [
-				"@sveltejs/kit"
-			]
+			"runtime": ["node"],
+			"framework": ["@sveltejs/kit"]
 		},
 		"grumble": {
 			"head": "aac97f2",
@@ -278,13 +191,7 @@
 			"commitsRecent": 11,
 			"lastCommit": "2026-06-14",
 			"firstCommit": "2026-06-14",
-			"languages": [
-				"Svelte",
-				"TypeScript",
-				"CSS",
-				"HTML",
-				"JavaScript"
-			],
+			"languages": ["Svelte", "TypeScript", "CSS", "HTML", "JavaScript"],
 			"linesOfCode": 1638,
 			"linesAdded": 2129,
 			"linesRemoved": 88,
@@ -295,30 +202,18 @@
 			"linesAddedRecentAll": 2129,
 			"linesRemovedRecentAll": 88,
 			"remote": "https://github.com/JasonWarrenUK/grumble",
-			"runtime": [
-				"bun"
-			],
-			"framework": [
-				"@sveltejs/kit"
-			]
+			"runtime": ["bun"],
+			"framework": ["@sveltejs/kit"]
 		},
 		"guardrails": {
-			"head": "b4add34",
-			"commits": 166,
-			"commitsRecentAll": 86,
-			"commitsMine": 72,
-			"commitsRecent": 67,
+			"head": "dc31e44",
+			"commits": 167,
+			"commitsRecentAll": 87,
+			"commitsMine": 73,
+			"commitsRecent": 68,
 			"lastCommit": "2026-06-18",
 			"firstCommit": "2025-12-11",
-			"languages": [
-				"TypeScript",
-				"SQL",
-				"JavaScript",
-				"CSS",
-				"HTML",
-				"Python",
-				"Shell"
-			],
+			"languages": ["TypeScript", "SQL", "JavaScript", "CSS", "HTML", "Python", "Shell"],
 			"linesOfCode": 25352,
 			"linesAdded": 13201,
 			"linesRemoved": 1030,
@@ -329,9 +224,7 @@
 			"linesAddedRecentAll": 10566,
 			"linesRemovedRecentAll": 1770,
 			"remote": "https://github.com/yalla-coop/yalla-labs-guardrails",
-			"runtime": [
-				"node"
-			]
+			"runtime": ["node"]
 		},
 		"historia": {
 			"head": "01f7b8b",
@@ -341,13 +234,7 @@
 			"commitsRecent": 0,
 			"lastCommit": "2026-03-14",
 			"firstCommit": "2026-03-14",
-			"languages": [
-				"Svelte",
-				"TypeScript",
-				"JavaScript",
-				"CSS",
-				"HTML"
-			],
+			"languages": ["Svelte", "TypeScript", "JavaScript", "CSS", "HTML"],
 			"linesOfCode": 3303,
 			"linesAdded": 5309,
 			"linesRemoved": 0,
@@ -358,12 +245,8 @@
 			"linesAddedRecentAll": 0,
 			"linesRemovedRecentAll": 0,
 			"remote": "https://github.com/JasonWarrenUK/historia",
-			"runtime": [
-				"bun"
-			],
-			"framework": [
-				"@sveltejs/kit"
-			]
+			"runtime": ["bun"],
+			"framework": ["@sveltejs/kit"]
 		},
 		"iris": {
 			"head": "1586346",
@@ -373,13 +256,7 @@
 			"commitsRecent": 11,
 			"lastCommit": "2026-06-18",
 			"firstCommit": "2026-01-09",
-			"languages": [
-				"TypeScript",
-				"Rust",
-				"Svelte",
-				"HTML",
-				"JavaScript"
-			],
+			"languages": ["TypeScript", "Rust", "Svelte", "HTML", "JavaScript"],
 			"linesOfCode": 21977,
 			"linesAdded": 121328,
 			"linesRemoved": 30422,
@@ -390,14 +267,8 @@
 			"linesAddedRecentAll": 1620,
 			"linesRemovedRecentAll": 198,
 			"remote": "https://github.com/foundersandcoders/iris",
-			"runtime": [
-				"bun"
-			],
-			"framework": [
-				"@sveltejs/kit",
-				"@opentui/core",
-				"tauri"
-			]
+			"runtime": ["bun"],
+			"framework": ["@sveltejs/kit", "@opentui/core", "tauri"]
 		},
 		"kamino": {
 			"head": "671ae41",
@@ -427,13 +298,7 @@
 			"commitsRecent": 0,
 			"lastCommit": "2026-04-28",
 			"firstCommit": "2026-04-26",
-			"languages": [
-				"TypeScript",
-				"Svelte",
-				"JavaScript",
-				"CSS",
-				"HTML"
-			],
+			"languages": ["TypeScript", "Svelte", "JavaScript", "CSS", "HTML"],
 			"linesOfCode": 3362,
 			"linesAdded": 1166,
 			"linesRemoved": 310,
@@ -444,9 +309,7 @@
 			"linesAddedRecentAll": 0,
 			"linesRemovedRecentAll": 0,
 			"remote": "https://github.com/JasonWarrenUK/kitchen-gremlin",
-			"runtime": [
-				"bun"
-			]
+			"runtime": ["bun"]
 		},
 		"lyra-rose": {
 			"head": "d0c0938",
@@ -456,14 +319,7 @@
 			"commitsRecent": 10,
 			"lastCommit": "2026-06-18",
 			"firstCommit": "2026-04-26",
-			"languages": [
-				"TypeScript",
-				"Svelte",
-				"SQL",
-				"CSS",
-				"HTML",
-				"JavaScript"
-			],
+			"languages": ["TypeScript", "Svelte", "SQL", "CSS", "HTML", "JavaScript"],
 			"linesOfCode": 2465,
 			"linesAdded": 3288,
 			"linesRemoved": 105,
@@ -474,15 +330,9 @@
 			"linesAddedRecentAll": 747,
 			"linesRemovedRecentAll": 70,
 			"remote": "https://github.com/JasonWarrenUK/lyra-rose",
-			"runtime": [
-				"bun"
-			],
-			"framework": [
-				"@sveltejs/kit"
-			],
-			"database": [
-				"@supabase/supabase-js"
-			]
+			"runtime": ["bun"],
+			"framework": ["@sveltejs/kit"],
+			"database": ["@supabase/supabase-js"]
 		},
 		"nib": {
 			"head": "d19cc8a",
@@ -492,9 +342,7 @@
 			"commitsRecent": 0,
 			"lastCommit": "2026-03-11",
 			"firstCommit": "2026-03-11",
-			"languages": [
-				"TypeScript"
-			],
+			"languages": ["TypeScript"],
 			"linesOfCode": 256,
 			"linesAdded": 0,
 			"linesRemoved": 0,
@@ -514,10 +362,7 @@
 			"commitsRecent": 0,
 			"lastCommit": "2025-11-27",
 			"firstCommit": "2025-11-17",
-			"languages": [
-				"C#",
-				"Shell"
-			],
+			"languages": ["C#", "Shell"],
 			"linesOfCode": 6380,
 			"linesAdded": 17243,
 			"linesRemoved": 383,
@@ -537,10 +382,7 @@
 			"commitsRecent": 0,
 			"lastCommit": "2025-10-13",
 			"firstCommit": "2025-09-29",
-			"languages": [
-				"TypeScript",
-				"JavaScript"
-			],
+			"languages": ["TypeScript", "JavaScript"],
 			"linesOfCode": 35629,
 			"linesAdded": 2386,
 			"linesRemoved": 1091,
@@ -551,9 +393,7 @@
 			"linesAddedRecentAll": 0,
 			"linesRemovedRecentAll": 0,
 			"remote": "https://github.com/fac-31/ReDoT",
-			"runtime": [
-				"node"
-			]
+			"runtime": ["node"]
 		},
 		"rhea": {
 			"head": "eb42a9d",
@@ -563,13 +403,7 @@
 			"commitsRecent": 0,
 			"lastCommit": "2026-03-25",
 			"firstCommit": "2025-09-12",
-			"languages": [
-				"TypeScript",
-				"Svelte",
-				"HTML",
-				"JavaScript",
-				"CSS"
-			],
+			"languages": ["TypeScript", "Svelte", "HTML", "JavaScript", "CSS"],
 			"linesOfCode": 26503,
 			"linesAdded": 112532,
 			"linesRemoved": 61487,
@@ -580,12 +414,8 @@
 			"linesAddedRecentAll": 0,
 			"linesRemovedRecentAll": 0,
 			"remote": "https://github.com/foundersandcoders/pedagogue",
-			"runtime": [
-				"node"
-			],
-			"framework": [
-				"@sveltejs/kit"
-			]
+			"runtime": ["node"],
+			"framework": ["@sveltejs/kit"]
 		},
 		"riffle": {
 			"head": "07aba44",
@@ -595,9 +425,7 @@
 			"commitsRecent": 0,
 			"lastCommit": "2026-03-12",
 			"firstCommit": "2026-03-11",
-			"languages": [
-				"TypeScript"
-			],
+			"languages": ["TypeScript"],
 			"linesOfCode": 1183,
 			"linesAdded": 87,
 			"linesRemoved": 1,
@@ -617,9 +445,7 @@
 			"commitsRecent": 0,
 			"lastCommit": "2026-03-12",
 			"firstCommit": "2026-03-12",
-			"languages": [
-				"TypeScript"
-			],
+			"languages": ["TypeScript"],
 			"linesOfCode": 2057,
 			"linesAdded": 1,
 			"linesRemoved": 0,
@@ -639,13 +465,7 @@
 			"commitsRecent": 0,
 			"lastCommit": "2026-03-05",
 			"firstCommit": "2024-05-17",
-			"languages": [
-				"TypeScript",
-				"Svelte",
-				"CSS",
-				"HTML",
-				"JavaScript"
-			],
+			"languages": ["TypeScript", "Svelte", "CSS", "HTML", "JavaScript"],
 			"linesOfCode": 1759,
 			"linesAdded": 789,
 			"linesRemoved": 8,
@@ -656,15 +476,9 @@
 			"linesAddedRecentAll": 0,
 			"linesRemovedRecentAll": 0,
 			"remote": "https://github.com/JasonWarrenUK/sparker",
-			"runtime": [
-				"node"
-			],
-			"framework": [
-				"@sveltejs/kit"
-			],
-			"database": [
-				"neo4j-driver"
-			]
+			"runtime": ["node"],
+			"framework": ["@sveltejs/kit"],
+			"database": ["neo4j-driver"]
 		},
 		"the-tongue": {
 			"head": "5482548",
@@ -674,13 +488,7 @@
 			"commitsRecent": 7,
 			"lastCommit": "2026-06-14",
 			"firstCommit": "2026-06-14",
-			"languages": [
-				"TypeScript",
-				"Svelte",
-				"CSS",
-				"HTML",
-				"JavaScript"
-			],
+			"languages": ["TypeScript", "Svelte", "CSS", "HTML", "JavaScript"],
 			"linesOfCode": 909,
 			"linesAdded": 2352,
 			"linesRemoved": 25,
@@ -691,12 +499,8 @@
 			"linesAddedRecentAll": 2352,
 			"linesRemovedRecentAll": 25,
 			"remote": "https://github.com/JasonWarrenUK/the-tongue",
-			"runtime": [
-				"bun"
-			],
-			"framework": [
-				"@sveltejs/kit"
-			]
+			"runtime": ["bun"],
+			"framework": ["@sveltejs/kit"]
 		},
 		"the-work": {
 			"head": "e29856b",
@@ -706,13 +510,7 @@
 			"commitsRecent": 0,
 			"lastCommit": "2026-05-18",
 			"firstCommit": "2023-03-23",
-			"languages": [
-				"Svelte",
-				"TypeScript",
-				"HTML",
-				"CSS",
-				"JavaScript"
-			],
+			"languages": ["Svelte", "TypeScript", "HTML", "CSS", "JavaScript"],
 			"linesOfCode": 5050,
 			"linesAdded": 15786,
 			"linesRemoved": 286,
@@ -723,12 +521,8 @@
 			"linesAddedRecentAll": 0,
 			"linesRemovedRecentAll": 0,
 			"remote": "https://github.com/JasonWarrenUK/the-work",
-			"runtime": [
-				"bun"
-			],
-			"framework": [
-				"@sveltejs/kit"
-			]
+			"runtime": ["bun"],
+			"framework": ["@sveltejs/kit"]
 		},
 		"things-we-do": {
 			"head": "4e47c16",
@@ -738,11 +532,7 @@
 			"commitsRecent": 0,
 			"lastCommit": "2024-12-19",
 			"firstCommit": "2024-11-25",
-			"languages": [
-				"TypeScript",
-				"JavaScript",
-				"CSS"
-			],
+			"languages": ["TypeScript", "JavaScript", "CSS"],
 			"linesOfCode": 7403,
 			"linesAdded": 6724,
 			"linesRemoved": 2953,
@@ -753,15 +543,9 @@
 			"linesAddedRecentAll": 0,
 			"linesRemovedRecentAll": 0,
 			"remote": "https://github.com/fac30/things-we-do",
-			"runtime": [
-				"node"
-			],
-			"framework": [
-				"next"
-			],
-			"database": [
-				"rxdb"
-			]
+			"runtime": ["node"],
+			"framework": ["next"],
+			"database": ["rxdb"]
 		},
 		"those-who-came-before": {
 			"head": "2a9d7a6",
@@ -771,13 +555,7 @@
 			"commitsRecent": 0,
 			"lastCommit": "2026-02-16",
 			"firstCommit": "2023-09-09",
-			"languages": [
-				"TypeScript",
-				"Svelte",
-				"HTML",
-				"CSS",
-				"JavaScript"
-			],
+			"languages": ["TypeScript", "Svelte", "HTML", "CSS", "JavaScript"],
 			"linesOfCode": 272,
 			"linesAdded": 23279,
 			"linesRemoved": 12584,
@@ -797,14 +575,7 @@
 			"commitsRecent": 33,
 			"lastCommit": "2026-06-16",
 			"firstCommit": "2026-06-14",
-			"languages": [
-				"TypeScript",
-				"Svelte",
-				"Shell",
-				"CSS",
-				"HTML",
-				"JavaScript"
-			],
+			"languages": ["TypeScript", "Svelte", "Shell", "CSS", "HTML", "JavaScript"],
 			"linesOfCode": 3610,
 			"linesAdded": 4795,
 			"linesRemoved": 612,
@@ -815,12 +586,8 @@
 			"linesAddedRecentAll": 4795,
 			"linesRemovedRecentAll": 612,
 			"remote": "https://github.com/JasonWarrenUK/top-girls",
-			"runtime": [
-				"bun"
-			],
-			"framework": [
-				"svelte"
-			]
+			"runtime": ["bun"],
+			"framework": ["svelte"]
 		},
 		"workwise": {
 			"head": "ec6516d",
@@ -830,15 +597,7 @@
 			"commitsRecent": 0,
 			"lastCommit": "2025-11-01",
 			"firstCommit": "2025-05-28",
-			"languages": [
-				"TypeScript",
-				"Svelte",
-				"SQL",
-				"Shell",
-				"JavaScript",
-				"HTML",
-				"CSS"
-			],
+			"languages": ["TypeScript", "Svelte", "SQL", "Shell", "JavaScript", "HTML", "CSS"],
 			"linesOfCode": 12303,
 			"linesAdded": 16608,
 			"linesRemoved": 9090,
@@ -849,15 +608,9 @@
 			"linesAddedRecentAll": 0,
 			"linesRemovedRecentAll": 0,
 			"remote": "https://github.com/foundersandcoders/workwise",
-			"runtime": [
-				"node"
-			],
-			"framework": [
-				"@sveltejs/kit"
-			],
-			"database": [
-				"@supabase/supabase-js"
-			]
+			"runtime": ["node"],
+			"framework": ["@sveltejs/kit"],
+			"database": ["@supabase/supabase-js"]
 		},
 		"wyrd-tui": {
 			"head": "521294d",
@@ -867,10 +620,7 @@
 			"commitsRecent": 112,
 			"lastCommit": "2026-06-15",
 			"firstCommit": "2026-03-18",
-			"languages": [
-				"Go",
-				"HTML"
-			],
+			"languages": ["Go", "HTML"],
 			"linesOfCode": 43949,
 			"linesAdded": 57962,
 			"linesRemoved": 8415,
@@ -881,9 +631,7 @@
 			"linesAddedRecentAll": 12657,
 			"linesRemovedRecentAll": 1377,
 			"remote": "https://github.com/JasonWarrenUK/wyrd",
-			"runtime": [
-				"go"
-			]
+			"runtime": ["go"]
 		},
 		"beacons": {
 			"head": "0102f4a",
@@ -893,9 +641,7 @@
 			"commitsRecent": 0,
 			"lastCommit": "2025-11-06",
 			"firstCommit": "2025-01-14",
-			"languages": [
-				"TypeScript"
-			],
+			"languages": ["TypeScript"],
 			"linesOfCode": 2531,
 			"linesAdded": 20408,
 			"linesRemoved": 15377,
@@ -915,12 +661,7 @@
 			"commitsRecent": 0,
 			"lastCommit": "2024-10-31",
 			"firstCommit": "2024-10-15",
-			"languages": [
-				"TypeScript",
-				"JavaScript",
-				"HTML",
-				"CSS"
-			],
+			"languages": ["TypeScript", "JavaScript", "HTML", "CSS"],
 			"linesOfCode": 1145,
 			"linesAdded": 1599561,
 			"linesRemoved": 1578519,
@@ -931,12 +672,8 @@
 			"linesAddedRecentAll": 0,
 			"linesRemovedRecentAll": 0,
 			"remote": "https://github.com/fac30/craft-and-graft-front",
-			"runtime": [
-				"node"
-			],
-			"framework": [
-				"react"
-			]
+			"runtime": ["node"],
+			"framework": ["react"]
 		},
 		"sakura": {
 			"head": "41e03f7",
@@ -946,9 +683,7 @@
 			"commitsRecent": 0,
 			"lastCommit": "2024-11-21",
 			"firstCommit": "2024-11-12",
-			"languages": [
-				"C#"
-			],
+			"languages": ["C#"],
 			"linesOfCode": 5370,
 			"linesAdded": 5202,
 			"linesRemoved": 2404,
@@ -968,13 +703,7 @@
 			"commitsRecent": 0,
 			"lastCommit": "2026-01-24",
 			"firstCommit": "2026-01-24",
-			"languages": [
-				"Svelte",
-				"TypeScript",
-				"JavaScript",
-				"CSS",
-				"HTML"
-			],
+			"languages": ["Svelte", "TypeScript", "JavaScript", "CSS", "HTML"],
 			"linesOfCode": 920,
 			"linesAdded": 1772,
 			"linesRemoved": 21,
@@ -985,12 +714,8 @@
 			"linesAddedRecentAll": 0,
 			"linesRemovedRecentAll": 0,
 			"remote": "https://github.com/JasonWarrenUK/rimewarden",
-			"runtime": [
-				"bun"
-			],
-			"framework": [
-				"@sveltejs/kit"
-			]
+			"runtime": ["bun"],
+			"framework": ["@sveltejs/kit"]
 		}
 	}
 }

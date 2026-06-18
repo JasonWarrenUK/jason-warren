@@ -38,6 +38,15 @@ const excludedPath = join(repoRoot, 'src/lib/data/excluded.json');
 const projectsDir = join(repoRoot, 'src/lib/data/projects');
 
 // ---------------------------------------------------------------------------
+// File helpers
+// ---------------------------------------------------------------------------
+
+function writeJson(filePath, data) {
+	writeFileSync(filePath, JSON.stringify(data, null, '\t') + '\n', 'utf8');
+	spawnSync('npx', ['prettier', '--write', filePath], { stdio: 'ignore' });
+}
+
+// ---------------------------------------------------------------------------
 // Git helpers
 // ---------------------------------------------------------------------------
 
@@ -1244,7 +1253,7 @@ function runUpdate({ result, manifest, palette, useGum }) {
 	}
 	const today = new Date().toISOString().slice(0, 10);
 	manifest.lastSyncedAt = today;
-	writeFileSync(sourcesPath, JSON.stringify(manifest, null, '\t') + '\n', 'utf8');
+	writeJson(sourcesPath, manifest);
 	console.log(`${GREEN}sources.json updated.${RESET}`);
 }
 
@@ -1327,7 +1336,7 @@ function runAccept({ result, args, acceptAll, allProjects, palette }) {
 	}
 
 	if (accepted > 0) {
-		writeFileSync(overridesPath, JSON.stringify(overridesManifest, null, '\t') + '\n', 'utf8');
+		writeJson(overridesPath, overridesManifest);
 	}
 }
 
@@ -1400,7 +1409,7 @@ function runExclude({ args, manifest, palette }) {
 	}
 
 	excluded.slugs = [...excluded.slugs, slug].sort();
-	writeFileSync(excludedPath, JSON.stringify(excluded, null, '\t') + '\n', 'utf8');
+	writeJson(excludedPath, excluded);
 	process.stdout.write(
 		`${GREEN}${BOLD}Excluded:${RESET} '${slug}' added to excluded.json.slugs.\n` +
 			`Rebuild the site to remove it from the public portfolio.\n`
