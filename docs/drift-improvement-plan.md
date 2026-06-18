@@ -84,15 +84,15 @@ All bullets landed in `932868f` (Phase 1 baseline) and subsequent commits on the
 
 ---
 
-## Phase 3 — ⬜ Write safety (`fix/drift-update-safety`)
+## Phase 3 — 🟡 Write safety (`fix/drift-update-safety`)
 
 **Goal:** make writes safe and targeted.
 
-- **Discriminated `git()` result.** Capture stderr (currently discarded) and return `{ ok: true, out } | { ok: false, err }`, so a git failure (lock file, dubious-ownership `safe.directory`, mid-rebase) is distinguishable from a true empty result.
-- **Null-safe `update`.** Replace whole-object replacement with a field-merge that only overwrites when the fresh value is non-null; warn which fields were preserved.
-- **Per-repo `update <slug...>`.** Refresh one repo without rewriting all N.
-- **`--dry-run`.** Field-level diff of what `update` would change, before writing.
-- **Clear `firstCommitProvisional`.** `update` should flip it false once real root-commit dates are written.
+- ✅ **Discriminated `git()` result.** `git()` returns `{ ok: true, out } | { ok: false, err }`; all callers check `.ok`. Shipped `fab885d`.
+- ✅ **Null-safe `update`.** Field-merge in `runUpdate` only overwrites when the fresh value is non-null; warns which fields were preserved. Shipped `fab885d`.
+- ⬜ **Per-repo `update <slug...>`.** Refresh one repo without rewriting all N. (`args` not yet forwarded to `runUpdate`.)
+- ⬜ **`--dry-run`.** Field-level diff of what `update` would change, before writing.
+- 🟡 **Clear `firstCommitProvisional`.** Schema field exists in `sources.schema.json` ("Set to false after a real --update sync") but code never reads or writes it.
 
 **Files:** `scripts/check-drift.js`.
 
@@ -189,9 +189,9 @@ Substantially complete. `gum` capability gate mirrors the `_wot-interactive` idi
 
 ## Suggested sequencing (revised)
 
-Phase 3 (write safety) is now the highest-value near-term work: null clobber on a failed git subprocess is an active risk. Phase 2 (performance) becomes more relevant once Phase 6's multi-repo support makes the scan larger. Phase 5 unblocks Phase 6. Phase 8 last.
+Phase 3's two safety-critical items (discriminated `git()` result, null-safe update) are shipped. The three remaining Phase 3 items (scoped update, `--dry-run`, `firstCommitProvisional`) are the current near-term work. Phase 2 (performance) becomes more relevant once Phase 6's multi-repo support makes the scan larger. Phase 5 unblocks Phase 6. Phase 8 last.
 
-`3 → 2 → 4 (remaining) → 5 → 6 → 7 (gum spin) → 8`
+`3 (remaining: scoped update + dry-run + provisional) → 2 → 4 (remaining) → 5 → 6 → 7 (gum spin) → 8`
 
 ---
 
