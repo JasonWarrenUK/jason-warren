@@ -38,16 +38,27 @@ const excludedPath = join(repoRoot, 'src/lib/data/excluded.json');
 const projectsDir = join(repoRoot, 'src/lib/data/projects');
 
 // ---------------------------------------------------------------------------
+// File helpers
+// ---------------------------------------------------------------------------
+
+function writeJson(filePath, data) {
+	writeFileSync(filePath, JSON.stringify(data, null, '\t') + '\n', 'utf8');
+	spawnSync('npx', ['prettier', '--write', filePath], { stdio: 'ignore' });
+}
+
+// ---------------------------------------------------------------------------
 // Git helpers
 // ---------------------------------------------------------------------------
 
 function git(args, cwd) {
 	try {
-		return execSync(`git ${args}`, { cwd, stdio: ['ignore', 'pipe', 'ignore'] })
+		const out = execSync(`git ${args}`, { cwd, stdio: ['ignore', 'pipe', 'pipe'] })
 			.toString()
 			.trim();
-	} catch {
-		return null;
+		return { ok: true, out };
+	} catch (error) {
+		const err = (error.stderr?.toString() || error.message || '').trim();
+		return { ok: false, err };
 	}
 }
 
@@ -96,8 +107,9 @@ const ARRAY_FINGERPRINT_FIELDS = new Set(['languages', 'runtime', 'database', 'f
 
 /** Languages present in the repo, ordered by file count (most prevalent first). */
 function detectLanguages(repoPath) {
-	const listing = git('ls-files', repoPath);
-	if (!listing) return [];
+	const r = git('ls-files', repoPath);
+	if (!r.ok) return [];
+	const listing = r.out;
 	const counts = new Map();
 	for (const file of listing.split('\n')) {
 		const dot = file.lastIndexOf('.');
@@ -115,8 +127,9 @@ function detectLanguages(repoPath) {
  * assets stay out of the count.
  */
 function countLinesOfCode(repoPath) {
-	const listing = git('ls-files', repoPath);
-	if (!listing) return null;
+	const r = git('ls-files', repoPath);
+	if (!r.ok) return null;
+	const listing = r.out;
 	let total = 0;
 	for (const file of listing.split('\n')) {
 		const dot = file.lastIndexOf('.');
@@ -147,8 +160,8 @@ function countCommits(repoPath, { mine = false, recent = false } = {}) {
 	if (recent) flags.push(`--since="${RECENT_WINDOW}"`);
 	if (mine) flags.push('--extended-regexp', `--author="${AUTHOR_PATTERN}"`);
 	flags.push('HEAD');
-	const out = git(flags.join(' '), repoPath);
-	return out === null ? null : Number(out);
+	const r = git(flags.join(' '), repoPath);
+	return r.ok ? Number(r.out) : null;
 }
 
 /**
@@ -165,11 +178,11 @@ function countChurn(repoPath, { mine = false, recent = false } = {}) {
 	if (recent) flags.push(`--since="${RECENT_WINDOW}"`);
 	if (mine) flags.push('--extended-regexp', `--author="${AUTHOR_PATTERN}"`);
 	flags.push('--pretty=tformat:', '--numstat', 'HEAD');
-	const out = git(flags.join(' '), repoPath);
-	if (out === null) return { added: null, removed: null };
+	const r = git(flags.join(' '), repoPath);
+	if (!r.ok) return { added: null, removed: null };
 	let added = 0;
 	let removed = 0;
-	for (const line of out.split('\n')) {
+	for (const line of r.out.split('\n')) {
 		if (!line.trim()) continue;
 		const [a, r] = line.split('\t');
 		if (a === '-' || r === '-') continue; // binary file, no line counts
@@ -182,11 +195,11 @@ function countChurn(repoPath, { mine = false, recent = false } = {}) {
 /** ISO date of the earliest root commit, the project's inception. */
 function getFirstCommit(repoPath) {
 	const roots = git('log --max-parents=0 --format=%cs', repoPath);
-	if (roots) {
-		return roots.split('\n').sort()[0];
+	if (roots.ok && roots.out) {
+		return roots.out.split('\n').sort()[0];
 	}
 	const reversed = git('log --reverse --format=%cs', repoPath);
-	return reversed ? reversed.split('\n')[0] : null;
+	return reversed.ok && reversed.out ? reversed.out.split('\n')[0] : null;
 }
 
 /**
@@ -342,9 +355,11 @@ function normaliseRemote(rawRemote) {
 
 function getFingerprint(repoPath) {
 	if (!existsSync(join(repoPath, '.git'))) return null;
-	const head = git('rev-parse --short HEAD', repoPath);
-	const lastCommit = git('log -1 --format=%cs', repoPath);
-	if (!head) return null;
+	const headR = git('rev-parse --short HEAD', repoPath);
+	if (!headR.ok || !headR.out) return null;
+	const head = headR.out;
+	const lcR = git('log -1 --format=%cs', repoPath);
+	const lastCommit = lcR.ok ? lcR.out : null;
 
 	// Commit grid: all/mine × lifetime/recent
 	const commits = countCommits(repoPath); // all, lifetime
@@ -359,8 +374,8 @@ function getFingerprint(repoPath) {
 	const churnAllRecent = countChurn(repoPath, { recent: true }); // all, recent
 
 	const { runtime, framework, database } = detectDependencies(repoPath);
-	const rawRemote = git('remote get-url origin', repoPath);
-	const remote = normaliseRemote(rawRemote);
+	const remoteR = git('remote get-url origin', repoPath);
+	const remote = normaliseRemote(remoteR.ok ? remoteR.out : null);
 
 	return {
 		head,
@@ -1197,7 +1212,7 @@ function runReport({ result, manifest, palette, json, full, useGum }) {
 
 function runUpdate({ result, manifest, palette, useGum }) {
 	const { fresh } = result;
-	const { GREEN, RESET } = palette;
+	const { GREEN, YELLOW, RESET } = palette;
 
 	if (Object.keys(fresh).length === 0) return;
 
@@ -1215,13 +1230,30 @@ function runUpdate({ result, manifest, palette, useGum }) {
 
 	// Backfill every resolvable repo, not just those whose head moved, so new
 	// fields (firstCommit, languages) populate across the whole manifest.
+	// Field-merge: only overwrite when the fresh value is non-null, so a transient
+	// git failure cannot clobber previously-good data with a null.
 	console.log('Updating sources.json with current fingerprints...');
 	for (const [slug, current] of Object.entries(fresh)) {
-		manifest.sources[slug] = current;
+		const saved = manifest.sources[slug] ?? {};
+		const merged = { ...saved };
+		const preserved = [];
+		for (const [field, value] of Object.entries(current)) {
+			if (value === null && saved[field] != null) {
+				preserved.push(field);
+			} else {
+				merged[field] = value;
+			}
+		}
+		manifest.sources[slug] = merged;
+		if (preserved.length > 0) {
+			console.log(
+				`${YELLOW}${slug}: preserved ${preserved.join(', ')} from saved entry (git returned no value)${RESET}`
+			);
+		}
 	}
 	const today = new Date().toISOString().slice(0, 10);
 	manifest.lastSyncedAt = today;
-	writeFileSync(sourcesPath, JSON.stringify(manifest, null, '\t') + '\n', 'utf8');
+	writeJson(sourcesPath, manifest);
 	console.log(`${GREEN}sources.json updated.${RESET}`);
 }
 
@@ -1304,7 +1336,7 @@ function runAccept({ result, args, acceptAll, allProjects, palette }) {
 	}
 
 	if (accepted > 0) {
-		writeFileSync(overridesPath, JSON.stringify(overridesManifest, null, '\t') + '\n', 'utf8');
+		writeJson(overridesPath, overridesManifest);
 	}
 }
 
@@ -1377,7 +1409,7 @@ function runExclude({ args, manifest, palette }) {
 	}
 
 	excluded.slugs = [...excluded.slugs, slug].sort();
-	writeFileSync(excludedPath, JSON.stringify(excluded, null, '\t') + '\n', 'utf8');
+	writeJson(excludedPath, excluded);
 	process.stdout.write(
 		`${GREEN}${BOLD}Excluded:${RESET} '${slug}' added to excluded.json.slugs.\n` +
 			`Rebuild the site to remove it from the public portfolio.\n`
