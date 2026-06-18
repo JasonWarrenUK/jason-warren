@@ -155,5 +155,9 @@ export const DATABASE_TAGS = {
 	rxdb: { label: 'RxDB', kind: 'data' },
 	psycopg2: { label: 'PostgreSQL', kind: 'data' },
 	psycopg: { label: 'PostgreSQL', kind: 'data' },
-	sqlalchemy: { label: 'SQLAlchemy', kind: 'data' }
+	sqlalchemy: { label: 'SQLAlchemy', kind: 'data' },
+	// Keyed by the language name EXTENSION_LANGUAGE produces (not a package name),
+	// so inferTags can surface SQL as a data signal from the file-extension scan
+	// when no driver dependency (pg, psycopg, etc.) is present.
+	SQL: { label: 'SQL', kind: 'data' }
 };

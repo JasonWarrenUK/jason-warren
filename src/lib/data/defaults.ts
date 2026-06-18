@@ -67,6 +67,10 @@ export function humaniseSlug(slug: string): string {
  * Maps languages via LANGUAGE_TAGS, and runtime/framework/database via their
  * respective taxonomy maps. Deduplicates by (kind, label) pair.
  * Returns [] when nothing maps (never crashes).
+ *
+ * Special case: 'SQL' in manifest.languages is surfaced as a data tag (not a
+ * language tag) because SQL is a persistence signal. card.ts has no SQL glyph,
+ * but classifyDataLabel correctly routes the 'SQL' label to the relational model.
  */
 export function inferTags(manifest: SyncedSource): TechTag[] {
 	const seen = new Set<string>();
@@ -84,6 +88,14 @@ export function inferTags(manifest: SyncedSource): TechTag[] {
 	for (const lang of manifest.languages ?? []) {
 		const tag = LANGUAGE_TAGS[lang];
 		if (tag) add(tag as TechTag);
+	}
+
+	// SQL is a data/persistence signal, not a glyph-row language, so it has no
+	// LANGUAGE_TAGS entry. If the file-extension scan found .sql files, surface
+	// it as a data tag (kind: 'data') so classifyDataLabel can resolve 'relational'.
+	// This fires even when no database driver (pg, psycopg, etc.) is present.
+	if ((manifest.languages ?? []).includes('SQL')) {
+		add(DATABASE_TAGS['SQL'] as TechTag);
 	}
 
 	// Runtime from dependency-manifest parser

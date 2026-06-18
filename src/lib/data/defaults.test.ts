@@ -100,6 +100,33 @@ describe('inferTags', () => {
 		expect(postgresCount).toBe(1);
 	});
 
+	it('surfaces SQL from languages as a data tag (not a language tag)', () => {
+		// .sql files populate manifest.languages with 'SQL', but LANGUAGE_TAGS has no
+		// SQL entry. The special-case path must surface it as kind: 'data' so that
+		// card.ts classifyDataLabel can resolve the relational data model.
+		const manifest: SyncedSource = { languages: ['TypeScript', 'SQL'] };
+		const tags = inferTags(manifest);
+		expect(tags).toContainEqual({ label: 'SQL', kind: 'data' });
+		// SQL must NOT also appear as a language tag
+		const sqlLanguageTags = tags.filter((t) => t.kind === 'language' && t.label === 'SQL');
+		expect(sqlLanguageTags).toHaveLength(0);
+	});
+
+	it('does not add a duplicate Svelte language tag when @sveltejs/kit is present', () => {
+		// Svelte is surfaced via the framework dependency path (@sveltejs/kit → SvelteKit).
+		// A .svelte file in languages would yield 'Svelte' in manifest.languages, but
+		// LANGUAGE_TAGS has no 'Svelte' entry, so it drops silently — no duplicate.
+		const manifest: SyncedSource = {
+			languages: ['TypeScript', 'Svelte'],
+			framework: ['@sveltejs/kit']
+		};
+		const tags = inferTags(manifest);
+		expect(tags).toContainEqual({ label: 'SvelteKit', kind: 'framework' });
+		// No bare 'Svelte' language tag should appear alongside 'SvelteKit'
+		const svelteLangTags = tags.filter((t) => t.kind === 'language' && t.label === 'Svelte');
+		expect(svelteLangTags).toHaveLength(0);
+	});
+
 	it('keeps language Go and runtime Go as separate tags', () => {
 		// Go appears in languages (kind: 'language') and runtime (kind: 'runtime');
 		// they must NOT collapse because (kind, label) pairs differ.
