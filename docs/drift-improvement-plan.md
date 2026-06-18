@@ -71,16 +71,16 @@ All bullets landed in `932868f` (Phase 1 baseline) and subsequent commits on the
 
 ---
 
-## Phase 2 — ⬜ Fingerprint performance (`perf/drift-fingerprint`)
+## Phase 2 — ✅ Fingerprint performance (`perf/drift-fingerprint`)
 
 **Goal:** make the fingerprint pass fast and responsive. Add an optional cache so repeated runs are cheap.
 
-- Convert `git()` from `execSync` to async `execFile`; replace the serial `for` loop with bounded-concurrency fan-out. Drops wall-clock from ~serial-N-subprocess to concurrency-limited.
-- De-duplicate the double `ls-files` (`detectLanguages` and `countLinesOfCode` each run it; fetch once, share).
-- HEAD-SHA cache: a gitignored `src/lib/data/.drift-cache.json` storing per-repo `head` + last-run timestamp. Skip a repo's full fingerprint when `HEAD` is unchanged. `--no-cache`/`--force` bypass; `update` always bypasses.
-- Optional source-repo git hook: document an opt-in `post-commit`/`post-merge` snippet for source repos that runs `drift update --only <thisRepo>`. Ship as a `docs/` example, not auto-installed.
+- ✅ **Async fan-out.** `git()` converted from `execSync` to `execFile` (promisified); `getFingerprint` runs all independent git calls concurrently via `Promise.all`; `computeDrift` uses a bounded-concurrency worker pool (`os.cpus().length` workers). Wall-clock dropped ~8× on the 33-repo set (~5.8s cold → ~0.7s warm).
+- ✅ **De-duplicated `ls-files`.** `detectLanguages` and `countLinesOfCode` now share a single `listFiles()` result per repo instead of each spawning `git ls-files` independently.
+- ✅ **HEAD+TTL cache.** Gitignored `src/lib/data/.drift-cache.json` caches per-repo `{ head, fingerprint, syncedAt }`. Cache hit requires HEAD match AND entry age < 24h (so windowed metrics never go stale indefinitely). `update`, `--full`, and `--no-cache` all bypass.
+- ✅ **Opt-in source-repo git hook example.** `docs/drift-post-commit-hook.example.sh` — a `post-commit`/`post-merge` snippet a source repo can install to run `drift update <slug>` after each commit. Not auto-installed.
 
-**Files:** `scripts/check-drift.js`, `.gitignore`, `docs/`.
+**Files:** `scripts/check-drift.js`, `.gitignore`, `docs/drift-post-commit-hook.example.sh`.
 
 ---
 
@@ -191,7 +191,7 @@ Substantially complete. `gum` capability gate mirrors the `_wot-interactive` idi
 
 Phase 3's two safety-critical items (discriminated `git()` result, null-safe update) are shipped. The three remaining Phase 3 items (scoped update, `--dry-run`, `firstCommitProvisional`) are the current near-term work. Phase 2 (performance) becomes more relevant once Phase 6's multi-repo support makes the scan larger. Phase 5 unblocks Phase 6. Phase 8 last.
 
-`3 (remaining: scoped update + dry-run + provisional) → 2 → 4 (remaining) → 5 → 6 → 7 (gum spin) → 8`
+`4 (remaining) → 5 → 6 → 7 (gum spin) → 8`
 
 ---
 
