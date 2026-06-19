@@ -21,9 +21,9 @@ export const schemaForge: Project = {
 	],
 	relationships: [
 		{
-			kind: 'related',
+			kind: 'powers',
 			target: 'iris',
-			note: 'The XSD parsing and validation approach here informed and relates to the schema system in Iris.'
+			note: 'Schema Forge crystallised the XSD parsing and validation approach into a standalone library that powers the Iris ILR toolkit.'
 		}
 	],
 	featured: false,

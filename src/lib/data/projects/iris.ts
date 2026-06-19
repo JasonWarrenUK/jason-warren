@@ -21,9 +21,9 @@ export const iris: Project = {
 	],
 	relationships: [
 		{
-			kind: 'related',
+			kind: 'extracted-from',
 			target: 'schema-forge',
-			note: 'The XSD parsing and validation approach in schema-forge grew out of the same problem domain as iris.'
+			note: 'The XSD parsing and validation core was extracted from Iris into the standalone Schema Forge library.'
 		}
 	],
 	featured: true,
