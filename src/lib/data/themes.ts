@@ -43,7 +43,7 @@ export const themes: Theme[] = [
 		name: 'Interactive Fiction & Narrative Systems',
 		blurb:
 			'Branching stories and the engines that run them: a Norse flyting duel, an overnight thesis game, a reactive card-engine, and the minimal Ink runtime extracted out of them.',
-		slugs: ['the-work', 'flyt', 'riffle', 'nib']
+		slugs: ['the-work', 'flyt', 'riffle', 'nib', 'epoch', 'those-who-came-before', 'psyche']
 	},
 	{
 		id: 'procedural-generation',
@@ -64,7 +64,16 @@ export const themes: Theme[] = [
 		name: 'AI & Language Tooling',
 		blurb:
 			'LLMs and NLP put to work: curriculum generation, automated docs, retrieval experiments, PII redaction, semantic search, and agentic project scaffolding.',
-		slugs: ['rhea', 'redot', 'commons-traybake', 'guardrails', 'chirpdb', 'kamino']
+		slugs: [
+			'rhea',
+			'redot',
+			'commons-traybake',
+			'guardrails',
+			'chirpdb',
+			'kamino',
+			'sakura',
+			'beacons'
+		]
 	},
 	{
 		id: 'terminal-native',
@@ -78,7 +87,7 @@ export const themes: Theme[] = [
 		name: 'Accessibility & Human-Centred Tools',
 		blurb:
 			'Tools built around how people actually think and feel: a neurodivergent workplace passport, a mood-and-coping PWA, an SEN behaviour tracker, and a developer-cognition compass.',
-		slugs: ['workwise', 'things-we-do', 'sparker', 'cogni']
+		slugs: ['workwise', 'things-we-do', 'sparker', 'cogni', 'beacons']
 	}
 ];
 
