@@ -434,18 +434,18 @@ async function getFingerprint(repoPath) {
 		firstCommit,
 		listing
 	] = await Promise.all([
-		git(['log', '-1', '--format=%cs'], repoPath),               // lastCommit
-		countCommits(repoPath),                                      // all, lifetime
-		countCommits(repoPath, { recent: true }),                    // all, recent
-		countCommits(repoPath, { mine: true }),                      // mine, lifetime
-		countCommits(repoPath, { mine: true, recent: true }),        // mine, recent
-		countChurn(repoPath, { mine: true }),                        // mine, lifetime
-		countChurn(repoPath),                                        // all, lifetime
-		countChurn(repoPath, { mine: true, recent: true }),          // mine, recent
-		countChurn(repoPath, { recent: true }),                      // all, recent
-		git(['remote', 'get-url', 'origin'], repoPath),             // remote URL
-		getFirstCommit(repoPath),                                    // earliest commit date
-		listFiles(repoPath)                                          // shared ls-files listing
+		git(['log', '-1', '--format=%cs'], repoPath), // lastCommit
+		countCommits(repoPath), // all, lifetime
+		countCommits(repoPath, { recent: true }), // all, recent
+		countCommits(repoPath, { mine: true }), // mine, lifetime
+		countCommits(repoPath, { mine: true, recent: true }), // mine, recent
+		countChurn(repoPath, { mine: true }), // mine, lifetime
+		countChurn(repoPath), // all, lifetime
+		countChurn(repoPath, { mine: true, recent: true }), // mine, recent
+		countChurn(repoPath, { recent: true }), // all, recent
+		git(['remote', 'get-url', 'origin'], repoPath), // remote URL
+		getFirstCommit(repoPath), // earliest commit date
+		listFiles(repoPath) // shared ls-files listing
 	]);
 
 	const lastCommit = lcR.ok ? lcR.out : null;
@@ -736,7 +736,10 @@ async function computeDrift(
 			if (!repoPath) {
 				const status = curatedStatus(slug);
 				const statusHint = status === 'live' || status === 'wip' ? status : null;
-				results[i] = { slug, missing: { slug, reason: 'no local path in sources.local.json', statusHint } };
+				results[i] = {
+					slug,
+					missing: { slug, reason: 'no local path in sources.local.json', statusHint }
+				};
 				completed++;
 				onProgress?.({ index: completed, total, slug });
 				continue;
@@ -1452,7 +1455,9 @@ function runUpdate({ result, manifest, palette, useGum, args = [], dryRun = fals
 	// repos it never examined.
 	if (!isScoped && manifest.firstCommitProvisional) {
 		manifest.firstCommitProvisional = false;
-		console.log(`${DIM}firstCommitProvisional cleared — firstCommit values are now authoritative.${RESET}`);
+		console.log(
+			`${DIM}firstCommitProvisional cleared — firstCommit values are now authoritative.${RESET}`
+		);
 	}
 
 	writeJson(sourcesPath, manifest);
@@ -2206,10 +2211,23 @@ async function runInteractiveMenu({ manifests, palette, useGum, onProgress, clea
 			});
 			break;
 		case 'update':
-			runUpdate({ result: await scan(false), manifest: manifests.manifest, palette, useGum, args: [], dryRun: false });
+			runUpdate({
+				result: await scan(false),
+				manifest: manifests.manifest,
+				palette,
+				useGum,
+				args: [],
+				dryRun: false
+			});
 			break;
 		case 'accept-all':
-			runAccept({ result: await scan(false), args: [], acceptAll: true, allProjects: false, palette });
+			runAccept({
+				result: await scan(false),
+				args: [],
+				acceptAll: true,
+				allProjects: false,
+				palette
+			});
 			break;
 		case 'accept': {
 			const result = await scan(false);
@@ -2423,7 +2441,14 @@ async function main() {
 			});
 			break;
 		case 'update':
-			runUpdate({ result, manifest: manifests.manifest, palette, useGum, args, dryRun: values['dry-run'] });
+			runUpdate({
+				result,
+				manifest: manifests.manifest,
+				palette,
+				useGum,
+				args,
+				dryRun: values['dry-run']
+			});
 			break;
 		case 'accept':
 			runAccept({ result, args, acceptAll: false, allProjects: values['all-projects'], palette });
