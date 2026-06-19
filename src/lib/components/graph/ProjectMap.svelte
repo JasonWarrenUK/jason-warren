@@ -221,9 +221,7 @@
 	}
 
 	// The current set of visible edges, used to reheat the simulation.
-	const visibleEdges = $derived(
-		edges.filter((e) => !edgeHidden(e.source, e.target, e.kind))
-	);
+	const visibleEdges = $derived(edges.filter((e) => !edgeHidden(e.source, e.target, e.kind)));
 	const visibleSharedEdges = $derived(
 		sharedEdges.filter((e) => !edgeHidden(e.source, e.target, e.category))
 	);
@@ -471,8 +469,8 @@
 
 		<p class="map__note">
 			Node size tracks commit activity; fainter dots are older. Click a type or connection to hide
-			it. Turn on Isolate, then click each connection or type you want to keep — you can select
-			more than one.
+			it. Turn on Isolate, then click each connection or type you want to keep — you can select more
+			than one.
 		</p>
 	</figcaption>
 </figure>
