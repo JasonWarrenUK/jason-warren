@@ -1,7 +1,10 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import { base } from '$app/paths';
 	import { EDGE_CATEGORIES, type ProjectKind, type ProjectStatus } from '$lib/data/types.js';
-	import type { GraphEdge, SharedTechEdge } from '$lib/data/graph.js';
+	import type { GraphEdge, LiveSimNode, SharedTechEdge } from '$lib/data/graph.js';
+	import { createForceSimulation } from '$lib/data/graph.js';
+	import { forceLink as d3ForceLink } from 'd3-force';
 	import {
 		statusColour,
 		statusLabel,
@@ -100,47 +103,95 @@
 	let hiddenKinds = $state(new Set<ProjectKind>());
 	let hiddenEdgeTypes = $state(new Set<EdgeType>());
 	let isolateMode = $state(false);
+	// Isolate mode uses an additive *shown* set: click types one at a time to
+	// build up what you want to see. An empty set means "show everything".
+	let isolatedKinds = $state(new Set<ProjectKind>());
+	let isolatedEdgeTypes = $state(new Set<EdgeType>());
 
-	// --- Visibility: legend toggles hide a kind or edge type, or (in isolate
-	// mode) show only the clicked one. ---
-
-	function applyToggle<T>(current: Set<T>, value: T, all: T[]): Set<T> {
-		if (isolateMode) {
-			const others = all.filter((v) => v !== value);
-			// A second click on an already-isolated item restores everything.
-			const alreadyIsolated = !current.has(value) && others.every((v) => current.has(v));
-			return alreadyIsolated ? new Set<T>() : new Set<T>(others);
-		}
-		const next = new Set(current);
-		if (next.has(value)) next.delete(value);
-		else next.add(value);
-		return next;
-	}
+	// --- Visibility: default mode hides one type per click (multi-select);
+	// isolate mode builds up a set of types to show additively. ---
 
 	function toggleKind(kind: ProjectKind): void {
-		hiddenKinds = applyToggle(hiddenKinds, kind, kinds);
+		if (isolateMode) {
+			const next = new Set(isolatedKinds);
+			if (next.has(kind)) next.delete(kind);
+			else next.add(kind);
+			isolatedKinds = next;
+		} else {
+			const next = new Set(hiddenKinds);
+			if (next.has(kind)) next.delete(kind);
+			else next.add(kind);
+			hiddenKinds = next;
+		}
 	}
 
 	function toggleEdgeType(type: EdgeType): void {
-		hiddenEdgeTypes = applyToggle(hiddenEdgeTypes, type, edgeTypes);
+		if (isolateMode) {
+			const next = new Set(isolatedEdgeTypes);
+			if (next.has(type)) next.delete(type);
+			else next.add(type);
+			isolatedEdgeTypes = next;
+		} else {
+			const next = new Set(hiddenEdgeTypes);
+			if (next.has(type)) next.delete(type);
+			else next.add(type);
+			hiddenEdgeTypes = next;
+		}
 	}
 
 	function resetFilters(): void {
 		hiddenKinds = new Set();
 		hiddenEdgeTypes = new Set();
+		isolatedKinds = new Set();
+		isolatedEdgeTypes = new Set();
 	}
 
+	// Clear isolated sets whenever isolate mode is toggled so the two models
+	// do not bleed into each other.
+	$effect(() => {
+		if (!isolateMode) {
+			isolatedKinds = new Set();
+			isolatedEdgeTypes = new Set();
+		}
+	});
+
 	function nodeHidden(node: MapNode): boolean {
+		if (isolateMode) {
+			// If nothing is isolated yet, all nodes are visible.
+			return isolatedKinds.size > 0 && !isolatedKinds.has(node.kind);
+		}
 		return hiddenKinds.has(node.kind);
 	}
 
 	function edgeHidden(source: string, target: string, type: EdgeType): boolean {
-		if (hiddenEdgeTypes.has(type)) return true;
+		const typeHidden = isolateMode
+			? isolatedEdgeTypes.size > 0 && !isolatedEdgeTypes.has(type)
+			: hiddenEdgeTypes.has(type);
+		if (typeHidden) return true;
 		// An edge incident on a hidden node has nothing to connect, so it drops too.
 		const s = positions.get(source);
 		const t = positions.get(target);
 		return (!!s && nodeHidden(s)) || (!!t && nodeHidden(t));
 	}
+
+	// Whether a toggle chip should appear as "off" (dimmed/struck-through).
+	function kindChipOff(kind: ProjectKind): boolean {
+		if (isolateMode) return isolatedKinds.size > 0 && !isolatedKinds.has(kind);
+		return hiddenKinds.has(kind);
+	}
+
+	function edgeTypeChipOff(type: EdgeType): boolean {
+		if (isolateMode) return isolatedEdgeTypes.size > 0 && !isolatedEdgeTypes.has(type);
+		return hiddenEdgeTypes.has(type);
+	}
+
+	// Show the reset button if anything is actively hidden or isolated.
+	const filtersActive = $derived(
+		hiddenKinds.size > 0 ||
+			hiddenEdgeTypes.size > 0 ||
+			isolatedKinds.size > 0 ||
+			isolatedEdgeTypes.size > 0
+	);
 
 	// --- Dimming: hover/focus lifts a node and its neighbourhood, fading the rest. ---
 
@@ -152,6 +203,132 @@
 	function edgeDimmed(source: string, target: string): boolean {
 		return activeSlug !== null && source !== activeSlug && target !== activeSlug;
 	}
+
+	// --- Live force simulation (progressive enhancement) ---
+	//
+	// The baked node.x/node.y positions from the SSR layout are used as the
+	// initial render and as the no-JS fallback. Once the component mounts,
+	// a d3-force simulation takes over and updates livePositions on each tick.
+	// When filters change, only the visible edges exert force, so the graph
+	// physically reorganises around whatever is shown.
+
+	// Live positions populated by the simulation once mounted; empty map = use baked coords.
+	let livePositions = $state(new Map<string, { x: number; y: number }>());
+
+	// Returns the effective position for a node: live if the sim has run, baked otherwise.
+	function pos(slug: string): { x: number; y: number } {
+		return livePositions.get(slug) ?? (positions.get(slug) as { x: number; y: number });
+	}
+
+	// The current set of visible edges, used to reheat the simulation.
+	const visibleEdges = $derived(
+		edges.filter((e) => !edgeHidden(e.source, e.target, e.kind))
+	);
+	const visibleSharedEdges = $derived(
+		sharedEdges.filter((e) => !edgeHidden(e.source, e.target, e.category))
+	);
+
+	onMount(() => {
+		const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+		// Build node array seeded from baked positions; radius mirrors radiusScale.
+		const weights = nodes.map((n) => n.commits ?? (n.linesOfCode ? n.linesOfCode / 50 : 0));
+		const maxWeight = Math.max(1, ...weights);
+		const simNodes: LiveSimNode[] = nodes.map((n) => {
+			const weight = n.commits ?? (n.linesOfCode ? n.linesOfCode / 50 : 0);
+			const base = 16 + 26 * Math.sqrt(weight / maxWeight);
+			const radius = n.flagship ? Math.max(34, base) : base;
+			return { slug: n.slug, radius, x: n.x, y: n.y };
+		});
+
+		// d3-force mutates link.source/target to resolved node objects during
+		// simulation; this helper builds a fresh array of slug-keyed links so we
+		// can safely pass them after each reheat without d3 choking on stale refs.
+		type SimLink = {
+			source: string;
+			target: string;
+			distance: number;
+			strength: number;
+		};
+		function buildLinks(curEdges: GraphEdge[], curShared: SharedTechEdge[]): SimLink[] {
+			return [
+				...curEdges.map((e) => ({
+					source: e.source,
+					target: e.target,
+					distance: e.kind === 'extraction' ? 90 : 140,
+					strength: e.kind === 'extraction' ? 0.9 : 0.45
+				})),
+				...curShared.map((e) => ({
+					source: e.source,
+					target: e.target,
+					distance: 180,
+					strength: Math.min(0.12, 0.03 * e.weight)
+				}))
+			];
+		}
+
+		const sim = createForceSimulation(simNodes, visibleEdges, visibleSharedEdges, size);
+
+		let rafId: number;
+
+		function flush() {
+			// Write updated positions into the reactive map so Svelte re-renders.
+			const next = new Map<string, { x: number; y: number }>();
+			for (const n of simNodes) {
+				next.set(n.slug, { x: n.x ?? 0, y: n.y ?? 0 });
+			}
+			livePositions = next;
+		}
+
+		function loop() {
+			if (sim.alpha() < sim.alphaMin()) return;
+			sim.tick();
+			flush();
+			rafId = requestAnimationFrame(loop);
+		}
+
+		if (prefersReducedMotion) {
+			// Run to convergence in one synchronous burst; snap to result.
+			for (let i = 0; i < 320; i++) sim.tick();
+			flush();
+		} else {
+			rafId = requestAnimationFrame(loop);
+		}
+
+		// Reheat the simulation whenever the visible edge set changes.
+		// $effect.root so we can call it inside onMount and return a cleanup fn.
+		const stopEffect = $effect.root(() => {
+			$effect(() => {
+				// Snapshot the current visible edges (touches reactive state so Svelte tracks it).
+				const curEdges = [...visibleEdges];
+				const curShared = [...visibleSharedEdges];
+
+				// Replace the link force with only the currently-visible edges, then reheat.
+				// d3-force exposes the forceLink instance via sim.force('link'); calling
+				// .links() on it updates the data in place without rebuilding the simulation.
+				const fl = sim.force<ReturnType<typeof d3ForceLink>>('link');
+				if (fl) {
+					fl.links(buildLinks(curEdges, curShared) as never);
+				}
+
+				sim.alpha(0.5).restart();
+
+				if (!prefersReducedMotion) {
+					cancelAnimationFrame(rafId);
+					rafId = requestAnimationFrame(loop);
+				} else {
+					for (let i = 0; i < 320; i++) sim.tick();
+					flush();
+				}
+			});
+		});
+
+		return () => {
+			cancelAnimationFrame(rafId);
+			sim.stop();
+			stopEffect();
+		};
+	});
 </script>
 
 <figure class="map">
@@ -164,8 +341,8 @@
 		<!-- Shared-tech links: faintest, behind the curated edges, coloured by category. -->
 		<g class="map__edges">
 			{#each sharedEdges as edge (`shared:${edge.category}:${edge.source}-${edge.target}`)}
-				{@const a = positions.get(edge.source)}
-				{@const b = positions.get(edge.target)}
+				{@const a = pos(edge.source)}
+				{@const b = pos(edge.target)}
 				{#if a && b}
 					<line
 						class="map__edge map__edge--shared"
@@ -184,8 +361,8 @@
 		<!-- Curated relationship edges, above the shared-tech web. -->
 		<g class="map__edges">
 			{#each edges as edge (`${edge.kind}:${edge.source}-${edge.target}`)}
-				{@const a = positions.get(edge.source)}
-				{@const b = positions.get(edge.target)}
+				{@const a = pos(edge.source)}
+				{@const b = pos(edge.target)}
 				{#if a && b}
 					<line
 						class="map__edge map__edge--{edge.kind}"
@@ -204,6 +381,7 @@
 		<g class="map__nodes">
 			{#each nodes as node (node.slug)}
 				{@const r = radiusScale(node)}
+				{@const p = pos(node.slug)}
 				<a
 					class="map__node"
 					class:map__node--dim={nodeDimmed(node)}
@@ -218,12 +396,12 @@
 					<title>{node.name}: {node.tagline}</title>
 					<circle
 						class="map__dot"
-						cx={node.x}
-						cy={node.y}
+						cx={p.x}
+						cy={p.y}
 						{r}
 						style="fill: {statusColour(node.status)}; fill-opacity: {opacityScale(node)}"
 					/>
-					<text class="map__label" x={node.x} y={node.y + r + 16} text-anchor="middle">
+					<text class="map__label" x={p.x} y={p.y + r + 16} text-anchor="middle">
 						{node.name}
 					</text>
 				</a>
@@ -238,8 +416,8 @@
 				<button
 					type="button"
 					class="map__toggle"
-					class:map__toggle--off={hiddenEdgeTypes.has(type)}
-					aria-pressed={!hiddenEdgeTypes.has(type)}
+					class:map__toggle--off={edgeTypeChipOff(type)}
+					aria-pressed={!edgeTypeChipOff(type)}
 					onclick={() => toggleEdgeType(type)}
 				>
 					<span
@@ -257,8 +435,8 @@
 				<button
 					type="button"
 					class="map__toggle"
-					class:map__toggle--off={hiddenKinds.has(kind)}
-					aria-pressed={!hiddenKinds.has(kind)}
+					class:map__toggle--off={kindChipOff(kind)}
+					aria-pressed={!kindChipOff(kind)}
 					onclick={() => toggleKind(kind)}
 				>
 					{kind}
@@ -276,7 +454,7 @@
 			>
 				Isolate
 			</button>
-			{#if hiddenKinds.size > 0 || hiddenEdgeTypes.size > 0}
+			{#if filtersActive}
 				<button type="button" class="map__toggle" onclick={resetFilters}>Reset</button>
 			{/if}
 		</div>
@@ -293,7 +471,8 @@
 
 		<p class="map__note">
 			Node size tracks commit activity; fainter dots are older. Click a type or connection to hide
-			it; turn on Isolate to show only the one you click.
+			it. Turn on Isolate, then click each connection or type you want to keep — you can select
+			more than one.
 		</p>
 	</figcaption>
 </figure>

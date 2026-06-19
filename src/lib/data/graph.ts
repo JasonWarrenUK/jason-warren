@@ -24,6 +24,7 @@ import {
 	forceSimulation,
 	forceX,
 	forceY,
+	type Simulation,
 	type SimulationNodeDatum
 } from 'd3-force';
 import { projects } from './index.js';
@@ -448,4 +449,74 @@ export function computeForceLayout(
 	}
 
 	return { positions, width: size, height: size };
+}
+
+// ---------------------------------------------------------------------------
+// Client-side live simulation
+// ---------------------------------------------------------------------------
+
+/**
+ * The node shape used by the live client simulation. Positions are mutable
+ * so d3-force can update them in place each tick.
+ */
+export interface LiveSimNode extends SimulationNodeDatum {
+	slug: ProjectSlug;
+	radius: number;
+	x: number;
+	y: number;
+}
+
+/**
+ * Creates a live d3-force simulation for client-side use. Unlike
+ * `computeForceLayout`, which runs synchronously and returns baked positions,
+ * this returns the running simulation so the caller can drive an animation
+ * loop and reheat on filter changes.
+ *
+ * The caller is responsible for constructing `initialNodes` (one entry per
+ * project, with `slug`, `radius`, and seed `x`/`y` from the baked layout) so
+ * the simulation starts from the rendered picture instead of a cold ring.
+ *
+ * @param initialNodes - Pre-built node array seeded with baked positions.
+ * @param visibleEdges - Only the curated edges currently shown; hidden edges
+ *   do not exert force, so the visible structure relaxes into a new shape.
+ * @param visibleSharedEdges - Only the shared-tech edges currently shown.
+ * @param size - Canvas size in pixels (must match the SVG viewBox).
+ */
+export function createForceSimulation(
+	initialNodes: LiveSimNode[],
+	visibleEdges: GraphEdge[],
+	visibleSharedEdges: SharedTechEdge[],
+	size = 1000
+): Simulation<LiveSimNode, never> {
+	const centre = size / 2;
+
+	const links = [
+		...visibleEdges.map((edge) => ({
+			source: edge.source,
+			target: edge.target,
+			distance: edge.kind === 'extraction' ? 90 : 140,
+			strength: edge.kind === 'extraction' ? 0.9 : 0.45
+		})),
+		...visibleSharedEdges.map((edge) => ({
+			source: edge.source,
+			target: edge.target,
+			distance: 180,
+			strength: Math.min(0.12, 0.03 * edge.weight)
+		}))
+	];
+
+	return forceSimulation<LiveSimNode>(initialNodes)
+		.force(
+			'link',
+			forceLink<LiveSimNode, (typeof links)[number]>(links)
+				.id((node) => node.slug)
+				.distance((link) => link.distance)
+				.strength((link) => link.strength)
+		)
+		.force('charge', forceManyBody<LiveSimNode>().strength(-320))
+		.force('collide', forceCollide<LiveSimNode>((node) => node.radius + 22).strength(1))
+		.force('centre', forceCenter<LiveSimNode>(centre, centre))
+		.force('x', forceX<LiveSimNode>(centre).strength(0.04))
+		.force('y', forceY<LiveSimNode>(centre).strength(0.04))
+		.alphaDecay(0.02);
 }
