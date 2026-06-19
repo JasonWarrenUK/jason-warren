@@ -24,3 +24,5 @@ vite.config.ts.timestamp-*
 
 # Source repo local paths (per-machine; see src/lib/data/sources.json for the committed snapshot)
 src/lib/data/sources.local.json
+# Per-machine HEAD-SHA fingerprint cache (speeds up repeated drift checks)
+src/lib/data/.drift-cache.json

@@ -17,12 +17,14 @@
  *   drift --full                        # field-level diff across ALL repos (no HEAD gate)
  */
 
-import { execSync, spawnSync } from 'child_process';
+import { execFile, spawnSync } from 'child_process';
 import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from 'fs';
 import { join, resolve } from 'path';
 import { fileURLToPath } from 'url';
-import { homedir } from 'os';
-import { parseArgs } from 'node:util';
+import { cpus, homedir } from 'os';
+import { parseArgs, promisify } from 'node:util';
+
+const execFileAsync = promisify(execFile);
 import { EXTENSION_LANGUAGE } from '../src/lib/data/tag-taxonomy.js';
 
 // ---------------------------------------------------------------------------
@@ -35,6 +37,7 @@ const sourcesPath = join(repoRoot, 'src/lib/data/sources.json');
 const localPath = join(repoRoot, 'src/lib/data/sources.local.json');
 const overridesPath = join(repoRoot, 'src/lib/data/overrides.json');
 const excludedPath = join(repoRoot, 'src/lib/data/excluded.json');
+const cachePath = join(repoRoot, 'src/lib/data/.drift-cache.json');
 const projectsDir = join(repoRoot, 'src/lib/data/projects');
 
 // ---------------------------------------------------------------------------
@@ -46,16 +49,48 @@ function writeJson(filePath, data) {
 	spawnSync('npx', ['prettier', '--write', filePath], { stdio: 'ignore' });
 }
 
+/** Load the per-machine HEAD-SHA cache. Returns {} on any read/parse failure (silent). */
+function loadCache() {
+	try {
+		return JSON.parse(readFileSync(cachePath, 'utf8'));
+	} catch {
+		return {};
+	}
+}
+
+/** Write the per-machine HEAD-SHA cache. Uses bare writeFileSync — no prettier. */
+function writeCache(cache) {
+	try {
+		writeFileSync(cachePath, JSON.stringify(cache) + '\n', 'utf8');
+	} catch {
+		// Cache write failure is non-fatal — next run will just miss.
+	}
+}
+
 // ---------------------------------------------------------------------------
 // Git helpers
 // ---------------------------------------------------------------------------
 
-function git(args, cwd) {
+/**
+ * Run a git command asynchronously. Accepts an argv array or a plain string
+ * (split on spaces). Returns the same { ok, out } | { ok, err } shape as before.
+ *
+ * Using execFile (not execSync) means git subprocesses are non-blocking and
+ * can run concurrently when called via Promise.all inside getFingerprint, or
+ * across repos inside the bounded-concurrency pool in computeDrift.
+ *
+ * Note: argv tokens are passed directly to execFile — no shell is involved,
+ * so --author and --since values must NOT be wrapped in extra quotes.
+ *
+ * @param {string | string[]} args
+ * @param {string} cwd
+ * @returns {Promise<{ ok: true; out: string } | { ok: false; err: string }>}
+ */
+async function git(args, cwd) {
+	const argv = Array.isArray(args) ? args : args.split(' ');
 	try {
-		const out = execSync(`git ${args}`, { cwd, stdio: ['ignore', 'pipe', 'pipe'] })
-			.toString()
-			.trim();
-		return { ok: true, out };
+		const { stdout } = await execFileAsync('git', argv, { cwd });
+		return { ok: true, out: stdout.trim() };
 	} catch (error) {
 		const err = (error.stderr?.toString() || error.message || '').trim();
 		return { ok: false, err };
@@ -105,11 +140,27 @@ const ARRAY_FINGERPRINT_FIELDS = new Set(['languages', 'runtime', 'database', 'f
 // EXTENSION_LANGUAGE is imported from src/lib/data/tag-taxonomy.js above.
 // That module is the single source of truth shared between the CLI and the app.
 
-/** Languages present in the repo, ordered by file count (most prevalent first). */
-function detectLanguages(repoPath) {
-	const r = git('ls-files', repoPath);
-	if (!r.ok) return [];
-	const listing = r.out;
+/**
+ * Fetch the tracked file listing for a repo. Called once per repo and shared
+ * between detectLanguages and countLinesOfCode to avoid a double git ls-files spawn.
+ *
+ * @param {string} repoPath
+ * @returns {Promise<string | null>} Raw ls-files output, or null on git failure.
+ */
+async function listFiles(repoPath) {
+	const r = await git(['ls-files'], repoPath);
+	return r.ok ? r.out : null;
+}
+
+/**
+ * Languages present in the repo, ordered by file count (most prevalent first).
+ * Accepts a pre-fetched file listing so the caller can share one git ls-files result
+ * between detectLanguages and countLinesOfCode.
+ *
+ * @param {string | null} listing  Result of listFiles(), or null.
+ */
+function detectLanguages(listing) {
+	if (!listing) return [];
 	const counts = new Map();
 	for (const file of listing.split('\n')) {
 		const dot = file.lastIndexOf('.');
@@ -125,11 +176,12 @@ function detectLanguages(repoPath) {
  * Overall codebase size: total lines across tracked source files (all authors).
  * Reuses the same extension gate as `detectLanguages`, so config, lockfiles, and
  * assets stay out of the count.
+ *
+ * @param {string} repoPath
+ * @param {string | null} listing  Result of listFiles(), or null.
  */
-function countLinesOfCode(repoPath) {
-	const r = git('ls-files', repoPath);
-	if (!r.ok) return null;
-	const listing = r.out;
+function countLinesOfCode(repoPath, listing) {
+	if (!listing) return null;
 	let total = 0;
 	for (const file of listing.split('\n')) {
 		const dot = file.lastIndexOf('.');
@@ -155,12 +207,12 @@ function countLinesOfCode(repoPath) {
  *   recent — restrict to the trailing RECENT_WINDOW (default: all of history)
  * @returns {number | null}
  */
-function countCommits(repoPath, { mine = false, recent = false } = {}) {
+async function countCommits(repoPath, { mine = false, recent = false } = {}) {
 	const flags = ['rev-list', '--count'];
-	if (recent) flags.push(`--since="${RECENT_WINDOW}"`);
-	if (mine) flags.push('--extended-regexp', `--author="${AUTHOR_PATTERN}"`);
+	if (recent) flags.push(`--since=${RECENT_WINDOW}`);
+	if (mine) flags.push('--extended-regexp', `--author=${AUTHOR_PATTERN}`);
 	flags.push('HEAD');
-	const r = git(flags.join(' '), repoPath);
+	const r = await git(flags, repoPath);
 	return r.ok ? Number(r.out) : null;
 }
 
@@ -173,12 +225,12 @@ function countCommits(repoPath, { mine = false, recent = false } = {}) {
  *   recent — restrict to the trailing RECENT_WINDOW (default: all of history)
  * @returns {{ added: number | null; removed: number | null }}
  */
-function countChurn(repoPath, { mine = false, recent = false } = {}) {
+async function countChurn(repoPath, { mine = false, recent = false } = {}) {
 	const flags = ['log'];
-	if (recent) flags.push(`--since="${RECENT_WINDOW}"`);
-	if (mine) flags.push('--extended-regexp', `--author="${AUTHOR_PATTERN}"`);
+	if (recent) flags.push(`--since=${RECENT_WINDOW}`);
+	if (mine) flags.push('--extended-regexp', `--author=${AUTHOR_PATTERN}`);
 	flags.push('--pretty=tformat:', '--numstat', 'HEAD');
-	const r = git(flags.join(' '), repoPath);
+	const r = await git(flags, repoPath);
 	if (!r.ok) return { added: null, removed: null };
 	let added = 0;
 	let removed = 0;
@@ -193,12 +245,12 @@ function countChurn(repoPath, { mine = false, recent = false } = {}) {
 }
 
 /** ISO date of the earliest root commit, the project's inception. */
-function getFirstCommit(repoPath) {
-	const roots = git('log --max-parents=0 --format=%cs', repoPath);
+async function getFirstCommit(repoPath) {
+	const roots = await git(['log', '--max-parents=0', '--format=%cs'], repoPath);
 	if (roots.ok && roots.out) {
 		return roots.out.split('\n').sort()[0];
 	}
-	const reversed = git('log --reverse --format=%cs', repoPath);
+	const reversed = await git(['log', '--reverse', '--format=%cs'], repoPath);
 	return reversed.ok && reversed.out ? reversed.out.split('\n')[0] : null;
 }
 
@@ -353,29 +405,56 @@ function normaliseRemote(rawRemote) {
 	return null;
 }
 
-function getFingerprint(repoPath) {
+/**
+ * Computes all fingerprint metrics for a single repo. All independent git calls
+ * are launched concurrently via Promise.all so the per-repo latency is the
+ * slowest individual call (typically the full-history churn log), not their sum.
+ *
+ * Returns null if the path is not a git repo or HEAD is unresolvable.
+ */
+async function getFingerprint(repoPath) {
 	if (!existsSync(join(repoPath, '.git'))) return null;
-	const headR = git('rev-parse --short HEAD', repoPath);
+	const headR = await git(['rev-parse', '--short', 'HEAD'], repoPath);
 	if (!headR.ok || !headR.out) return null;
 	const head = headR.out;
-	const lcR = git('log -1 --format=%cs', repoPath);
+
+	// Fan out all independent git calls concurrently. Within a single repo, none
+	// of these depend on each other's results, so they can all run in parallel.
+	const [
+		lcR,
+		commits,
+		commitsRecentAll,
+		commitsMine,
+		commitsRecent,
+		churnMine,
+		churnAll,
+		churnMineRecent,
+		churnAllRecent,
+		remoteR,
+		firstCommit,
+		listing
+	] = await Promise.all([
+		git(['log', '-1', '--format=%cs'], repoPath), // lastCommit
+		countCommits(repoPath), // all, lifetime
+		countCommits(repoPath, { recent: true }), // all, recent
+		countCommits(repoPath, { mine: true }), // mine, lifetime
+		countCommits(repoPath, { mine: true, recent: true }), // mine, recent
+		countChurn(repoPath, { mine: true }), // mine, lifetime
+		countChurn(repoPath), // all, lifetime
+		countChurn(repoPath, { mine: true, recent: true }), // mine, recent
+		countChurn(repoPath, { recent: true }), // all, recent
+		git(['remote', 'get-url', 'origin'], repoPath), // remote URL
+		getFirstCommit(repoPath), // earliest commit date
+		listFiles(repoPath) // shared ls-files listing
+	]);
+
 	const lastCommit = lcR.ok ? lcR.out : null;
-
-	// Commit grid: all/mine × lifetime/recent
-	const commits = countCommits(repoPath); // all, lifetime
-	const commitsRecentAll = countCommits(repoPath, { recent: true }); // all, recent
-	const commitsMine = countCommits(repoPath, { mine: true }); // mine, lifetime
-	const commitsRecent = countCommits(repoPath, { mine: true, recent: true }); // mine, recent
-
-	// Churn grid: mine/all × lifetime/recent (×2 for added/removed = 8 numbers)
-	const churnMine = countChurn(repoPath, { mine: true }); // mine, lifetime
-	const churnAll = countChurn(repoPath); // all, lifetime
-	const churnMineRecent = countChurn(repoPath, { mine: true, recent: true }); // mine, recent
-	const churnAllRecent = countChurn(repoPath, { recent: true }); // all, recent
-
-	const { runtime, framework, database } = detectDependencies(repoPath);
-	const remoteR = git('remote get-url origin', repoPath);
 	const remote = normaliseRemote(remoteR.ok ? remoteR.out : null);
+	const { runtime, framework, database } = detectDependencies(repoPath);
+
+	// detectLanguages and countLinesOfCode share the single ls-files listing.
+	const languages = detectLanguages(listing);
+	const linesOfCode = countLinesOfCode(repoPath, listing);
 
 	return {
 		head,
@@ -384,9 +463,9 @@ function getFingerprint(repoPath) {
 		commitsMine,
 		commitsRecent,
 		lastCommit,
-		firstCommit: getFirstCommit(repoPath),
-		languages: detectLanguages(repoPath),
-		linesOfCode: countLinesOfCode(repoPath),
+		firstCommit,
+		languages,
+		linesOfCode,
 		// mine, lifetime
 		linesAdded: churnMine.added,
 		linesRemoved: churnMine.removed,
@@ -594,16 +673,27 @@ function loadManifests() {
 		);
 	}
 
-	return { manifest, overrideEntries, localPaths };
+	// Load per-machine HEAD-SHA cache (best-effort: missing/unreadable is silent).
+	const cache = loadCache();
+
+	return { manifest, overrideEntries, localPaths, cache };
 }
 
 // ---------------------------------------------------------------------------
 // Drift computation (the full fingerprint + scan pass).
 //
-// Phase 1 baseline: every verb runs this full pass so report/update/accept all
-// share the same computed state (report needs all arrays, update and accept
-// both need `fresh`, accept-all reads `conflicts`). Phase 2 adds a HEAD-SHA
-// cache here to avoid the full git subprocess cost on repeated runs.
+// Every verb runs this pass so report/update/accept all share the same computed
+// state (report needs all arrays, update and accept both need `fresh`, accept-all
+// reads `conflicts`).
+//
+// Phase 2: async getFingerprint + bounded-concurrency worker pool so repos are
+// fingerprinted in parallel up to cpus().length concurrent workers. Results are
+// collected in an index-keyed map then assembled in original manifest order so
+// output arrays remain deterministic regardless of completion order.
+//
+// HEAD+TTL cache: unchanged repos (same HEAD AND last-run < 24h ago) skip the
+// full fingerprint and reuse the cached result. Bypassed when useCache is false
+// (update always bypasses; --full and --no-cache also bypass).
 //
 // --full mode adds `fieldDrift`: a per-repo list of field-level differences
 // between the saved fingerprint and the current live one. This surfaces
@@ -611,50 +701,118 @@ function loadManifests() {
 // and fields that were seeded with placeholder values before real syncs.
 // ---------------------------------------------------------------------------
 
-function computeDrift(
-	{ manifest, overrideEntries, localPaths },
-	{ full = false, onProgress = null } = {}
+const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
+
+async function computeDrift(
+	{ manifest, overrideEntries, localPaths, cache },
+	{ full = false, onProgress = null, useCache = false } = {}
 ) {
 	const { excludedRepoNames } = loadExcluded();
 
+	const entries = Object.entries(manifest.sources);
+	const total = entries.length;
+
+	// Per-entry result store, keyed by original manifest index, assembled in order
+	// after the pool drains to guarantee deterministic output order.
+	const results = new Array(total);
+	let completed = 0;
+
+	// Bounded-concurrency worker pool. Each worker pulls the next unstarted entry
+	// from the shared cursor until exhausted. Pool size = cpu count, floored at 1.
+	const concurrency = Math.max(1, cpus().length);
+	let cursor = 0;
+
+	// Mutable cache copy — updated during the scan, written once after the pool drains.
+	const updatedCache = { ...cache };
+	const nowMs = Date.now();
+	const nowISO = new Date(nowMs).toISOString();
+
+	async function worker() {
+		while (cursor < total) {
+			const i = cursor++;
+			const [slug, saved] = entries[i];
+
+			const repoPath = localPaths[slug];
+			if (!repoPath) {
+				const status = curatedStatus(slug);
+				const statusHint = status === 'live' || status === 'wip' ? status : null;
+				results[i] = {
+					slug,
+					missing: { slug, reason: 'no local path in sources.local.json', statusHint }
+				};
+				completed++;
+				onProgress?.({ index: completed, total, slug });
+				continue;
+			}
+
+			// HEAD+TTL cache check: skip full fingerprint when HEAD is unchanged and
+			// the cached entry is fresh enough. Never cache null results.
+			let current = null;
+			let servedFromCache = false;
+			if (useCache) {
+				const entry = updatedCache[slug];
+				if (entry && entry.fingerprint) {
+					// Fast HEAD check via a cheap git call before the full fingerprint.
+					const liveHeadR = await git(['rev-parse', '--short', 'HEAD'], repoPath);
+					if (liveHeadR.ok && liveHeadR.out === entry.head) {
+						const age = nowMs - Date.parse(entry.syncedAt);
+						if (age < CACHE_TTL_MS) {
+							current = entry.fingerprint;
+							servedFromCache = true;
+						}
+					}
+				}
+			}
+
+			if (!current) {
+				current = await getFingerprint(repoPath);
+				// Update cache for next run — only for valid fingerprints.
+				if (current) {
+					updatedCache[slug] = { head: current.head, fingerprint: current, syncedAt: nowISO };
+				}
+			}
+
+			if (!current) {
+				// Path configured but repo not found — could be offloaded. Check status.
+				const status = curatedStatus(slug);
+				const statusHint = status === 'live' || status === 'wip' ? status : null;
+				results[i] = {
+					slug,
+					missing: { slug, reason: `path not found or not a git repo: ${repoPath}`, statusHint }
+				};
+				completed++;
+				onProgress?.({ index: completed, total, slug });
+				continue;
+			}
+
+			results[i] = { slug, repoPath, saved, current, servedFromCache };
+			completed++;
+			onProgress?.({ index: completed, total, slug });
+		}
+	}
+
+	// Launch the pool and wait for all workers to drain the entry list.
+	await Promise.all(Array.from({ length: Math.min(concurrency, total) }, worker));
+
+	// Persist the updated cache once, after the pool finishes.
+	if (useCache) {
+		writeCache(updatedCache);
+	}
+
+	// Assemble output arrays in original manifest order.
 	const changed = [];
 	const missing = [];
 	const conflicts = [];
 	const fieldDrift = []; // populated only in --full mode
-	// Current fingerprint for every repo that resolves, keyed by slug. Used to
-	// backfill new fields (firstCommit, languages) on update even for repos whose
-	// head has not moved since the last sync.
 	const fresh = {};
 
-	const total = Object.keys(manifest.sources).length;
-	let index = 0;
-
-	for (const [slug, saved] of Object.entries(manifest.sources)) {
-		index++;
-		// Progress callback fires once per repo so the counter always reaches total.
-		onProgress?.({ index, total, slug });
-
-		const repoPath = localPaths[slug];
-		if (!repoPath) {
-			// No path configured — check if this is a live/wip project that should be present.
-			const status = curatedStatus(slug);
-			const statusHint = status === 'live' || status === 'wip' ? status : null;
-			missing.push({ slug, reason: 'no local path in sources.local.json', statusHint });
+	for (const entry of results) {
+		if (!entry) continue; // shouldn't happen, but guard for safety
+		if (entry.missing) {
+			missing.push(entry.missing);
 			continue;
 		}
-
-		const current = getFingerprint(repoPath);
-		if (!current) {
-			// Path configured but repo not found — could be offloaded. Check status.
-			const status = curatedStatus(slug);
-			const statusHint = status === 'live' || status === 'wip' ? status : null;
-			missing.push({
-				slug,
-				reason: `path not found or not a git repo: ${repoPath}`,
-				statusHint
-			});
-			continue;
-		}
+		const { slug, repoPath, saved, current } = entry;
 
 		fresh[slug] = current;
 
@@ -662,17 +820,17 @@ function computeDrift(
 		// Runs regardless of whether head moved (catches head-static drift too).
 		const slugOverrides = overrideEntries[slug];
 		if (slugOverrides) {
-			for (const [fieldName, entry] of Object.entries(slugOverrides)) {
+			for (const [fieldName, ov] of Object.entries(slugOverrides)) {
 				if (fieldName.startsWith('_')) continue; // skip _note, _setNote
-				if (entry.syncedWhenSet === null) continue; // pure pin, no baseline to drift
-				const syncedField = entry.syncedField ?? fieldName;
+				if (ov.syncedWhenSet === null) continue; // pure pin, no baseline to drift
+				const syncedField = ov.syncedField ?? fieldName;
 				const now = current[syncedField];
-				if (now !== undefined && now !== entry.syncedWhenSet) {
+				if (now !== undefined && now !== ov.syncedWhenSet) {
 					conflicts.push({
 						slug,
 						field: fieldName,
-						value: entry.value,
-						was: entry.syncedWhenSet,
+						value: ov.value,
+						was: ov.syncedWhenSet,
 						now
 					});
 				}
@@ -706,30 +864,30 @@ function computeDrift(
 
 	function scanForGitRepos(dir, depth = 0) {
 		if (depth > 3) return;
-		let entries;
+		let dirEntries;
 		try {
-			entries = readdirSync(dir);
+			dirEntries = readdirSync(dir);
 		} catch {
 			return;
 		}
-		for (const entry of entries) {
-			if (entry.startsWith('.')) continue;
-			const full = join(dir, entry);
+		for (const dirEntry of dirEntries) {
+			if (dirEntry.startsWith('.')) continue;
+			const fullPath = join(dir, dirEntry);
 			try {
-				if (!statSync(full).isDirectory()) continue;
+				if (!statSync(fullPath).isDirectory()) continue;
 			} catch {
 				continue;
 			}
-			if (existsSync(join(full, '.git'))) {
-				const name = entry;
+			if (existsSync(join(fullPath, '.git'))) {
+				const name = dirEntry;
 				// Normalise: lowercase, convert to kebab-case (basic)
 				const normalised = name.toLowerCase().replace(/[_\s]+/g, '-');
 				if (!knownSlugs.has(normalised) && !knownSlugs.has(name)) {
-					newRepos.push({ name, path: full, normalised });
+					newRepos.push({ name, path: fullPath, normalised });
 				}
 				// Don't recurse into git repos
 			} else {
-				scanForGitRepos(full, depth + 1);
+				scanForGitRepos(fullPath, depth + 1);
 			}
 		}
 	}
@@ -1210,16 +1368,54 @@ function runReport({ result, manifest, palette, json, full, useGum }) {
 // every resolvable repo regardless of HEAD movement.
 // ---------------------------------------------------------------------------
 
-function runUpdate({ result, manifest, palette, useGum }) {
+function runUpdate({ result, manifest, palette, useGum, args = [], dryRun = false }) {
 	const { fresh } = result;
-	const { GREEN, YELLOW, RESET } = palette;
+	const { GREEN, YELLOW, RESET, DIM } = palette;
 
 	if (Object.keys(fresh).length === 0) return;
 
+	// Per-repo scoping: if slug args were provided, restrict to those slugs only.
+	// Unknown slugs get a soft warning (not an abort) so a typo doesn't block a batch.
+	let scopedFresh = fresh;
+	const isScoped = args.length > 0;
+	if (isScoped) {
+		for (const slug of args) {
+			if (!fresh[slug]) {
+				process.stdout.write(
+					`${YELLOW}Warning: '${slug}' is not resolvable on this machine — skipped.${RESET}\n`
+				);
+			}
+		}
+		scopedFresh = Object.fromEntries(
+			args.filter((slug) => fresh[slug]).map((slug) => [slug, fresh[slug]])
+		);
+		if (Object.keys(scopedFresh).length === 0) {
+			console.log('No resolvable repos in the provided slugs — nothing to update.');
+			return;
+		}
+	}
+
+	// Dry-run: show a field-level diff for each scoped repo and return without writing.
+	if (dryRun) {
+		const slugs = Object.keys(scopedFresh);
+		console.log(
+			`${DIM}Dry run — showing what ${slugs.length} repo${slugs.length === 1 ? '' : 's'} would change. Nothing will be written.${RESET}\n`
+		);
+		let firstCard = true;
+		for (const [slug, current] of Object.entries(scopedFresh)) {
+			const saved = manifest.sources[slug] ?? {};
+			const fields = diffFingerprint(saved, current);
+			renderCardPlain({ slug, current, fields, firstCard, palette });
+			firstCard = false;
+		}
+		return;
+	}
+
 	// gum confirm gate — only when interactive. Writes nothing on cancel.
 	if (useGum && process.stdout.isTTY) {
-		const n = Object.keys(fresh).length;
-		const res = spawnSync('gum', ['confirm', `Rewrite sources.json with ${n} fingerprints?`], {
+		const n = Object.keys(scopedFresh).length;
+		const scope = isScoped ? `${n} scoped repo${n === 1 ? '' : 's'}` : `${n} fingerprints`;
+		const res = spawnSync('gum', ['confirm', `Rewrite sources.json with ${scope}?`], {
 			stdio: 'inherit'
 		});
 		if (res.status !== 0) {
@@ -1228,12 +1424,12 @@ function runUpdate({ result, manifest, palette, useGum }) {
 		}
 	}
 
-	// Backfill every resolvable repo, not just those whose head moved, so new
-	// fields (firstCommit, languages) populate across the whole manifest.
+	// Backfill every resolvable repo (or the scoped subset), not just those whose
+	// head moved, so new fields (firstCommit, languages) populate across the manifest.
 	// Field-merge: only overwrite when the fresh value is non-null, so a transient
 	// git failure cannot clobber previously-good data with a null.
 	console.log('Updating sources.json with current fingerprints...');
-	for (const [slug, current] of Object.entries(fresh)) {
+	for (const [slug, current] of Object.entries(scopedFresh)) {
 		const saved = manifest.sources[slug] ?? {};
 		const merged = { ...saved };
 		const preserved = [];
@@ -1253,6 +1449,17 @@ function runUpdate({ result, manifest, palette, useGum }) {
 	}
 	const today = new Date().toISOString().slice(0, 10);
 	manifest.lastSyncedAt = today;
+
+	// Only a full (un-scoped) update can declare all firstCommit values authoritative.
+	// A scoped partial update touching one repo must not flip the provisional flag for
+	// repos it never examined.
+	if (!isScoped && manifest.firstCommitProvisional) {
+		manifest.firstCommitProvisional = false;
+		console.log(
+			`${DIM}firstCommitProvisional cleared — firstCommit values are now authoritative.${RESET}`
+		);
+	}
+
 	writeJson(sourcesPath, manifest);
 	console.log(`${GREEN}sources.json updated.${RESET}`);
 }
@@ -1909,10 +2116,11 @@ function printWordmark() {
 	);
 }
 
-function runInteractiveMenu({ manifests, palette, useGum, onProgress, clearProgress }) {
+async function runInteractiveMenu({ manifests, palette, useGum, onProgress, clearProgress }) {
 	// Lazy scan helper — runs only when a verb that needs data is selected.
-	const scan = (full) => {
-		const r = computeDrift(manifests, { full, onProgress });
+	// Cache is bypassed in the interactive menu — always show live state.
+	const scan = async (full) => {
+		const r = await computeDrift(manifests, { full, onProgress, useCache: false });
 		clearProgress();
 		return r;
 	};
@@ -1975,7 +2183,7 @@ function runInteractiveMenu({ manifests, palette, useGum, onProgress, clearProgr
 			break;
 		case 'report':
 			runReport({
-				result: scan(false),
+				result: await scan(false),
 				manifest: manifests.manifest,
 				palette,
 				json: false,
@@ -1985,7 +2193,7 @@ function runInteractiveMenu({ manifests, palette, useGum, onProgress, clearProgr
 			break;
 		case 'report-full':
 			runReport({
-				result: scan(true),
+				result: await scan(true),
 				manifest: manifests.manifest,
 				palette,
 				json: false,
@@ -1995,7 +2203,7 @@ function runInteractiveMenu({ manifests, palette, useGum, onProgress, clearProgr
 			break;
 		case 'snapshot':
 			runSnapshot({
-				result: scan(true),
+				result: await scan(true),
 				manifest: manifests.manifest,
 				palette,
 				json: false,
@@ -2003,13 +2211,26 @@ function runInteractiveMenu({ manifests, palette, useGum, onProgress, clearProgr
 			});
 			break;
 		case 'update':
-			runUpdate({ result: scan(false), manifest: manifests.manifest, palette, useGum });
+			runUpdate({
+				result: await scan(false),
+				manifest: manifests.manifest,
+				palette,
+				useGum,
+				args: [],
+				dryRun: false
+			});
 			break;
 		case 'accept-all':
-			runAccept({ result: scan(false), args: [], acceptAll: true, allProjects: false, palette });
+			runAccept({
+				result: await scan(false),
+				args: [],
+				acceptAll: true,
+				allProjects: false,
+				palette
+			});
 			break;
 		case 'accept': {
-			const result = scan(false);
+			const result = await scan(false);
 			const { conflicts } = result;
 			if (conflicts.length === 0) {
 				console.log('No flagged overrides to accept.');
@@ -2039,7 +2260,7 @@ function runInteractiveMenu({ manifests, palette, useGum, onProgress, clearProgr
 		}
 		case 'accept-all-projects': {
 			// Second picker: choose a field name to accept across all projects.
-			const result = scan(false);
+			const result = await scan(false);
 			const { conflicts } = result;
 			if (conflicts.length === 0) {
 				console.log('No flagged overrides to accept.');
@@ -2117,7 +2338,7 @@ function runInteractiveMenu({ manifests, palette, useGum, onProgress, clearProgr
 // Entry point
 // ---------------------------------------------------------------------------
 
-function main() {
+async function main() {
 	let values, positionals;
 	try {
 		({ values, positionals } = parseArgs({
@@ -2127,6 +2348,8 @@ function main() {
 				check: { type: 'boolean', default: false },
 				full: { type: 'boolean', default: false },
 				'all-projects': { type: 'boolean', default: false },
+				'dry-run': { type: 'boolean', default: false },
+				'no-cache': { type: 'boolean', default: false },
 				'no-color': { type: 'boolean', default: false },
 				help: { type: 'boolean', short: 'h', default: false }
 			}
@@ -2189,7 +2412,7 @@ function main() {
 		!values['all-projects'];
 
 	if (bare && useGum) {
-		runInteractiveMenu({ manifests, palette, useGum, onProgress, clearProgress });
+		await runInteractiveMenu({ manifests, palette, useGum, onProgress, clearProgress });
 		return;
 	}
 
@@ -2201,7 +2424,10 @@ function main() {
 
 	// snapshot always needs the full field comparison to compute drift per-project.
 	const needsFullScan = values.full || verb === 'snapshot';
-	const result = computeDrift(manifests, { full: needsFullScan, onProgress });
+	// Cache is bypassed for update (needs live values) and --full (windowed-metric
+	// decay must be visible). --no-cache forces a fresh scan for any verb.
+	const useCache = !values['no-cache'] && !needsFullScan && verb !== 'update';
+	const result = await computeDrift(manifests, { full: needsFullScan, onProgress, useCache });
 	clearProgress();
 
 	switch (verb) {
@@ -2215,7 +2441,14 @@ function main() {
 			});
 			break;
 		case 'update':
-			runUpdate({ result, manifest: manifests.manifest, palette, useGum });
+			runUpdate({
+				result,
+				manifest: manifests.manifest,
+				palette,
+				useGum,
+				args,
+				dryRun: values['dry-run']
+			});
 			break;
 		case 'accept':
 			runAccept({ result, args, acceptAll: false, allProjects: values['all-projects'], palette });
@@ -2239,5 +2472,8 @@ function main() {
 
 // Guard: only auto-run when executed directly, not when imported (e.g. in tests).
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-	main();
+	main().catch((err) => {
+		process.stderr.write(`drift: unexpected error: ${err.message ?? err}\n`);
+		process.exit(1);
+	});
 }
