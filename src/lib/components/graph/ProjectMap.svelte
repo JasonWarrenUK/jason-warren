@@ -469,7 +469,7 @@
 
 		<p class="map__note">
 			Node size tracks commit activity; fainter dots are older. Click a type or connection to hide
-			it. Turn on Isolate, then click each connection or type you want to keep — you can select more
+			it. Turn on Isolate, then click each connection or type you want to keep: you can select more
 			than one.
 		</p>
 	</figcaption>
