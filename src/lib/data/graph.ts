@@ -342,13 +342,6 @@ interface SimNode extends SimulationNodeDatum {
 	radius: number;
 }
 
-interface SimLink {
-	source: string;
-	target: string;
-	distance: number;
-	strength: number;
-}
-
 /** Activity weight for a project, used for collision sizing (mirrors the map's visual scale). */
 function activityWeight(project: Project): number {
 	return project.metrics?.commits ?? (project.metrics?.linesOfCode ?? 0) / 50;
@@ -390,22 +383,9 @@ export function computeForceLayout(
 		};
 	});
 
-	const links: SimLink[] = [
-		...graph.edges.map((edge) => ({
-			source: edge.source,
-			target: edge.target,
-			distance: edge.kind === 'extraction' ? 90 : 140,
-			strength: edge.kind === 'extraction' ? 0.9 : 0.45
-		})),
-		...sharedEdges.map((edge) => ({
-			source: edge.source,
-			target: edge.target,
-			distance: 180,
-			// Gentler than the curated edges, and capped, so the now-denser
-			// per-category web nudges clustering without collapsing the graph.
-			strength: Math.min(0.12, 0.03 * edge.weight)
-		}))
-	];
+	// All curated + shared-tech edges; constants live in buildSimLinks.
+	// The gentler shared-tech strength comment still applies (see buildSimLinks).
+	const links = buildSimLinks(graph.edges, sharedEdges);
 
 	const simulation = forceSimulation<SimNode>(nodes)
 		.force(
@@ -466,6 +446,39 @@ export interface LiveSimNode extends SimulationNodeDatum {
 	y: number;
 }
 
+/** A slug-keyed link for the live simulation's forceLink. */
+export interface SimLink {
+	source: string;
+	target: string;
+	distance: number;
+	strength: number;
+}
+
+/**
+ * Builds the force-link array from the currently-visible edges. Used both to
+ * seed `createForceSimulation` and to re-feed the link force on reheat, so the
+ * distance/strength constants live in exactly one place.
+ */
+export function buildSimLinks(
+	visibleEdges: GraphEdge[],
+	visibleSharedEdges: SharedTechEdge[]
+): SimLink[] {
+	return [
+		...visibleEdges.map((edge) => ({
+			source: edge.source,
+			target: edge.target,
+			distance: edge.kind === 'extraction' ? 90 : 140,
+			strength: edge.kind === 'extraction' ? 0.9 : 0.45
+		})),
+		...visibleSharedEdges.map((edge) => ({
+			source: edge.source,
+			target: edge.target,
+			distance: 180,
+			strength: Math.min(0.12, 0.03 * edge.weight)
+		}))
+	];
+}
+
 /**
  * Creates a live d3-force simulation for client-side use. Unlike
  * `computeForceLayout`, which runs synchronously and returns baked positions,
@@ -489,26 +502,12 @@ export function createForceSimulation(
 	size = 1000
 ): Simulation<LiveSimNode, never> {
 	const centre = size / 2;
-
-	const links = [
-		...visibleEdges.map((edge) => ({
-			source: edge.source,
-			target: edge.target,
-			distance: edge.kind === 'extraction' ? 90 : 140,
-			strength: edge.kind === 'extraction' ? 0.9 : 0.45
-		})),
-		...visibleSharedEdges.map((edge) => ({
-			source: edge.source,
-			target: edge.target,
-			distance: 180,
-			strength: Math.min(0.12, 0.03 * edge.weight)
-		}))
-	];
+	const links = buildSimLinks(visibleEdges, visibleSharedEdges);
 
 	return forceSimulation<LiveSimNode>(initialNodes)
 		.force(
 			'link',
-			forceLink<LiveSimNode, (typeof links)[number]>(links)
+			forceLink<LiveSimNode, SimLink>(links)
 				.id((node) => node.slug)
 				.distance((link) => link.distance)
 				.strength((link) => link.strength)

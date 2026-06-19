@@ -3,7 +3,7 @@
 	import { base } from '$app/paths';
 	import { EDGE_CATEGORIES, type ProjectKind, type ProjectStatus } from '$lib/data/types.js';
 	import type { GraphEdge, LiveSimNode, SharedTechEdge } from '$lib/data/graph.js';
-	import { createForceSimulation } from '$lib/data/graph.js';
+	import { buildSimLinks, createForceSimulation } from '$lib/data/graph.js';
 	import { forceLink as d3ForceLink } from 'd3-force';
 	import {
 		statusColour,
@@ -239,32 +239,6 @@
 			return { slug: n.slug, radius, x: n.x, y: n.y };
 		});
 
-		// d3-force mutates link.source/target to resolved node objects during
-		// simulation; this helper builds a fresh array of slug-keyed links so we
-		// can safely pass them after each reheat without d3 choking on stale refs.
-		type SimLink = {
-			source: string;
-			target: string;
-			distance: number;
-			strength: number;
-		};
-		function buildLinks(curEdges: GraphEdge[], curShared: SharedTechEdge[]): SimLink[] {
-			return [
-				...curEdges.map((e) => ({
-					source: e.source,
-					target: e.target,
-					distance: e.kind === 'extraction' ? 90 : 140,
-					strength: e.kind === 'extraction' ? 0.9 : 0.45
-				})),
-				...curShared.map((e) => ({
-					source: e.source,
-					target: e.target,
-					distance: 180,
-					strength: Math.min(0.12, 0.03 * e.weight)
-				}))
-			];
-		}
-
 		const sim = createForceSimulation(simNodes, visibleEdges, visibleSharedEdges, size);
 
 		let rafId: number;
@@ -295,18 +269,28 @@
 
 		// Reheat the simulation whenever the visible edge set changes.
 		// $effect.root so we can call it inside onMount and return a cleanup fn.
+		// The curEdges/curShared reads must precede the firstRun guard so that
+		// Svelte still registers the dependency on the first (no-op) pass.
+		let firstRun = true;
 		const stopEffect = $effect.root(() => {
 			$effect(() => {
 				// Snapshot the current visible edges (touches reactive state so Svelte tracks it).
 				const curEdges = [...visibleEdges];
 				const curShared = [...visibleSharedEdges];
 
+				// The simulation is already seeded with these edges at creation, so the
+				// effect's initial synchronous run would re-feed identical data and waste a reheat.
+				if (firstRun) {
+					firstRun = false;
+					return;
+				}
+
 				// Replace the link force with only the currently-visible edges, then reheat.
 				// d3-force exposes the forceLink instance via sim.force('link'); calling
 				// .links() on it updates the data in place without rebuilding the simulation.
 				const fl = sim.force<ReturnType<typeof d3ForceLink>>('link');
 				if (fl) {
-					fl.links(buildLinks(curEdges, curShared) as never);
+					fl.links(buildSimLinks(curEdges, curShared) as never);
 				}
 
 				sim.alpha(0.5).restart();
