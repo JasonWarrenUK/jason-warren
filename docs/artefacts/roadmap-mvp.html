@@ -7,57 +7,78 @@
 
 <!-- Reasonable Colors palette (project default) -->
 <link rel="stylesheet" href="https://unpkg.com/reasonable-colors@0.4.0/reasonable-colors.css">
+
 <!-- IBM Plex Sans + IBM Plex Mono -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 
 <style>
-  /* ============================================================
-     Palette — derived from the project's own tokens.css:
-       primary = azure, accent = emerald.
-     Mapped here to the artefact's semantic aliases. Components
-     reference only these aliases, never Reasonable Colors vars.
-     ============================================================ */
+  /* |====| Palette |===========================================|
+      | role           | colour |
+      |----------------|--------|
+      |===== MAIN =====|========|
+      | primary        | azure  |
+      | accent         | azure  |
+      | background     | amber  |
+      |== MILESTONES ==|========|
+      | to do          | orange |
+      | done           | sky    |
+      |===== TASK =====|========|
+      | to do          | xxx    |
+      | in progress    | xxx    |
+      | done           | xxx    |
+      | blocked        | xxx    |
+    
+	    Mapped here to the artefact's semantic aliases.
+	    Components reference only these aliases, never Reasonable Colors vars.
+    |==========================================================| */
   :root {
     --font-body: 'IBM Plex Sans', system-ui, -apple-system, sans-serif;
     --font-mono: 'IBM Plex Mono', 'SF Mono', Consolas, monospace;
 
-    /* Surfaces & text */
-    --bg: var(--color-gray-1);
-    --surface: #ffffff;
-    --surface2: var(--color-gray-1);
-    --surface-elevated: #ffffff;
-    --border: var(--color-gray-3);
-    --border-bright: var(--color-gray-4);
-    --text: var(--color-gray-6);
-    --text-dim: var(--color-gray-5);
+    /* Surfaces, Text & Background */
+    --bg: 										var(--color-amber-1);
+    --surface: 								#ffffff;
+    --surface2: 							var(--color-amber-1);
+    --surface-elevated: 			#ffffff;
+    --border: 								var(--color-amber-3);
+    --border-bright: 					var(--color-amber-4);
+    --text: 									var(--color-amber-6);
+    --text-dim: 							var(--color-amber-5);
 
-    /* Primary accent — azure (project primary) */
-    --color-primary:        var(--color-azure-4);
-    --color-primary-bg:     var(--color-azure-1);
-    --color-primary-text:   var(--color-azure-6);
-    --accent: var(--color-azure-4);
-    --accent-dim: var(--color-azure-1);
+    /* Project Primary & Accent: azure */
+    --color-primary:        	var(--color-azure-4);
+    --color-primary-bg:     	var(--color-azure-1);
+    --color-primary-text:   	var(--color-azure-6);
+    --accent: 								var(--color-azure-4);
+    --accent-dim: 						var(--color-azure-1);
 
-    /* Milestone — sky */
-    --color-milestone:      var(--color-sky-4);
-    --color-milestone-bg:   var(--color-sky-1);
-    --color-milestone-text: var(--color-sky-6);
+    /* Milestone: sky & orange (complementary) */
+    --color-milestone-bg:   			var(--color-orange-1);
+    --color-milestone:      			var(--color-orange-4);
+    --color-milestone-text: 			var(--color-orange-6);
+    
+    --color-milestone-done-bg:   	var(--color-sky-1);
+    --color-milestone-done:				var(--color-sky-4);
+    --color-milestone-done-text: 	var(--color-sky-6);
 
-    /* Task status */
-    --color-done:           var(--color-emerald-4);
-    --color-done-bg:        var(--color-emerald-1);
-    --color-done-text:      var(--color-emerald-6);
-    --color-in-progress:    var(--color-azure-4);
-    --color-in-progress-bg: var(--color-azure-1);
-    --color-in-progress-text: var(--color-azure-6);
-    --color-todo:           var(--color-gray-5);
-    --color-todo-bg:        var(--color-gray-1);
-    --color-todo-text:      var(--color-gray-6);
-    --color-blocked:        var(--color-amber-4);
-    --color-blocked-bg:     var(--color-amber-1);
-    --color-blocked-text:   var(--color-amber-6);
+    /* Task: cinnamon, magenta, emerald & cerulean (tetradic) */
+    --color-blocked-bg:     			var(--color-cinnamon-1);
+    --color-blocked:        			var(--color-cinnamon-4);
+    --color-blocked-text:   			var(--color-cinnamon-6);
+    
+    --color-todo-bg:        			var(--color-magenta-1);
+    --color-todo:           			var(--color-magenta-5);
+    --color-todo-text:      			var(--color-magenta-6);
+    
+    --color-in-progress-bg: 			var(--color-emerald-1);
+    --color-in-progress:    			var(--color-emerald-4);
+    --color-in-progress-text: 		var(--color-emerald-6);
+    
+    --color-done-bg:        			var(--color-cerulean-1);
+    --color-done:           			var(--color-cerulean-4);
+    --color-done-text:      			var(--color-cerulean-6);
   }
 
   @media (prefers-color-scheme: dark) {
@@ -658,6 +679,7 @@
   }
 </style>
 </head>
+
 <body>
 
 <div class="wrap">
