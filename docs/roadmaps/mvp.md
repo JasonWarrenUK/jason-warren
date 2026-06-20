@@ -8,7 +8,7 @@ The site is live and substantially built (full routes, graph/timeline/map/toolki
 
 |              | Status                                          | Next Up                               | Blocked                        |
 | ------------ | ----------------------------------------------- | ------------------------------------- | ------------------------------ |
-| **Content**  | 30+ entries, themes, threads, Colophon in place | Bring every entry to flagship depth   | —                              |
+| **Content**  | 30+ entries, themes, threads, Colophon in place; depth audit complete; 7 sub-Full entries rewritten/excluded | Editorial polish on Full entries; theme coherence | —                              |
 | **Features** | Search absent; map/timeline rich; filters URL-backed but single-select | Search, deep-link other views, multi-select | Cross-view continuity, new viz |
 | **Design**   | Reasonable Colors tokens, dark mode             | Visual identity, then typography/motion | Direction decision first       |
 | **Quality**  | Strict types, data-integrity tests, prerendered | Interaction tests, then a11y audit, SEO | New-view a11y (needs M2 viz, graph aesthetics) |
@@ -39,26 +39,24 @@ The site is live and substantially built (full routes, graph/timeline/map/toolki
 
 <a name="m1-doing"><h4>In Progress (Milestone 1)</h4></a>
 
-- [ ] 1CO.1. Audit every project entry for depth — which read thin, which read full, what's structurally missing
+- [ ] 1CO.2. Bring every project entry to flagship-ready depth — worklist in [`docs/audits/content-depth.md`](../audits/content-depth.md). First pass complete: all 7 sub-Full entries rewritten or resolved (6 rewrites, `kamino` excluded from the portfolio).
 
 <a name="m1-todo"><h4>To Do (Milestone 1)</h4></a>
-
 - [ ] 1CO.3. Strengthen `contributionNote` copy across all team projects
 - [ ] 1CO.4. Rewrite About page narrative (positioning, voice)
+- [ ] 1CO.6. Review theme groupings and theme copy for coherence — observations in [`docs/audits/content-depth.md`](../audits/content-depth.md)
 - [ ] 1CO.7. Review engine-extraction thread narratives (`threads.ts`) for clarity
 
 <a name="m1-blocked"><h4>Blocked (Milestone 1)</h4></a>
 
-- [ ] 1CO.2. Bring every project entry to flagship-ready depth — **depends on 1CO.1**
 - [ ] 1CO.5. Expand Colophon: explain the build, the data model, and headline the Drift tooling story — **depends on 1CO.7**
-- [ ] 1CO.6. Review theme groupings and theme copy for coherence — **depends on 1CO.1**
 - [ ] 1CO.8. Pass all copy through the writing-style guide (British spelling, no em-dashes, voice) — **depends on 1CO.2, 1CO.3, 1CO.4, 1CO.5, 1CO.7, 1CO.9**
 - [ ] 1CO.9. CV / hire-me positioning copy — explicit "what I can do / work with me" content — **depends on 1CO.4**
 - [ ] 1CO.10. Surfaced-project rotation / curation mechanism (home page hero rotates which project is foregrounded) — **depends on 1CO.2**
 
 <a name="m1-done"><h4>Completed (Milestone 1)</h4></a>
 
-_None yet._
+- [x] 1CO.1. Audit every project entry for depth — which read thin, which read full, what's structurally missing — output in [`docs/audits/content-depth.md`](../audits/content-depth.md)
 
 ---
 
@@ -173,6 +171,8 @@ _None._
 - [ ] 5DR.7. Build subsumed in-repo backlog inside the decoupled design: branch awareness (Phase 5 of `drift-improvement-plan.md`) + `in-progress.json` staging pipeline (Phase 6) — **depends on 5DR.6**
 - [ ] 5DR.8. Engine test suite: config resolution, fingerprinting, drift computation — **depends on 5DR.6**
 - [ ] 5DR.9. Drift docs: config reference, data model, metric-precedence lifecycle diagram — **depends on 5DR.5, 5DR.6**
+- [ ] 5DR.10. Authoring guide: document which fields Drift populates automatically vs which require / accept hand-authored values, and where override files live — a short dev-facing reference so the authoring workflow is unambiguous — **depends on 5DR.1, 5DR.5**
+- [ ] 5DR.11. Drift `audit` verb: score every authored entry against the content-depth rubric (`docs/audits/content-depth.md`) and emit a per-entry tier report; the automated successor to the 1CO.1 manual audit — **depends on 5DR.5, 5DR.6**
 
 <a name="m5-done"><h4>Completed (Milestone 5)</h4></a>
 
@@ -193,12 +193,12 @@ flowchart TD
 	%% ── Milestone 1: Content Depth & Polish ──────────────────────────
 	m1{"`**Milestone 1**<br/>Content Depth & Polish`"}:::mile
 
-	1CO.1["`*1CO.1*<br/>**Content**<br/>audit entry depth`"]:::open
-	1CO.2["`*1CO.2*<br/>**Content**<br/>all entries flagship-ready`"]:::blocked
+	1CO.1["`*1CO.1*<br/>**Content**<br/>audit entry depth`"]:::done
+	1CO.2["`*1CO.2*<br/>**Content**<br/>all entries flagship-ready`"]:::doing
 	1CO.3["`*1CO.3*<br/>**Content**<br/>contribution notes`"]:::open
 	1CO.4["`*1CO.4*<br/>**Content**<br/>About narrative`"]:::open
 	1CO.5["`*1CO.5*<br/>**Content**<br/>Colophon + Drift story`"]:::open
-	1CO.6["`*1CO.6*<br/>**Content**<br/>theme coherence`"]:::blocked
+	1CO.6["`*1CO.6*<br/>**Content**<br/>theme coherence`"]:::open
 	1CO.7["`*1CO.7*<br/>**Content**<br/>thread narratives`"]:::open
 	1CO.8["`*1CO.8*<br/>**Content**<br/>style-guide pass`"]:::open
 	1CO.9["`*1CO.9*<br/>**Content**<br/>CV / hire-me copy`"]:::open
@@ -310,6 +310,8 @@ flowchart TD
 	5DR.7["`*5DR.7*<br/>**Drift**<br/>branch awareness + staging`"]:::blocked
 	5DR.8["`*5DR.8*<br/>**Drift**<br/>engine test suite`"]:::blocked
 	5DR.9["`*5DR.9*<br/>**Drift**<br/>Drift docs`"]:::blocked
+	5DR.10["`*5DR.10*<br/>**Drift**<br/>authoring guide`"]:::blocked
+	5DR.11["`*5DR.11*<br/>**Drift**<br/>audit verb`"]:::blocked
 
 	%% M5 — literal deps (solid)
 	5DR.0 --> 5DR.1
@@ -322,6 +324,10 @@ flowchart TD
 	5DR.6 --> 5DR.7
 	5DR.6 --> 5DR.8
 	5DR.6 --> 5DR.9
+	5DR.1 --> 5DR.10
+	5DR.5 --> 5DR.10
+	5DR.5 --> 5DR.11
+	5DR.6 --> 5DR.11
 
 	%% M5 — inferred sequencing (dotted)
 	5DR.4 -.-> 5DR.6
@@ -330,6 +336,8 @@ flowchart TD
 	5DR.7 --> m5
 	5DR.8 --> m5
 	5DR.9 --> m5
+	5DR.10 --> m5
+	5DR.11 --> m5
 
 	%% ── Cross-milestone gates ────────────────────────────────────────
 	%% literal (in prose)
@@ -351,6 +359,7 @@ flowchart TD
 	classDef default fill:#fff7fb;
 	classDef blocked fill:#fff7fb;
 	classDef open fill:#fff9e5;
+	classDef doing fill:#fff0cc,stroke:#b07800;
 	classDef done fill:#e5ffe9;
 	classDef mile fill:#c4fffe;
 	classDef ship fill:#d6f5e3,stroke:#008060,color:#00402e;
