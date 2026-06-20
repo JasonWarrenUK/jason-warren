@@ -12,7 +12,7 @@ The site is live and substantially built (full routes, graph/timeline/map/toolki
 | **Features** | Search absent; map/timeline rich; filters URL-backed but single-select | Search, deep-link other views, multi-select | Cross-view continuity, new viz |
 | **Design**   | Reasonable Colors tokens, dark mode             | Visual identity, then typography/motion | Direction decision first       |
 | **Quality**  | Strict types, data-integrity tests, prerendered | Interaction test coverage (4QU.5) | a11y audit and SEO blocked on 4QU.5; new-view a11y blocked on M2 viz |
-| **Drift**    | 2.5k-line CLI, manifest registry, cache, verbs  | Config layer, engine/integration split | Most decoupling tasks (sequence) |
+| **Drift**    | 2.5k-line CLI, manifest registry, cache, verbs  | Bun migration, config layer, engine/integration split | Most decoupling tasks (sequence) |
 
 ---
 
@@ -161,15 +161,16 @@ _None._
 
 - [ ] 5DR.1. Boundary doc: define the core-engine vs Svelte-integration contract (what each layer owns)
 - [ ] 5DR.2. Coupling inventory: annotate the 6 couplings in code with their resolution path (light task — the map already exists)
+- [ ] 5DR.12. Migrate repo package manager from npm to Bun: switch lockfile (`bun install`, delete `package-lock.json`), update the four drift scripts in `package.json` from `node scripts/check-drift.js` to `bun`, confirm Vite/Vitest/svelte-check all run under Bun — the portfolio should dogfood the preferred toolkit, and a Bun-native runtime is a prerequisite for packaging Drift as a distributable CLI
 
 <a name="m5-blocked"><h4>Blocked (Milestone 5)</h4></a>
 
 - [ ] 5DR.3. Config layer: paths, author pattern, scan root, excludes, gum theme all become user-config — **depends on 5DR.1, 5DR.2**
 - [ ] 5DR.4. Relocate / generalise tag taxonomy to the engine boundary — **depends on 5DR.3**
 - [ ] 5DR.5. Define engine's public data schema (the typed/JSON output contract) — **depends on 5DR.1**
-- [ ] 5DR.6. Split core engine from Svelte integration: move `.ts`-scraping (`curatedLanguages`/`curatedStatus`) into the integration layer — **depends on 5DR.3, 5DR.4**
+- [ ] 5DR.6. Split core engine from Svelte integration: move `.ts`-scraping (`curatedLanguages`/`curatedStatus`) into the integration layer — **depends on 5DR.3, 5DR.4, 5DR.12**
 - [ ] 5DR.7. Build subsumed in-repo backlog inside the decoupled design: branch awareness (Phase 5 of `drift-improvement-plan.md`) + `in-progress.json` staging pipeline (Phase 6) — **depends on 5DR.6**
-- [ ] 5DR.8. Engine test suite: config resolution, fingerprinting, drift computation — **depends on 5DR.6**
+- [ ] 5DR.8. Engine test suite: config resolution, fingerprinting, drift computation — **depends on 5DR.6, 5DR.12**
 - [ ] 5DR.9. Drift docs: config reference, data model, metric-precedence lifecycle diagram — **depends on 5DR.5, 5DR.6**
 - [ ] 5DR.10. Authoring guide: document which fields Drift populates automatically vs which require / accept hand-authored values, and where override files live — a short dev-facing reference so the authoring workflow is unambiguous — **depends on 5DR.1, 5DR.5**
 - [ ] 5DR.11. Drift `audit` verb: score every authored entry against the content-depth rubric (`docs/audits/content-depth.md`) and emit a per-entry tier report; the automated successor to the 1CO.1 manual audit — **depends on 5DR.5, 5DR.6**
@@ -300,6 +301,7 @@ flowchart TD
 	5DR.9["`*5DR.9*<br/>**Drift**<br/>Drift docs`"]:::blocked
 	5DR.10["`*5DR.10*<br/>**Drift**<br/>authoring guide`"]:::blocked
 	5DR.11["`*5DR.11*<br/>**Drift**<br/>audit verb`"]:::blocked
+	5DR.12["`*5DR.12*<br/>**Drift**<br/>npm → Bun migration`"]:::open
 
 	%% M5 — deps
 	5DR.0 --> 5DR.1
@@ -317,6 +319,8 @@ flowchart TD
 	5DR.5 --> 5DR.11
 	5DR.6 --> 5DR.11
 	5DR.4 --> 5DR.6
+	5DR.12 --> 5DR.6
+	5DR.12 --> 5DR.8
 
 	%% M5 track completers → m5
 	5DR.7 --> m5
