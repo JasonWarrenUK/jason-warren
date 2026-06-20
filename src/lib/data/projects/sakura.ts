@@ -22,7 +22,7 @@ export const sakura: Project = {
 		'Colour-matching engine (ColourSearch.cs): hex to RGB to HSL conversion with validation and nearest-colour name resolution, letting the app name arbitrary hex codes.',
 		'Entity Framework Core data model with a ColourCollection join table, explicit ordering, and a full migrations history.',
 		'Privacy-filtered collections-by-user endpoints: public/private visibility per collection, scoped to the authenticated user.',
-		'Colour DTOs enabling dynamic palette generation driven from the React frontend.',
+		'Colour DTOs with serialisation for frontend consumption, enabling colour operations to be driven from the React UI without coupling the API to presentation logic.',
 		'Swagger-documented REST API on ASP.NET Core 8 with ASP.NET Identity authentication.'
 	],
 	relationships: [],

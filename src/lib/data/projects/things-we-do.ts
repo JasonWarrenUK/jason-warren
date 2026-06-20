@@ -18,11 +18,11 @@ export const thingsWeDo: Project = {
 	status: 'archived',
 	repoUrl: 'https://github.com/fac30/things-we-do',
 	highlights: [
-		'Next-actions feature end-to-end: creation, immediate selection, view, and deletion (PRs #84, #95, #102).',
-		'3D mood visualisation via Plotly.js: interactive, animated wellbeing data (PR #74).',
-		'Ephemeral categories with modal confirmations (PR #65).',
-		'RxDB offline-first storage initialisation with schema design (PR #6).',
-		'Offline-first installable PWA via Serwist service worker and RxDB local storage.'
+		'Next-actions feature end-to-end: creation, immediate selection, view, and deletion.',
+		'3D mood visualisation via Plotly.js: interactive, animated wellbeing data.',
+		'Ephemeral categories with modal confirmations.',
+		'RxDB offline-first storage initialisation with schema design.',
+		'Serwist service worker with background sync and offline caching; installable as a PWA.'
 	],
 	relationships: [],
 	featured: false,

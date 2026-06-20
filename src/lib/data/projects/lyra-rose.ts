@@ -15,7 +15,7 @@ export const lyraRose: Project = {
 	highlights: [
 		'Pluggable renderer architecture for both surfaces and interiors from day one: adding a new surface or interior type is "write a new renderer," not modifying core opening logic.',
 		'Viewport-bounded layout discipline at every level: nothing scrolls anywhere in the system. Interior content that exceeds the viewport paginates, animates, or reflows within a contained region.',
-		'Dual pointer and touch grammars designed in parallel as distinct inhabitations of the same essence, not a cursor-model port. Hover-based proximity does not exist on touch; the grammar is designed from scratch.',
+		'Dual pointer and touch grammars as distinct inhabitations of the same essence: proximity is cursor-native and absent on touch; the touch grammar is designed from scratch rather than adapted from mouse events.',
 		"Day-cycle background synced to the visitor's real local time: a 3am visitor gets a different sky than a noon visitor, with no session state involved.",
 		'Proximity-summoned audio via the Web Audio API: distance-based gain ramping as the cursor approaches a shard. No synthesis library. Silent by default.',
 		'Archived OpenGraph previews at capture time: title, description, and hero image stored locally so shards survive link rot and paywalls.'

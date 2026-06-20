@@ -15,7 +15,7 @@ export const wyrdTui: Project = {
 	highlights: [
 		'Custom read-only Cypher subset: parser, evaluator, MATCH/WHERE/RETURN/ORDER BY, aggregations, bidirectional and variable-length traversals, date variables with offset arithmetic.',
 		'Three-way JSONC git merge driver (its own binary): non-conflicting changes merge cleanly; scalars resolve last-write-wins by timestamp; arrays union.',
-		'68.5% statement coverage across 150 Go files and 62 test files. Uncommon rigour for a side project.',
+		'68.5% statement coverage across 150 Go files and 62 test files; the test suite covers the Cypher evaluator, merge driver, and graph traversal independently.',
 		'Colour-blind-safe themes pairing glyph and colour signals; WCAG AA via Reasonable Colors; "time displacement" schedule view makes overruns visually compressing.',
 		'JSON-lines stdin/stdout plugin protocol with deterministic UUID v5 deduplication for extensibility.'
 	],

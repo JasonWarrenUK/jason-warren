@@ -17,7 +17,7 @@ export const cogni: Project = {
 		'10+ methodology evaluations (TDD, Scrum, Shape Up, Kanban, XP, etc.) with per-methodology friction explanations.',
 		'Core logic (constraint propagation, method evaluation, profile synthesis, import/export) covered by Vitest unit tests.',
 		'Export as portable Markdown for use in 1:1s, job evaluations, and retrospectives; localStorage persistence between sessions.',
-		'v0.6: working but pre-1.0; built with Svelte, Bun, and TypeScript.'
+		'Constraint propagation: selecting a position in one compass crosshatches incompatible quadrants in correlated compasses, preventing contradictory profiles.'
 	],
 	relationships: [],
 	featured: false,

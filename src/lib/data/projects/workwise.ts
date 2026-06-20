@@ -18,9 +18,9 @@ export const workwise: Project = {
 	status: 'wip',
 	repoUrl: 'https://github.com/foundersandcoders/workwise',
 	highlights: [
-		'Tile-based dashboard layout with responsive grid and collapsible sections (PR #41).',
-		'State-based response handling with creation-date versioning: answers are versioned, not overwritten (PR #28).',
-		'Database-driven status indicators: live config, no hardcoded states (PR #36).',
+		'Tile-based dashboard layout with responsive grid and collapsible sections.',
+		'State-based response handling with creation-date versioning: answers are versioned, not overwritten.',
+		'Database-driven status indicators: live config, no hardcoded states.',
 		'Local Supabase-in-Docker dev loop with two-tier seeding (real questions vs fake test data) and generated TypeScript types from the DB schema.',
 		'Row-Level Security enforces data isolation between employees and managers.'
 	],

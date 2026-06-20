@@ -22,7 +22,7 @@ export const craftAndGraft: Project = {
 		'Full session-based auth: bcrypt-hashed passwords, PostgreSQL-backed sessions via connect-pg-simple, with login/signup/logout controllers in the API.',
 		'React storefront where nav and views adapt to login status, with products fetched live from the Express API companion repo.',
 		'Netlify continuous deployment wired up from pull requests via CD pipeline.',
-		"Team GitHub Actions automation: stale-issue bot and first-contributor greeter, where Jason set up the team's CI ergonomics.",
+		"Team GitHub Actions automation: a stale-issue bot and first-contributor greeter, covering CI ergonomics from the start.",
 		'PostgreSQL schema and seed scripts driving a product catalogue with an ERD for reference.'
 	],
 	relationships: [],

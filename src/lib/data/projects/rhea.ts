@@ -17,7 +17,7 @@ export const rhea: Project = {
 		'Provenance/cascade pattern: every generated module carries a changelog, confidence score (high/medium/low), and auto-cited research sources.',
 		'Schema validation with automatic retry (up to 3 attempts) on failed generations; Zod enforces the output contract.',
 		'Configurable research domain allowlists, hierarchical course→arc→module config inheritance, agent client + prompt factory abstraction.',
-		'356 commits; deploys via Deno Deploy with the @deno/svelte-adapter; 31 Svelte components, 66 TypeScript files.'
+		'Deploys via Deno Deploy with the @deno/svelte-adapter; configurable research domain allowlists and hierarchical course→arc→module config inheritance keep generation scope controllable.'
 	],
 	relationships: [],
 	featured: true,

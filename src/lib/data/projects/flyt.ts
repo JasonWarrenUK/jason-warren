@@ -17,7 +17,7 @@ export const flyt: Project = {
 		'~1,330 lines of authored .dry narrative content across two story areas (contest, great-hall).',
 		'Card priority/frequency draw ordering, broad/narrow difficulty checks with configurable curves, tag-based choice expansion.',
 		'Claude Code hooks auto-compile .dry files on save, keeping the developer loop tight.',
-		'The Riffle engine library was extracted from this project for reuse.'
+		'Two story areas authored in .dry: the contest (verbal duel against an opponent with escalating stakes) and the great-hall (social navigation ahead of the contest).'
 	],
 	relationships: [
 		{
