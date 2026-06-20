@@ -19,7 +19,7 @@ export const commonsTraybake: Project = {
 	repoUrl: 'https://github.com/fac-31/commons-traybake',
 	highlights: [
 		'Four chunking strategies: early (1024 token), early (256 token), late (1024 token blended 70/30 chunk/debate context), late (256 token).',
-		'Late chunking blends embeddings: 70% chunk + 30% debate context. A non-standard approach with measurable retrieval effects.',
+		'Late chunking blends embeddings: 70% chunk + 30% debate context, weighting document-level semantics into each retrieved fragment rather than treating chunks as isolated strings.',
 		'Divergence analysis UI shows only 8-25% overlap between strategies, making the ethics argument concrete.',
 		'Neo4j 5.11+ vector storage with five vector indexes and dual-label schema; OpenAI text-embedding-3-large.',
 		'UK Parliament Hansard API integration with documented request patterns and Bruno/HTTPie test collection.'

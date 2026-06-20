@@ -18,9 +18,9 @@ export const guardrails: Project = {
 	status: 'wip',
 	repoUrl: 'https://github.com/yalla-coop/yalla-labs-guardrails',
 	highlights: [
-		'Smarter PII detection: added UK postcode pattern matching and name-initial detection (PR #86).',
-		'Added Google Gemini as a third AI provider, extending the architecture beyond Claude and OpenAI (PR #22).',
-		'File-attachment warning in the Chrome extension sidebar (PR #45).',
+		'Smarter PII detection: UK postcode pattern matching and name-initial detection.',
+		'Added Google Gemini as a third AI provider, extending the architecture beyond Claude and OpenAI.',
+		'File-attachment warning in the Chrome extension sidebar.',
 		'Genuine polyglot microservice architecture: Chrome MV3 extension, React admin panel, Express API, FastAPI/Presidio NER service.',
 		'10 PII entity types: PERSON, EMAIL, PHONE, LOCATION, ORG, CREDIT_CARD, SSN, postcode, and more.'
 	],

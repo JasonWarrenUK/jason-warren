@@ -16,7 +16,7 @@ export const theWork: Project = {
 		'Ink narrative engine (via Nib) drives branching dialogue across 15 per-hour chapter files; ~2,560 lines of authored Ink.',
 		'Six-level idea progression, 7 domains, 21 disciplines (every domain pairing), per-idea orthodoxy scoring (−100 to +100).',
 		'67 observations with 201 domain readings and 40 inklings catalogued in structured data.',
-		'Generic Ink+Svelte runtime extracted into the standalone Nib library. Zero game-specific imports, wired in via a single onInit callback.',
+		'Generic Ink+Svelte runtime extracted into the standalone Nib library; the game wires it in via a single onInit callback with zero game-specific imports in the runtime layer.',
 		'Detailed design corpus: Ideas, Objects, Recipes, Disciplines, World documents alongside the source.'
 	],
 	relationships: [

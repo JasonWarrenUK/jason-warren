@@ -21,7 +21,7 @@ export const redot: Project = {
 		'Analyses only functions modified in the current PR: context-aware, not a full codebase scan.',
 		'Recognises the full range of JS/TS function forms: arrow, async, generators, class methods, getters/setters, constructors.',
 		'XML-structured prompts with batch processing improve Claude output consistency.',
-		'Replaced LangChain with the Anthropic SDK directly. Simpler, more maintainable dependency.',
+		'Replaced LangChain with the Anthropic SDK directly: fewer abstraction layers, a stable typed interface, and no transitive dependency surface.',
 		'Packaged as a reusable GitHub Action with full action.yml input schema; AGPLv3 licensed.'
 	],
 	relationships: [],

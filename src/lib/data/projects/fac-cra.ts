@@ -18,9 +18,9 @@ export const facCra: Project = {
 	status: 'wip',
 	repoUrl: 'https://github.com/izaakrogan/fac-cra',
 	highlights: [
-		'Lead Pool multi-axis candidate segmentation: 6 segmentation axes, composable signal groups, hydration orchestrator, pattern-based strength classification (PR #144).',
+		'Lead Pool multi-axis candidate segmentation: 6 segmentation axes, composable signal groups, hydration orchestrator, pattern-based strength classification.',
 		'Full Playwright E2E suite for the learn app. First automated browser tests on the project.',
-		'Learner dashboard restructure: collapsible tiles, health metrics, responsive layout, Article Stats tab (PRs #72, #209, #1298 LOC).',
+		'Learner dashboard restructure: collapsible tiles, health metrics, responsive layout, and an Article Stats tab.',
 		'Distribution pipeline extensions: saved-query folder system, workshop runsheets, batch lead-scoring, markdown email composer.',
 		'Non-invasive audit pass: security hardening, a11y fixes, dead-code removal, 17 unused packages removed.'
 	],

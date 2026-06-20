@@ -216,6 +216,44 @@ describe('project registry', () => {
 		}
 		expect(offenders, `Projects with em-dashes: ${offenders.join(', ')}`).toHaveLength(0);
 	});
+
+	it('every authored description meets the minimum depth floor (≥ 25 words)', () => {
+		// Enforces the Thin floor from the content-depth rubric (docs/audits/content-depth.md).
+		// Manifest-only projects legitimately have an empty description ('') and are exempt.
+		// The Full bar (≥ 80 words) lives in the audit doc, not here; this catches descriptions
+		// that are shorter than a tagline and signal un-authored holding copy.
+		const MIN_WORDS = 25;
+		const offenders: string[] = [];
+		for (const project of projects) {
+			if (!authoredSlugs.has(project.slug)) continue;
+			const wordCount = project.description.trim().split(/\s+/).filter(Boolean).length;
+			if (wordCount < MIN_WORDS) {
+				offenders.push(`${project.slug} (${wordCount} words)`);
+			}
+		}
+		expect(
+			offenders,
+			`Authored descriptions below ${MIN_WORDS}-word floor: ${offenders.join(', ')}`
+		).toHaveLength(0);
+	});
+
+	it('no authored description is shorter than or equal to its blurb', () => {
+		// A description shorter than or equal to a blurb signals that the description
+		// field has been left as holding copy. The blurb is intentionally the shorter
+		// field (enforced by the blurb test above); if description ≤ blurb in length,
+		// the description has not been authored.
+		const offenders: string[] = [];
+		for (const project of projects) {
+			if (!authoredSlugs.has(project.slug)) continue;
+			if (project.description.trim().length <= project.blurb.trim().length) {
+				offenders.push(project.slug);
+			}
+		}
+		expect(
+			offenders,
+			`Authored descriptions no longer than their blurb: ${offenders.join(', ')}`
+		).toHaveLength(0);
+	});
 });
 
 describe('engine-extraction threads', () => {
@@ -559,7 +597,7 @@ describe('manual overrides', () => {
 		// overridden. If no such project exists (empty overrides), the test is vacuously green.
 		const synced = sourcesManifest.sources as Record<string, { [k: string]: unknown }>;
 
-		for (const [slug, fields] of Object.entries(overrides)) {
+		for (const [slug] of Object.entries(overrides)) {
 			const project = projects.find((p) => p.slug === slug);
 			if (!project) continue;
 			const source = synced[slug];

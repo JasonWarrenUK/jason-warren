@@ -8,11 +8,11 @@ The site is live and substantially built (full routes, graph/timeline/map/toolki
 
 |              | Status                                          | Next Up                               | Blocked                        |
 | ------------ | ----------------------------------------------- | ------------------------------------- | ------------------------------ |
-| **Content**  | 30+ entries, themes, threads, Colophon in place | Bring every entry to flagship depth   | —                              |
+| **Content**  | 30+ entries, themes, threads, Colophon in place; depth audit complete; every entry now at flagship-ready depth | Contribution notes; About narrative; theme coherence | —                              |
 | **Features** | Search absent; map/timeline rich; filters URL-backed but single-select | Search, deep-link other views, multi-select | Cross-view continuity, new viz |
 | **Design**   | Reasonable Colors tokens, dark mode             | Visual identity, then typography/motion | Direction decision first       |
-| **Quality**  | Strict types, data-integrity tests, prerendered | Interaction tests, then a11y audit, SEO | New-view a11y (needs M2 viz, graph aesthetics) |
-| **Drift**    | 2.5k-line CLI, manifest registry, cache, verbs  | Config layer, engine/integration split | Most decoupling tasks (sequence) |
+| **Quality**  | Strict types, data-integrity tests, prerendered | Interaction test coverage (4QU.5) | a11y audit and SEO blocked on 4QU.5; new-view a11y blocked on M2 viz |
+| **Drift**    | 2.5k-line CLI, manifest registry, cache, verbs  | Bun migration, config layer, engine/integration split | Most decoupling tasks (sequence) |
 
 ---
 
@@ -39,26 +39,25 @@ The site is live and substantially built (full routes, graph/timeline/map/toolki
 
 <a name="m1-doing"><h4>In Progress (Milestone 1)</h4></a>
 
-- [ ] 1CO.1. Audit every project entry for depth — which read thin, which read full, what's structurally missing
+_None._
 
 <a name="m1-todo"><h4>To Do (Milestone 1)</h4></a>
-
 - [ ] 1CO.3. Strengthen `contributionNote` copy across all team projects
 - [ ] 1CO.4. Rewrite About page narrative (positioning, voice)
+- [ ] 1CO.6. Review theme groupings and theme copy for coherence — observations in [`docs/audits/content-depth.md`](../audits/content-depth.md)
 - [ ] 1CO.7. Review engine-extraction thread narratives (`threads.ts`) for clarity
+- [ ] 1CO.10. Surfaced-project rotation / curation mechanism (home page hero rotates which project is foregrounded)
 
 <a name="m1-blocked"><h4>Blocked (Milestone 1)</h4></a>
 
-- [ ] 1CO.2. Bring every project entry to flagship-ready depth — **depends on 1CO.1**
 - [ ] 1CO.5. Expand Colophon: explain the build, the data model, and headline the Drift tooling story — **depends on 1CO.7**
-- [ ] 1CO.6. Review theme groupings and theme copy for coherence — **depends on 1CO.1**
-- [ ] 1CO.8. Pass all copy through the writing-style guide (British spelling, no em-dashes, voice) — **depends on 1CO.2, 1CO.3, 1CO.4, 1CO.5, 1CO.7, 1CO.9**
+- [ ] 1CO.8. Pass all copy through the writing-style guide (British spelling, no em-dashes, voice) — **depends on 1CO.3, 1CO.4, 1CO.5, 1CO.7, 1CO.9**
 - [ ] 1CO.9. CV / hire-me positioning copy — explicit "what I can do / work with me" content — **depends on 1CO.4**
-- [ ] 1CO.10. Surfaced-project rotation / curation mechanism (home page hero rotates which project is foregrounded) — **depends on 1CO.2**
 
 <a name="m1-done"><h4>Completed (Milestone 1)</h4></a>
 
-_None yet._
+- [x] 1CO.1. Audit every project entry for depth — which read thin, which read full, what's structurally missing — output in [`docs/audits/content-depth.md`](../audits/content-depth.md)
+- [x] 1CO.2. Bring every project entry to flagship-ready depth — worklist in [`docs/audits/content-depth.md`](../audits/content-depth.md). All 7 sub-Full entries resolved (6 rewritten, `kamino` excluded) and an editorial polish pass run across all 27 Full entries.
 
 ---
 
@@ -79,7 +78,7 @@ _None._
 
 <a name="m2-blocked"><h4>Blocked (Milestone 2)</h4></a>
 
-- [ ] 2FE.1. Client-side search across projects (title, tags, description) — **depends on 1CO.2, 2FE.4**
+- [ ] 2FE.1. Client-side search across projects (title, tags, description) — **depends on 2FE.4**
 - [ ] 2FE.4. Multi-select filters — allow combining dimensions (e.g. two tags, role + status); filters are single-select today — **depends on 2FE.2**
 - [ ] 2FE.5. Cross-view continuity (carry selection from map → project → timeline) — **depends on 2FE.2**
 
@@ -128,12 +127,12 @@ _None._
 <a name="m4-todo"><h4>To Do (Milestone 4)</h4></a>
 
 - [ ] 4QU.5. Component / interaction test coverage for the connection views (beyond existing data-integrity tests)
+- [ ] 4QU.4. Confirm OG image coverage for every route and project
 
 <a name="m4-blocked"><h4>Blocked (Milestone 4)</h4></a>
 
 - [ ] 4QU.1. Accessibility audit: keyboard nav, ARIA, contrast, SVG view semantics (the interactive graphs especially) — **depends on 4QU.5**
 - [ ] 4QU.3. SEO pass: structured data, meta completeness, sitemap verification; includes a light perf sanity-check (bundle size, hydration cost) — **depends on 4QU.1**
-- [ ] 4QU.4. Confirm OG image coverage for every route and project — **depends on 1CO.2**
 - [ ] 4QU.7. a11y regression pass on the tech-stack constellation — **depends on 2FE.6, 3DE.4, 4QU.1**
 
 <a name="m4-done"><h4>Completed (Milestone 4)</h4></a>
@@ -163,16 +162,19 @@ _None._
 
 - [ ] 5DR.1. Boundary doc: define the core-engine vs Svelte-integration contract (what each layer owns)
 - [ ] 5DR.2. Coupling inventory: annotate the 6 couplings in code with their resolution path (light task — the map already exists)
+- [ ] 5DR.12. Migrate repo package manager from npm to Bun: switch lockfile (`bun install`, delete `package-lock.json`), update the four drift scripts in `package.json` from `node scripts/check-drift.js` to `bun`, confirm Vite/Vitest/svelte-check all run under Bun — the portfolio should dogfood the preferred toolkit, and a Bun-native runtime is a prerequisite for packaging Drift as a distributable CLI
 
 <a name="m5-blocked"><h4>Blocked (Milestone 5)</h4></a>
 
 - [ ] 5DR.3. Config layer: paths, author pattern, scan root, excludes, gum theme all become user-config — **depends on 5DR.1, 5DR.2**
 - [ ] 5DR.4. Relocate / generalise tag taxonomy to the engine boundary — **depends on 5DR.3**
 - [ ] 5DR.5. Define engine's public data schema (the typed/JSON output contract) — **depends on 5DR.1**
-- [ ] 5DR.6. Split core engine from Svelte integration: move `.ts`-scraping (`curatedLanguages`/`curatedStatus`) into the integration layer — **depends on 5DR.3, 5DR.4**
+- [ ] 5DR.6. Split core engine from Svelte integration: move `.ts`-scraping (`curatedLanguages`/`curatedStatus`) into the integration layer — **depends on 5DR.3, 5DR.4, 5DR.12**
 - [ ] 5DR.7. Build subsumed in-repo backlog inside the decoupled design: branch awareness (Phase 5 of `drift-improvement-plan.md`) + `in-progress.json` staging pipeline (Phase 6) — **depends on 5DR.6**
-- [ ] 5DR.8. Engine test suite: config resolution, fingerprinting, drift computation — **depends on 5DR.6**
+- [ ] 5DR.8. Engine test suite: config resolution, fingerprinting, drift computation — **depends on 5DR.6, 5DR.12**
 - [ ] 5DR.9. Drift docs: config reference, data model, metric-precedence lifecycle diagram — **depends on 5DR.5, 5DR.6**
+- [ ] 5DR.10. Authoring guide: document which fields Drift populates automatically vs which require / accept hand-authored values, and where override files live — a short dev-facing reference so the authoring workflow is unambiguous — **depends on 5DR.1, 5DR.5**
+- [ ] 5DR.11. Drift `audit` verb: score every authored entry against the content-depth rubric (`docs/audits/content-depth.md`) and emit a per-entry tier report; the automated successor to the 1CO.1 manual audit — **depends on 5DR.5, 5DR.6**
 
 <a name="m5-done"><h4>Completed (Milestone 5)</h4></a>
 
@@ -193,31 +195,29 @@ flowchart TD
 	%% ── Milestone 1: Content Depth & Polish ──────────────────────────
 	m1{"`**Milestone 1**<br/>Content Depth & Polish`"}:::mile
 
-	1CO.1["`*1CO.1*<br/>**Content**<br/>audit entry depth`"]:::open
-	1CO.2["`*1CO.2*<br/>**Content**<br/>all entries flagship-ready`"]:::blocked
+	1CO.1["`*1CO.1*<br/>**Content**<br/>audit entry depth`"]:::done
+	1CO.2["`*1CO.2*<br/>**Content**<br/>all entries flagship-ready`"]:::done
 	1CO.3["`*1CO.3*<br/>**Content**<br/>contribution notes`"]:::open
 	1CO.4["`*1CO.4*<br/>**Content**<br/>About narrative`"]:::open
-	1CO.5["`*1CO.5*<br/>**Content**<br/>Colophon + Drift story`"]:::open
-	1CO.6["`*1CO.6*<br/>**Content**<br/>theme coherence`"]:::blocked
+	1CO.5["`*1CO.5*<br/>**Content**<br/>Colophon + Drift story`"]:::blocked
+	1CO.6["`*1CO.6*<br/>**Content**<br/>theme coherence`"]:::open
 	1CO.7["`*1CO.7*<br/>**Content**<br/>thread narratives`"]:::open
-	1CO.8["`*1CO.8*<br/>**Content**<br/>style-guide pass`"]:::open
-	1CO.9["`*1CO.9*<br/>**Content**<br/>CV / hire-me copy`"]:::open
-	1CO.10["`*1CO.10*<br/>**Content**<br/>rotation mechanism`"]:::blocked
+	1CO.8["`*1CO.8*<br/>**Content**<br/>style-guide pass`"]:::blocked
+	1CO.9["`*1CO.9*<br/>**Content**<br/>CV / hire-me copy`"]:::blocked
+	1CO.10["`*1CO.10*<br/>**Content**<br/>rotation mechanism`"]:::open
 
-	%% M1 — literal deps (solid)
+	%% M1 — deps
 	1CO.1 --> 1CO.2
 	1CO.1 --> 1CO.6
 	1CO.2 --> 1CO.10
-
-	%% M1 — inferred sequencing (dotted)
-	1CO.4 -.-> 1CO.9
-	1CO.7 -.-> 1CO.5
-	1CO.2 -.-> 1CO.8
-	1CO.3 -.-> 1CO.8
-	1CO.4 -.-> 1CO.8
-	1CO.5 -.-> 1CO.8
-	1CO.7 -.-> 1CO.8
-	1CO.9 -.-> 1CO.8
+	1CO.4 --> 1CO.9
+	1CO.7 --> 1CO.5
+	1CO.2 --> 1CO.8
+	1CO.3 --> 1CO.8
+	1CO.4 --> 1CO.8
+	1CO.5 --> 1CO.8
+	1CO.7 --> 1CO.8
+	1CO.9 --> 1CO.8
 
 	%% M1 track completers → m1
 	1CO.6 --> m1
@@ -227,26 +227,22 @@ flowchart TD
 	%% ── Milestone 2: Exploration & New Features ──────────────────────
 	m2{"`**Milestone 2**<br/>Exploration & Features`"}:::mile
 
-	2FE.1["`*2FE.1*<br/>**Features**<br/>client-side search`"]:::open
+	2FE.1["`*2FE.1*<br/>**Features**<br/>client-side search`"]:::blocked
 	2FE.2["`*2FE.2*<br/>**Features**<br/>deep-link map/timeline/toolkit`"]:::open
 	2FE.3["`*2FE.3*<br/>**Features**<br/>polish existing interactions`"]:::open
-	2FE.4["`*2FE.4*<br/>**Features**<br/>multi-select filters`"]:::open
+	2FE.4["`*2FE.4*<br/>**Features**<br/>multi-select filters`"]:::blocked
 	2FE.5["`*2FE.5*<br/>**Features**<br/>cross-view continuity`"]:::blocked
 	2FE.6["`*2FE.6*<br/>**Features**<br/>tech-stack constellation`"]:::open
 
-	%% M2 — literal deps (solid)
+	%% M2 — deps
 	2FE.2 --> 2FE.5
-
-	%% M2 — inferred sequencing (dotted)
-	2FE.2 -.-> 2FE.4
-	2FE.4 -.-> 2FE.1
+	2FE.2 --> 2FE.4
+	2FE.4 --> 2FE.1
 
 	%% M2 track completers → m2
 	2FE.1 --> m2
 	2FE.5 --> m2
 	2FE.6 --> m2
-
-	%% M2 independent leaf → m2
 	2FE.3 --> m2
 
 	%% ── Milestone 3: Design & Interaction Polish ──────────────────────
@@ -259,38 +255,32 @@ flowchart TD
 	3DE.4["`*3DE.4*<br/>**Design**<br/>graph aesthetics`"]:::blocked
 	3DE.5["`*3DE.5*<br/>**Design**<br/>colour consistency`"]:::blocked
 
-	%% M3 — literal deps (solid)
+	%% M3 — deps
 	3DE.0 --> 3DE.1
 	3DE.0 --> 3DE.3
 	3DE.0 --> 3DE.4
 	3DE.0 --> 3DE.5
-
-	%% M3 — inferred sequencing (dotted)
-	3DE.1 -.-> 3DE.3
-	3DE.5 -.-> 3DE.4
+	3DE.1 --> 3DE.3
+	3DE.5 --> 3DE.4
 
 	%% M3 track completers → m3
 	3DE.3 --> m3
 	3DE.4 --> m3
-
-	%% M3 independent leaf → m3
 	3DE.2 --> m3
 
 	%% ── Milestone 4: Quality & Reach ─────────────────────────────────
 	m4{"`**Milestone 4**<br/>Quality & Reach`"}:::mile
 
-	4QU.1["`*4QU.1*<br/>**Quality**<br/>a11y audit`"]:::open
-	4QU.3["`*4QU.3*<br/>**Quality**<br/>SEO + perf sanity`"]:::open
-	4QU.4["`*4QU.4*<br/>**Quality**<br/>OG coverage`"]:::blocked
+	4QU.1["`*4QU.1*<br/>**Quality**<br/>a11y audit`"]:::blocked
+	4QU.3["`*4QU.3*<br/>**Quality**<br/>SEO + perf sanity`"]:::blocked
+	4QU.4["`*4QU.4*<br/>**Quality**<br/>OG coverage`"]:::open
 	4QU.5["`*4QU.5*<br/>**Quality**<br/>view test coverage`"]:::open
 	4QU.7["`*4QU.7*<br/>**Quality**<br/>constellation a11y`"]:::blocked
 
-	%% M4 — literal deps (solid)
+	%% M4 — deps
+	4QU.5 --> 4QU.1
+	4QU.1 --> 4QU.3
 	4QU.1 --> 4QU.7
-
-	%% M4 — inferred sequencing (dotted)
-	4QU.5 -.-> 4QU.1
-	4QU.1 -.-> 4QU.3
 
 	%% M4 track completers → m4
 	4QU.3 --> m4
@@ -310,8 +300,11 @@ flowchart TD
 	5DR.7["`*5DR.7*<br/>**Drift**<br/>branch awareness + staging`"]:::blocked
 	5DR.8["`*5DR.8*<br/>**Drift**<br/>engine test suite`"]:::blocked
 	5DR.9["`*5DR.9*<br/>**Drift**<br/>Drift docs`"]:::blocked
+	5DR.10["`*5DR.10*<br/>**Drift**<br/>authoring guide`"]:::blocked
+	5DR.11["`*5DR.11*<br/>**Drift**<br/>audit verb`"]:::blocked
+	5DR.12["`*5DR.12*<br/>**Drift**<br/>npm → Bun migration`"]:::open
 
-	%% M5 — literal deps (solid)
+	%% M5 — deps
 	5DR.0 --> 5DR.1
 	5DR.1 --> 5DR.3
 	5DR.1 --> 5DR.5
@@ -322,21 +315,25 @@ flowchart TD
 	5DR.6 --> 5DR.7
 	5DR.6 --> 5DR.8
 	5DR.6 --> 5DR.9
-
-	%% M5 — inferred sequencing (dotted)
-	5DR.4 -.-> 5DR.6
+	5DR.1 --> 5DR.10
+	5DR.5 --> 5DR.10
+	5DR.5 --> 5DR.11
+	5DR.6 --> 5DR.11
+	5DR.4 --> 5DR.6
+	5DR.12 --> 5DR.6
+	5DR.12 --> 5DR.8
 
 	%% M5 track completers → m5
 	5DR.7 --> m5
 	5DR.8 --> m5
 	5DR.9 --> m5
+	5DR.10 --> m5
+	5DR.11 --> m5
 
 	%% ── Cross-milestone gates ────────────────────────────────────────
-	%% literal (in prose)
 	1CO.2 ==>|gates OG| 4QU.4
 	2FE.6 ==>|gates design| 3DE.4
 	2FE.6 ==>|gates a11y| 4QU.7
-	%% inferred (not in prose)
 	1CO.2 ==>|enables search| 2FE.1
 	3DE.4 ==>|gates| 4QU.7
 
@@ -348,12 +345,13 @@ flowchart TD
 	m4 --> SHIP
 	m5 --> SHIP
 
-	classDef default fill:#fff7fb;
-	classDef blocked fill:#fff7fb;
-	classDef open fill:#fff9e5;
-	classDef done fill:#e5ffe9;
-	classDef mile fill:#c4fffe;
-	classDef ship fill:#d6f5e3,stroke:#008060,color:#00402e;
+	classDef open     fill:#fff3fc,stroke:#740068,color:#44003c;
+	classDef blocked  fill:#fff8f3,stroke:#ac5c00,color:#371d00;
+	classDef doing    fill:#dcffe6,stroke:#008147,color:#002812;
+	classDef done     fill:#e8f6ff,stroke:#00749d,color:#001d2a;
+	classDef mile     fill:#fff8f5,stroke:#cd3c00,color:#401600;
+	classDef miledone fill:#e3f7ff,stroke:#007590,color:#001f28;
+	classDef ship     fill:#fff8f5,stroke:#cd3c00,color:#401600;
 ```
 
 ---
