@@ -1,50 +1,8 @@
 <script lang="ts">
-	import { base } from '$app/paths';
 	import Seo from '$lib/components/seo/Seo.svelte';
+	import type { PageData } from './$types.js';
 
-	// Code excerpts are held as plain strings so the literal braces and angle
-	// brackets render as text, not as Svelte markup. They are trimmed copies of
-	// the real source; the file paths beside each one are where they actually live.
-	const contributionSnippet = `interface SoloContribution {
-	role: 'solo';
-}
-
-interface TeamContribution {
-	role: 'lead' | 'collaborator';
-	/** Specific verified contributions. Required. */
-	contributionNote: string;
-}
-
-export type Contribution = SoloContribution | TeamContribution;`;
-
-	const slugSnippet = `export type ProjectSlug =
-	| 'iris'
-	| 'wyrd-tui'
-	| 'nib'
-	// ...every project, listed by hand
-
-export interface ProjectRelationship {
-	kind: 'extracted-from' | 'powers' | 'related';
-	target: ProjectSlug; // a typo here will not compile
-}`;
-
-	const threadsSnippet = `for (const project of projects) {
-	for (const rel of project.relationships) {
-		if (rel.kind !== 'powers') continue;
-
-		const consumer = projectBySlug.get(rel.target);
-		if (!consumer) continue;
-
-		threads.push({ library: project, consumer, note: rel.note });
-	}
-}`;
-
-	const sourcesSnippet = `"chirpdb": {
-	"head": "cd95e42",
-	"commits": 309,
-	"lastCommit": "2026-06-12",
-	"firstCommit": "2025-12-08"
-}`;
+	let { data }: { data: PageData } = $props();
 
 	// The pipeline, as data, so the diagram and the prose can never disagree.
 	const pipeline = [
@@ -77,7 +35,7 @@ export interface ProjectRelationship {
 
 <Seo
 	title="Colophon | Jason Warren"
-	description="How this portfolio is built: SvelteKit 2, Svelte 5 runes, a hand-authored TypeScript dataset, derived visualisations, build-time git metrics, and a fully prerendered output."
+	description="How this portfolio is built: SvelteKit 2, Svelte 5 runes, a hand-authored TypeScript dataset, Drift (a bespoke git-metrics CLI), derived visualisations, and a fully prerendered output."
 />
 
 <div class="page">
@@ -85,16 +43,16 @@ export interface ProjectRelationship {
 		<h1>Colophon</h1>
 		<p class="page__intro">
 			A portfolio that keeps insisting the code is the evidence should be willing to show its own
-			seams. So here they are. This is how the site you are reading actually works, with the real
-			source to back it up.
+			seams. Here they are. This is how the site you are reading actually works, from the data model
+			to the bespoke tooling that keeps the numbers honest.
 		</p>
 	</header>
 
-	<!-- The stack: skimmable overview ------------------------------------ -->
+	<!-- The stack: skimmable overview — stays open ————————————————————— -->
 	<section class="page__section" aria-labelledby="stack-heading">
 		<header class="page__section-header">
 			<h2 id="stack-heading">The stack, briefly</h2>
-			<p>For anyone who just wants the headline before the internals.</p>
+			<p>For anyone who wants the headline before the internals.</p>
 		</header>
 		<dl class="spec">
 			<div class="spec__row">
@@ -114,118 +72,175 @@ export interface ProjectRelationship {
 				<dd>Typed TypeScript objects. No CMS, no markdown, no database.</dd>
 			</div>
 			<div class="spec__row">
+				<dt>Metrics</dt>
+				<dd>
+					Drift — a bespoke git-metrics CLI that makes the numbers a measurement, not a claim.
+				</dd>
+			</div>
+			<div class="spec__row">
 				<dt>Colour</dt>
 				<dd>Reasonable Colors, behind semantic tokens, with a no-flash dark theme.</dd>
 			</div>
 		</dl>
 	</section>
 
-	<!-- Content is code -------------------------------------------------- -->
-	<section class="page__section" aria-labelledby="content-heading">
-		<header class="page__section-header">
+	<!-- Content is code ——————————————————————————————————————————————— -->
+	<details class="page__section page__section--collapsible" aria-labelledby="content-heading">
+		<summary class="page__summary">
 			<h2 id="content-heading">The content is code, not a database</h2>
-			<p>
-				Every project on this site is a typed object in a file. That sounds like a constraint, and
-				it is the good kind: the type system refuses to let me describe the work incorrectly.
+			<p class="page__summary-lede">
+				Every project is a typed object. The type system refuses to let me describe the work
+				incorrectly.
 			</p>
-		</header>
-		<p class="prose">
-			A team project that does not say what I actually did is not a missing field I might notice in
-			review. It is a build that fails. The <code>Contribution</code> type discriminates on role, so anything
-			that is not solo is forced to carry a verified note before it will compile.
-		</p>
-		<figure class="code">
-			<pre><code>{contributionSnippet}</code></pre>
-			<figcaption>src/lib/data/types.ts</figcaption>
-		</figure>
-		<p class="prose">
-			Cross-links between projects are checked the same way. Every slug on the site belongs to one
-			hand-written union, so a relationship pointing at a project that does not exist is a typo the
-			compiler catches, not a dead link a visitor finds.
-		</p>
-		<figure class="code">
-			<pre><code>{slugSnippet}</code></pre>
-			<figcaption>src/lib/data/types.ts</figcaption>
-		</figure>
-	</section>
+			<span class="page__chevron" aria-hidden="true"></span>
+		</summary>
 
-	<!-- Everything else is derived --------------------------------------- -->
-	<section class="page__section" aria-labelledby="derived-heading">
-		<header class="page__section-header">
+		<div class="page__section-body">
+			<p class="prose">
+				A team project that does not say what I actually did is not a missing field I might notice
+				in review — it is a build that fails. The <code>Contribution</code> type discriminates on
+				role, so any team-project entry must carry either <code>'lead'</code> or
+				<code>'collaborator'</code> before it will compile. The <code>contributionNote</code> field is
+				optional by design: manifest-derived projects are auto-listed first, then an editorial note is
+				authored later. The shape is enforced at the type level; the content is authored at the human
+				level.
+			</p>
+			<figure class="code">
+				{@html data.snippets.contribution}
+				<figcaption>src/lib/data/types.ts</figcaption>
+			</figure>
+			<p class="prose">
+				Cross-links between projects are checked the same way. <code>ProjectSlug</code> is now a
+				plain <code>string</code> — slugs are discovered dynamically at build time from the manifest,
+				so a hand-maintained closed union is not sustainable. Type safety is preserved through two other
+				mechanisms: the prerender throws when a relationship target is missing from the project registry,
+				and the test suite asserts every target resolves before the build ever runs. What is lost is editor
+				autocomplete on literal strings. What is kept is a build that fails on real typos.
+			</p>
+			<figure class="code">
+				{@html data.snippets.slug}
+				<figcaption>src/lib/data/types.ts</figcaption>
+			</figure>
+		</div>
+	</details>
+
+	<!-- Everything else is derived ————————————————————————————————————— -->
+	<details class="page__section page__section--collapsible" aria-labelledby="derived-heading">
+		<summary class="page__summary">
 			<h2 id="derived-heading">Almost everything else is derived</h2>
-			<p>
-				The map, the timeline, the engine threads and the adoption chart are not separate datasets.
-				They are all computed from that one registry of projects when the site builds.
+			<p class="page__summary-lede">
+				The map, the timeline, the engine threads and the adoption chart are not separate datasets —
+				they are all computed from one registry at build time.
 			</p>
-		</header>
-		<p class="prose">
-			The "libraries from the inside out" thread on the home page is a good example. Nothing
-			declares those pairings by hand. A library says it <code>powers</code> an application; the derivation
-			walks the graph and finds every such pair, so the story stays true to the data rather than to my
-			memory of it.
-		</p>
-		<figure class="code">
-			<pre><code>{threadsSnippet}</code></pre>
-			<figcaption>src/lib/data/threads.ts</figcaption>
-		</figure>
+			<span class="page__chevron" aria-hidden="true"></span>
+		</summary>
 
-		<figure class="flow" aria-labelledby="flow-caption">
-			<ol class="flow__steps" role="list">
-				{#each pipeline as step, i (step.label)}
-					<li class="flow__step">
-						<div class="flow__card">
-							<span class="flow__label">{step.label}</span>
-							<span class="flow__detail">{step.detail}</span>
-						</div>
-						{#if i < pipeline.length - 1}
-							<span class="flow__arrow" aria-hidden="true">→</span>
-						{/if}
-					</li>
-				{/each}
-			</ol>
-			<figcaption id="flow-caption">
-				One dataset in, every page out. The whole pipeline runs at build time.
-			</figcaption>
-		</figure>
-	</section>
-
-	<!-- Numbers that stay honest ----------------------------------------- -->
-	<section class="page__section" aria-labelledby="metrics-heading">
-		<header class="page__section-header">
-			<h2 id="metrics-heading">The numbers are not typed by hand</h2>
-			<p>
-				Commit counts, coverage and churn are the easiest things on a portfolio to quietly inflate.
-				So I do not write them. A script does.
+		<div class="page__section-body">
+			<p class="prose">
+				The "libraries from the inside out" thread on the home page is a clear example. Nothing
+				declares those pairings by hand. A library says it <code>powers</code> an application; the derivation
+				walks the graph and finds every such pair, so the story stays true to the data rather than to
+				my memory of it.
 			</p>
-		</header>
-		<p class="prose">
-			<code>check-drift.js</code> reads the real git history of each source repo and records a
-			fingerprint in <code>sources.json</code>. The project objects pick those numbers up at build
-			time. When a repo moves on and the site does not, that is drift, and the script is built to
-			shout about it. Every figure you see is a measurement, not a claim.
-		</p>
-		<figure class="code">
-			<pre><code>{sourcesSnippet}</code></pre>
-			<figcaption>src/lib/data/sources.json</figcaption>
-		</figure>
-	</section>
+			<figure class="code">
+				{@html data.snippets.threads}
+				<figcaption>src/lib/data/threads.ts</figcaption>
+			</figure>
 
-	<!-- Static and deterministic ----------------------------------------- -->
-	<section class="page__section" aria-labelledby="static-heading">
-		<header class="page__section-header">
+			<figure class="flow" aria-labelledby="flow-caption">
+				<ol class="flow__steps" role="list">
+					{#each pipeline as step, i (step.label)}
+						<li class="flow__step">
+							<div class="flow__card">
+								<span class="flow__label">{step.label}</span>
+								<span class="flow__detail">{step.detail}</span>
+							</div>
+							{#if i < pipeline.length - 1}
+								<span class="flow__arrow" aria-hidden="true">→</span>
+							{/if}
+						</li>
+					{/each}
+				</ol>
+				<figcaption id="flow-caption">
+					One dataset in, every page out. The whole pipeline runs at build time.
+				</figcaption>
+			</figure>
+		</div>
+	</details>
+
+	<!-- Drift ——————————————————————————————————————————————————————————— -->
+	<details class="page__section page__section--collapsible" aria-labelledby="drift-heading">
+		<summary class="page__summary">
+			<h2 id="drift-heading">Drift: the numbers stay honest</h2>
+			<p class="page__summary-lede">
+				Commit counts and churn figures are the easiest things on a portfolio to quietly inflate. So
+				I do not write them. A bespoke CLI does.
+			</p>
+			<span class="page__chevron" aria-hidden="true"></span>
+		</summary>
+
+		<div class="page__section-body">
+			<p class="prose">
+				<code>check-drift.js</code> is a ~2.5k-line Node CLI that compares the last-synced
+				fingerprints in <code>sources.json</code> against the live git state of every source repo on
+				this machine. It also scans <code>~/Code</code> for git repos not yet in the portfolio, so new
+				work surfaces automatically rather than waiting to be remembered.
+			</p>
+			<p class="prose">
+				Each repo produces a fingerprint: commit counts broken down by all-authors versus mine, and
+				by lifetime versus the trailing four weeks; line churn on the same axes; lines of code;
+				languages by file count; first and last commit dates; and runtime, framework and database
+				inferred from manifest files. The fingerprint calls all run concurrently in a bounded worker
+				pool, with a HEAD-plus-TTL cache so unchanged repos do not re-scan on every run.
+			</p>
+			<figure class="code">
+				{@html data.snippets.drift}
+				<figcaption>scripts/check-drift.js (condensed)</figcaption>
+			</figure>
+			<p class="prose">
+				The CLI exposes several verbs. <code>report</code> (the default) shows only the repos whose
+				HEAD has moved since the last sync. <code>snapshot</code> shows every current metric for
+				every project. <code>update</code> is the one sanctioned write to <code>sources.json</code>;
+				it backfills all resolvable repos, not just those that changed.
+				<code>accept</code> and <code>accept-all</code> refresh the baseline for manual overrides
+				without discarding them. <code>--check</code> exits non-zero when drift is detected, so CI can
+				gate on a clean portfolio state.
+			</p>
+			<figure class="code">
+				{@html data.snippets.sources}
+				<figcaption>src/lib/data/sources.json (one entry)</figcaption>
+			</figure>
+			<p class="prose">
+				Every figure you see on this site is a measurement from that manifest, not a claim I typed.
+				That is the line the whole honesty thesis rests on.
+			</p>
+		</div>
+	</details>
+
+	<!-- Static and deterministic ——————————————————————————————————————— -->
+	<details class="page__section page__section--collapsible" aria-labelledby="static-heading">
+		<summary class="page__summary">
 			<h2 id="static-heading">Static, deterministic, dependency-light</h2>
-			<p>The output is plain HTML, and it is the same plain HTML every time.</p>
-		</header>
-		<p class="prose">
-			The project map is laid out with a force simulation, but a deterministic one: identical input
-			gives identical output, so the prerendered SVG never drifts between builds. The social cards
-			are generated from each project's own metadata with Satori and resvg, then cached forever.
-			There is no client-side rendering of content to wait for and no runtime server to fall over. A
-			page either built correctly or it did not.
-		</p>
-	</section>
+			<p class="page__summary-lede">
+				The output is plain HTML, and it is the same plain HTML every time.
+			</p>
+			<span class="page__chevron" aria-hidden="true"></span>
+		</summary>
 
-	<!-- Mini colophon ---------------------------------------------------- -->
+		<div class="page__section-body">
+			<p class="prose">
+				The project map is laid out with a force simulation, but a deterministic one: identical
+				input gives identical output, so the prerendered SVG never drifts between builds. The social
+				cards are generated from each project's own metadata with Satori and resvg, then cached
+				forever. The syntax highlighting on this page is baked in at build time by Shiki — the
+				browser receives finished HTML and no highlighter ever runs in the client. There is no
+				client-side rendering of content to wait for and no runtime server to fall over. A page
+				either built correctly or it did not.
+			</p>
+		</div>
+	</details>
+
+	<!-- Credits — stays open (short) ——————————————————————————————————— -->
 	<section class="page__section" aria-labelledby="credits-heading">
 		<header class="page__section-header">
 			<h2 id="credits-heading">Credits</h2>
@@ -296,6 +311,8 @@ export interface ProjectRelationship {
 		margin: 0;
 	}
 
+	/* Sections ——————————————————————————————————————————————————————————— */
+
 	.page__section {
 		display: flex;
 		flex-direction: column;
@@ -322,6 +339,115 @@ export interface ProjectRelationship {
 		margin: 0;
 	}
 
+	/* Collapsible sections (<details>) —————————————————————————————————— */
+
+	.page__section--collapsible {
+		/* <details> is a block element; match the flex column layout of .page__section */
+		gap: 0;
+	}
+
+	.page__summary {
+		list-style: none;
+		display: grid;
+		grid-template-columns: 1fr auto;
+		grid-template-rows: auto auto;
+		gap: var(--space-1) var(--space-4);
+		align-items: start;
+		padding: var(--space-5) 0;
+		cursor: pointer;
+		border-top: 1px solid var(--color-border);
+		user-select: none;
+	}
+
+	/* Remove the native disclosure triangle in all browsers. */
+	.page__summary::-webkit-details-marker {
+		display: none;
+	}
+
+	.page__summary::marker {
+		content: '';
+	}
+
+	.page__summary h2 {
+		font-size: var(--text-2xl);
+		font-weight: 700;
+		color: var(--color-text);
+		line-height: 1.2;
+		grid-column: 1;
+		grid-row: 1;
+		margin: 0;
+	}
+
+	.page__summary-lede {
+		font-size: var(--text-base);
+		color: var(--color-text-subtle);
+		line-height: 1.6;
+		max-width: 52rem;
+		margin: 0;
+		grid-column: 1;
+		grid-row: 2;
+	}
+
+	/* Chevron — rotates when open. */
+	.page__chevron {
+		grid-column: 2;
+		grid-row: 1 / 3;
+		align-self: center;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		width: 1.5rem;
+		height: 1.5rem;
+		color: var(--color-text-muted);
+		transition: transform var(--transition-base);
+		flex-shrink: 0;
+	}
+
+	.page__chevron::before {
+		content: '';
+		display: block;
+		width: 0.5rem;
+		height: 0.5rem;
+		border-right: 2px solid currentColor;
+		border-bottom: 2px solid currentColor;
+		transform: rotate(45deg) translate(-1px, -1px);
+		transition: transform var(--transition-base);
+	}
+
+	details[open] .page__chevron::before {
+		transform: rotate(-135deg) translate(-1px, -1px);
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.page__chevron,
+		.page__chevron::before {
+			transition: none;
+		}
+	}
+
+	.page__summary:hover h2 {
+		color: var(--color-primary-text);
+	}
+
+	.page__summary:hover .page__chevron {
+		color: var(--color-primary-text);
+	}
+
+	.page__summary:focus-visible {
+		outline: 2px solid var(--color-primary-text);
+		outline-offset: 2px;
+		border-radius: var(--radius-sm);
+	}
+
+	.page__section-body {
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-6);
+		padding-bottom: var(--space-4);
+	}
+
+	/* Prose ——————————————————————————————————————————————————————————————— */
+
 	.prose {
 		font-size: var(--text-base);
 		line-height: 1.7;
@@ -339,7 +465,8 @@ export interface ProjectRelationship {
 		color: var(--color-text);
 	}
 
-	/* Specification lists --------------------------------------------- */
+	/* Specification lists —————————————————————————————————————————————— */
+
 	.spec {
 		display: flex;
 		flex-direction: column;
@@ -391,7 +518,12 @@ export interface ProjectRelationship {
 		color: var(--color-text);
 	}
 
-	/* Code excerpts --------------------------------------------------- */
+	/* Code excerpts —————————————————————————————————————————————————————
+	 * .shiki is the <pre> element Shiki emits. Background comes from the
+	 * site's own surface token; foreground tokens are driven by the
+	 * dual-theme rules in tokens.css via --shiki / --shiki-dark vars.
+	 */
+
 	.code {
 		display: flex;
 		flex-direction: column;
@@ -399,22 +531,22 @@ export interface ProjectRelationship {
 		margin: 0;
 	}
 
-	.code pre {
+	.code :global(.shiki) {
 		margin: 0;
 		padding: var(--space-5);
 		overflow-x: auto;
-		background-color: var(--color-surface-sunken);
+		background-color: var(--color-surface-sunken) !important;
 		border: 1px solid var(--color-border);
 		border-radius: var(--radius-lg);
 	}
 
-	.code code {
+	.code :global(.shiki code) {
 		font-family: var(--font-mono);
 		font-size: var(--text-sm);
 		line-height: 1.6;
-		color: var(--color-text);
 		white-space: pre;
 		tab-size: 2;
+		background: none !important;
 	}
 
 	.code figcaption {
@@ -424,7 +556,8 @@ export interface ProjectRelationship {
 		padding-left: var(--space-1);
 	}
 
-	/* Data-flow diagram ----------------------------------------------- */
+	/* Data-flow diagram —————————————————————————————————————————————————— */
+
 	.flow {
 		margin: 0;
 		display: flex;
@@ -485,6 +618,8 @@ export interface ProjectRelationship {
 		color: var(--color-text-muted);
 		line-height: 1.6;
 	}
+
+	/* Links ——————————————————————————————————————————————————————————————— */
 
 	.link {
 		color: var(--color-primary-text);
