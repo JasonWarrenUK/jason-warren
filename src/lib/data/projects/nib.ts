@@ -22,7 +22,7 @@ export const nib: Project = {
 		{
 			kind: 'powers',
 			target: 'the-work',
-			note: 'Nib powers the Ink narrative runtime in The Work.'
+			note: "The Ink runtime was always separable from the game's content; once that was clear it moved into Nib, two files behind a single onInit seam."
 		}
 	],
 	featured: false,

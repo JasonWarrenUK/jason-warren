@@ -13,9 +13,9 @@
 	<header class="threads__header">
 		<h2 class="threads__title">Libraries from the inside out</h2>
 		<p class="threads__strapline">
-			Each of these began as code buried inside a single application. When the problem turned out to
-			be more general than the app, I pulled the engine out into its own library: still used by the
-			original, now available to anyone who hits the same wall.
+			Each of these began as code buried inside one application. When the problem turned out to be
+			more general than the app it lived in, I pulled the engine into its own library: still used by
+			the original, now usable by anything that hits the same wall.
 		</p>
 	</header>
 

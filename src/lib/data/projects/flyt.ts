@@ -23,7 +23,7 @@ export const flyt: Project = {
 		{
 			kind: 'extracted-from',
 			target: 'riffle',
-			note: 'The DendryNexus reactive engine was extracted from this project into the standalone Riffle library.'
+			note: 'The reactive DendryNexus engine was lifted out of Flyt into the standalone Riffle library.'
 		}
 	],
 	featured: false,

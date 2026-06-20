@@ -23,7 +23,7 @@ export const theWork: Project = {
 		{
 			kind: 'extracted-from',
 			target: 'nib',
-			note: 'The Ink runtime was extracted from this project into the standalone Nib library.'
+			note: 'The generic Ink-and-Svelte runtime was lifted out of The Work into the standalone Nib library.'
 		}
 	],
 	featured: false,

@@ -23,7 +23,7 @@ export const schemaForge: Project = {
 		{
 			kind: 'powers',
 			target: 'iris',
-			note: 'Schema Forge crystallised the XSD parsing and validation approach into a standalone library that powers the Iris ILR toolkit.'
+			note: 'The XSD parsing and validation core was the general problem hiding inside Iris; Schema Forge is that core on its own, reusable by anything that speaks XSD.'
 		}
 	],
 	featured: false,
