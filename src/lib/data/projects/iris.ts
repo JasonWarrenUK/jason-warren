@@ -23,7 +23,7 @@ export const iris: Project = {
 		{
 			kind: 'extracted-from',
 			target: 'schema-forge',
-			note: 'The XSD parsing and validation core was extracted from Iris into the standalone Schema Forge library.'
+			note: 'The XSD parsing and validation core was lifted out of Iris into the standalone Schema Forge library.'
 		}
 	],
 	featured: true,

@@ -23,7 +23,7 @@ export const riffle: Project = {
 		{
 			kind: 'powers',
 			target: 'flyt',
-			note: 'Riffle powers the DendryNexus narrative engine in Flyt.'
+			note: 'The reactive card engine outgrew the duel it was written for, so it became Riffle: the same StoryNexus mechanics with no Svelte UI of its own.'
 		}
 	],
 	featured: false,
