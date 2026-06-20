@@ -1003,8 +1003,8 @@
 
 			<div class="hero animate" style="--i:4">
 				<div>
-					<div class="hero__big">1<span>/39</span></div>
-					<div class="hero__label">tasks complete &middot; 3%</div>
+					<div class="hero__big">2<span>/39</span></div>
+					<div class="hero__label">tasks complete &middot; 5%</div>
 				</div>
 				<div class="hero__breakdown">
 					<div class="stat stat--prog">
@@ -1012,15 +1012,15 @@
 						<div class="stat__lab">In progress</div>
 					</div>
 					<div class="stat stat--todo">
-						<div class="stat__num">11</div>
+						<div class="stat__num">12</div>
 						<div class="stat__lab">To do</div>
 					</div>
 					<div class="stat stat--blk">
-						<div class="stat__num">26</div>
+						<div class="stat__num">24</div>
 						<div class="stat__lab">Blocked</div>
 					</div>
 					<div class="stat stat--done">
-						<div class="stat__num">1</div>
+						<div class="stat__num">2</div>
 						<div class="stat__lab">Done</div>
 					</div>
 				</div>
@@ -1030,9 +1030,9 @@
 				<div class="ms-mini">
 					<div class="ms-mini__num">Milestone 1</div>
 					<div class="ms-mini__name">Content Depth &amp; Polish</div>
-					<div class="ms-mini__count"><span>0 done</span><b>0 / 10</b></div>
+					<div class="ms-mini__count"><span>1 done</span><b>1 / 10</b></div>
 					<div class="progress-bar">
-						<div class="progress-fill fill--prog" style="width:2%"></div>
+						<div class="progress-fill fill--done" style="width:10%"></div>
 					</div>
 				</div>
 				<div class="ms-mini">
@@ -1077,7 +1077,7 @@
 				<summary>
 					<span class="ms-tag">M1</span>
 					<span class="ms-sum__name">Content Depth &amp; Polish</span>
-					<span class="ms-sum__count">0 / 10</span>
+					<span class="ms-sum__count">1 / 10</span>
 				</summary>
 				<div class="ms-body">
 					<p class="ms-goal">
@@ -1088,8 +1088,7 @@
 					<div class="task-group tg--prog">
 						<div class="task-group__label">In progress</div>
 						<ul class="tasks">
-							<li><span class="task-id">1CO.1</span>Audit every project entry for depth &mdash; which read thin, which
-								read full, what's structurally missing</li>
+							<li><span class="task-id">1CO.2</span>Bring every project entry to flagship-ready depth</li>
 						</ul>
 					</div>
 					<div class="task-group tg--todo">
@@ -1098,6 +1097,7 @@
 							<li><span class="task-id">1CO.3</span>Strengthen <code>contributionNote</code> copy across all team
 								projects</li>
 							<li><span class="task-id">1CO.4</span>Rewrite About page narrative (positioning, voice)</li>
+							<li><span class="task-id">1CO.6</span>Review theme groupings and theme copy for coherence</li>
 							<li><span class="task-id">1CO.7</span>Review engine-extraction thread narratives (<code>threads.ts</code>)
 								for clarity</li>
 						</ul>
@@ -1105,18 +1105,20 @@
 					<div class="task-group tg--blk">
 						<div class="task-group__label">Blocked</div>
 						<ul class="tasks">
-							<li><span class="task-id">1CO.2</span>Bring every project entry to flagship-ready depth <span
-									class="task-dep">&larr; 1CO.1</span></li>
 							<li><span class="task-id">1CO.5</span>Expand Colophon: explain the build, the data model, and headline the
 								Drift tooling story <span class="task-dep">&larr; 1CO.7</span></li>
-							<li><span class="task-id">1CO.6</span>Review theme groupings and theme copy for coherence <span
-									class="task-dep">&larr; 1CO.1</span></li>
 							<li><span class="task-id">1CO.8</span>Pass all copy through the writing-style guide (British spelling, no
 								em-dashes, voice) <span class="task-dep">&larr; 1CO.2, 1CO.3, 1CO.4, 1CO.5, 1CO.7, 1CO.9</span></li>
 							<li><span class="task-id">1CO.9</span>CV / hire-me positioning copy &mdash; explicit "what I can do / work
 								with me" content <span class="task-dep">&larr; 1CO.4</span></li>
 							<li><span class="task-id">1CO.10</span>Surfaced-project rotation / curation mechanism <span
 									class="task-dep">&larr; 1CO.2</span></li>
+						</ul>
+					</div>
+					<div class="task-group tg--done">
+						<div class="task-group__label">Done</div>
+						<ul class="tasks">
+							<li><span class="task-id">1CO.1</span><span class="task-done-text">Audit every project entry for depth &mdash; which read thin, which read full, what's structurally missing</span></li>
 						</ul>
 					</div>
 				</div>
@@ -1334,12 +1336,12 @@
 	      %% ── Milestone 1: Content ─────────────────────────────────────
 	      m1{"Milestone 1<br/>Content"}:::mile
 	      subgraph m1group
-          1CO.1["1CO.1<br/>audit entry depth"]:::in_progress
-          1CO.2["1CO.2<br/>all entries flagship-ready"]:::blocked
+          1CO.1["1CO.1<br/>audit entry depth"]:::done
+          1CO.2["1CO.2<br/>all entries flagship-ready"]:::in_progress
           1CO.3["1CO.3<br/>contribution notes"]:::open
           1CO.4["1CO.4<br/>About narrative"]:::open
           1CO.5["1CO.5<br/>Colophon + Drift story"]:::blocked
-          1CO.6["1CO.6<br/>theme coherence"]:::blocked
+          1CO.6["1CO.6<br/>theme coherence"]:::open
           1CO.7["1CO.7<br/>thread narratives"]:::open
           1CO.8["1CO.8<br/>style-guide pass"]:::blocked
           1CO.9["1CO.9<br/>CV / hire-me copy"]:::blocked
@@ -1511,14 +1513,16 @@
 			<div class="next-group">
 				<div class="next-group__head">Milestone 1 &middot; Content</div>
 				<div class="next-item is-active">
-					<span class="task-id">1CO.1</span>
-					<span class="next-item__desc">Audit every project entry for depth</span>
+					<span class="task-id">1CO.2</span>
+					<span class="next-item__desc">Bring every project entry to flagship-ready depth</span>
 					<span class="pill pill--active">In progress</span>
 				</div>
 				<div class="next-item"><span class="task-id">1CO.3</span><span class="next-item__desc">Strengthen
 						contribution-note copy across team projects</span><span class="pill">Ready</span></div>
 				<div class="next-item"><span class="task-id">1CO.4</span><span class="next-item__desc">Rewrite About page
 						narrative</span><span class="pill">Ready</span></div>
+				<div class="next-item"><span class="task-id">1CO.6</span><span class="next-item__desc">Review theme groupings
+						and theme copy for coherence</span><span class="pill">Ready</span></div>
 				<div class="next-item"><span class="task-id">1CO.7</span><span class="next-item__desc">Review engine-extraction
 						thread narratives</span><span class="pill">Ready</span></div>
 			</div>
