@@ -597,7 +597,7 @@ describe('manual overrides', () => {
 		// overridden. If no such project exists (empty overrides), the test is vacuously green.
 		const synced = sourcesManifest.sources as Record<string, { [k: string]: unknown }>;
 
-		for (const [slug, fields] of Object.entries(overrides)) {
+		for (const [slug] of Object.entries(overrides)) {
 			const project = projects.find((p) => p.slug === slug);
 			if (!project) continue;
 			const source = synced[slug];
