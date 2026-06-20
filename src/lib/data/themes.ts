@@ -70,7 +70,6 @@ export const themes: Theme[] = [
 			'commons-traybake',
 			'guardrails',
 			'chirpdb',
-			'kamino',
 			'sakura',
 			'beacons'
 		]
@@ -80,7 +79,7 @@ export const themes: Theme[] = [
 		name: 'Terminal & Native Interfaces',
 		blurb:
 			'Software that lives in the terminal and on the desktop: a Go productivity TUI, a TypeScript core driving CLI, TUI and a Tauri native build, and shell-level project tooling.',
-		slugs: ['iris', 'wyrd-tui', 'kamino']
+		slugs: ['iris', 'wyrd-tui']
 	},
 	{
 		id: 'human-centred',
