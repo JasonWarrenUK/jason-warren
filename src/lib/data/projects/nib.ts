@@ -3,20 +3,20 @@ import type { Project } from '../types.js';
 export const nib: Project = {
 	slug: 'nib',
 	name: 'Nib',
-	tagline:
-		'A minimal, copy-paste Ink runtime for SvelteKit. Drop it into any project and write an onInit function to wire in your game logic.',
-	blurb: 'A minimal, copy-paste Ink runtime for SvelteKit.',
+	tagline: 'A minimal, copy-paste Ink runtime for SvelteKit: one onInit callback for game-specific wiring, a tick counter to bridge non-reactive inkjs to Svelte 5 runes.',
+	blurb: 'A minimal, copy-paste Ink runtime for SvelteKit with a clean injection seam.',
 	description:
-		'Extracted from The Work once the Ink and Svelte runtime proved generically useful, this is a minimal, copy-paste runtime: drop the directory into any SvelteKit project and write an onInit function to wire in your game logic. Reactive Ink story state runs on Svelte 5 runes ($state, $derived) so the UI updates automatically, and tag parsing turns structured metadata (CLEAR, mood:x, class:x) into typed objects. The governing principle is zero game-specific code, with all customisation injected through a single onInit callback, which lets it power any Ink-based SvelteKit project.',
+		'Integrating Ink directly into a SvelteKit project scatters BindExternalFunction calls, game-data registration, and story mechanics through the load/continue/choose plumbing; nothing is reusable and the reactive boundary is hard to reason about. Nib was extracted from The Work once the generic runtime proved separable. The fix is a single injection seam: loadStory() handles BOM stripping, the error handler, and an optional storylet stub, then calls onInit(ink) after story creation but before playback. All game-specific binding lives there and nowhere else. The reactivity problem is handled by a tick counter incremented at the end of every continue(); because the UI reads tick inside a $derived, any getVariable() call re-evaluates whenever the story advances. inkjs is a plain mutable object with no Svelte awareness; the tick counter is the minimal bridge. The full runtime is two files. Drop the directory into any SvelteKit project, write an onInit, and own the code.',
 	kind: 'library',
 	contribution: { role: 'solo' },
 	status: 'finished',
 	repoUrl: 'https://github.com/JasonWarrenUK/nib',
 	highlights: [
-		'Zero game-specific code: game logic injected via a single onInit callback.',
-		'Reactive Ink story state via Svelte 5 runes ($state, $derived): automatic UI updates.',
-		'Tag parsing for structured metadata (CLEAR, mood:x, class:x) into typed objects.',
-		'Copy-paste distribution: drop the directory into any SvelteKit project.'
+		'Single onInit injection seam: game-specific BindExternalFunction calls and data registration in one callback, nowhere else.',
+		'tick counter bridges non-reactive inkjs to Svelte 5 runes: UI reads tick inside $derived, so getVariable() re-evaluates on every continue().',
+		'Reactive story state via $state/$derived: canContinue, currentTags, history update automatically.',
+		'Tag parsing for CLEAR, mood:x, and class:x: CLEAR wipes history, mood: writes data-mood for CSS, bare tags become class names.',
+		'Copy-paste distribution: two files, no package.json, designed to be owned and edited per project.'
 	],
 	relationships: [
 		{
