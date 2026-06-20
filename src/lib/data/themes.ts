@@ -53,33 +53,32 @@ export const themes: Theme[] = [
 		slugs: ['the-tongue', 'those-who-came-before', 'epoch', 'lyra-rose']
 	},
 	{
+		id: 'human-history',
+		name: 'History & the Past Made Navigable',
+		blurb:
+			'Projects that work with real human history as their material: an animated atlas of early-medieval kingdoms, a fictional life mapped against Wikipedia-sourced events, and a procedural archaeology of invented artefacts.',
+		slugs: ['historia', 'epoch', 'those-who-came-before']
+	},
+	{
 		id: 'graph-native',
 		name: 'Graph-Native Data',
 		blurb:
 			'Problems modelled as graphs first: Neo4j-backed apps, a flat-file property graph with a custom Cypher engine, and content mapped as navigable edge networks.',
-		slugs: ['wyrd-tui', 'beacons', 'sparker', 'commons-traybake', 'code-arcana', 'rimewarden']
+		slugs: ['wyrd-tui', 'beacons', 'sparker', 'code-arcana', 'rimewarden']
 	},
 	{
 		id: 'ai-language-tooling',
 		name: 'AI & Language Tooling',
 		blurb:
-			'LLMs and NLP put to work: curriculum generation, automated docs, retrieval experiments, PII redaction, semantic search, and agentic project scaffolding.',
-		slugs: [
-			'rhea',
-			'redot',
-			'commons-traybake',
-			'guardrails',
-			'chirpdb',
-			'sakura',
-			'beacons'
-		]
+			'Tools that treat language and meaning as something computable: curriculum generation, automated documentation, retrieval experiments, PII redaction, semantic search, colour-name resolution, and free-text parsed into a queryable grammar.',
+		slugs: ['rhea', 'redot', 'commons-traybake', 'guardrails', 'chirpdb', 'sakura', 'beacons']
 	},
 	{
 		id: 'terminal-native',
 		name: 'Terminal & Native Interfaces',
 		blurb:
-			'Software that lives in the terminal and on the desktop: a Go productivity TUI, a TypeScript core driving CLI, TUI and a Tauri native build, and shell-level project tooling.',
-		slugs: ['iris', 'wyrd-tui']
+			'Software that lives in the terminal and on the desktop: a Go productivity TUI with a custom graph engine, a TypeScript core driving CLI, TUI and Tauri native builds, and the XSD schema library extracted from it.',
+		slugs: ['iris', 'wyrd-tui', 'schema-forge']
 	},
 	{
 		id: 'human-centred',

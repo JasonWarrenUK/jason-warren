@@ -36,8 +36,8 @@
 		<header class="page__section-header">
 			<h2 id="themes-heading">Themes the work returns to</h2>
 			<p>
-				Six territories the projects cluster into. Plenty of them turn up in several at once, and
-				that overlap tends to be where the work gets genuinely interesting.
+				{data.themes.length} territories the projects cluster into. Plenty of them turn up in several
+				at once, and that overlap tends to be where the work gets genuinely interesting.
 			</p>
 		</header>
 		<ThemeTerritories themes={data.themes} variant="full" />
