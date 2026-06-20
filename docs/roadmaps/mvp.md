@@ -8,7 +8,7 @@ The site is live and substantially built (full routes, graph/timeline/map/toolki
 
 |              | Status                                          | Next Up                               | Blocked                        |
 | ------------ | ----------------------------------------------- | ------------------------------------- | ------------------------------ |
-| **Content**  | 30+ entries, themes, threads, Colophon in place; depth audit complete; 7 sub-Full entries rewritten/excluded | Editorial polish on Full entries; theme coherence | —                              |
+| **Content**  | 30+ entries, themes, threads, Colophon in place; depth audit complete; every entry now at flagship-ready depth | Contribution notes; About narrative; theme coherence | —                              |
 | **Features** | Search absent; map/timeline rich; filters URL-backed but single-select | Search, deep-link other views, multi-select | Cross-view continuity, new viz |
 | **Design**   | Reasonable Colors tokens, dark mode             | Visual identity, then typography/motion | Direction decision first       |
 | **Quality**  | Strict types, data-integrity tests, prerendered | Interaction test coverage (4QU.5) | a11y audit and SEO blocked on 4QU.5; new-view a11y blocked on M2 viz |
@@ -39,24 +39,25 @@ The site is live and substantially built (full routes, graph/timeline/map/toolki
 
 <a name="m1-doing"><h4>In Progress (Milestone 1)</h4></a>
 
-- [ ] 1CO.2. Bring every project entry to flagship-ready depth — worklist in [`docs/audits/content-depth.md`](../audits/content-depth.md). First pass complete: all 7 sub-Full entries rewritten or resolved (6 rewrites, `kamino` excluded from the portfolio).
+_None._
 
 <a name="m1-todo"><h4>To Do (Milestone 1)</h4></a>
 - [ ] 1CO.3. Strengthen `contributionNote` copy across all team projects
 - [ ] 1CO.4. Rewrite About page narrative (positioning, voice)
 - [ ] 1CO.6. Review theme groupings and theme copy for coherence — observations in [`docs/audits/content-depth.md`](../audits/content-depth.md)
 - [ ] 1CO.7. Review engine-extraction thread narratives (`threads.ts`) for clarity
+- [ ] 1CO.10. Surfaced-project rotation / curation mechanism (home page hero rotates which project is foregrounded)
 
 <a name="m1-blocked"><h4>Blocked (Milestone 1)</h4></a>
 
 - [ ] 1CO.5. Expand Colophon: explain the build, the data model, and headline the Drift tooling story — **depends on 1CO.7**
-- [ ] 1CO.8. Pass all copy through the writing-style guide (British spelling, no em-dashes, voice) — **depends on 1CO.2, 1CO.3, 1CO.4, 1CO.5, 1CO.7, 1CO.9**
+- [ ] 1CO.8. Pass all copy through the writing-style guide (British spelling, no em-dashes, voice) — **depends on 1CO.3, 1CO.4, 1CO.5, 1CO.7, 1CO.9**
 - [ ] 1CO.9. CV / hire-me positioning copy — explicit "what I can do / work with me" content — **depends on 1CO.4**
-- [ ] 1CO.10. Surfaced-project rotation / curation mechanism (home page hero rotates which project is foregrounded) — **depends on 1CO.2**
 
 <a name="m1-done"><h4>Completed (Milestone 1)</h4></a>
 
 - [x] 1CO.1. Audit every project entry for depth — which read thin, which read full, what's structurally missing — output in [`docs/audits/content-depth.md`](../audits/content-depth.md)
+- [x] 1CO.2. Bring every project entry to flagship-ready depth — worklist in [`docs/audits/content-depth.md`](../audits/content-depth.md). All 7 sub-Full entries resolved (6 rewritten, `kamino` excluded) and an editorial polish pass run across all 27 Full entries.
 
 ---
 
@@ -77,7 +78,7 @@ _None._
 
 <a name="m2-blocked"><h4>Blocked (Milestone 2)</h4></a>
 
-- [ ] 2FE.1. Client-side search across projects (title, tags, description) — **depends on 1CO.2, 2FE.4**
+- [ ] 2FE.1. Client-side search across projects (title, tags, description) — **depends on 2FE.4**
 - [ ] 2FE.4. Multi-select filters — allow combining dimensions (e.g. two tags, role + status); filters are single-select today — **depends on 2FE.2**
 - [ ] 2FE.5. Cross-view continuity (carry selection from map → project → timeline) — **depends on 2FE.2**
 
@@ -126,12 +127,12 @@ _None._
 <a name="m4-todo"><h4>To Do (Milestone 4)</h4></a>
 
 - [ ] 4QU.5. Component / interaction test coverage for the connection views (beyond existing data-integrity tests)
+- [ ] 4QU.4. Confirm OG image coverage for every route and project
 
 <a name="m4-blocked"><h4>Blocked (Milestone 4)</h4></a>
 
 - [ ] 4QU.1. Accessibility audit: keyboard nav, ARIA, contrast, SVG view semantics (the interactive graphs especially) — **depends on 4QU.5**
 - [ ] 4QU.3. SEO pass: structured data, meta completeness, sitemap verification; includes a light perf sanity-check (bundle size, hydration cost) — **depends on 4QU.1**
-- [ ] 4QU.4. Confirm OG image coverage for every route and project — **depends on 1CO.2**
 - [ ] 4QU.7. a11y regression pass on the tech-stack constellation — **depends on 2FE.6, 3DE.4, 4QU.1**
 
 <a name="m4-done"><h4>Completed (Milestone 4)</h4></a>
@@ -195,7 +196,7 @@ flowchart TD
 	m1{"`**Milestone 1**<br/>Content Depth & Polish`"}:::mile
 
 	1CO.1["`*1CO.1*<br/>**Content**<br/>audit entry depth`"]:::done
-	1CO.2["`*1CO.2*<br/>**Content**<br/>all entries flagship-ready`"]:::doing
+	1CO.2["`*1CO.2*<br/>**Content**<br/>all entries flagship-ready`"]:::done
 	1CO.3["`*1CO.3*<br/>**Content**<br/>contribution notes`"]:::open
 	1CO.4["`*1CO.4*<br/>**Content**<br/>About narrative`"]:::open
 	1CO.5["`*1CO.5*<br/>**Content**<br/>Colophon + Drift story`"]:::blocked
@@ -203,7 +204,7 @@ flowchart TD
 	1CO.7["`*1CO.7*<br/>**Content**<br/>thread narratives`"]:::open
 	1CO.8["`*1CO.8*<br/>**Content**<br/>style-guide pass`"]:::blocked
 	1CO.9["`*1CO.9*<br/>**Content**<br/>CV / hire-me copy`"]:::blocked
-	1CO.10["`*1CO.10*<br/>**Content**<br/>rotation mechanism`"]:::blocked
+	1CO.10["`*1CO.10*<br/>**Content**<br/>rotation mechanism`"]:::open
 
 	%% M1 — deps
 	1CO.1 --> 1CO.2
@@ -272,7 +273,7 @@ flowchart TD
 
 	4QU.1["`*4QU.1*<br/>**Quality**<br/>a11y audit`"]:::blocked
 	4QU.3["`*4QU.3*<br/>**Quality**<br/>SEO + perf sanity`"]:::blocked
-	4QU.4["`*4QU.4*<br/>**Quality**<br/>OG coverage`"]:::blocked
+	4QU.4["`*4QU.4*<br/>**Quality**<br/>OG coverage`"]:::open
 	4QU.5["`*4QU.5*<br/>**Quality**<br/>view test coverage`"]:::open
 	4QU.7["`*4QU.7*<br/>**Quality**<br/>constellation a11y`"]:::blocked
 
