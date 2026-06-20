@@ -11,7 +11,7 @@ The site is live and substantially built (full routes, graph/timeline/map/toolki
 | **Content**  | 30+ entries, themes, threads, Colophon in place; depth audit complete; 7 sub-Full entries rewritten/excluded | Editorial polish on Full entries; theme coherence | —                              |
 | **Features** | Search absent; map/timeline rich; filters URL-backed but single-select | Search, deep-link other views, multi-select | Cross-view continuity, new viz |
 | **Design**   | Reasonable Colors tokens, dark mode             | Visual identity, then typography/motion | Direction decision first       |
-| **Quality**  | Strict types, data-integrity tests, prerendered | Interaction tests, then a11y audit, SEO | New-view a11y (needs M2 viz, graph aesthetics) |
+| **Quality**  | Strict types, data-integrity tests, prerendered | Interaction test coverage (4QU.5) | a11y audit and SEO blocked on 4QU.5; new-view a11y blocked on M2 viz |
 | **Drift**    | 2.5k-line CLI, manifest registry, cache, verbs  | Config layer, engine/integration split | Most decoupling tasks (sequence) |
 
 ---
@@ -197,27 +197,25 @@ flowchart TD
 	1CO.2["`*1CO.2*<br/>**Content**<br/>all entries flagship-ready`"]:::doing
 	1CO.3["`*1CO.3*<br/>**Content**<br/>contribution notes`"]:::open
 	1CO.4["`*1CO.4*<br/>**Content**<br/>About narrative`"]:::open
-	1CO.5["`*1CO.5*<br/>**Content**<br/>Colophon + Drift story`"]:::open
+	1CO.5["`*1CO.5*<br/>**Content**<br/>Colophon + Drift story`"]:::blocked
 	1CO.6["`*1CO.6*<br/>**Content**<br/>theme coherence`"]:::open
 	1CO.7["`*1CO.7*<br/>**Content**<br/>thread narratives`"]:::open
-	1CO.8["`*1CO.8*<br/>**Content**<br/>style-guide pass`"]:::open
-	1CO.9["`*1CO.9*<br/>**Content**<br/>CV / hire-me copy`"]:::open
+	1CO.8["`*1CO.8*<br/>**Content**<br/>style-guide pass`"]:::blocked
+	1CO.9["`*1CO.9*<br/>**Content**<br/>CV / hire-me copy`"]:::blocked
 	1CO.10["`*1CO.10*<br/>**Content**<br/>rotation mechanism`"]:::blocked
 
-	%% M1 — literal deps (solid)
+	%% M1 — deps
 	1CO.1 --> 1CO.2
 	1CO.1 --> 1CO.6
 	1CO.2 --> 1CO.10
-
-	%% M1 — inferred sequencing (dotted)
-	1CO.4 -.-> 1CO.9
-	1CO.7 -.-> 1CO.5
-	1CO.2 -.-> 1CO.8
-	1CO.3 -.-> 1CO.8
-	1CO.4 -.-> 1CO.8
-	1CO.5 -.-> 1CO.8
-	1CO.7 -.-> 1CO.8
-	1CO.9 -.-> 1CO.8
+	1CO.4 --> 1CO.9
+	1CO.7 --> 1CO.5
+	1CO.2 --> 1CO.8
+	1CO.3 --> 1CO.8
+	1CO.4 --> 1CO.8
+	1CO.5 --> 1CO.8
+	1CO.7 --> 1CO.8
+	1CO.9 --> 1CO.8
 
 	%% M1 track completers → m1
 	1CO.6 --> m1
@@ -227,26 +225,22 @@ flowchart TD
 	%% ── Milestone 2: Exploration & New Features ──────────────────────
 	m2{"`**Milestone 2**<br/>Exploration & Features`"}:::mile
 
-	2FE.1["`*2FE.1*<br/>**Features**<br/>client-side search`"]:::open
+	2FE.1["`*2FE.1*<br/>**Features**<br/>client-side search`"]:::blocked
 	2FE.2["`*2FE.2*<br/>**Features**<br/>deep-link map/timeline/toolkit`"]:::open
 	2FE.3["`*2FE.3*<br/>**Features**<br/>polish existing interactions`"]:::open
-	2FE.4["`*2FE.4*<br/>**Features**<br/>multi-select filters`"]:::open
+	2FE.4["`*2FE.4*<br/>**Features**<br/>multi-select filters`"]:::blocked
 	2FE.5["`*2FE.5*<br/>**Features**<br/>cross-view continuity`"]:::blocked
 	2FE.6["`*2FE.6*<br/>**Features**<br/>tech-stack constellation`"]:::open
 
-	%% M2 — literal deps (solid)
+	%% M2 — deps
 	2FE.2 --> 2FE.5
-
-	%% M2 — inferred sequencing (dotted)
-	2FE.2 -.-> 2FE.4
-	2FE.4 -.-> 2FE.1
+	2FE.2 --> 2FE.4
+	2FE.4 --> 2FE.1
 
 	%% M2 track completers → m2
 	2FE.1 --> m2
 	2FE.5 --> m2
 	2FE.6 --> m2
-
-	%% M2 independent leaf → m2
 	2FE.3 --> m2
 
 	%% ── Milestone 3: Design & Interaction Polish ──────────────────────
@@ -259,38 +253,32 @@ flowchart TD
 	3DE.4["`*3DE.4*<br/>**Design**<br/>graph aesthetics`"]:::blocked
 	3DE.5["`*3DE.5*<br/>**Design**<br/>colour consistency`"]:::blocked
 
-	%% M3 — literal deps (solid)
+	%% M3 — deps
 	3DE.0 --> 3DE.1
 	3DE.0 --> 3DE.3
 	3DE.0 --> 3DE.4
 	3DE.0 --> 3DE.5
-
-	%% M3 — inferred sequencing (dotted)
-	3DE.1 -.-> 3DE.3
-	3DE.5 -.-> 3DE.4
+	3DE.1 --> 3DE.3
+	3DE.5 --> 3DE.4
 
 	%% M3 track completers → m3
 	3DE.3 --> m3
 	3DE.4 --> m3
-
-	%% M3 independent leaf → m3
 	3DE.2 --> m3
 
 	%% ── Milestone 4: Quality & Reach ─────────────────────────────────
 	m4{"`**Milestone 4**<br/>Quality & Reach`"}:::mile
 
-	4QU.1["`*4QU.1*<br/>**Quality**<br/>a11y audit`"]:::open
-	4QU.3["`*4QU.3*<br/>**Quality**<br/>SEO + perf sanity`"]:::open
+	4QU.1["`*4QU.1*<br/>**Quality**<br/>a11y audit`"]:::blocked
+	4QU.3["`*4QU.3*<br/>**Quality**<br/>SEO + perf sanity`"]:::blocked
 	4QU.4["`*4QU.4*<br/>**Quality**<br/>OG coverage`"]:::blocked
 	4QU.5["`*4QU.5*<br/>**Quality**<br/>view test coverage`"]:::open
 	4QU.7["`*4QU.7*<br/>**Quality**<br/>constellation a11y`"]:::blocked
 
-	%% M4 — literal deps (solid)
+	%% M4 — deps
+	4QU.5 --> 4QU.1
+	4QU.1 --> 4QU.3
 	4QU.1 --> 4QU.7
-
-	%% M4 — inferred sequencing (dotted)
-	4QU.5 -.-> 4QU.1
-	4QU.1 -.-> 4QU.3
 
 	%% M4 track completers → m4
 	4QU.3 --> m4
@@ -313,7 +301,7 @@ flowchart TD
 	5DR.10["`*5DR.10*<br/>**Drift**<br/>authoring guide`"]:::blocked
 	5DR.11["`*5DR.11*<br/>**Drift**<br/>audit verb`"]:::blocked
 
-	%% M5 — literal deps (solid)
+	%% M5 — deps
 	5DR.0 --> 5DR.1
 	5DR.1 --> 5DR.3
 	5DR.1 --> 5DR.5
@@ -328,9 +316,7 @@ flowchart TD
 	5DR.5 --> 5DR.10
 	5DR.5 --> 5DR.11
 	5DR.6 --> 5DR.11
-
-	%% M5 — inferred sequencing (dotted)
-	5DR.4 -.-> 5DR.6
+	5DR.4 --> 5DR.6
 
 	%% M5 track completers → m5
 	5DR.7 --> m5
@@ -340,11 +326,9 @@ flowchart TD
 	5DR.11 --> m5
 
 	%% ── Cross-milestone gates ────────────────────────────────────────
-	%% literal (in prose)
 	1CO.2 ==>|gates OG| 4QU.4
 	2FE.6 ==>|gates design| 3DE.4
 	2FE.6 ==>|gates a11y| 4QU.7
-	%% inferred (not in prose)
 	1CO.2 ==>|enables search| 2FE.1
 	3DE.4 ==>|gates| 4QU.7
 
@@ -356,13 +340,13 @@ flowchart TD
 	m4 --> SHIP
 	m5 --> SHIP
 
-	classDef default fill:#fff7fb;
-	classDef blocked fill:#fff7fb;
-	classDef open fill:#fff9e5;
-	classDef doing fill:#fff0cc,stroke:#b07800;
-	classDef done fill:#e5ffe9;
-	classDef mile fill:#c4fffe;
-	classDef ship fill:#d6f5e3,stroke:#008060,color:#00402e;
+	classDef open     fill:#fff3fc,stroke:#740068,color:#44003c;
+	classDef blocked  fill:#fff8f3,stroke:#ac5c00,color:#371d00;
+	classDef doing    fill:#dcffe6,stroke:#008147,color:#002812;
+	classDef done     fill:#e8f6ff,stroke:#00749d,color:#001d2a;
+	classDef mile     fill:#fff8f5,stroke:#cd3c00,color:#401600;
+	classDef miledone fill:#e3f7ff,stroke:#007590,color:#001f28;
+	classDef ship     fill:#fff8f5,stroke:#cd3c00,color:#401600;
 ```
 
 ---
