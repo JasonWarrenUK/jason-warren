@@ -174,8 +174,13 @@ describe('heroScore', () => {
 // ---------------------------------------------------------------------------
 
 describe('hubThreshold', () => {
-	it('returns 0 for an empty list', () => {
-		expect(hubThreshold([])).toBe(0);
+	it('returns Infinity for an empty list (no hubs in degenerate case)', () => {
+		expect(hubThreshold([])).toBe(Infinity);
+	});
+
+	it('returns Infinity when all projects have zero substance (no metrics)', () => {
+		const noMetrics = [makeProject('a'), makeProject('b'), makeProject('c')];
+		expect(hubThreshold(noMetrics)).toBe(Infinity);
 	});
 
 	it('returns the correct percentile value', () => {

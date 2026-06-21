@@ -82,11 +82,14 @@ export function heroScore(p: Project, now: number): number {
  * Projects whose substanceScore meets or exceeds this threshold are map hubs:
  * they receive an enlarged minimum node radius AND are always labelled.
  *
- * Returns 0 for an empty list (degenerate: all projects become hubs).
+ * Returns Infinity when all projects have zero substance (no metrics available),
+ * so that no project is classified as a hub in that degenerate case.
  */
 export function hubThreshold(list: Project[]): number {
-	if (list.length === 0) return 0;
+	if (list.length === 0) return Infinity;
 	const scores = list.map(substanceScore).sort((a, b) => a - b);
+	// If the entire list is zeros (no metrics at all), treat as no-hub.
+	if (scores[scores.length - 1] === 0) return Infinity;
 	// Nearest-rank percentile: index is the first position at or above the
 	// target fraction of the sorted list. Clamped to the last valid index.
 	const index = Math.min(
