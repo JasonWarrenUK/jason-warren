@@ -1,7 +1,11 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { browser } from '$app/environment';
+	import { goto } from '$app/navigation';
 	import { base } from '$app/paths';
+	import { page } from '$app/stores';
 	import { EDGE_CATEGORIES, type ProjectKind, type ProjectStatus } from '$lib/data/types.js';
+	import { parseSet, serialiseSet } from '$lib/url-state.js';
 	import type { GraphEdge, LiveSimNode, SharedTechEdge } from '$lib/data/graph.js';
 	import { buildSimLinks, createForceSimulation } from '$lib/data/graph.js';
 	import { forceLink as d3ForceLink } from 'd3-force';
@@ -101,14 +105,41 @@
 	});
 
 	// Interaction state, only meaningful once JavaScript runs.
+	// URL search params are only readable in the browser; during prerender we
+	// show the full graph so the prerendered HTML is always complete.
 	let activeSlug = $state<string | null>(null);
-	let hiddenKinds = $state(new Set<ProjectKind>());
-	let hiddenEdgeTypes = $state(new Set<EdgeType>());
-	let isolateMode = $state(false);
+	const isolateMode = $derived(browser ? $page.url.searchParams.get('isolate') === '1' : false);
+	const hiddenKinds = $derived(
+		browser
+			? parseSet<ProjectKind>($page.url.searchParams.get('hide-kinds'))
+			: new Set<ProjectKind>()
+	);
+	const hiddenEdgeTypes = $derived(
+		browser ? parseSet<EdgeType>($page.url.searchParams.get('hide-edges')) : new Set<EdgeType>()
+	);
 	// Isolate mode uses an additive *shown* set: click types one at a time to
 	// build up what you want to see. An empty set means "show everything".
-	let isolatedKinds = $state(new Set<ProjectKind>());
-	let isolatedEdgeTypes = $state(new Set<EdgeType>());
+	const isolatedKinds = $derived(
+		browser
+			? parseSet<ProjectKind>($page.url.searchParams.get('show-kinds'))
+			: new Set<ProjectKind>()
+	);
+	const isolatedEdgeTypes = $derived(
+		browser ? parseSet<EdgeType>($page.url.searchParams.get('show-edges')) : new Set<EdgeType>()
+	);
+
+	// Write a single URL search param, using replaceState so filter changes
+	// don't clutter the browser history. keepFocus preserves focus on the
+	// clicked control (important for keyboard users navigating the legend).
+	function writeParam(key: string, value: string | null): void {
+		const url = new URL($page.url);
+		if (value === null) {
+			url.searchParams.delete(key);
+		} else {
+			url.searchParams.set(key, value);
+		}
+		goto(url.toString(), { replaceState: true, keepFocus: true });
+	}
 
 	// --- Visibility: default mode hides one type per click (multi-select);
 	// isolate mode builds up a set of types to show additively. ---
@@ -118,12 +149,12 @@
 			const next = new Set(isolatedKinds);
 			if (next.has(kind)) next.delete(kind);
 			else next.add(kind);
-			isolatedKinds = next;
+			writeParam('show-kinds', serialiseSet(next));
 		} else {
 			const next = new Set(hiddenKinds);
 			if (next.has(kind)) next.delete(kind);
 			else next.add(kind);
-			hiddenKinds = next;
+			writeParam('hide-kinds', serialiseSet(next));
 		}
 	}
 
@@ -132,30 +163,39 @@
 			const next = new Set(isolatedEdgeTypes);
 			if (next.has(type)) next.delete(type);
 			else next.add(type);
-			isolatedEdgeTypes = next;
+			writeParam('show-edges', serialiseSet(next));
 		} else {
 			const next = new Set(hiddenEdgeTypes);
 			if (next.has(type)) next.delete(type);
 			else next.add(type);
-			hiddenEdgeTypes = next;
+			writeParam('hide-edges', serialiseSet(next));
 		}
 	}
 
 	function resetFilters(): void {
-		hiddenKinds = new Set();
-		hiddenEdgeTypes = new Set();
-		isolatedKinds = new Set();
-		isolatedEdgeTypes = new Set();
+		const url = new URL($page.url);
+		url.searchParams.delete('hide-kinds');
+		url.searchParams.delete('hide-edges');
+		url.searchParams.delete('show-kinds');
+		url.searchParams.delete('show-edges');
+		goto(url.toString(), { replaceState: true, keepFocus: true });
 	}
 
-	// Clear isolated sets whenever isolate mode is toggled so the two models
-	// do not bleed into each other.
-	$effect(() => {
-		if (!isolateMode) {
-			isolatedKinds = new Set();
-			isolatedEdgeTypes = new Set();
+	// Toggle isolate mode and atomically clear the now-irrelevant filter family
+	// so the two models never bleed into each other.
+	function toggleIsolate(): void {
+		const url = new URL($page.url);
+		if (isolateMode) {
+			url.searchParams.delete('isolate');
+			url.searchParams.delete('show-kinds');
+			url.searchParams.delete('show-edges');
+		} else {
+			url.searchParams.set('isolate', '1');
+			url.searchParams.delete('hide-kinds');
+			url.searchParams.delete('hide-edges');
 		}
-	});
+		goto(url.toString(), { replaceState: true, keepFocus: true });
+	}
 
 	function nodeHidden(node: MapNode): boolean {
 		if (isolateMode) {
@@ -434,7 +474,7 @@
 				class="map__toggle map__toggle--mode"
 				class:map__toggle--on={isolateMode}
 				aria-pressed={isolateMode}
-				onclick={() => (isolateMode = !isolateMode)}
+				onclick={toggleIsolate}
 			>
 				Isolate
 			</button>

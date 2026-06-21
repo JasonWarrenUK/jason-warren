@@ -1,5 +1,7 @@
 <script lang="ts">
+	import { browser } from '$app/environment';
 	import { base } from '$app/paths';
+	import { page } from '$app/stores';
 	import type { ThemeWithProjects } from '$lib/data/themes.js';
 
 	interface Props {
@@ -13,6 +15,15 @@
 	// The project the reader is pointing at. Highlighting it in every territory it
 	// belongs to is the payoff: it shows how much the work overlaps across themes.
 	let activeSlug = $state<string | null>(null);
+
+	// URL search params are only readable in the browser; during prerender we
+	// show the full view so the prerendered HTML is always complete.
+	// Only the full variant participates — the compact home teaser stays inert.
+	const pinnedSlug = $derived(
+		browser && variant === 'full' ? $page.url.searchParams.get('project') : null
+	);
+	// Hover overrides the pin; releasing the pointer/focus falls back to it.
+	const effectiveSlug = $derived(activeSlug ?? pinnedSlug);
 
 	// How many territories each project appears in, so multi-theme projects can be
 	// marked as the connective tissue they are.
@@ -64,9 +75,10 @@
 								<a
 									href="{base}/projects/{project.slug}"
 									class="themes__chip"
-									class:themes__chip--active={activeSlug === project.slug}
+									class:themes__chip--active={effectiveSlug === project.slug}
 									class:themes__chip--spanning={spans}
-									class:themes__chip--dimmed={activeSlug !== null && activeSlug !== project.slug}
+									class:themes__chip--dimmed={effectiveSlug !== null &&
+										effectiveSlug !== project.slug}
 									onmouseenter={() => (activeSlug = project.slug)}
 									onmouseleave={() => (activeSlug = null)}
 									onfocus={() => (activeSlug = project.slug)}
