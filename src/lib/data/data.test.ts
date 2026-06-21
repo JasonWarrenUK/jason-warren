@@ -105,6 +105,18 @@ describe('project registry', () => {
 		).toHaveLength(0);
 	});
 
+	it('every merged project has a non-empty collaboration.team', () => {
+		// The collaboration field is required on Contribution and always defaulted
+		// by inferContribution; mergeContribution preserves the default when an
+		// authored overlay omits collaboration. This test locks that invariant
+		// across every project in the registry, including manifest-only inferred ones.
+		const missing = projects.filter((p) => !p.contribution.collaboration.team.trim());
+		expect(
+			missing.map((p) => p.slug),
+			`Projects with empty collaboration.team: ${missing.map((p) => p.slug).join(', ')}`
+		).toHaveLength(0);
+	});
+
 	it('all authored projects have at least one tag', () => {
 		// Manifest-only projects may have no tags until a drift update populates
 		// the languages/runtime/framework/database fields for tag inference.

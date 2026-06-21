@@ -14,14 +14,23 @@ import { highlight } from '$lib/code/highlight.js';
 
 // — src/lib/data/types.ts ————————————————————————————————————————————————
 // The Contribution discriminated union. The role field determines shape;
-// contributionNote is optional on team projects because manifest-derived
-// entries can be auto-listed before an editorial note is authored.
-const contributionSnippet = `interface SoloContribution {
+// collaboration.team is required on both variants (always defaulted by
+// inferContribution); contributionNote is optional and enforced on authored
+// team projects by a data test, not the compiler.
+const contributionSnippet = `interface Collaboration {
+	team: string;         // who the work was built with
+	employer?: string;    // the org Jason was employed by
+	client?: string;      // the end client, when distinct
+}
+
+interface SoloContribution {
 	role: 'solo';
+	collaboration: Collaboration;
 }
 
 interface TeamContribution {
 	role: 'lead' | 'collaborator';
+	collaboration: Collaboration;
 	/**
 	 * Specific verified contributions. Optional: manifest-derived team
 	 * projects may have role inferred from commit share but no authored
