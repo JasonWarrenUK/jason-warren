@@ -26,7 +26,6 @@ export const schemaForge: Project = {
 			note: 'The XSD parsing and validation core was the general problem hiding inside Iris; Schema Forge is that core on its own, reusable by anything that speaks XSD.'
 		}
 	],
-	featured: false,
 	tags: [
 		{ label: 'TypeScript', kind: 'language' },
 		{ label: 'Bun', kind: 'runtime' },

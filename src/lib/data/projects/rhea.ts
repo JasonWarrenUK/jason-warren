@@ -20,7 +20,6 @@ export const rhea: Project = {
 		'Deploys via Deno Deploy with the @deno/svelte-adapter; configurable research domain allowlists and hierarchical course→arc→module config inheritance keep generation scope controllable.'
 	],
 	relationships: [],
-	featured: true,
 	tags: [
 		{ label: 'TypeScript', kind: 'language' },
 		{ label: 'SvelteKit', kind: 'framework' },

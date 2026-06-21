@@ -25,7 +25,6 @@ export const facCra: Project = {
 		'Non-invasive audit pass: security hardening, a11y fixes, dead-code removal, 17 unused packages removed.'
 	],
 	relationships: [],
-	featured: false,
 	tags: [
 		{ label: 'TypeScript', kind: 'language' },
 		{ label: 'GraphQL', kind: 'data' },

@@ -20,7 +20,6 @@ export const kamino: Project = {
 		'Degit-cloneable template with stack-agnostic Claude Code config.'
 	],
 	relationships: [],
-	featured: false,
 	tags: [
 		{ label: 'Shell', kind: 'language' },
 		{ label: 'POSIX shell', kind: 'runtime' },

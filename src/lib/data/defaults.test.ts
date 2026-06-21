@@ -203,7 +203,6 @@ describe('defaultProjectFromManifest', () => {
 		expect(project.description).toBe('');
 		expect(project.highlights).toEqual([]);
 		expect(project.relationships).toEqual([]);
-		expect(project.featured).toBe(false);
 	});
 
 	it("sets kind to 'repo'", () => {

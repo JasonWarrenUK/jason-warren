@@ -25,7 +25,6 @@ export const thingsWeDo: Project = {
 		'Serwist service worker with background sync and offline caching; installable as a PWA.'
 	],
 	relationships: [],
-	featured: false,
 	tags: [
 		{ label: 'TypeScript', kind: 'language' },
 		{ label: 'Bun', kind: 'runtime' },

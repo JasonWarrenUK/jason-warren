@@ -21,7 +21,6 @@ export const lyraRose: Project = {
 		'Archived OpenGraph previews at capture time: title, description, and hero image stored locally so shards survive link rot and paywalls.'
 	],
 	relationships: [],
-	featured: false,
 	tags: [
 		{ label: 'TypeScript', kind: 'language' },
 		{ label: 'SvelteKit', kind: 'framework' },

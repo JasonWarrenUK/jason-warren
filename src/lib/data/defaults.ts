@@ -171,10 +171,10 @@ export function defaultProjectFromManifest(slug: string, manifest: SyncedSource)
 		status: 'uncategorised',
 		repoUrl: manifest.remote ?? `https://github.com/JasonWarrenUK/${slug}`,
 		highlights: [],
-		relationships: [],
-		featured: false
+		relationships: []
 		// metrics and date fields are NOT set here; withSyncedMetrics supplies them
 		// from the same manifest entry so they appear on manifest-only projects too.
+		// pin and hide default to undefined (absent = pure score).
 	};
 }
 
@@ -226,8 +226,8 @@ export function mergeAuthored(base: Project, authored: AuthoredProject | undefin
 		highlights: authored.highlights !== undefined ? authored.highlights : base.highlights,
 		relationships:
 			authored.relationships !== undefined ? authored.relationships : base.relationships,
-		featured: authored.featured !== undefined ? authored.featured : base.featured,
-		flagship: authored.flagship !== undefined ? authored.flagship : base.flagship,
+		pin: authored.pin !== undefined ? authored.pin : base.pin,
+		hide: authored.hide !== undefined ? authored.hide : base.hide,
 		metrics: authored.metrics !== undefined ? authored.metrics : base.metrics
 	};
 }

@@ -19,7 +19,6 @@ export const thoseWhoCameBefore: Project = {
 		'Runs SvelteKit through Deno via @deno/svelte-adapter; thirteen design documents specify the full generator and career/publication system.'
 	],
 	relationships: [],
-	featured: false,
 	tags: [
 		{ label: 'TypeScript', kind: 'language' },
 		{ label: 'SvelteKit', kind: 'framework' },

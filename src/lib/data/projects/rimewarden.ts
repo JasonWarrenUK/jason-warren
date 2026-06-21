@@ -20,7 +20,6 @@ export const rimewarden: Project = {
 		'Tabbed single-page architecture with reactive tab switching via a runes store, configured with svelte-adapter-bun.'
 	],
 	relationships: [],
-	featured: false,
 	tags: [
 		{ label: 'TypeScript', kind: 'language' },
 		{ label: 'Svelte 5', kind: 'framework' },

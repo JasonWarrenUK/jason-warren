@@ -19,7 +19,6 @@ export const grumble: Project = {
 		'Undercut modelled with a separate boxWinner field: "who scored" and "who won the box" tracked independently, including the equal-deadwood edge case.'
 	],
 	relationships: [],
-	featured: false,
 	tags: [
 		{ label: 'TypeScript', kind: 'language' },
 		{ label: 'SvelteKit', kind: 'framework' },

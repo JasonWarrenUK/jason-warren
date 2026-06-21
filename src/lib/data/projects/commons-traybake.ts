@@ -25,7 +25,6 @@ export const commonsTraybake: Project = {
 		'UK Parliament Hansard API integration with documented request patterns and Bruno/HTTPie test collection.'
 	],
 	relationships: [],
-	featured: false,
 	tags: [
 		{ label: 'TypeScript', kind: 'language' },
 		{ label: 'Bun', kind: 'runtime' },
