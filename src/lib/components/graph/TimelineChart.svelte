@@ -118,11 +118,12 @@
 					class:timeline__node--active={effectiveSlug === row.slug}
 					class:timeline__node--dim={effectiveSlug !== null && effectiveSlug !== row.slug}
 					href="{base}/projects/{row.slug}"
-					onmouseenter={() => (activeSlug = row.slug)}
-					onmouseleave={() => (activeSlug = null)}
+					onpointerenter={() => (activeSlug = row.slug)}
+					onpointerleave={() => (activeSlug = null)}
 					onfocus={() => (activeSlug = row.slug)}
 					onblur={() => (activeSlug = null)}
 				>
+					<title>{row.name}{row.year ? ` (${row.year})` : ''}, {statusLabel[row.status]}</title>
 					<text class="timeline__name" x={spineX + 22} y={rowY(index) + 5}>{row.name}</text>
 				</a>
 			{/each}
@@ -232,5 +233,13 @@
 		width: 0.85rem;
 		height: 0.85rem;
 		border-radius: var(--radius-full);
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.timeline__node,
+		.timeline__name,
+		.timeline__connector {
+			transition: none;
+		}
 	}
 </style>
