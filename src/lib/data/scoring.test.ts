@@ -50,13 +50,14 @@ function makeProject(
 		relationships: [],
 		featured: false,
 		lastCommit: overrides.lastCommit,
-		metrics: overrides.commits !== undefined || overrides.linesOfCode !== undefined
-			? {
-					commits: overrides.commits,
-					commitsMine: overrides.commitsMine,
-					linesOfCode: overrides.linesOfCode
-				}
-			: undefined,
+		metrics:
+			overrides.commits !== undefined || overrides.linesOfCode !== undefined
+				? {
+						commits: overrides.commits,
+						commitsMine: overrides.commitsMine,
+						linesOfCode: overrides.linesOfCode
+					}
+				: undefined,
 		pin: overrides.pin,
 		hide: overrides.hide
 	} as unknown as Project;
@@ -115,9 +116,7 @@ describe('recencyDecay', () => {
 	});
 
 	it('returns ~0.5 at exactly HERO_HALF_LIFE_DAYS', () => {
-		const halfLifeAgo = new Date(now - HERO_HALF_LIFE_DAYS * DAY_MS)
-			.toISOString()
-			.slice(0, 10);
+		const halfLifeAgo = new Date(now - HERO_HALF_LIFE_DAYS * DAY_MS).toISOString().slice(0, 10);
 		expect(recencyDecay(halfLifeAgo, now)).toBeCloseTo(0.5, 4);
 	});
 
@@ -153,11 +152,23 @@ describe('heroScore', () => {
 
 	it('rewards recent AND substantial over either alone', () => {
 		// Recent but tiny
-		const freshSmall = makeProject('fresh-small', { commits: 3, linesOfCode: 200, lastCommit: '2026-06-17' });
+		const freshSmall = makeProject('fresh-small', {
+			commits: 3,
+			linesOfCode: 200,
+			lastCommit: '2026-06-17'
+		});
 		// Large but stale (18 months dormant ~ 540 days, decay ≈ 0.0001)
-		const staleHuge = makeProject('stale-huge', { commits: 2000, linesOfCode: 200000, lastCommit: '2024-12-01' });
+		const staleHuge = makeProject('stale-huge', {
+			commits: 2000,
+			linesOfCode: 200000,
+			lastCommit: '2024-12-01'
+		});
 		// Recent AND substantial
-		const winner = makeProject('winner', { commits: 300, linesOfCode: 20000, lastCommit: '2026-06-18' });
+		const winner = makeProject('winner', {
+			commits: 300,
+			linesOfCode: 20000,
+			lastCommit: '2026-06-18'
+		});
 
 		expect(heroScore(winner, now)).toBeGreaterThan(heroScore(freshSmall, now));
 		expect(heroScore(winner, now)).toBeGreaterThan(heroScore(staleHuge, now));
@@ -201,9 +212,7 @@ describe('hubThreshold', () => {
 		);
 		const threshold = hubThreshold(projects);
 		const hubCount = projects.filter((p) => {
-			const score = p.metrics?.commits
-				? Math.log1p(p.metrics.commits)
-				: 0;
+			const score = p.metrics?.commits ? Math.log1p(p.metrics.commits) : 0;
 			return score >= threshold;
 		}).length;
 		// Allow ±1 for edge rounding
