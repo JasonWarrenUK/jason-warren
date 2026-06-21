@@ -26,7 +26,6 @@ export const flyt: Project = {
 			note: 'The reactive DendryNexus engine was lifted out of Flyt into the standalone Riffle library.'
 		}
 	],
-	featured: false,
 	tags: [
 		{ label: 'TypeScript', kind: 'language' },
 		{ label: 'SvelteKit', kind: 'framework' },

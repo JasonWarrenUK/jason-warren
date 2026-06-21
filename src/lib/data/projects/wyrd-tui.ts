@@ -20,8 +20,6 @@ export const wyrdTui: Project = {
 		'JSON-lines stdin/stdout plugin protocol with deterministic UUID v5 deduplication for extensibility.'
 	],
 	relationships: [],
-	featured: true,
-	flagship: true,
 	tags: [
 		{ label: 'Go', kind: 'language' },
 		{ label: 'Go', kind: 'runtime' },

@@ -302,3 +302,44 @@
 		--shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.4), 0 4px 6px -4px rgb(0 0 0 / 0.3);
 	}
 }
+
+/*
+ * Shiki dual-theme wiring.
+ *
+ * Shiki is invoked with defaultColor:false, so each .shiki block and every
+ * token span carries paired custom properties — --shiki / --shiki-bg for
+ * the light theme, --shiki-dark / --shiki-dark-bg for dark — but no
+ * concrete colour. The rules below choose which set is active.
+ *
+ * Background is deliberately excluded: code blocks use --color-surface-sunken
+ * so they match other sunken surfaces on the page rather than Shiki's own bg.
+ *
+ * The dark selectors mirror the existing theme pattern exactly, so code blocks
+ * flip in lockstep with the rest of the page and the no-flash app.html script.
+ */
+
+/* Default (light): apply the light-theme token colours. */
+.shiki span {
+	color: var(--shiki);
+	font-style: var(--shiki-font-style);
+	font-weight: var(--shiki-font-weight);
+	text-decoration: var(--shiki-text-decoration);
+}
+
+/* Dark trigger 1: explicit override via ThemeToggle. */
+:root[data-theme='dark'] .shiki span {
+	color: var(--shiki-dark);
+	font-style: var(--shiki-dark-font-style);
+	font-weight: var(--shiki-dark-font-weight);
+	text-decoration: var(--shiki-dark-text-decoration);
+}
+
+/* Dark trigger 2: OS preference, unless the user has forced light. */
+@media (prefers-color-scheme: dark) {
+	:root:not([data-theme='light']) .shiki span {
+		color: var(--shiki-dark);
+		font-style: var(--shiki-dark-font-style);
+		font-weight: var(--shiki-dark-font-weight);
+		text-decoration: var(--shiki-dark-text-decoration);
+	}
+}

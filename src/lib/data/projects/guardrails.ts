@@ -25,7 +25,6 @@ export const guardrails: Project = {
 		'10 PII entity types: PERSON, EMAIL, PHONE, LOCATION, ORG, CREDIT_CARD, SSN, postcode, and more.'
 	],
 	relationships: [],
-	featured: false,
 	tags: [
 		{ label: 'TypeScript', kind: 'language' },
 		{ label: 'Python', kind: 'language' },

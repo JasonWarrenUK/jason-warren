@@ -25,7 +25,6 @@ export const workwise: Project = {
 		'Row-Level Security enforces data isolation between employees and managers.'
 	],
 	relationships: [],
-	featured: true,
 	tags: [
 		{ label: 'TypeScript', kind: 'language' },
 		{ label: 'Bun', kind: 'runtime' },

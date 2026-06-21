@@ -26,8 +26,6 @@ export const iris: Project = {
 			note: 'The XSD parsing and validation core was lifted out of Iris into the standalone Schema Forge library.'
 		}
 	],
-	featured: true,
-	flagship: true,
 	tags: [
 		{ label: 'TypeScript', kind: 'language' },
 		{ label: 'Bun', kind: 'runtime' },

@@ -26,7 +26,6 @@ export const riffle: Project = {
 			note: 'The reactive card engine outgrew the duel it was written for, so it became Riffle: the same StoryNexus mechanics with no Svelte UI of its own.'
 		}
 	],
-	featured: false,
 	tags: [
 		{ label: 'TypeScript', kind: 'language' },
 		{ label: 'Node.js', kind: 'runtime' },

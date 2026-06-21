@@ -25,7 +25,6 @@ export const chirpdb: Project = {
 		'Commercial client work: production-deployed behind Cloudflare on Tandem infrastructure.'
 	],
 	relationships: [],
-	featured: false,
 	tags: [
 		{ label: 'Python', kind: 'language' },
 		{ label: 'CPython', kind: 'runtime' },

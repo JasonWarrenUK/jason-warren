@@ -26,7 +26,6 @@ export const theWork: Project = {
 			note: 'The generic Ink-and-Svelte runtime was lifted out of The Work into the standalone Nib library.'
 		}
 	],
-	featured: false,
 	tags: [
 		{ label: 'TypeScript', kind: 'language' },
 		{ label: 'SvelteKit', kind: 'framework' },

@@ -26,7 +26,6 @@ export const sakura: Project = {
 		'Swagger-documented REST API on ASP.NET Core 8 with ASP.NET Identity authentication.'
 	],
 	relationships: [],
-	featured: false,
 	tags: [
 		{ label: 'C#', kind: 'language' },
 		{ label: 'ASP.NET Core', kind: 'framework' },

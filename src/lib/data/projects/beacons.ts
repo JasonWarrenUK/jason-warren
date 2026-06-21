@@ -26,7 +26,6 @@ export const beacons: Project = {
 		'Feature-organised React frontend with an interactive statement-building wizard, framer-motion transitions, and react-window virtualised lists.'
 	],
 	relationships: [],
-	featured: false,
 	tags: [
 		{ label: 'TypeScript', kind: 'language' },
 		{ label: 'Deno', kind: 'runtime' },

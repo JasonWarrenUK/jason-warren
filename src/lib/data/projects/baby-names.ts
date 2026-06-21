@@ -19,7 +19,6 @@ export const babyNames: Project = {
 		'Defensive LLM-output parsing: fence-stripping, bracket-slicing, shape validation, and descriptive errors for empty or malformed responses.'
 	],
 	relationships: [],
-	featured: false,
 	tags: [
 		{ label: 'TypeScript', kind: 'language' },
 		{ label: 'SvelteKit', kind: 'framework' },

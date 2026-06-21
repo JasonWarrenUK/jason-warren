@@ -1,7 +1,14 @@
 <script lang="ts">
 	import { base } from '$app/paths';
 	import Seo from '$lib/components/seo/Seo.svelte';
-	import { AUTHOR, SITE_URL, GITHUB_URL, BLUESKY_URL, BLUESKY_HANDLE } from '$lib/config.js';
+	import {
+		AUTHOR,
+		SITE_URL,
+		GITHUB_PROFILE_URL,
+		BLUESKY_URL,
+		BLUESKY_HANDLE,
+		DEFAULT_DESCRIPTION
+	} from '$lib/config.js';
 
 	const personLd = JSON.stringify({
 		'@context': 'https://schema.org',
@@ -10,14 +17,11 @@
 		url: `${SITE_URL}/about`,
 		jobTitle: 'Full-stack developer',
 		worksFor: { '@type': 'Organization', name: 'Founders and Coders' },
-		sameAs: [GITHUB_URL, BLUESKY_URL]
+		sameAs: [GITHUB_PROFILE_URL, BLUESKY_URL]
 	});
 </script>
 
-<Seo
-	title="About | Jason Warren"
-	description="Jason Warren is a full-stack developer at Founders and Coders, building tools across Go, TypeScript, Rust, and Svelte."
-/>
+<Seo title="About | Jason Warren" description={DEFAULT_DESCRIPTION} />
 
 <svelte:head>
 	{@html `<script type="application/ld+json">${personLd}</script>`}
@@ -26,25 +30,30 @@
 <div class="page">
 	<header class="page__header">
 		<h1 class="page__title">About</h1>
+		<p class="page__intro">
+			Full-stack developer. Optimising for problems that are awkward, tools that are sharp, and code
+			that survives contact with reality.
+		</p>
 	</header>
 
 	<div class="page__body">
 		<main class="page__main">
 			<section class="section">
-				<h2 class="section__heading">Who I am</h2>
+				<h2 class="section__heading">What I build</h2>
 				<div class="section__prose">
 					<p>
-						I'm Jason Warren, a full-stack developer at Founders and Coders. "Full-stack" undersells
-						it slightly: in practice I move between Go terminal tools, Tauri desktop apps, Neo4j
-						graph models and Svelte 5 UIs, often inside the same week. I have made peace with the
-						fact that this can look like indecision and is actually appetite.
+						I build things that run: a Go TUI for productivity, a Tauri 2 desktop app for
+						apprenticeship data compliance, an AI curriculum generator, a Neo4j-backed relational
+						fiction engine. The spread is wider than is strictly sensible, and I have made peace with
+						that. A genuinely new sort of problem is the best excuse I know to learn a genuinely new
+						sort of tool.
 					</p>
 					<p>
-						I did not arrive here through a computer science degree. I came in sideways, through
-						curiosity and apprenticeship and an unreasonable number of side projects, and that route
-						still shapes how I work. I learn in the open, I am suspicious of anything that has never
-						actually run, and I write code on the assumption that someone (usually a baffled future
-						me) will have to read it later.
+						What the projects share is an intolerance for half-measures. The Lead Pool segmentation
+						work in fac-cra turns a blunt approval queue into a set of configurable segments; the
+						response-state architecture in Workwise replaces a tangle of loading booleans with a
+						discriminated-union state machine. The difference in both cases is a system that can be
+						reasoned about when things go wrong.
 					</p>
 				</div>
 			</section>
@@ -53,22 +62,20 @@
 				<h2 class="section__heading">How I work</h2>
 				<div class="section__prose">
 					<p>
-						I like working close to the problem. In practice that means I reach for small, sharp
-						tools before large frameworks, and I am genuinely happy in the parts of a project most
-						people would rather skip: the data model, the test harness, the shape of the git
-						history.
+						I came into development sideways, through curiosity and apprenticeship rather than a
+						computer science degree, and that route still shapes how I work. I am suspicious of
+						anything that has never actually run. I write code on the assumption that someone (usually
+						a baffled future me) will have to read it later.
 					</p>
 					<p>
-						On team projects I tend to land between architecture and delivery. I will build the
-						feature in front of me, but I cannot help caring about the shape of the system it has to
-						live in. The Lead Pool segmentation work in fac-cra and the response-state architecture
-						in Workwise both came out of exactly that itch.
+						Left to my own devices, I push the craft further than is strictly justified. Iris reached
+						v5.0.0 over 666 commits with close to one test for every source file. Wyrd sits at 68.5%
+						statement coverage across 150 Go files, not because anyone asked, but because I wanted to
+						find out what real rigour feels like from the inside.
 					</p>
 					<p>
-						Left to my own devices, I push the craft further than is strictly justified. Iris
-						reached v5.0.0 over 666 commits with very nearly one test for every source file. Wyrd
-						sits at 68.5% statement coverage across 150 Go files, not because anyone asked, but
-						because I wanted to find out what real rigour feels like from the inside.
+						On team projects I tend to land between architecture and delivery: building the feature in
+						front of me while caring about the shape of the system it has to live in.
 					</p>
 				</div>
 			</section>
@@ -77,17 +84,16 @@
 				<h2 class="section__heading">The toolkit</h2>
 				<div class="section__prose">
 					<p>
-						TypeScript is my default for anything that touches the browser or Node. Go is what I
-						reach for when something needs to live in the terminal or ship as a single binary. I
-						have written enough Rust to wrestle a Tauri desktop app to completion: enough to respect
-						the ownership model rather than fear it.
+						TypeScript is my default for anything touching the browser or Node. Go is what I reach
+						for when something needs to live in the terminal or ship as a single binary. I have
+						written enough Rust to wrestle a Tauri desktop app to completion, which is enough to
+						respect the ownership model rather than fear it.
 					</p>
 					<p>
-						On the frontend, Svelte (Svelte 5 with runes especially) is a strong preference rather
-						than a default reflex. For data I reach for PostgreSQL with row-level security, Neo4j
-						when the relationships are the actual model, and Supabase when I want both in a hurry. I
-						test with Vitest, and I have written Playwright end-to-end suites for software that real
-						people depend on.
+						On the frontend, Svelte 5 with runes is a strong preference. For data: PostgreSQL with
+						row-level security, Neo4j when the relationships are the actual model, Supabase when I
+						want both in a hurry. I test with Vitest, and I have written Playwright end-to-end suites
+						for software that real people depend on.
 					</p>
 				</div>
 			</section>
@@ -104,7 +110,7 @@
 					<p>
 						You can also find me on
 						<a
-							href="https://github.com/JasonWarrenUK"
+							href={GITHUB_PROFILE_URL}
 							class="link"
 							target="_blank"
 							rel="noopener noreferrer"
@@ -136,7 +142,7 @@
 				<ul class="aside-card__list">
 					<li>
 						<a
-							href="https://github.com/JasonWarrenUK"
+							href={GITHUB_PROFILE_URL}
 							class="link"
 							target="_blank"
 							rel="noopener noreferrer"
@@ -183,12 +189,23 @@
 	.page__header {
 		border-bottom: 1px solid var(--color-border);
 		padding-bottom: var(--space-6);
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-3);
 	}
 
 	.page__title {
 		font-size: var(--text-4xl);
 		font-weight: 700;
 		line-height: 1.1;
+	}
+
+	.page__intro {
+		font-size: var(--text-lg);
+		color: var(--color-text-subtle);
+		line-height: 1.6;
+		max-width: 60ch;
+		margin: 0;
 	}
 
 	.page__body {
@@ -217,7 +234,7 @@
 	}
 
 	.section__heading {
-		font-size: var(--text-xl);
+		font-size: var(--text-2xl);
 		font-weight: 600;
 		color: var(--color-text);
 	}

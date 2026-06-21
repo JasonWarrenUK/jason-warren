@@ -19,7 +19,6 @@ export const psyche: Project = {
 		'63 storylets and an xUnit suite spanning models, prerequisites, effects, the JSON repository, and end-to-end integration.'
 	],
 	relationships: [],
-	featured: false,
 	tags: [
 		{ label: 'C#', kind: 'language' },
 		{ label: '.NET', kind: 'runtime' },

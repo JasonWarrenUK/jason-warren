@@ -202,7 +202,6 @@ describe('selectLabelledSlugs', () => {
 			repoUrl: '',
 			highlights: [],
 			relationships: [],
-			featured: false,
 			lastCommit: m.last,
 			metrics: {
 				linesAdded: m.linesAdded,

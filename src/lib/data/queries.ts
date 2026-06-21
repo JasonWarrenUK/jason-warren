@@ -13,6 +13,7 @@ import type {
 	TagKind
 } from './types.js';
 import { projects } from './index.js';
+import { heroScore, HERO_COUNT } from './scoring.js';
 
 // ---------------------------------------------------------------------------
 // Lookups
@@ -22,13 +23,42 @@ export function getBySlug(slug: ProjectSlug): Project | undefined {
 	return projects.find((p) => p.slug === slug);
 }
 
-export function getFlagships(): Project[] {
-	return projects.filter((p) => p.flagship === true);
+/**
+ * Returns the full eligible pool sorted by active-substance score (descending),
+ * ready for the home-page hero to slice and rotate.
+ *
+ * Eligible = not archived, not uncategorised, not manually hidden.
+ * Sort: pinned projects float to the top (above score), then by heroScore desc,
+ * then by slug ascending as a stable tiebreaker (deterministic prerender).
+ *
+ * @param now - Unix timestamp (ms) for recency decay reference.
+ *              Pass `Date.parse(sources.lastSyncedAt)` at build time for a
+ *              byte-stable prerender that is identical across re-runs.
+ * @param projectList - Override the default registry (for testing).
+ */
+export function getHeroPool(
+	now: number,
+	projectList: Project[] = projects
+): Project[] {
+	const eligible = projectList.filter(
+		(p) => p.status !== 'archived' && p.status !== 'uncategorised' && !p.hide
+	);
+
+	return [...eligible].sort((a, b) => {
+		// Pinned projects always float first.
+		const pinDiff = (b.pin ? 1 : 0) - (a.pin ? 1 : 0);
+		if (pinDiff !== 0) return pinDiff;
+
+		// Primary: heroScore descending.
+		const scoreDiff = heroScore(b, now) - heroScore(a, now);
+		if (scoreDiff !== 0) return scoreDiff;
+
+		// Tiebreaker: slug ascending (stable, deterministic).
+		return a.slug.localeCompare(b.slug);
+	});
 }
 
-export function getFeatured(): Project[] {
-	return projects.filter((p) => p.featured);
-}
+export { HERO_COUNT };
 
 export function getAllProjects(): Project[] {
 	return projects;

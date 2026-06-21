@@ -182,8 +182,16 @@ export interface AuthoredProject {
 	liveUrl?: string;
 	highlights?: string[];
 	relationships?: ProjectRelationship[];
-	featured?: boolean;
-	flagship?: boolean;
+	/**
+	 * Force this project to the top of the hero pool, above score.
+	 * Use sparingly — hero selection is derived by default.
+	 */
+	pin?: boolean;
+	/**
+	 * Exclude this project from the hero pool entirely.
+	 * Use when a project is technically live but not portfolio-ready.
+	 */
+	hide?: boolean;
 	metrics?: ProjectMetrics;
 }
 
@@ -215,10 +223,16 @@ export interface Project {
 	/** 3–5 technically interesting things about this project. */
 	highlights: string[];
 	relationships: ProjectRelationship[];
-	/** Show in the featured/home sections. */
-	featured: boolean;
-	/** One of the 2–3 deep-dive hero projects on the home page. */
-	flagship?: boolean;
+	/**
+	 * Force this project to the top of the hero pool, above score.
+	 * Use sparingly — hero selection is derived by default.
+	 */
+	pin?: boolean;
+	/**
+	 * Exclude this project from the hero pool entirely.
+	 * Use when a project is technically live but not portfolio-ready.
+	 */
+	hide?: boolean;
 	metrics?: ProjectMetrics;
 }
 

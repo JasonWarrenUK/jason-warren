@@ -43,14 +43,11 @@ _None._
 
 <a name="m1-todo"><h4>To Do (Milestone 1)</h4></a>
 - [ ] 1CO.3. Strengthen `contributionNote` copy across all team projects
-- [ ] 1CO.4. Rewrite About page narrative (positioning, voice)
-- [ ] 1CO.5. Expand Colophon: explain the build, the data model, and headline the Drift tooling story
-- [ ] 1CO.10. Surfaced-project rotation / curation mechanism (home page hero rotates which project is foregrounded)
+- [ ] 1CO.9. CV / hire-me positioning copy — explicit "what I can do / work with me" content
 
 <a name="m1-blocked"><h4>Blocked (Milestone 1)</h4></a>
 
 - [ ] 1CO.8. Pass all copy through the writing-style guide (British spelling, no em-dashes, voice) — **depends on 1CO.3, 1CO.4, 1CO.5, 1CO.9**
-- [ ] 1CO.9. CV / hire-me positioning copy — explicit "what I can do / work with me" content — **depends on 1CO.4**
 
 <a name="m1-done"><h4>Completed (Milestone 1)</h4></a>
 
@@ -58,6 +55,9 @@ _None._
 - [x] 1CO.2. Bring every project entry to flagship-ready depth — worklist in [`docs/audits/content-depth.md`](../audits/content-depth.md). All 7 sub-Full entries resolved (6 rewritten, `kamino` excluded) and an editorial polish pass run across all 27 Full entries.
 - [x] 1CO.6. Review theme groupings and theme copy for coherence — three blurbs corrected, `commons-traybake` removed from `graph-native`, `schema-forge` added to `terminal-native`, new `human-history` territory added (`historia`, `epoch`, `those-who-came-before`), toolkit count made dynamic.
 - [x] 1CO.7. Review engine-extraction thread narratives for clarity — rewrote all six relationship notes (3 `powers` + 3 `extracted-from`) to carry the extraction insight rather than restate card labels; standardised `extracted-from` notes to consistent "lifted out of … into the standalone … library" shape; light strapline tightening in `EngineThread.svelte`.
+- [x] 1CO.5. Expand Colophon: explain the build, the data model, and headline the Drift tooling story — full editorial rewrite; corrected outdated `ProjectSlug` and `contributionNote` snippets to match current `types.ts`; new headlined Drift section; build-time Shiki syntax highlighting (Vitesse light/dark, zero client JS); collapsed-by-default `<details>` sections for detail content.
+- [x] 1CO.4. Rewrite About page narrative (positioning, voice) — leading with stance ("What I build") not autobiography; positioning lede under h1; four credibility specifics retained; h2 scale corrected; GitHub links via constants.
+- [x] 1CO.10. Surfaced-project rotation / curation mechanism — fully derived: home hero scores by active-substance (recency × log-substance, 30-day half-life); no manual flagship flags; deal-another control cycles the full eligible pool; map hub set derived from p85 substance percentile (node size AND label visibility).
 
 ---
 
@@ -198,13 +198,13 @@ flowchart TD
 	1CO.1["`*1CO.1*<br/>**Content**<br/>audit entry depth`"]:::done
 	1CO.2["`*1CO.2*<br/>**Content**<br/>all entries flagship-ready`"]:::done
 	1CO.3["`*1CO.3*<br/>**Content**<br/>contribution notes`"]:::open
-	1CO.4["`*1CO.4*<br/>**Content**<br/>About narrative`"]:::open
-	1CO.5["`*1CO.5*<br/>**Content**<br/>Colophon + Drift story`"]:::open
+	1CO.4["`*1CO.4*<br/>**Content**<br/>About narrative`"]:::done
+	1CO.5["`*1CO.5*<br/>**Content**<br/>Colophon + Drift story`"]:::done
 	1CO.6["`*1CO.6*<br/>**Content**<br/>theme coherence`"]:::done
 	1CO.7["`*1CO.7*<br/>**Content**<br/>thread narratives`"]:::done
 	1CO.8["`*1CO.8*<br/>**Content**<br/>style-guide pass`"]:::blocked
-	1CO.9["`*1CO.9*<br/>**Content**<br/>CV / hire-me copy`"]:::blocked
-	1CO.10["`*1CO.10*<br/>**Content**<br/>rotation mechanism`"]:::open
+	1CO.9["`*1CO.9*<br/>**Content**<br/>CV / hire-me copy`"]:::open
+	1CO.10["`*1CO.10*<br/>**Content**<br/>rotation mechanism`"]:::done
 
 	%% M1 — deps
 	1CO.1 --> 1CO.2

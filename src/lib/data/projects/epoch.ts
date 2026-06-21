@@ -20,7 +20,6 @@ export const epoch: Project = {
 		'Deployed to Vercel; has a Vitest test suite for the event-filtering pipeline.'
 	],
 	relationships: [],
-	featured: true,
 	tags: [
 		{ label: 'JavaScript', kind: 'language' },
 		{ label: 'SvelteKit', kind: 'framework' },

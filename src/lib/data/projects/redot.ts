@@ -25,7 +25,6 @@ export const redot: Project = {
 		'Packaged as a reusable GitHub Action with full action.yml input schema; AGPLv3 licensed.'
 	],
 	relationships: [],
-	featured: false,
 	tags: [
 		{ label: 'JavaScript', kind: 'language' },
 		{ label: 'Node.js', kind: 'runtime' },

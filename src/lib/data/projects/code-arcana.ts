@@ -20,7 +20,6 @@ export const codeArcana: Project = {
 		'Tone throughout: dry British register, plain explanations that build from first principles, and an explicit position that programming orthodoxy is provisional.'
 	],
 	relationships: [],
-	featured: false,
 	tags: [
 		{ label: 'TypeScript', kind: 'language' },
 		{ label: 'SvelteKit', kind: 'framework' },

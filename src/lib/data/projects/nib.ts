@@ -25,7 +25,6 @@ export const nib: Project = {
 			note: "The Ink runtime was always separable from the game's content; once that was clear it moved into Nib, two files behind a single onInit seam."
 		}
 	],
-	featured: false,
 	tags: [
 		{ label: 'TypeScript', kind: 'language' },
 		{ label: 'Node.js', kind: 'runtime' },

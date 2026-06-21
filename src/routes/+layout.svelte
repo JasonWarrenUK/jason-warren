@@ -2,7 +2,7 @@
 	import { base } from '$app/paths';
 	import '../app.css';
 	import ThemeToggle from '$lib/components/ui/ThemeToggle.svelte';
-	import { BLUESKY_URL } from '$lib/config.js';
+	import { BLUESKY_URL, GITHUB_REPO_URL } from '$lib/config.js';
 
 	let { children } = $props();
 </script>
@@ -59,7 +59,7 @@
 			Built with
 			<a href="{base}/colophon" class="site-footer__link">SvelteKit 2 and Svelte 5</a>. Source on
 			<a
-				href="https://github.com/JasonWarrenUK/jason-warren"
+				href={GITHUB_REPO_URL}
 				class="site-footer__link"
 				target="_blank"
 				rel="noopener noreferrer"

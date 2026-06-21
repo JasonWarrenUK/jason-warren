@@ -20,7 +20,6 @@ export const topGirls: Project = {
 		'Fully self-contained: all 32 characters, their stats, and game logic in a single-page Svelte SPA.'
 	],
 	relationships: [],
-	featured: false,
 	tags: [
 		{ label: 'TypeScript', kind: 'language' },
 		{ label: 'Svelte 5', kind: 'framework' },

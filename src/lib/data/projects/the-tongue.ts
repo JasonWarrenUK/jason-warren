@@ -21,7 +21,6 @@ export const theTongue: Project = {
 		'Deployed live at the-tongue.vercel.app; built with Svelte 5 runes and Tailwind CSS v4.'
 	],
 	relationships: [],
-	featured: true,
 	tags: [
 		{ label: 'TypeScript', kind: 'language' },
 		{ label: 'SvelteKit', kind: 'framework' },

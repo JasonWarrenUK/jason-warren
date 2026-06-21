@@ -20,7 +20,6 @@ export const cogni: Project = {
 		'Constraint propagation: selecting a position in one compass crosshatches incompatible quadrants in correlated compasses, preventing contradictory profiles.'
 	],
 	relationships: [],
-	featured: false,
 	tags: [
 		{ label: 'TypeScript', kind: 'language' },
 		{ label: 'Svelte 5', kind: 'framework' },

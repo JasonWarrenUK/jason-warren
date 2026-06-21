@@ -20,7 +20,6 @@ export const historia: Project = {
 		'Started as a React+D3 prototype, rewritten in SvelteKit. The original 53KB react.jsx remains as an interesting cross-framework reference.'
 	],
 	relationships: [],
-	featured: false,
 	tags: [
 		{ label: 'TypeScript', kind: 'language' },
 		{ label: 'SvelteKit', kind: 'framework' },
