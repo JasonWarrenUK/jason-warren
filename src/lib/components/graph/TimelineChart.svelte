@@ -30,7 +30,12 @@
 	// URL search params are only readable in the browser; during prerender we
 	// show the full chart so the prerendered HTML is always complete.
 	let activeSlug = $state<string | null>(null);
-	const pinnedSlug = $derived(browser ? $page.url.searchParams.get('project') : null);
+	const pinnedParam = $derived(browser ? $page.url.searchParams.get('project') : null);
+	// Ignore a pin that names no row here, so a stale link can never dim the whole
+	// chart with nothing highlighted.
+	const pinnedSlug = $derived(
+		pinnedParam !== null && rows.some((r) => r.slug === pinnedParam) ? pinnedParam : null
+	);
 	// Hover overrides the pin; releasing the pointer/focus falls back to it.
 	const effectiveSlug = $derived(activeSlug ?? pinnedSlug);
 	const activeIndex = $derived(

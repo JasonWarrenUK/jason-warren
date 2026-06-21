@@ -84,7 +84,7 @@ describe('round-trip', () => {
 	});
 
 	it('serialiseSet(parseSet(s)) produces canonical ordering', () => {
-		// Input order must not matter — output is always sorted.
+		// Input order must not matter: output is always sorted.
 		expect(serialiseSet(parseSet('library,app'))).toBe('app,library');
 	});
 });

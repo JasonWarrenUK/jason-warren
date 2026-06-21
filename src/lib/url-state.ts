@@ -23,8 +23,8 @@ export function parseSet<T extends string>(raw: string | null): Set<T> {
  * Returning `null` signals that the caller should delete the param rather than
  * write an empty string, keeping URLs clean (never `?hide-kinds=`).
  *
- * Values are sorted so the same logical filter always produces the same string —
- * useful for stable URLs and avoids churn when using replaceState.
+ * Values are sorted so the same logical filter always produces the same string,
+ * which keeps URLs stable and avoids churn when using replaceState.
  */
 export function serialiseSet(values: Set<string>): string | null {
 	if (values.size === 0) return null;
