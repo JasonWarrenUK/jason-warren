@@ -1,5 +1,6 @@
 <script lang="ts">
 	import Seo from '$lib/components/seo/Seo.svelte';
+	import { GITHUB_REPO_URL } from '$lib/config.js';
 	import type { PageData } from './$types.js';
 
 	let { data }: { data: PageData } = $props();
@@ -270,7 +271,7 @@
 				<dd>
 					All of it is on
 					<a
-						href="https://github.com/JasonWarrenUK/jason-warren"
+						href={GITHUB_REPO_URL}
 						class="link"
 						target="_blank"
 						rel="noopener noreferrer">GitHub</a

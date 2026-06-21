@@ -8,7 +8,11 @@ export const SITE_URL = 'https://jason-warren.vercel.app';
 
 export const AUTHOR = 'Jason Warren';
 
-export const GITHUB_URL = 'https://github.com/JasonWarrenUK/jason-warren';
+/** URL of the portfolio source repository. */
+export const GITHUB_REPO_URL = 'https://github.com/JasonWarrenUK/jason-warren';
+
+/** URL of the GitHub profile. */
+export const GITHUB_PROFILE_URL = 'https://github.com/JasonWarrenUK';
 
 export const BLUESKY_URL = 'https://bsky.app/profile/neurosocialist.bsky.social';
 
