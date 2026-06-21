@@ -144,17 +144,17 @@ describe('inferTags', () => {
 describe('inferContribution', () => {
 	it('returns solo when commits and commitsMine are equal (sole author)', () => {
 		const manifest: SyncedSource = { commits: 50, commitsMine: 50 };
-		expect(inferContribution(manifest)).toEqual({ role: 'solo' });
+		expect(inferContribution(manifest)).toEqual({ role: 'solo', collaboration: { team: 'Solo (Jason)' } });
 	});
 
 	it('returns solo when commitsMine is undefined (no collaborator data)', () => {
 		const manifest: SyncedSource = { commits: 10 };
-		expect(inferContribution(manifest)).toEqual({ role: 'solo' });
+		expect(inferContribution(manifest)).toEqual({ role: 'solo', collaboration: { team: 'Solo (Jason)' } });
 	});
 
 	it('returns solo when commits is 0 (guards divide-by-zero)', () => {
 		const manifest: SyncedSource = { commits: 0, commitsMine: 0 };
-		expect(inferContribution(manifest)).toEqual({ role: 'solo' });
+		expect(inferContribution(manifest)).toEqual({ role: 'solo', collaboration: { team: 'Solo (Jason)' } });
 	});
 
 	it('returns lead when Jason authored the majority of commits', () => {
@@ -305,15 +305,35 @@ describe('mergeAuthored', () => {
 		expect(result.tags).toEqual(base.tags);
 	});
 
-	it('overlays authored contribution', () => {
+	it('overlays authored contribution role and note, inheriting base collaboration when omitted', () => {
 		const authored: AuthoredProject = {
 			slug: 'test-slug',
 			contribution: { role: 'lead', contributionNote: 'Built the frontend.' }
 		};
 		const result = mergeAuthored(base, authored);
+		// Authored role and note win; collaboration falls back to the inferred default
+		// from the base (solo default in this case — the base has no commit data).
 		expect(result.contribution).toEqual({
 			role: 'lead',
+			collaboration: { team: 'Solo (Jason)' },
 			contributionNote: 'Built the frontend.'
+		});
+	});
+
+	it('overlays authored contribution with explicit collaboration', () => {
+		const authored: AuthoredProject = {
+			slug: 'test-slug',
+			contribution: {
+				role: 'lead',
+				collaboration: { team: 'FAC-30 cohort', employer: 'Founders and Coders' },
+				contributionNote: 'Led the delivery.'
+			}
+		};
+		const result = mergeAuthored(base, authored);
+		expect(result.contribution).toEqual({
+			role: 'lead',
+			collaboration: { team: 'FAC-30 cohort', employer: 'Founders and Coders' },
+			contributionNote: 'Led the delivery.'
 		});
 	});
 

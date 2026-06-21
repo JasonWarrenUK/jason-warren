@@ -1,6 +1,6 @@
-import type { Project } from '../types.js';
+import type { AuthoredProject } from '../types.js';
 
-export const facCra: Project = {
+export const facCra: AuthoredProject = {
 	slug: 'fac-cra',
 	name: 'FAC CRA',
 	tagline:
@@ -13,7 +13,6 @@ export const facCra: Project = {
 		role: 'collaborator',
 		contributionNote:
 			'320 commits, shipping whole features and well-scoped fixes into a large, established platform. Headliners: Lead Pool multi-axis candidate segmentation (6 axes, query functions, hydration orchestrator, pattern-based strength classification, PR #144); distribution pipeline (saved-query folder system, workshop runsheet queries, batch lead-scoring, markdown email composer, lead-pool widget); learner dashboard (collapsible tiles + health metrics + responsive layout, Article Stats tab, admin view PR #72); full Playwright E2E suite; security/a11y audit pass removing 17 unused packages; KaTeX bundling fix and a run of precise distribution fixes (PRs #211–218). +31,500 / −28,600 lines.',
-		team: 'Founders and Coders'
 	},
 	status: 'wip',
 	repoUrl: 'https://github.com/izaakrogan/fac-cra',

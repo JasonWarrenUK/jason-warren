@@ -1,6 +1,6 @@
-import type { Project } from '../types.js';
+import type { AuthoredProject } from '../types.js';
 
-export const guardrails: Project = {
+export const guardrails: AuthoredProject = {
 	slug: 'guardrails',
 	name: 'Guardrails',
 	tagline:
@@ -13,7 +13,6 @@ export const guardrails: Project = {
 		role: 'collaborator',
 		contributionNote:
 			'4 merged PRs. Improved PII detection for UK postcodes and name initials (PR #86); added Google Gemini as a third AI provider alongside Claude and OpenAI (PR #22); built the file-attachment warning in the extension sidebar (PR #45); added Claude Code skills and Git workflow documentation (PR #23). +6,500 / −173 lines.',
-		team: 'Yalla Coop'
 	},
 	status: 'wip',
 	repoUrl: 'https://github.com/yalla-coop/yalla-labs-guardrails',

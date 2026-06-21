@@ -1,6 +1,6 @@
-import type { Project } from '../types.js';
+import type { AuthoredProject } from '../types.js';
 
-export const redot: Project = {
+export const redot: AuthoredProject = {
 	slug: 'redot',
 	name: 'ReDoT',
 	tagline:
@@ -13,7 +13,6 @@ export const redot: Project = {
 		role: 'collaborator',
 		contributionNote:
 			'6 merged PRs. Replaced the LangChain dependency with the Anthropic SDK directly (PR #6); improved prompts with XML structure and batch processing (PR #12); prepared the action for public distribution (PR #5). Also added documentation and PR banner.',
-		team: 'FAC-31 cohort'
 	},
 	status: 'finished',
 	repoUrl: 'https://github.com/fac-31/ReDoT',

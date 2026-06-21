@@ -1,6 +1,6 @@
-import type { Project } from '../types.js';
+import type { AuthoredProject } from '../types.js';
 
-export const sakura: Project = {
+export const sakura: AuthoredProject = {
 	slug: 'sakura',
 	name: 'Sakura',
 	tagline:
@@ -13,7 +13,6 @@ export const sakura: Project = {
 		role: 'lead',
 		contributionNote:
 			'Jason led the ASP.NET Core API, designing the Entity Framework Core data model, the privacy-filtered collections endpoints, and the colour-matching engine in ColourSearch.cs that converts between hex, RGB and HSL to resolve colours by name.',
-		team: 'Founders and Coders'
 	},
 	status: 'finished',
 	repoUrl: 'https://github.com/fac30/sakura-api',

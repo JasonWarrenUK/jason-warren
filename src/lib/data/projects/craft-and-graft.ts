@@ -1,6 +1,6 @@
-import type { Project } from '../types.js';
+import type { AuthoredProject } from '../types.js';
 
-export const craftAndGraft: Project = {
+export const craftAndGraft: AuthoredProject = {
 	slug: 'craft-and-graft',
 	name: 'Craft and Graft',
 	tagline:
@@ -13,7 +13,6 @@ export const craftAndGraft: Project = {
 		role: 'lead',
 		contributionNote:
 			"Jason led the React storefront, building the authentication flow, the database-driven product views, the Netlify continuous-deployment pipeline, and the team's GitHub Actions automation (stale-issue bot, first-contributor greeter).",
-		team: 'Founders and Coders'
 	},
 	status: 'finished',
 	repoUrl: 'https://github.com/fac30/craft-and-graft-front',

@@ -1,6 +1,6 @@
-import type { Project } from '../types.js';
+import type { AuthoredProject } from '../types.js';
 
-export const beacons: Project = {
+export const beacons: AuthoredProject = {
 	slug: 'beacons',
 	name: 'Beacons',
 	tagline:
@@ -13,7 +13,6 @@ export const beacons: Project = {
 		role: 'lead',
 		contributionNote:
 			'Jason architected and built the Neo4j-backed grammar engine: the graph queries, the natural-language verb encoding, the magic-link authentication, and a cron-scheduled database nudge that power the Beacons backend.',
-		team: 'Founders and Coders'
 	},
 	status: 'archived',
 	repoUrl: 'https://github.com/foundersandcoders/beacons-backend',

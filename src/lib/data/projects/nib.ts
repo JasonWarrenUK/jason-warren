@@ -1,6 +1,6 @@
-import type { Project } from '../types.js';
+import type { AuthoredProject } from '../types.js';
 
-export const nib: Project = {
+export const nib: AuthoredProject = {
 	slug: 'nib',
 	name: 'Nib',
 	tagline:

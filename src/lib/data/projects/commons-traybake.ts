@@ -1,6 +1,6 @@
-import type { Project } from '../types.js';
+import type { AuthoredProject } from '../types.js';
 
-export const commonsTraybake: Project = {
+export const commonsTraybake: AuthoredProject = {
 	slug: 'commons-traybake',
 	name: 'Commons Traybake',
 	tagline:
@@ -13,7 +13,6 @@ export const commonsTraybake: Project = {
 		role: 'lead',
 		contributionNote:
 			'5 merged PRs. Implemented the semantic-chunking foundation (1024 and 256 token strategies); built the Parliament API integration; established the roadmap and documentation system. +6,300 / −270 lines.',
-		team: 'FAC-31 cohort'
 	},
 	status: 'wip',
 	repoUrl: 'https://github.com/fac-31/commons-traybake',

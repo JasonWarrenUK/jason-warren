@@ -16,7 +16,7 @@
  *   git data is needed.
  */
 
-import type { Project, AuthoredProject, Contribution, TechTag } from './types.js';
+import type { Project, AuthoredProject, AuthoredContribution, Collaboration, Contribution, TechTag } from './types.js';
 import type { SyncedSource } from './index.js';
 import { LANGUAGE_TAGS, RUNTIME_TAGS, FRAMEWORK_TAGS, DATABASE_TAGS } from './tag-taxonomy.js';
 
@@ -127,23 +127,27 @@ export function inferTags(manifest: SyncedSource): TechTag[] {
  *   - commitsMine / commits > 0.5: majority author -> lead (no contributionNote)
  *   - commitsMine / commits <= 0.5: minority author -> collaborator (no contributionNote)
  *
- * contributionNote is deliberately omitted on inferred team projects: it is
- * optional on TeamContribution since Phase 1.1, and no fabricated prose appears
- * on the public site. The note is added when the project is editorially authored.
+ * `collaboration.team` is always set to a neutral default: "Solo (Jason)" for
+ * solo projects, "Collaborators" for inferred team projects. Both are honest
+ * placeholders; authored overlays overwrite them via mergeContribution.
+ *
+ * `contributionNote` is deliberately omitted on inferred team projects: no
+ * fabricated prose appears on the public site. The note is added once editorially
+ * authored.
  */
 export function inferContribution(manifest: SyncedSource): Contribution {
 	const { commits = 0, commitsMine } = manifest;
 
 	// No collaborator data or truly sole author
 	if (commitsMine === undefined || commits === 0 || commitsMine === commits) {
-		return { role: 'solo' };
+		return { role: 'solo', collaboration: { team: 'Solo (Jason)' } };
 	}
 
 	const share = commitsMine / commits;
 	if (share > 0.5) {
-		return { role: 'lead' };
+		return { role: 'lead', collaboration: { team: 'Collaborators' } };
 	}
-	return { role: 'collaborator' };
+	return { role: 'collaborator', collaboration: { team: 'Collaborators' } };
 }
 
 // ---------------------------------------------------------------------------
@@ -183,6 +187,38 @@ export function defaultProjectFromManifest(slug: string, manifest: SyncedSource)
 // ---------------------------------------------------------------------------
 
 /**
+ * Merges an authored contribution overlay onto the inferred base.
+ *
+ * `Contribution` is a discriminated union, so a blind object spread is unsound
+ * (it can produce a hybrid solo/team object TypeScript cannot narrow). Instead:
+ * - Authored role wins outright.
+ * - `collaboration` falls back to the base's inferred default when the overlay
+ *   omits it, so a note-only overlay keeps the defaulted team value.
+ * - `contributionNote` falls back to the base's note when the overlay omits it
+ *   (rare, but safe).
+ */
+function mergeContribution(base: Contribution, authored: AuthoredContribution | undefined): Contribution {
+	if (authored === undefined) return base;
+
+	// Collaboration: prefer authored; fall back to the inferred default so an
+	// overlay that omits collaboration (e.g. { role: 'solo' }) inherits the
+	// defaulted team value from inferContribution.
+	const collaboration: Collaboration = authored.collaboration ?? base.collaboration;
+
+	if (authored.role === 'solo') {
+		return { role: 'solo', collaboration };
+	}
+
+	// For team variants, carry contributionNote from the overlay when present,
+	// else from the base when the base is also a team variant.
+	const baseNote = base.role !== 'solo' ? base.contributionNote : undefined;
+	const note = authored.contributionNote ?? baseNote;
+	return note !== undefined
+		? { role: authored.role, collaboration, contributionNote: note }
+		: { role: authored.role, collaboration };
+}
+
+/**
  * Overlays hand-authored fields onto a manifest-derived base Project.
  * Returns base unchanged when authored is undefined (manifest-only project).
  *
@@ -193,6 +229,9 @@ export function defaultProjectFromManifest(slug: string, manifest: SyncedSource)
  *   - Inferred language/runtime/framework/data tags are NOT dropped by an
  *     authored overlay that only specifies concept tags.
  *   - Exact duplicates (same kind and label) are collapsed.
+ *
+ * Contribution is merged field-by-field via mergeContribution so the inferred
+ * collaboration default survives when an overlay omits it.
  *
  * All other authored fields replace the base entirely when !== undefined.
  * No blind object spread: each field is guarded so undefined authored fields
@@ -216,7 +255,7 @@ export function mergeAuthored(base: Project, authored: AuthoredProject | undefin
 		blurb: authored.blurb !== undefined ? authored.blurb : base.blurb,
 		description: authored.description !== undefined ? authored.description : base.description,
 		kind: authored.kind !== undefined ? authored.kind : base.kind,
-		contribution: authored.contribution !== undefined ? authored.contribution : base.contribution,
+		contribution: mergeContribution(base.contribution, authored.contribution),
 		tags: mergedTags,
 		status: authored.status !== undefined ? authored.status : base.status,
 		repoUrl: authored.repoUrl !== undefined ? authored.repoUrl : base.repoUrl,

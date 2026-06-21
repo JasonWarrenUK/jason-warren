@@ -1,6 +1,6 @@
-import type { Project } from '../types.js';
+import type { AuthoredProject } from '../types.js';
 
-export const rimewarden: Project = {
+export const rimewarden: AuthoredProject = {
 	slug: 'rimewarden',
 	name: 'Rimewarden',
 	tagline:

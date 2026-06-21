@@ -1,6 +1,6 @@
-import type { Project } from '../types.js';
+import type { AuthoredProject } from '../types.js';
 
-export const chirpdb: Project = {
+export const chirpdb: AuthoredProject = {
 	slug: 'chirpdb',
 	name: 'CHIRPdb',
 	tagline:
@@ -13,7 +13,6 @@ export const chirpdb: Project = {
 		role: 'collaborator',
 		contributionNote:
 			'28 commits. Contributed documentation, an understand-anything knowledge graph of the codebase, and Claude Code configuration to support ongoing development.',
-		team: 'Tandem Creative Dev / Zig Zag AI'
 	},
 	status: 'wip',
 	repoUrl: 'https://github.com/ZigZag-Technology/CHIRPdb',

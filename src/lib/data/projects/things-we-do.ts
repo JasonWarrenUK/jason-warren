@@ -1,6 +1,6 @@
-import type { Project } from '../types.js';
+import type { AuthoredProject } from '../types.js';
 
-export const thingsWeDo: Project = {
+export const thingsWeDo: AuthoredProject = {
 	slug: 'things-we-do',
 	name: 'Things We Do',
 	tagline:
@@ -13,7 +13,6 @@ export const thingsWeDo: Project = {
 		role: 'collaborator',
 		contributionNote:
 			'21 merged PRs. Built the next-actions feature end-to-end (creation, immediate selection, view, deletion); designed the insights charts including the 3D Plotly visualisation; implemented ephemeral categories with modal confirmations; initialised the RxDB offline-first storage layer. +6,700 / −3,000 lines.',
-		team: 'FAC-30 cohort'
 	},
 	status: 'archived',
 	repoUrl: 'https://github.com/fac30/things-we-do',

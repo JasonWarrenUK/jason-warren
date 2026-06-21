@@ -1,6 +1,6 @@
-import type { Project } from '../types.js';
+import type { AuthoredProject } from '../types.js';
 
-export const wyrdTui: Project = {
+export const wyrdTui: AuthoredProject = {
 	slug: 'wyrd-tui',
 	name: 'Wyrd',
 	tagline:

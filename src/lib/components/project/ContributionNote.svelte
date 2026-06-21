@@ -12,8 +12,16 @@
 <section class="contribution" aria-label="Contribution details">
 	<header class="contribution__header">
 		<RoleBadge role={contribution.role} />
-		{#if contribution.role !== 'solo' && contribution.team}
-			<span class="contribution__team">{contribution.team}</span>
+		{#if contribution.collaboration.team}
+			<span class="contribution__team">
+				{contribution.collaboration.team}
+				{#if contribution.collaboration.employer && contribution.collaboration.employer !== contribution.collaboration.team}
+					<span class="contribution__org">&middot; {contribution.collaboration.employer}</span>
+				{/if}
+				{#if contribution.collaboration.client}
+					<span class="contribution__org">for {contribution.collaboration.client}</span>
+				{/if}
+			</span>
 		{/if}
 	</header>
 
@@ -49,6 +57,16 @@
 	.contribution__team {
 		font-size: var(--text-sm);
 		color: var(--color-text-muted);
+		display: flex;
+		flex-wrap: wrap;
+		gap: var(--space-2);
+		align-items: center;
+	}
+
+	.contribution__org {
+		font-size: var(--text-sm);
+		color: var(--color-text-muted);
+		opacity: 0.75;
 	}
 
 	.contribution__note {

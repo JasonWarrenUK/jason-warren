@@ -1,6 +1,6 @@
-import type { Project } from '../types.js';
+import type { AuthoredProject } from '../types.js';
 
-export const workwise: Project = {
+export const workwise: AuthoredProject = {
 	slug: 'workwise',
 	name: 'WorkWise',
 	tagline:
@@ -13,7 +13,6 @@ export const workwise: Project = {
 		role: 'lead',
 		contributionNote:
 			'24 merged PRs. Led the response-state architecture with creation-date versioning; built the tile-based dashboard layout; implemented database-driven status indicators; consolidated the CSS architecture. +16,600 / −9,000 lines.',
-		team: 'Founders and Coders / LIFT02'
 	},
 	status: 'wip',
 	repoUrl: 'https://github.com/foundersandcoders/workwise',

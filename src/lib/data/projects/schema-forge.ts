@@ -1,6 +1,6 @@
-import type { Project } from '../types.js';
+import type { AuthoredProject } from '../types.js';
 
-export const schemaForge: Project = {
+export const schemaForge: AuthoredProject = {
 	slug: 'schema-forge',
 	name: 'Schema Forge',
 	tagline:

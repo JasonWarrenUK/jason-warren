@@ -1,6 +1,6 @@
-import type { Project } from '../types.js';
+import type { AuthoredProject } from '../types.js';
 
-export const thoseWhoCameBefore: Project = {
+export const thoseWhoCameBefore: AuthoredProject = {
 	slug: 'those-who-came-before',
 	name: 'Those Who Came Before',
 	tagline:

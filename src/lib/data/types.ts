@@ -129,26 +129,57 @@ export interface ProjectRelationship {
 
 // ---------------------------------------------------------------------------
 // Contribution — discriminated on role
-// Forces contributionNote for team projects at compile time.
+//
+// `collaboration.team` is required on both variants so every project answers
+// "who built this". `inferContribution` always supplies a default; the strict
+// `Contribution` type is used on the merged Project output. Authored overlays
+// use the looser `AuthoredContribution` (collaboration optional) so a note-only
+// overlay can omit collaboration and inherit the inferred default via
+// mergeContribution. `contributionNote` is optional and enforced on authored
+// team projects by a data test, not the compiler.
 // ---------------------------------------------------------------------------
+
+/**
+ * Who the work was built with, plus optional organisational context.
+ * `team` is always present: "Solo (Jason)" for solo projects, a cohort name,
+ * studio, or generic "Collaborators" for team projects.
+ */
+export interface Collaboration {
+	/** Who the work was built with: a cohort, a studio, or "Solo (Jason)". */
+	team: string;
+	/** The organisation Jason was employed by, when distinct from the team. */
+	employer?: string;
+	/** The end client the work was delivered for, when distinct from the employer. */
+	client?: string;
+}
 
 interface SoloContribution {
 	role: 'solo';
+	collaboration: Collaboration;
 }
 
 interface TeamContribution {
 	role: 'lead' | 'collaborator';
+	collaboration: Collaboration;
 	/**
 	 * Specific verified contributions (PRs, features, line stats). Optional because
 	 * manifest-derived team projects have role inferred from commit share but no authored
 	 * note yet. Absent on auto-listed projects; present once editorially authored.
 	 */
 	contributionNote?: string;
-	/** Team or client name, optional. */
-	team?: string;
 }
 
+/** Strict merged output type: collaboration is always present. */
 export type Contribution = SoloContribution | TeamContribution;
+
+/**
+ * Looser type for authored overlay files. `collaboration` is optional here
+ * so a note-only overlay can omit it and inherit the inferred default via
+ * mergeContribution in defaults.ts. Used only on AuthoredProject.
+ */
+export type AuthoredContribution =
+	| { role: 'solo'; collaboration?: Collaboration }
+	| { role: 'lead' | 'collaborator'; collaboration?: Collaboration; contributionNote?: string };
 
 // ---------------------------------------------------------------------------
 // AuthoredProject — optional overlay written by a human
@@ -164,8 +195,9 @@ export type Contribution = SoloContribution | TeamContribution;
  * defaults.ts fills every field with a safe default derived from the manifest,
  * then mergeAuthored overlays any field the human actually authored.
  *
- * Date fields (firstCommit, lastCommit) are intentionally absent: they come
- * from the drift manifest only, never from authored files.
+ * Date fields (firstCommit, lastCommit) may optionally be authored as a
+ * fallback; the drift manifest's values (via index.ts) take precedence when
+ * present.
  */
 export interface AuthoredProject {
 	slug: ProjectSlug;
@@ -174,11 +206,15 @@ export interface AuthoredProject {
 	blurb?: string;
 	description?: string;
 	kind?: ProjectKind;
-	contribution?: Contribution;
+	contribution?: AuthoredContribution;
 	tags?: TechTag[];
 	status?: ProjectStatus;
 	repoUrl?: string;
 	secondaryRepoUrl?: string;
+	/** Fallback date used when the drift manifest carries no firstCommit value. */
+	firstCommit?: string;
+	/** Fallback date used when the drift manifest carries no lastCommit value. */
+	lastCommit?: string;
 	liveUrl?: string;
 	highlights?: string[];
 	relationships?: ProjectRelationship[];
