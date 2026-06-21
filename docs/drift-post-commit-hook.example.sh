@@ -28,4 +28,4 @@ if [ ! -f "${DRIFT}" ]; then
 	exit 0
 fi
 
-node "${DRIFT}" update "${SLUG}"
+bun run "${DRIFT}" update "${SLUG}"

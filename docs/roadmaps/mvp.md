@@ -12,7 +12,7 @@ The site is live and substantially built (full routes, graph/timeline/map/toolki
 | **Features** | Search absent; map/timeline rich; filters URL-backed but single-select                                         | Search, deep-link other views, multi-select           | Cross-view continuity, new viz                                       |
 | **Design**   | Reasonable Colors tokens, dark mode                                                                            | Visual identity, then typography/motion               | Direction decision first                                             |
 | **Quality**  | Strict types, data-integrity tests, prerendered                                                                | Interaction test coverage (4QU.5)                     | a11y audit and SEO blocked on 4QU.5; new-view a11y blocked on M2 viz |
-| **Drift**    | 2.5k-line CLI, manifest registry, cache, verbs                                                                 | Bun migration, config layer, engine/integration split | Most decoupling tasks (sequence)                                     |
+| **Drift**    | 2.5k-line CLI, manifest registry, cache, verbs, Bun migration                                                  | Config layer, engine/integration split                | Most decoupling tasks (sequence)                                     |
 
 ---
 
@@ -164,7 +164,6 @@ _None._
 
 - [ ] 5DR.1. Boundary doc: define the core-engine vs Svelte-integration contract (what each layer owns)
 - [ ] 5DR.2. Coupling inventory: annotate the 6 couplings in code with their resolution path (light task — the map already exists)
-- [ ] 5DR.12. Migrate repo package manager from npm to Bun: switch lockfile (`bun install`, delete `package-lock.json`), update the four drift scripts in `package.json` from `node scripts/check-drift.js` to `bun`, confirm Vite/Vitest/svelte-check all run under Bun — the portfolio should dogfood the preferred toolkit, and a Bun-native runtime is a prerequisite for packaging Drift as a distributable CLI
 
 <a name="m5-blocked"><h4>Blocked (Milestone 5)</h4></a>
 
@@ -181,6 +180,7 @@ _None._
 <a name="m5-done"><h4>Completed (Milestone 5)</h4></a>
 
 - [x] 5DR.0. Drift CLI foundation: subcommand dispatcher, async fingerprinting + cache, manifest-driven registry, shared tag taxonomy, gum interactive UX, `snapshot` / `report` / `exclude` verbs (shipped in-repo; see `docs/drift-improvement-plan.md`)
+- [x] 5DR.12. Migrate repo package manager from npm to Bun: switch lockfile (`bun install`, delete `package-lock.json`), update the four drift scripts in `package.json` from `node scripts/check-drift.js` to `bun run`, confirm Vite/Vitest/svelte-check all run under Bun — the portfolio should dogfood the preferred toolkit, and a Bun-native runtime is a prerequisite for packaging Drift as a distributable CLI
 
 ---
 
@@ -302,7 +302,7 @@ flowchart TD
 	5DR.9["`*5DR.9*<br/>**Drift**<br/>Drift docs`"]:::blocked
 	5DR.10["`*5DR.10*<br/>**Drift**<br/>authoring guide`"]:::blocked
 	5DR.11["`*5DR.11*<br/>**Drift**<br/>audit verb`"]:::blocked
-	5DR.12["`*5DR.12*<br/>**Drift**<br/>npm → Bun migration`"]:::open
+	5DR.12["`*5DR.12*<br/>**Drift**<br/>npm → Bun migration`"]:::done
 
 	%% M5 — deps
 	5DR.0 --> 5DR.1
