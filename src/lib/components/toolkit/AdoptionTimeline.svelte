@@ -110,6 +110,21 @@
 		return { placed, ticks, height, axisY };
 	});
 
+	// --- Highlight ----------------------------------------------------------
+	// Tracks the hovered or focused technology label. Drives --active / --dim
+	// modifier classes on each item's children (dot and label), deliberately
+	// NOT on the parent .adoption__item element so the reveal animation's own
+	// opacity/transform channel on that element stays uncontested.
+	let activeLabel = $state<string | null>(null);
+
+	// Returns the accessible description for an item — shared between the
+	// SVG <title> tooltip and the aria-label so the two never drift.
+	function describe(item: PlacedItem): string {
+		const origin = item.dateSource === 'derived' ? ` in ${item.firstProjectName}` : '';
+		const plural = item.projectCount === 1 ? '' : 's';
+		return `${item.label}: first used ${item.firstYear}${origin}, now in ${item.projectCount} project${plural}`;
+	}
+
 	// --- Reveal animation ---------------------------------------------------
 	// Final positions are always in the SSR markup. The animation only fades the
 	// already-rendered dots in; with no JS, reduced motion, or no observer the
@@ -176,15 +191,24 @@
 			{#each layout.placed as item, index (item.label)}
 				<g
 					class="adoption__item"
+					class:adoption__item--active={activeLabel === item.label}
+					class:adoption__item--dim={activeLabel !== null && activeLabel !== item.label}
 					style="--reveal-delay: {Math.min(index * 28, 700)}ms; color: {kindColour(item.kind)}"
+					role="img"
+					aria-label={describe(item)}
+					onpointerenter={() => (activeLabel = item.label)}
+					onpointerleave={() => (activeLabel = null)}
+					onfocus={() => (activeLabel = item.label)}
+					onblur={() => (activeLabel = null)}
 				>
-					<title>
-						{item.label}: first used {item.firstYear}{item.dateSource === 'derived'
-							? ` in ${item.firstProjectName}`
-							: ''}, now in {item.projectCount}
-						project{item.projectCount === 1 ? '' : 's'}
-					</title>
-					<circle class="adoption__dot" cx={item.x} cy={item.y} r={item.radius} />
+					<title>{describe(item)}</title>
+					<circle
+						class="adoption__dot"
+						class:adoption__dot--derived={item.dateSource === 'derived'}
+						cx={item.x}
+						cy={item.y}
+						r={item.radius}
+					/>
 					<text class="adoption__label" x={item.x + item.radius + 6} y={item.y + 4}>
 						{item.label}
 					</text>
@@ -213,6 +237,14 @@
 			</span>
 		{/each}
 		<span class="adoption__legend-note">Dot size reflects how many projects use it.</span>
+		<span class="adoption__legend-item">
+			<span class="adoption__swatch adoption__swatch--curated"></span>
+			Authored date
+		</span>
+		<span class="adoption__legend-item">
+			<span class="adoption__swatch adoption__swatch--derived"></span>
+			Estimated from project history
+		</span>
 		{#if provisional}
 			<span class="adoption__provisional">
 				Dates are approximate; uncurated technologies are estimated from project history.
@@ -253,12 +285,55 @@
 		fill: currentColor;
 		stroke: var(--color-surface);
 		stroke-width: 1.5;
+		transition:
+			transform var(--transition-fast),
+			fill-opacity var(--transition-fast),
+			stroke var(--transition-fast);
+		transform-box: fill-box;
+		transform-origin: center;
+	}
+
+	/* Derived dots render hollow (outlined) to distinguish from curated authored dates. */
+	.adoption__dot--derived {
+		fill: var(--color-surface);
+		stroke: currentColor;
+		stroke-width: 2;
 	}
 
 	.adoption__label {
 		font-size: 13px;
 		font-weight: 600;
 		fill: var(--color-text-subtle);
+		transition:
+			fill var(--transition-fast),
+			opacity var(--transition-fast);
+	}
+
+	/* Highlight: lift the active tech and dim the rest. Drives dot and label
+	   only — the reveal animation owns opacity/transform on .adoption__item,
+	   so the two never contend for the same property. */
+	.adoption__item--active .adoption__dot {
+		transform: scale(1.18);
+		stroke: var(--color-text);
+	}
+
+	.adoption__item--active .adoption__label {
+		fill: var(--color-primary-text);
+		font-weight: 700;
+	}
+
+	.adoption__item--dim .adoption__dot {
+		fill-opacity: 0.25;
+	}
+
+	/* Derived hollow dots need fill-opacity on the stroke channel instead. */
+	.adoption__item--dim .adoption__dot--derived {
+		fill-opacity: 1;
+		stroke-opacity: 0.25;
+	}
+
+	.adoption__item--dim .adoption__label {
+		opacity: 0.3;
 	}
 
 	/* Reveal: only active once JS has added the animate class. Default (no JS,
@@ -298,6 +373,18 @@
 		width: 0.85rem;
 		height: 0.85rem;
 		border-radius: var(--radius-full);
+		flex-shrink: 0;
+	}
+
+	/* Curated / derived legend swatches use the primary colour as a stand-in
+	   since the actual dots are coloured by kind. */
+	.adoption__swatch--curated {
+		background: var(--color-primary);
+	}
+
+	.adoption__swatch--derived {
+		background: var(--color-surface);
+		border: 2px solid var(--color-primary);
 	}
 
 	.adoption__legend-note {
@@ -328,6 +415,12 @@
 		.adoption__svg--animate .adoption__item {
 			opacity: 1;
 			transform: none;
+			transition: none;
+		}
+
+		/* Kill highlight transitions too — state still applies instantly. */
+		.adoption__dot,
+		.adoption__label {
 			transition: none;
 		}
 	}
