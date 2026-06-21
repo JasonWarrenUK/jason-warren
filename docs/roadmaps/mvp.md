@@ -74,8 +74,8 @@ _None._
 <a name="m2-todo"><h4>To Do (Milestone 2)</h4></a>
 
 - [ ] 2FE.2. Deep-link map / timeline / toolkit selections — extend the `/projects` URL-state pattern (`searchParams` + `goto`) to the other three views
-- [ ] 2FE.3. Polish existing interactions: timeline JS hover-highlight to match the map; AdoptionTimeline add some interactivity (currently static/CSS-only)
 - [ ] 2FE.6. Tech-stack constellation visualisation — a `ProjectMap` variant clustering projects by shared stack; islands = niche tech, dense core = default toolkit
+- [ ] 2FE.7. Technology lineage edges — hand-authored `leads-to` / `replaced-by` relationships between technologies, rendered as directed edges on the adoption chart or constellation; modelled on `ProjectRelationship`. Feasibility note: adoption-date ordering (`adoption.ts`) + same-`TagKind` grouping + per-project co-occurrence decay can seed and rank *candidates*, but the replacement/coexistence judgement is editorial and cannot be auto-derived (TypeScript augments JavaScript; Express and FastAPI coexist). Requires a new `TechRelationship { kind: 'leads-to' | 'replaced-by'; source: label; target: label; note?: string }` structure and hand-authored edge data. Template: `ProjectRelationship` → `threads.ts` → `GraphEdge` normalisation in `graph.ts` — **may depend on 2FE.6** if rendered inside the constellation
 
 <a name="m2-blocked"><h4>Blocked (Milestone 2)</h4></a>
 
@@ -85,7 +85,7 @@ _None._
 
 <a name="m2-done"><h4>Completed (Milestone 2)</h4></a>
 
-_None yet._
+- [x] 2FE.3. Polish existing interactions — TimelineChart was already fully interactive (hover-highlight, dim, `?project=` deep-link, connector lighting); work landed on `AdoptionTimeline`: hover/focus highlight with animated dot-scale, dim-others behaviour, and a curated-vs-derived date-honesty distinction (hollow outlined dots for estimated dates, legend entry). TimelineChart received three surgical polish commits: pointer events for touch parity, per-node `<title>`, and a `prefers-reduced-motion` guard.
 
 ---
 
@@ -229,21 +229,24 @@ flowchart TD
 
 	2FE.1["`*2FE.1*<br/>**Features**<br/>client-side search`"]:::blocked
 	2FE.2["`*2FE.2*<br/>**Features**<br/>deep-link map/timeline/toolkit`"]:::open
-	2FE.3["`*2FE.3*<br/>**Features**<br/>polish existing interactions`"]:::open
+	2FE.3["`*2FE.3*<br/>**Features**<br/>polish existing interactions`"]:::done
 	2FE.4["`*2FE.4*<br/>**Features**<br/>multi-select filters`"]:::blocked
 	2FE.5["`*2FE.5*<br/>**Features**<br/>cross-view continuity`"]:::blocked
 	2FE.6["`*2FE.6*<br/>**Features**<br/>tech-stack constellation`"]:::open
+	2FE.7["`*2FE.7*<br/>**Features**<br/>tech lineage edges`"]:::open
 
 	%% M2 — deps
 	2FE.2 --> 2FE.5
 	2FE.2 --> 2FE.4
 	2FE.4 --> 2FE.1
+	2FE.6 --> 2FE.7
 
 	%% M2 track completers → m2
 	2FE.1 --> m2
 	2FE.5 --> m2
 	2FE.6 --> m2
 	2FE.3 --> m2
+	2FE.7 --> m2
 
 	%% ── Milestone 3: Design & Interaction Polish ──────────────────────
 	m3{"`**Milestone 3**<br/>Design & Interaction`"}:::mile
