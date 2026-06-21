@@ -1,10 +1,16 @@
 <script lang="ts">
 	import HeroBreadth from '$lib/components/hero/HeroBreadth.svelte';
-	import FlagshipDeepDive from '$lib/components/hero/FlagshipDeepDive.svelte';
+	import HeroRotation from '$lib/components/hero/HeroRotation.svelte';
 	import EngineThread from '$lib/components/thread/EngineThread.svelte';
 	import ThemeTerritories from '$lib/components/toolkit/ThemeTerritories.svelte';
 	import Seo from '$lib/components/seo/Seo.svelte';
-	import { AUTHOR, SITE_URL, GITHUB_URL, BLUESKY_URL, DEFAULT_DESCRIPTION } from '$lib/config.js';
+	import {
+		AUTHOR,
+		SITE_URL,
+		GITHUB_PROFILE_URL,
+		BLUESKY_URL,
+		DEFAULT_DESCRIPTION
+	} from '$lib/config.js';
 
 	let { data } = $props();
 
@@ -14,7 +20,7 @@
 		name: AUTHOR,
 		url: SITE_URL,
 		jobTitle: 'Full-stack developer',
-		sameAs: [GITHUB_URL, BLUESKY_URL]
+		sameAs: [GITHUB_PROFILE_URL, BLUESKY_URL]
 	});
 </script>
 
@@ -38,7 +44,7 @@
 
 	<HeroBreadth />
 
-	<FlagshipDeepDive projects={data.flagships} />
+	<HeroRotation pool={data.heroPool} count={data.heroCount} />
 
 	{#if data.engineThreads.length > 0}
 		<EngineThread threads={data.engineThreads} />
