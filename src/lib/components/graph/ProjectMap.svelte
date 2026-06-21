@@ -21,7 +21,8 @@
 		tagline: string;
 		status: ProjectStatus;
 		kind: ProjectKind;
-		flagship: boolean;
+		/** Derived: substance score ≥ p85 across all projects. */
+		hub: boolean;
 		labelled: boolean;
 		lastCommit: string | null;
 		commits: number | null;
@@ -70,14 +71,15 @@
 	});
 
 	// Node radius scales with reach (commits, falling back to lines of code),
-	// normalised across the registry; flagships keep a floor so they read as hubs.
+	// normalised across the registry; hubs (p85 substance) keep a floor so they
+	// read as network anchors regardless of activity.
 	const radiusScale = $derived.by(() => {
 		const weights = nodes.map((n) => n.commits ?? (n.linesOfCode ? n.linesOfCode / 50 : 0));
 		const max = Math.max(1, ...weights);
 		return (node: MapNode): number => {
 			const weight = node.commits ?? (node.linesOfCode ? node.linesOfCode / 50 : 0);
 			const base = 8 + 9 * Math.sqrt(weight / max);
-			return node.flagship ? Math.max(15, base) : base;
+			return node.hub ? Math.max(15, base) : base;
 		};
 	});
 
@@ -235,7 +237,7 @@
 		const simNodes: LiveSimNode[] = nodes.map((n) => {
 			const weight = n.commits ?? (n.linesOfCode ? n.linesOfCode / 50 : 0);
 			const base = 16 + 26 * Math.sqrt(weight / maxWeight);
-			const radius = n.flagship ? Math.max(34, base) : base;
+			const radius = n.hub ? Math.max(34, base) : base;
 			return { slug: n.slug, radius, x: n.x, y: n.y };
 		});
 

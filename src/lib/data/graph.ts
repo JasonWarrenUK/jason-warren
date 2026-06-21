@@ -30,6 +30,7 @@ import {
 import { projects } from './index.js';
 import { EDGE_CATEGORIES } from './types.js';
 import type { EdgeCategory, Project, ProjectSlug } from './types.js';
+import { substanceScore, hubThreshold } from './scoring.js';
 
 // ---------------------------------------------------------------------------
 // Graph shape
@@ -242,14 +243,22 @@ export function selectLabelledSlugs(
 	];
 
 	const selected = new Set<ProjectSlug>();
+
+	// Hubs (p85 substance) are always labelled regardless of the count cap.
+	const hubSlugs = getHubSlugs(projectList);
+	for (const slug of hubSlugs) selected.add(slug);
+
+	// Fill remaining slots via round-robin until the count is met.
 	while (selected.size < count) {
 		let advanced = false;
 		for (const queue of queues) {
 			const next = queue.shift();
 			if (!next) continue;
-			selected.add(next.slug);
-			advanced = true;
-			if (selected.size >= count) break;
+			if (!selected.has(next.slug)) {
+				selected.add(next.slug);
+				advanced = true;
+				if (selected.size >= count) break;
+			}
 		}
 		if (!advanced) break; // every queue is drained
 	}
@@ -342,9 +351,18 @@ interface SimNode extends SimulationNodeDatum {
 	radius: number;
 }
 
-/** Activity weight for a project, used for collision sizing (mirrors the map's visual scale). */
-function activityWeight(project: Project): number {
-	return project.metrics?.commits ?? (project.metrics?.linesOfCode ?? 0) / 50;
+/**
+ * Returns the set of slugs whose substance score meets the hub threshold (p85).
+ * These nodes receive an enlarged minimum radius AND are always labelled on the map.
+ * Substance is recency-independent so foundational projects stay prominent when dormant.
+ */
+export function getHubSlugs(projectList: Project[] = projects): Set<ProjectSlug> {
+	const threshold = hubThreshold(projectList);
+	return new Set(
+		projectList
+			.filter((p) => substanceScore(p) >= threshold)
+			.map((p) => p.slug)
+	);
 }
 
 /**
@@ -364,12 +382,14 @@ export function computeForceLayout(
 	size = 1000
 ): LayoutResult {
 	const centre = size / 2;
-	const weights = graph.nodes.map((n) => activityWeight(n.project));
+	const hubSlugs = getHubSlugs(graph.nodes.map((n) => n.project));
+	const weights = graph.nodes.map((n) => substanceScore(n.project));
 	const maxWeight = Math.max(1, ...weights);
 
 	const radiusOf = (project: Project): number => {
-		const base = 16 + 26 * Math.sqrt(activityWeight(project) / maxWeight);
-		return project.flagship ? Math.max(34, base) : base;
+		const base = 16 + 26 * Math.sqrt(substanceScore(project) / maxWeight);
+		// Hubs (p85 substance) keep a minimum radius so they read as network anchors.
+		return hubSlugs.has(project.slug) ? Math.max(34, base) : base;
 	};
 
 	// Deterministic initial placement: an even ring, ordered by registry index.

@@ -2,7 +2,8 @@ import {
 	getProjectGraph,
 	getSharedTechEdges,
 	computeForceLayout,
-	selectLabelledSlugs
+	selectLabelledSlugs,
+	getHubSlugs
 } from '$lib/data/graph.js';
 
 export function load() {
@@ -10,6 +11,7 @@ export function load() {
 	const sharedEdges = getSharedTechEdges();
 	const layout = computeForceLayout(graph, sharedEdges);
 	const labelled = selectLabelledSlugs();
+	const hubSlugs = getHubSlugs();
 
 	const nodes = graph.nodes.map((node) => {
 		const point = layout.positions.get(node.slug);
@@ -19,7 +21,7 @@ export function load() {
 			tagline: node.project.tagline,
 			status: node.project.status,
 			kind: node.project.kind,
-			flagship: node.project.flagship === true,
+			hub: hubSlugs.has(node.slug),
 			labelled: labelled.has(node.slug),
 			lastCommit: node.project.lastCommit ?? null,
 			commits: node.project.metrics?.commits ?? null,
