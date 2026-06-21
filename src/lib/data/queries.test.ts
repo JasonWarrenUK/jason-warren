@@ -38,10 +38,7 @@ function makeProject(
 		highlights: [],
 		relationships: [],
 		lastCommit: overrides.lastCommit ?? '2026-06-18',
-		metrics:
-			overrides.commits !== undefined
-				? { commits: overrides.commits }
-				: { commits: 100 },
+		metrics: overrides.commits !== undefined ? { commits: overrides.commits } : { commits: 100 },
 		pin: overrides.pin,
 		hide: overrides.hide
 	} as unknown as Project;
@@ -111,9 +108,7 @@ describe('getHeroPool — ordering', () => {
 		const pool = getHeroPool(BASE_NOW, projects);
 		// Scores should be strictly decreasing.
 		for (let i = 1; i < pool.length; i++) {
-			expect(heroScore(pool[i - 1], BASE_NOW)).toBeGreaterThanOrEqual(
-				heroScore(pool[i], BASE_NOW)
-			);
+			expect(heroScore(pool[i - 1], BASE_NOW)).toBeGreaterThanOrEqual(heroScore(pool[i], BASE_NOW));
 		}
 		expect(pool[0].slug).toBe('high');
 	});

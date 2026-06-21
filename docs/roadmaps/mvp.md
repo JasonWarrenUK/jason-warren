@@ -6,13 +6,13 @@ description: Forward roadmap for the portfolio site plus Drift decoupling — br
 
 The site is live and substantially built (full routes, graph/timeline/map/toolkit views, 30+ typed projects, the Drift CLI). This roadmap captures what comes next: deepening the site as an artefact, and decoupling Drift's engine from its portfolio-specific couplings so it could power any frontend.
 
-|              | Status                                          | Next Up                               | Blocked                        |
-| ------------ | ----------------------------------------------- | ------------------------------------- | ------------------------------ |
-| **Content**  | 30+ entries, themes, threads, Colophon in place; depth audit complete; every entry now at flagship-ready depth | Contribution notes; About narrative; theme coherence | —                              |
-| **Features** | Search absent; map/timeline rich; filters URL-backed but single-select | Search, deep-link other views, multi-select | Cross-view continuity, new viz |
-| **Design**   | Reasonable Colors tokens, dark mode             | Visual identity, then typography/motion | Direction decision first       |
-| **Quality**  | Strict types, data-integrity tests, prerendered | Interaction test coverage (4QU.5) | a11y audit and SEO blocked on 4QU.5; new-view a11y blocked on M2 viz |
-| **Drift**    | 2.5k-line CLI, manifest registry, cache, verbs  | Bun migration, config layer, engine/integration split | Most decoupling tasks (sequence) |
+|              | Status                                                                                                         | Next Up                                               | Blocked                                                              |
+| ------------ | -------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------- | -------------------------------------------------------------------- |
+| **Content**  | 30+ entries, themes, threads, Colophon in place; depth audit complete; every entry now at flagship-ready depth | Contribution notes; About narrative; theme coherence  | —                                                                    |
+| **Features** | Search absent; map/timeline rich; filters URL-backed but single-select                                         | Search, deep-link other views, multi-select           | Cross-view continuity, new viz                                       |
+| **Design**   | Reasonable Colors tokens, dark mode                                                                            | Visual identity, then typography/motion               | Direction decision first                                             |
+| **Quality**  | Strict types, data-integrity tests, prerendered                                                                | Interaction test coverage (4QU.5)                     | a11y audit and SEO blocked on 4QU.5; new-view a11y blocked on M2 viz |
+| **Drift**    | 2.5k-line CLI, manifest registry, cache, verbs                                                                 | Bun migration, config layer, engine/integration split | Most decoupling tasks (sequence)                                     |
 
 ---
 
@@ -42,6 +42,7 @@ The site is live and substantially built (full routes, graph/timeline/map/toolki
 _None._
 
 <a name="m1-todo"><h4>To Do (Milestone 1)</h4></a>
+
 - [ ] 1CO.3. Strengthen `contributionNote` copy across all team projects
 - [ ] 1CO.9. CV / hire-me positioning copy — explicit "what I can do / work with me" content
 
@@ -147,6 +148,7 @@ _None yet._
 > **Goal:** Break Drift's 6 hard-coded portfolio couplings into a config-driven design, producing a clean internal boundary: a framework-agnostic core engine (emits typed/JSON data) alongside a Svelte integration layer. Stays in this repo — packaging and distribution is Beyond MVP. The unbuilt in-repo backlog (branch awareness, `in-progress.json` staging pipeline, docs) gets built correctly inside this decoupled design rather than separately.
 
 The 6 couplings to resolve (all in `scripts/check-drift.js`):
+
 - Hard-coded path constants (lines 34–41: sources, overrides, excluded, cache, projects) → config
 - `~/Code` scan root (line 862) + seeded `excluded.json.repoNames` → config
 - `AUTHOR_PATTERN` (line 103) → config

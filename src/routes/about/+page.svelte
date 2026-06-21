@@ -44,9 +44,9 @@
 					<p>
 						I build things that run: a Go TUI for productivity, a Tauri 2 desktop app for
 						apprenticeship data compliance, an AI curriculum generator, a Neo4j-backed relational
-						fiction engine. The spread is wider than is strictly sensible, and I have made peace with
-						that. A genuinely new sort of problem is the best excuse I know to learn a genuinely new
-						sort of tool.
+						fiction engine. The spread is wider than is strictly sensible, and I have made peace
+						with that. A genuinely new sort of problem is the best excuse I know to learn a
+						genuinely new sort of tool.
 					</p>
 					<p>
 						What the projects share is an intolerance for half-measures. The Lead Pool segmentation
@@ -64,18 +64,18 @@
 					<p>
 						I came into development sideways, through curiosity and apprenticeship rather than a
 						computer science degree, and that route still shapes how I work. I am suspicious of
-						anything that has never actually run. I write code on the assumption that someone (usually
-						a baffled future me) will have to read it later.
+						anything that has never actually run. I write code on the assumption that someone
+						(usually a baffled future me) will have to read it later.
 					</p>
 					<p>
-						Left to my own devices, I push the craft further than is strictly justified. Iris reached
-						v5.0.0 over 666 commits with close to one test for every source file. Wyrd sits at 68.5%
-						statement coverage across 150 Go files, not because anyone asked, but because I wanted to
-						find out what real rigour feels like from the inside.
+						Left to my own devices, I push the craft further than is strictly justified. Iris
+						reached v5.0.0 over 666 commits with close to one test for every source file. Wyrd sits
+						at 68.5% statement coverage across 150 Go files, not because anyone asked, but because I
+						wanted to find out what real rigour feels like from the inside.
 					</p>
 					<p>
-						On team projects I tend to land between architecture and delivery: building the feature in
-						front of me while caring about the shape of the system it has to live in.
+						On team projects I tend to land between architecture and delivery: building the feature
+						in front of me while caring about the shape of the system it has to live in.
 					</p>
 				</div>
 			</section>
@@ -92,8 +92,8 @@
 					<p>
 						On the frontend, Svelte 5 with runes is a strong preference. For data: PostgreSQL with
 						row-level security, Neo4j when the relationships are the actual model, Supabase when I
-						want both in a hurry. I test with Vitest, and I have written Playwright end-to-end suites
-						for software that real people depend on.
+						want both in a hurry. I test with Vitest, and I have written Playwright end-to-end
+						suites for software that real people depend on.
 					</p>
 				</div>
 			</section>
@@ -109,12 +109,7 @@
 					</p>
 					<p>
 						You can also find me on
-						<a
-							href={GITHUB_PROFILE_URL}
-							class="link"
-							target="_blank"
-							rel="noopener noreferrer"
-						>
+						<a href={GITHUB_PROFILE_URL} class="link" target="_blank" rel="noopener noreferrer">
 							GitHub
 						</a>
 						where most of this work lives, and on
@@ -141,12 +136,7 @@
 				<h2 class="aside-card__heading">Elsewhere</h2>
 				<ul class="aside-card__list">
 					<li>
-						<a
-							href={GITHUB_PROFILE_URL}
-							class="link"
-							target="_blank"
-							rel="noopener noreferrer"
-						>
+						<a href={GITHUB_PROFILE_URL} class="link" target="_blank" rel="noopener noreferrer">
 							GitHub
 						</a>
 					</li>

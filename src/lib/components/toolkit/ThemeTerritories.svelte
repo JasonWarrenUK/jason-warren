@@ -1,5 +1,7 @@
 <script lang="ts">
+	import { browser } from '$app/environment';
 	import { base } from '$app/paths';
+	import { page } from '$app/stores';
 	import type { ThemeWithProjects } from '$lib/data/themes.js';
 
 	interface Props {
@@ -15,7 +17,8 @@
 	let activeSlug = $state<string | null>(null);
 
 	// How many territories each project appears in, so multi-theme projects can be
-	// marked as the connective tissue they are.
+	// marked as the connective tissue they are. Its keys also serve as the set of
+	// slugs present, used to validate the pin below.
 	const themeCountBySlug = $derived.by(() => {
 		const counts = new Map<string, number>();
 		for (const theme of themes) {
@@ -25,6 +28,20 @@
 		}
 		return counts;
 	});
+
+	// URL search params are only readable in the browser; during prerender we
+	// show the full view so the prerendered HTML is always complete.
+	// Only the full variant participates: the compact home teaser stays inert.
+	const pinnedParam = $derived(
+		browser && variant === 'full' ? $page.url.searchParams.get('project') : null
+	);
+	// Ignore a pin that names no project here, so a stale link can never dim the
+	// whole view with nothing highlighted.
+	const pinnedSlug = $derived(
+		pinnedParam !== null && themeCountBySlug.has(pinnedParam) ? pinnedParam : null
+	);
+	// Hover overrides the pin; releasing the pointer/focus falls back to it.
+	const effectiveSlug = $derived(activeSlug ?? pinnedSlug);
 </script>
 
 {#if variant === 'compact'}
@@ -64,9 +81,10 @@
 								<a
 									href="{base}/projects/{project.slug}"
 									class="themes__chip"
-									class:themes__chip--active={activeSlug === project.slug}
+									class:themes__chip--active={effectiveSlug === project.slug}
 									class:themes__chip--spanning={spans}
-									class:themes__chip--dimmed={activeSlug !== null && activeSlug !== project.slug}
+									class:themes__chip--dimmed={effectiveSlug !== null &&
+										effectiveSlug !== project.slug}
 									onmouseenter={() => (activeSlug = project.slug)}
 									onmouseleave={() => (activeSlug = null)}
 									onfocus={() => (activeSlug = project.slug)}

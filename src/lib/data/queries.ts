@@ -36,10 +36,7 @@ export function getBySlug(slug: ProjectSlug): Project | undefined {
  *              byte-stable prerender that is identical across re-runs.
  * @param projectList - Override the default registry (for testing).
  */
-export function getHeroPool(
-	now: number,
-	projectList: Project[] = projects
-): Project[] {
+export function getHeroPool(now: number, projectList: Project[] = projects): Project[] {
 	const eligible = projectList.filter(
 		(p) => p.status !== 'archived' && p.status !== 'uncategorised' && !p.hide
 	);

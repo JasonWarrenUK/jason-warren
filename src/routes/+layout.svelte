@@ -58,12 +58,7 @@
 		<p class="site-footer__text">
 			Built with
 			<a href="{base}/colophon" class="site-footer__link">SvelteKit 2 and Svelte 5</a>. Source on
-			<a
-				href={GITHUB_REPO_URL}
-				class="site-footer__link"
-				target="_blank"
-				rel="noopener noreferrer"
-			>
+			<a href={GITHUB_REPO_URL} class="site-footer__link" target="_blank" rel="noopener noreferrer">
 				GitHub
 			</a>. Find me on
 			<a href={BLUESKY_URL} class="site-footer__link" target="_blank" rel="noopener noreferrer me">

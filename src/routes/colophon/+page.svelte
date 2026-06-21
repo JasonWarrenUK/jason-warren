@@ -270,11 +270,7 @@
 				<dt>Source</dt>
 				<dd>
 					All of it is on
-					<a
-						href={GITHUB_REPO_URL}
-						class="link"
-						target="_blank"
-						rel="noopener noreferrer">GitHub</a
+					<a href={GITHUB_REPO_URL} class="link" target="_blank" rel="noopener noreferrer">GitHub</a
 					>, including this page.
 				</dd>
 			</div>

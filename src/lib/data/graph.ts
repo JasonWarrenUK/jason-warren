@@ -358,11 +358,7 @@ interface SimNode extends SimulationNodeDatum {
  */
 export function getHubSlugs(projectList: Project[] = projects): Set<ProjectSlug> {
 	const threshold = hubThreshold(projectList);
-	return new Set(
-		projectList
-			.filter((p) => substanceScore(p) >= threshold)
-			.map((p) => p.slug)
-	);
+	return new Set(projectList.filter((p) => substanceScore(p) >= threshold).map((p) => p.slug));
 }
 
 /**

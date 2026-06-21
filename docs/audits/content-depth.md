@@ -26,21 +26,21 @@ Three tiers. Structural proxies give the first-pass triage; an editorial read of
 
 These carry editorial investment; all others (metrics, tags, dates) are Drift-sourced or structural:
 
-| Field | Weight | Notes |
-| --- | --- | --- |
-| `description` | **Primary** | Longer body copy; one-sentence summaries and tooling-config lists score low regardless of word count |
-| `highlights[]` | **High** | Intended as 3--5 technically interesting things; tooling-setup bullets undercut entries that otherwise look strong |
-| `tagline` / `blurb` | Medium | High visibility; a generic tagline is felt across every card, the map, and meta |
-| `contributionNote` | High (team only) | Absence is invisible in the UI; presence/specificity separates credited entries from credited-in-name-only |
-| `relationships[].note` | Low | Matters mainly for engine-thread entries; generated fallback is acceptable |
+| Field                  | Weight           | Notes                                                                                                              |
+| ---------------------- | ---------------- | ------------------------------------------------------------------------------------------------------------------ |
+| `description`          | **Primary**      | Longer body copy; one-sentence summaries and tooling-config lists score low regardless of word count               |
+| `highlights[]`         | **High**         | Intended as 3--5 technically interesting things; tooling-setup bullets undercut entries that otherwise look strong |
+| `tagline` / `blurb`    | Medium           | High visibility; a generic tagline is felt across every card, the map, and meta                                    |
+| `contributionNote`     | High (team only) | Absence is invisible in the UI; presence/specificity separates credited entries from credited-in-name-only         |
+| `relationships[].note` | Low              | Matters mainly for engine-thread entries; generated fallback is acceptable                                         |
 
 ### Tier definitions
 
-| Tier | Structural proxy | Editorial test |
-| --- | --- | --- |
-| **Full** | description ≥ 80 words; ≥ 4 highlights; team projects have a specific `contributionNote` (PRs, stats, named features) | Description names the problem, the architecture or approach, and a verification or outcome signal; highlights are feature/technical, not tooling-config |
-| **Partial** | description 40--80 words **or** 3 highlights **or** team note present but generic | Some substance but missing at least one of: problem framing, architecture detail, feature-level highlights; could be tightened to pass |
-| **Thin** | description < 40 words **or** ≤ 2 highlights **or** highlights read as tooling-config boilerplate | Reads as scaffolding; no architecture narrative; needs a rewrite, not a tweak |
+| Tier        | Structural proxy                                                                                                      | Editorial test                                                                                                                                          |
+| ----------- | --------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Full**    | description ≥ 80 words; ≥ 4 highlights; team projects have a specific `contributionNote` (PRs, stats, named features) | Description names the problem, the architecture or approach, and a verification or outcome signal; highlights are feature/technical, not tooling-config |
+| **Partial** | description 40--80 words **or** 3 highlights **or** team note present but generic                                     | Some substance but missing at least one of: problem framing, architecture detail, feature-level highlights; could be tightened to pass                  |
+| **Thin**    | description < 40 words **or** ≤ 2 highlights **or** highlights read as tooling-config boilerplate                     | Reads as scaffolding; no architecture narrative; needs a rewrite, not a tweak                                                                           |
 
 Word counts below are approximate; the editorial tier is the verdict when they differ from the proxy.
 
@@ -56,41 +56,41 @@ Word counts below are approximate; the editorial tier is the verdict when they d
 
 Sorted by confirmed tier (Thin first), then by visibility within tier (featured/flagship entries and those on engine threads rank up).
 
-| Slug | Role | Status | ~Words | Highlights | Note? | Featured | Proxy | Confirmed |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `psyche` | lead | archived | ~37 | 1 | ✓ (generic) | — | **Thin** | **Thin** |
-| `baby-names` | solo | finished | ~43 | 2 | — | — | Thin | **Thin** |
-| `kitchen-gremlin` | solo | wip | ~42 | 2 | — | — | Thin | **Thin** |
-| `kamino` | solo | finished | ~76 | 5 | — | — | Partial | **Partial** |
-| `grumble` | solo | finished | ~57 | 4 | — | — | Partial | **Partial** |
-| `those-who-came-before` | solo | prototype | ~80 | 5 | — | — | Full (proxy) | **Partial** |
-| `nib` | solo | finished | ~78 | 4 | — | — | Partial | **Partial** |
-| `top-girls` | solo | finished | ~95 | 5 | — | — | Full | **Full** |
-| `rimewarden` | solo | prototype | ~97 | 5 | — | — | Full | **Full** |
-| `historia` | solo | prototype | ~95 | 5 | — | — | Full | **Full** |
-| `sakura` | lead | finished | ~97 | 5 | ✓ | — | Full | **Full** |
-| `craft-and-graft` | lead | finished | ~90 | 5 | ✓ | — | Full | **Full** |
-| `the-tongue` | solo | live | ~87 | 5 | — | ✓ | Full | **Full** |
-| `redot` | collaborator | finished | ~92 | 5 | ✓ | — | Full | **Full** |
-| `riffle` | solo | finished | ~97 | 5 | — | — | Full | **Full** |
-| `sparker` | solo | prototype | ~100 | 5 | — | — | Full | **Full** |
-| `workwise` | lead | wip | ~100 | 5 | ✓ | ✓ | Full | **Full** |
-| `epoch` | solo | finished | ~107 | 5 | — | ✓ | Full | **Full** |
-| `schema-forge` | solo | wip | ~84 | 5 | — | — | Full | **Full** |
-| `things-we-do` | collaborator | archived | ~82 | 5 | ✓ | — | Full | **Full** |
-| `beacons` | lead | archived | ~115 | 5 | ✓ | — | Full | **Full** |
-| `flyt` | solo | wip | ~100 | 5 | — | — | Full | **Full** |
-| `rhea` | solo | prototype | ~110 | 5 | — | ✓ | Full | **Full** |
-| `guardrails` | collaborator | wip | ~108 | 5 | ✓ | — | Full | **Full** |
-| `chirpdb` | collaborator | wip | ~96 | 5 | ✓ | — | Full | **Full** |
-| `code-arcana` | solo | finished | ~90 | 5 | — | — | Full | **Full** |
-| `commons-traybake` | lead | wip | ~105 | 5 | ✓ | — | Full | **Full** |
-| `cogni` | solo | prototype | ~105 | 5 | — | — | Full | **Full** |
-| `lyra-rose` | solo | wip | ~112 | 6 | — | — | Full | **Full** |
-| `the-work` | solo | wip | ~110 | 5 | — | — | Full | **Full** |
-| `fac-cra` | collaborator | wip | ~140 | 5 | ✓ | — | Full | **Full** |
-| `iris` | solo | finished | ~115 | 5 | — | ✓ | Full | **Full** (flagship) |
-| `wyrd-tui` | solo | wip | ~118 | 5 | — | ✓ | Full | **Full** (flagship) |
+| Slug                    | Role         | Status    | ~Words | Highlights | Note?       | Featured | Proxy        | Confirmed           |
+| ----------------------- | ------------ | --------- | ------ | ---------- | ----------- | -------- | ------------ | ------------------- |
+| `psyche`                | lead         | archived  | ~37    | 1          | ✓ (generic) | —        | **Thin**     | **Thin**            |
+| `baby-names`            | solo         | finished  | ~43    | 2          | —           | —        | Thin         | **Thin**            |
+| `kitchen-gremlin`       | solo         | wip       | ~42    | 2          | —           | —        | Thin         | **Thin**            |
+| `kamino`                | solo         | finished  | ~76    | 5          | —           | —        | Partial      | **Partial**         |
+| `grumble`               | solo         | finished  | ~57    | 4          | —           | —        | Partial      | **Partial**         |
+| `those-who-came-before` | solo         | prototype | ~80    | 5          | —           | —        | Full (proxy) | **Partial**         |
+| `nib`                   | solo         | finished  | ~78    | 4          | —           | —        | Partial      | **Partial**         |
+| `top-girls`             | solo         | finished  | ~95    | 5          | —           | —        | Full         | **Full**            |
+| `rimewarden`            | solo         | prototype | ~97    | 5          | —           | —        | Full         | **Full**            |
+| `historia`              | solo         | prototype | ~95    | 5          | —           | —        | Full         | **Full**            |
+| `sakura`                | lead         | finished  | ~97    | 5          | ✓           | —        | Full         | **Full**            |
+| `craft-and-graft`       | lead         | finished  | ~90    | 5          | ✓           | —        | Full         | **Full**            |
+| `the-tongue`            | solo         | live      | ~87    | 5          | —           | ✓        | Full         | **Full**            |
+| `redot`                 | collaborator | finished  | ~92    | 5          | ✓           | —        | Full         | **Full**            |
+| `riffle`                | solo         | finished  | ~97    | 5          | —           | —        | Full         | **Full**            |
+| `sparker`               | solo         | prototype | ~100   | 5          | —           | —        | Full         | **Full**            |
+| `workwise`              | lead         | wip       | ~100   | 5          | ✓           | ✓        | Full         | **Full**            |
+| `epoch`                 | solo         | finished  | ~107   | 5          | —           | ✓        | Full         | **Full**            |
+| `schema-forge`          | solo         | wip       | ~84    | 5          | —           | —        | Full         | **Full**            |
+| `things-we-do`          | collaborator | archived  | ~82    | 5          | ✓           | —        | Full         | **Full**            |
+| `beacons`               | lead         | archived  | ~115   | 5          | ✓           | —        | Full         | **Full**            |
+| `flyt`                  | solo         | wip       | ~100   | 5          | —           | —        | Full         | **Full**            |
+| `rhea`                  | solo         | prototype | ~110   | 5          | —           | ✓        | Full         | **Full**            |
+| `guardrails`            | collaborator | wip       | ~108   | 5          | ✓           | —        | Full         | **Full**            |
+| `chirpdb`               | collaborator | wip       | ~96    | 5          | ✓           | —        | Full         | **Full**            |
+| `code-arcana`           | solo         | finished  | ~90    | 5          | —           | —        | Full         | **Full**            |
+| `commons-traybake`      | lead         | wip       | ~105   | 5          | ✓           | —        | Full         | **Full**            |
+| `cogni`                 | solo         | prototype | ~105   | 5          | —           | —        | Full         | **Full**            |
+| `lyra-rose`             | solo         | wip       | ~112   | 6          | —           | —        | Full         | **Full**            |
+| `the-work`              | solo         | wip       | ~110   | 5          | —           | —        | Full         | **Full**            |
+| `fac-cra`               | collaborator | wip       | ~140   | 5          | ✓           | —        | Full         | **Full**            |
+| `iris`                  | solo         | finished  | ~115   | 5          | —           | ✓        | Full         | **Full** (flagship) |
+| `wyrd-tui`              | solo         | wip       | ~118   | 5          | —           | ✓        | Full         | **Full** (flagship) |
 
 **Summary:** 3 Thin · 4 Partial · 27 Full (including 2 flagship).
 
@@ -138,7 +138,7 @@ Gaps: no problem framing in the description; highlights are good and specific.
 
 #### `grumble`
 
-57 words; 4 highlights. The description is structurally correct (opens with the architecture decision, names the scoring library's isolation, mentions tests, closes with tech) but thin in the middle: "implements the full Gin Rummy ruleset" is a feature list, not a specific technical choice. The architecture point (pure scoring library, zero Svelte dependencies, covered by tests) is genuinely interesting and partially made, but the description doesn't explain *why* that separation matters or what it enabled. Highlight 4 ("Built with SvelteKit and Svelte 5 runes") is a tech-stack statement masquerading as a technical detail.
+57 words; 4 highlights. The description is structurally correct (opens with the architecture decision, names the scoring library's isolation, mentions tests, closes with tech) but thin in the middle: "implements the full Gin Rummy ruleset" is a feature list, not a specific technical choice. The architecture point (pure scoring library, zero Svelte dependencies, covered by tests) is genuinely interesting and partially made, but the description doesn't explain _why_ that separation matters or what it enabled. Highlight 4 ("Built with SvelteKit and Svelte 5 runes") is a tech-stack statement masquerading as a technical detail.
 
 Gaps: fourth highlight is boilerplate; description makes the architecture point but doesn't extend it to its value.
 
@@ -188,20 +188,20 @@ Priority order: confirmed tier × visitor visibility × theme impact. Visibility
 
 ### Priority 1 — Thin entries (rewrite)
 
-| Slug | Priority rationale | Specific asks |
-| --- | --- | --- |
-| `psyche` | Team/lead entry; contributionNote present; least content of all 34 | Add a one-paragraph description: what did it build, what was technically interesting at a learning stage. Replace the single highlight with 3--4 feature or process points. Tighten contributionNote to add something the description doesn't say. |
-| `baby-names` | Thin by every measure; low complexity so should be quick | Name the shortlisting mechanic, state search, and describe how state flows. Replace the two tooling highlights with one feature highlight and one design/state-management point. |
-| `kitchen-gremlin` | Holding copy; should wait until project matures | Acceptable to defer until the project has something to say. If `wip` status means it stays on the list, add a single specific sentence about the intended architecture or purpose. |
+| Slug              | Priority rationale                                                 | Specific asks                                                                                                                                                                                                                                      |
+| ----------------- | ------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `psyche`          | Team/lead entry; contributionNote present; least content of all 34 | Add a one-paragraph description: what did it build, what was technically interesting at a learning stage. Replace the single highlight with 3--4 feature or process points. Tighten contributionNote to add something the description doesn't say. |
+| `baby-names`      | Thin by every measure; low complexity so should be quick           | Name the shortlisting mechanic, state search, and describe how state flows. Replace the two tooling highlights with one feature highlight and one design/state-management point.                                                                   |
+| `kitchen-gremlin` | Holding copy; should wait until project matures                    | Acceptable to defer until the project has something to say. If `wip` status means it stays on the list, add a single specific sentence about the intended architecture or purpose.                                                                 |
 
 ### Priority 2 — Partial entries (targeted extension)
 
-| Slug | Priority rationale | Specific asks |
-| --- | --- | --- |
-| `nib` | Engine-thread entry; library for `the-work`; coherence at risk | Add one more highlight on the extraction motivation. Open description with a sentence on why integrating Ink directly was the wrong move (the problem nib solves). |
-| `kamino` | Tool entry with strong highlights but description lacks framing | Add one sentence to the opening of the description naming the problem before the feature list. |
-| `those-who-came-before` | Partial despite word count; procedural generator undersold | Replace "Runs SvelteKit through Deno" highlight with a highlight on the grammar-based generator. Tighten description to lead with the game mechanic, not the stack. |
-| `grumble` | Partial highlight quality; fourth highlight is boilerplate | Replace highlight 4 ("Built with SvelteKit and Svelte 5 runes") with a specific note on what the architecture separation enabled (testability, or what). |
+| Slug                    | Priority rationale                                              | Specific asks                                                                                                                                                       |
+| ----------------------- | --------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `nib`                   | Engine-thread entry; library for `the-work`; coherence at risk  | Add one more highlight on the extraction motivation. Open description with a sentence on why integrating Ink directly was the wrong move (the problem nib solves).  |
+| `kamino`                | Tool entry with strong highlights but description lacks framing | Add one sentence to the opening of the description naming the problem before the feature list.                                                                      |
+| `those-who-came-before` | Partial despite word count; procedural generator undersold      | Replace "Runs SvelteKit through Deno" highlight with a highlight on the grammar-based generator. Tighten description to lead with the game mechanic, not the stack. |
+| `grumble`               | Partial highlight quality; fourth highlight is boilerplate      | Replace highlight 4 ("Built with SvelteKit and Svelte 5 runes") with a specific note on what the architecture separation enabled (testability, or what).            |
 
 ### Priority 3 — Full entries with room for editorial polish
 
@@ -213,4 +213,4 @@ The 27 Full entries do not need structural work for 1CO.1's purposes. Some obser
 
 ---
 
-*Audit completed: 2026-06-20. Feed gaps into 1CO.2; theme observations into 1CO.6.*
+_Audit completed: 2026-06-20. Feed gaps into 1CO.2; theme observations into 1CO.6._

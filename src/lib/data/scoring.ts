@@ -92,9 +92,6 @@ export function hubThreshold(list: Project[]): number {
 	if (scores[scores.length - 1] === 0) return Infinity;
 	// Nearest-rank percentile: index is the first position at or above the
 	// target fraction of the sorted list. Clamped to the last valid index.
-	const index = Math.min(
-		scores.length - 1,
-		Math.floor(HUB_PERCENTILE * scores.length)
-	);
+	const index = Math.min(scores.length - 1, Math.floor(HUB_PERCENTILE * scores.length));
 	return scores[index];
 }
