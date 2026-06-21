@@ -54,7 +54,7 @@ Work that landed during the build but was not part of any numbered phase in the 
 - **`exclude` verb** (`f8d50d2`) — appends a slug to `excluded.json.slugs`; interactive gum confirm gate.
 - **Coverage summary** (`50b3bd9`) — counts manifest slugs, excluded, overlay vs manifest-only; printed at the foot of every report.
 - **Tag taxonomy: SQL as data tag** (`fb1cd0d`) — `SQL: { label: 'SQL', kind: 'data' }` entry in `tag-taxonomy.js`; `inferTags()` special-cases the `.sql` file-extension scan to surface SQL as a data signal so the relational model resolves without a driver dependency.
-- **Cleanup: SessionStart hook removed** — `.claude/settings.local.json` `hooks` block is empty; `Bash(node scripts/check-drift.js*)` allow-entry kept for frictionless manual invocation.
+- **Cleanup: SessionStart hook removed** — `.claude/settings.local.json` `hooks` block is empty; `Bash(bun run scripts/check-drift.js*)` allow-entry kept for frictionless manual invocation.
 
 ---
 
@@ -200,4 +200,4 @@ Phase 3's two safety-critical items (discriminated `git()` result, null-safe upd
 Both have sensible defaults to pick at implementation time.
 
 1. **Cache file location:** default `src/lib/data/.drift-cache.json` (next to the data, gitignored) vs OS temp. Leaning to the data dir for discoverability.
-2. **CLI binary name:** keep invoking via `npm run drift` / `node scripts/check-drift.js`, or add a thin `drift` shell shim? The plan assumes `npm run` verbs; a shim is a small add if wanted.
+2. **CLI binary name:** keep invoking via `bun run drift` / `bun run scripts/check-drift.js`, or add a thin `drift` shell shim? The plan assumes `bun run` verbs; a shim is a small add if wanted.

@@ -37,18 +37,18 @@ The relationship graph is presented three ways, all built from `graph.ts`:
 
 1. Create `src/lib/data/projects/<slug>.ts` exporting a `Project`.
 2. Add its slug to the `ProjectSlug` union in `types.ts` and register it in `index.ts`.
-3. Run `npm run test`; the data-integrity tests will tell you if anything (a dangling relationship, a missing note) is off.
+3. Run `bun run test`; the data-integrity tests will tell you if anything (a dangling relationship, a missing note) is off.
 
 ## Commands
 
 ```sh
-npm run dev        # development server
-npm run build      # production build (prerenders pages, OG images, sitemap)
-npm run preview    # preview the production build
-npm run test       # Vitest
-npm run check      # svelte-check (strict types)
-npm run lint       # prettier --check
-npm run format     # prettier --write
+bun run dev        # development server
+bun run build      # production build (prerenders pages, OG images, sitemap)
+bun run preview    # preview the production build
+bun run test       # Vitest
+bun run check      # svelte-check (strict types)
+bun run lint       # prettier --check
+bun run format     # prettier --write
 ```
 
 ## Conventions
