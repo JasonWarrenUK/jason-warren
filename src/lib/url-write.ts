@@ -20,5 +20,5 @@ export function writeParam(key: string, value: string | null): void {
 	} else {
 		url.searchParams.set(key, value);
 	}
-	goto(url.toString(), { replaceState: true, keepFocus: true });
+	goto(url.toString(), { replaceState: true, keepFocus: true, noScroll: true });
 }
