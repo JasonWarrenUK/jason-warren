@@ -9,7 +9,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { parseSet, serialiseSet } from './url-state.js';
+import { parseSet, serialiseSet, encodeTechLabel, decodeTechLabel } from './url-state.js';
 
 // ---------------------------------------------------------------------------
 // parseSet
@@ -86,5 +86,84 @@ describe('round-trip', () => {
 	it('serialiseSet(parseSet(s)) produces canonical ordering', () => {
 		// Input order must not matter: output is always sorted.
 		expect(serialiseSet(parseSet('library,app'))).toBe('app,library');
+	});
+});
+
+// ---------------------------------------------------------------------------
+// encodeTechLabel
+// ---------------------------------------------------------------------------
+
+describe('encodeTechLabel', () => {
+	it('encodes a plain label unchanged', () => {
+		expect(encodeTechLabel('Svelte')).toBe('Svelte');
+	});
+
+	it('encodes # so it is not read as a URL fragment', () => {
+		expect(encodeTechLabel('C#')).toBe('C%23');
+	});
+
+	it('encodes spaces', () => {
+		expect(encodeTechLabel('POSIX shell')).toBe('POSIX%20shell');
+	});
+
+	it('encodes dots (safe in practice, but consistent)', () => {
+		// Dots are not percent-encoded by encodeURIComponent but this asserts
+		// the function does not accidentally break labels that contain them.
+		expect(encodeTechLabel('Node.js')).toBe('Node.js');
+		expect(encodeTechLabel('.NET 8')).toBe('.NET%208');
+	});
+});
+
+// ---------------------------------------------------------------------------
+// decodeTechLabel
+// ---------------------------------------------------------------------------
+
+describe('decodeTechLabel', () => {
+	const knownLabels = ['C#', 'Node.js', '.NET 8', 'POSIX shell', 'Svelte'];
+
+	it('returns null for a null (absent) param', () => {
+		expect(decodeTechLabel(null, knownLabels)).toBeNull();
+	});
+
+	it('decodes C%23 back to C# and validates against known labels', () => {
+		expect(decodeTechLabel('C%23', knownLabels)).toBe('C#');
+	});
+
+	it('decodes .NET%208 back to .NET 8', () => {
+		expect(decodeTechLabel('.NET%208', knownLabels)).toBe('.NET 8');
+	});
+
+	it('decodes POSIX%20shell back to POSIX shell', () => {
+		expect(decodeTechLabel('POSIX%20shell', knownLabels)).toBe('POSIX shell');
+	});
+
+	it('decodes Node.js (no encoding needed) correctly', () => {
+		expect(decodeTechLabel('Node.js', knownLabels)).toBe('Node.js');
+	});
+
+	it('returns null for a label not in the known set (stale-pin guard)', () => {
+		expect(decodeTechLabel('Bogus', knownLabels)).toBeNull();
+	});
+
+	it('returns null for an encoded label not in the known set', () => {
+		expect(decodeTechLabel('C%23invalid', knownLabels)).toBeNull();
+	});
+});
+
+// ---------------------------------------------------------------------------
+// Round-trip (encode → decode)
+// ---------------------------------------------------------------------------
+
+describe('tech-label round-trip', () => {
+	const knownLabels = ['C#', 'Node.js', '.NET 8', 'POSIX shell'];
+
+	it.each([
+		['C#'],
+		['Node.js'],
+		['.NET 8'],
+		['POSIX shell'],
+	])('encodeTechLabel → decodeTechLabel round-trips %s', (label) => {
+		const encoded = encodeTechLabel(label);
+		expect(decodeTechLabel(encoded, knownLabels)).toBe(label);
 	});
 });
