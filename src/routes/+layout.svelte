@@ -2,9 +2,18 @@
 	import { base } from '$app/paths';
 	import '../app.css';
 	import ThemeToggle from '$lib/components/ui/ThemeToggle.svelte';
+	import { navLinks } from '$lib/nav.js';
 	import { BLUESKY_URL, GITHUB_REPO_URL } from '$lib/config.js';
 
 	let { children } = $props();
+
+	// Progressive enhancement: close the mobile menu after client-side navigation.
+	// Without JS the menu stays open until the user closes it — acceptable no-JS fallback.
+	let menuDetails = $state<HTMLDetailsElement | null>(null);
+
+	function closeMenu(): void {
+		if (menuDetails) menuDetails.open = false;
+	}
 </script>
 
 <svelte:head>
@@ -23,29 +32,75 @@
 			<span class="site-nav__name">Jason Warren</span>
 		</a>
 
+		<!-- Desktop row: visible above the breakpoint -->
 		<ul class="site-nav__links" role="list">
-			<li>
-				<a href="{base}/projects" class="site-nav__link">Projects</a>
-			</li>
-			<li>
-				<a href="{base}/map" class="site-nav__link">Map</a>
-			</li>
-			<li>
-				<a href="{base}/timeline" class="site-nav__link">Timeline</a>
-			</li>
-			<li>
-				<a href="{base}/toolkit" class="site-nav__link">Toolkit</a>
-			</li>
-			<li>
-				<a href="{base}/about" class="site-nav__link">About</a>
-			</li>
-			<li>
-				<a href="{base}/colophon" class="site-nav__link">Colophon</a>
-			</li>
+			{#each navLinks as link (link.path)}
+				<li>
+					<a href="{base}{link.path}" class="site-nav__link">{link.label}</a>
+				</li>
+			{/each}
 			<li>
 				<ThemeToggle />
 			</li>
 		</ul>
+
+		<!-- Mobile bar: ThemeToggle always visible + hamburger toggle -->
+		<div class="site-nav__mobile-bar">
+			<ThemeToggle />
+			<details class="site-nav__menu" bind:this={menuDetails}>
+				<summary class="site-nav__toggle" aria-label="Menu">
+					<!-- Hamburger icon: 18×18, stroke-width 2, matching ThemeToggle SVG style -->
+					<svg
+						xmlns="http://www.w3.org/2000/svg"
+						width="18"
+						height="18"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2"
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						aria-hidden="true"
+						class="site-nav__hamburger-icon"
+					>
+						<line x1="3" y1="6" x2="21" y2="6" />
+						<line x1="3" y1="12" x2="21" y2="12" />
+						<line x1="3" y1="18" x2="21" y2="18" />
+					</svg>
+					<!-- Close (×) icon shown when open, via CSS -->
+					<svg
+						xmlns="http://www.w3.org/2000/svg"
+						width="18"
+						height="18"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2"
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						aria-hidden="true"
+						class="site-nav__close-icon"
+					>
+						<line x1="18" y1="6" x2="6" y2="18" />
+						<line x1="6" y1="6" x2="18" y2="18" />
+					</svg>
+				</summary>
+
+				<div class="site-nav__panel">
+					<ul class="site-nav__panel-links" role="list">
+						{#each navLinks as link (link.path)}
+							<li>
+								<a
+									href="{base}{link.path}"
+									class="site-nav__panel-link"
+									onclick={closeMenu}
+								>{link.label}</a>
+							</li>
+						{/each}
+					</ul>
+				</div>
+			</details>
+		</div>
 	</nav>
 </header>
 
@@ -135,6 +190,8 @@
 		font-size: var(--text-base);
 	}
 
+	/* ── Desktop nav row ── */
+
 	.site-nav__links {
 		display: flex;
 		align-items: center;
@@ -165,9 +222,121 @@
 		outline-offset: 2px;
 	}
 
-	/* Tighten the nav on narrow screens so the four links and the theme
-	   toggle stay on one row without pushing the toggle off-screen. */
-	@media (max-width: 40rem) {
+	/* ── Mobile bar + hamburger: hidden above breakpoint ── */
+
+	.site-nav__mobile-bar {
+		display: none;
+		align-items: center;
+		gap: var(--space-2);
+	}
+
+	/* ── Hamburger: <details>/<summary> ── */
+
+	/* Remove native disclosure triangle */
+	.site-nav__toggle {
+		list-style: none;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		width: 2rem;
+		height: 2rem;
+		border-radius: var(--radius-md);
+		border: 1px solid var(--color-border);
+		background: transparent;
+		color: var(--color-text-subtle);
+		cursor: pointer;
+		transition:
+			color var(--transition-fast),
+			border-color var(--transition-fast),
+			background-color var(--transition-fast);
+	}
+
+	.site-nav__toggle::-webkit-details-marker {
+		display: none;
+	}
+
+	.site-nav__toggle::marker {
+		display: none;
+	}
+
+	.site-nav__toggle:hover {
+		color: var(--color-text);
+		border-color: var(--color-border-strong);
+		background-color: var(--color-surface-raised);
+	}
+
+	.site-nav__toggle:focus-visible {
+		outline: 2px solid var(--color-primary-text);
+		outline-offset: 2px;
+	}
+
+	/* Show hamburger when closed, × when open */
+	.site-nav__close-icon {
+		display: none;
+	}
+
+	.site-nav__menu[open] .site-nav__hamburger-icon {
+		display: none;
+	}
+
+	.site-nav__menu[open] .site-nav__close-icon {
+		display: block;
+	}
+
+	/* ── Drop-down panel ── */
+
+	.site-nav__panel {
+		position: absolute;
+		top: 3.5rem; /* flush with the bottom of the sticky header */
+		left: 0;
+		right: 0;
+		z-index: 99; /* below the sticky header (100) but above page content */
+		background-color: var(--color-surface-raised);
+		border-bottom: 1px solid var(--color-border);
+		padding: var(--space-3) var(--layout-padding);
+		max-height: calc(100svh - 3.5rem);
+		overflow-y: auto;
+	}
+
+	.site-nav__panel-links {
+		display: flex;
+		flex-direction: column;
+		gap: 0;
+		padding: 0;
+		list-style: none;
+	}
+
+	.site-nav__panel-link {
+		display: block;
+		padding: var(--space-3) var(--space-2);
+		font-size: var(--text-base);
+		font-weight: 500;
+		color: var(--color-text-subtle);
+		text-decoration: none;
+		border-radius: var(--radius-md);
+		border-bottom: 1px solid var(--color-border);
+		transition:
+			color var(--transition-fast),
+			background-color var(--transition-fast);
+	}
+
+	.site-nav__panel-links li:last-child .site-nav__panel-link {
+		border-bottom: none;
+	}
+
+	.site-nav__panel-link:hover {
+		color: var(--color-text);
+		background-color: var(--color-surface);
+	}
+
+	.site-nav__panel-link:focus-visible {
+		outline: 2px solid var(--color-primary-text);
+		outline-offset: 2px;
+	}
+
+	/* ── Breakpoint: collapse nav to hamburger below 48rem ── */
+
+	@media (max-width: 48rem) {
 		.site-nav {
 			gap: var(--space-2);
 			padding: 0 var(--space-4);
@@ -178,12 +347,21 @@
 		}
 
 		.site-nav__links {
-			gap: 0;
+			display: none;
 		}
 
+		.site-nav__mobile-bar {
+			display: flex;
+		}
+	}
+
+	/* ── Reduced motion ── */
+
+	@media (prefers-reduced-motion: reduce) {
+		.site-nav__toggle,
+		.site-nav__panel-link,
 		.site-nav__link {
-			padding: var(--space-2);
-			font-size: var(--text-xs);
+			transition: none;
 		}
 	}
 
@@ -192,6 +370,8 @@
 		outline-offset: 2px;
 		border-radius: var(--radius-md);
 	}
+
+	/* ── Footer ── */
 
 	.site-footer {
 		border-top: 1px solid var(--color-border);
