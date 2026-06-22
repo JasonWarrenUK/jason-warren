@@ -84,8 +84,8 @@
 		const max = Math.max(1, ...weights);
 		return (node: MapNode): number => {
 			const weight = node.commits ?? (node.linesOfCode ? node.linesOfCode / 50 : 0);
-			const base = 8 + 9 * Math.sqrt(weight / max);
-			return node.hub ? Math.max(15, base) : base;
+			const base = 8 + 17.5 * Math.sqrt(weight / max);
+			return node.hub ? Math.max(19, base) : base;
 		};
 	});
 
@@ -193,7 +193,7 @@
 		url.searchParams.delete('hide-edges');
 		url.searchParams.delete('show-kinds');
 		url.searchParams.delete('show-edges');
-		goto(url.toString(), { replaceState: true, keepFocus: true });
+		goto(url.toString(), { replaceState: true, keepFocus: true, noScroll: true });
 	}
 
 	// Toggle isolate mode and atomically clear the now-irrelevant filter family
@@ -209,7 +209,7 @@
 			url.searchParams.delete('hide-kinds');
 			url.searchParams.delete('hide-edges');
 		}
-		goto(url.toString(), { replaceState: true, keepFocus: true });
+		goto(url.toString(), { replaceState: true, keepFocus: true, noScroll: true });
 	}
 
 	function nodeHidden(node: MapNode): boolean {
@@ -306,8 +306,8 @@
 		const maxWeight = Math.max(1, ...weights);
 		const simNodes: LiveSimNode[] = nodes.map((n) => {
 			const weight = n.commits ?? (n.linesOfCode ? n.linesOfCode / 50 : 0);
-			const base = 16 + 26 * Math.sqrt(weight / maxWeight);
-			const radius = n.hub ? Math.max(34, base) : base;
+			const base = 16 + 39 * Math.sqrt(weight / maxWeight);
+			const radius = n.hub ? Math.max(43, base) : base;
 			return { slug: n.slug, radius, x: n.x, y: n.y };
 		});
 
@@ -634,9 +634,19 @@
 		pointer-events: none;
 	}
 
+	/*
+	 * Show only the selected "labelled" projects (a diverse ~10, chosen in the
+	 * data layer) plus any pinned node. The rest reveal on hover/focus.
+	 */
+	.map__node:not(.map__node--labelled):not(.map__node--pinned) .map__label {
+		opacity: 0;
+		transition: opacity var(--transition-base);
+	}
+
 	.map__node:hover .map__label,
 	.map__node:focus-visible .map__label {
 		fill: var(--color-text);
+		opacity: 1;
 	}
 
 	.map__node:focus-visible {
@@ -656,23 +666,12 @@
 
 	/*
 	 * Mobile: the SVG scales down with the viewport, so every label shrinks at
-	 * once and the picture turns to noise. Show only the selected "labelled"
-	 * projects (a diverse ten, chosen in the data layer) by default and reveal
-	 * the rest on hover/focus, with larger type so what remains stays readable.
+	 * once and the picture turns to noise. Larger type so the ~10 standing labels
+	 * stay readable; the hide/reveal logic is already in the base rules above.
 	 */
 	@media (max-width: 40rem) {
 		.map__label {
 			font-size: 22px;
-		}
-
-		.map__node:not(.map__node--labelled) .map__label {
-			opacity: 0;
-			transition: opacity var(--transition-base);
-		}
-
-		.map__node:hover .map__label,
-		.map__node:focus-visible .map__label {
-			opacity: 1;
 		}
 	}
 
