@@ -4,6 +4,8 @@
 	import { page } from '$app/stores';
 	import type { ProjectStatus } from '$lib/data/types.js';
 	import { statusColour, statusLabel, statusOrder } from './graph-style.js';
+	import { writeParam } from '$lib/url-write.js';
+	import SelectionModal from '$lib/components/ui/SelectionModal.svelte';
 
 	interface TimelineRow {
 		slug: string;
@@ -38,6 +40,21 @@
 	);
 	// Hover overrides the pin; releasing the pointer/focus falls back to it.
 	const effectiveSlug = $derived(activeSlug ?? pinnedSlug);
+
+	// Modal state: the row the user clicked, waiting for a Pin or Navigate action.
+	let selected = $state<{ slug: string; name: string; year: string | null } | null>(null);
+
+	function openModal(row: TimelineRow): void {
+		selected = { slug: row.slug, name: row.name, year: row.year };
+	}
+
+	function pinSelected(): void {
+		if (!selected) return;
+		// Toggle: clicking the already-pinned row clears the pin.
+		writeParam('project', pinnedSlug === selected.slug ? null : selected.slug);
+		selected = null;
+	}
+
 	const activeIndex = $derived(
 		effectiveSlug !== null ? rows.findIndex((r) => r.slug === effectiveSlug) : -1
 	);
@@ -116,8 +133,10 @@
 				<a
 					class="timeline__node"
 					class:timeline__node--active={effectiveSlug === row.slug}
+					class:timeline__node--pinned={pinnedSlug === row.slug}
 					class:timeline__node--dim={effectiveSlug !== null && effectiveSlug !== row.slug}
 					href="{base}/projects/{row.slug}"
+					onclick={(e) => { e.preventDefault(); openModal(row); }}
 					onpointerenter={() => (activeSlug = row.slug)}
 					onpointerleave={() => (activeSlug = null)}
 					onfocus={() => (activeSlug = row.slug)}
@@ -142,6 +161,29 @@
 		{/each}
 	</figcaption>
 </figure>
+
+{#if selected !== null}
+	{@const isPinned = pinnedSlug === selected.slug}
+	<SelectionModal
+		open={true}
+		title={selected.name}
+		onclose={() => (selected = null)}
+	>
+		<button
+			type="button"
+			class="modal-action modal-action--primary"
+			onclick={pinSelected}
+		>
+			{isPinned ? 'Unpin' : 'Pin this project'}
+		</button>
+		<a
+			href="{base}/projects/{selected.slug}"
+			class="modal-action modal-action--secondary"
+		>
+			Go to project
+		</a>
+	</SelectionModal>
+{/if}
 
 <style>
 	.timeline {
@@ -235,10 +277,63 @@
 		border-radius: var(--radius-full);
 	}
 
+	/* Pinned row: persistent dot ring so it reads as "locked" even without hover. */
+	.timeline__node--pinned .timeline__name {
+		fill: var(--color-primary-text);
+	}
+
+	/* Modal action buttons */
+	.modal-action {
+		display: block;
+		width: 100%;
+		padding: var(--space-3) var(--space-4);
+		border-radius: var(--radius-md);
+		font-size: var(--text-sm);
+		font-weight: 600;
+		text-align: center;
+		text-decoration: none;
+		cursor: pointer;
+		transition:
+			background-color var(--transition-fast),
+			border-color var(--transition-fast),
+			color var(--transition-fast);
+	}
+
+	.modal-action:focus-visible {
+		outline: 2px solid var(--color-primary-text);
+		outline-offset: 2px;
+	}
+
+	.modal-action--primary {
+		background-color: var(--color-primary-bg);
+		border: 1px solid var(--color-primary);
+		color: var(--color-primary-text);
+	}
+
+	.modal-action--primary:hover {
+		background-color: var(--color-primary);
+		color: var(--color-surface);
+	}
+
+	.modal-action--secondary {
+		background-color: var(--color-surface);
+		border: 1px solid var(--color-border);
+		color: var(--color-text-subtle);
+	}
+
+	.modal-action--secondary:hover {
+		border-color: var(--color-border-strong);
+		color: var(--color-text);
+	}
+
 	@media (prefers-reduced-motion: reduce) {
 		.timeline__node,
 		.timeline__name,
 		.timeline__connector {
+			transition: none;
+		}
+
+		.modal-action {
 			transition: none;
 		}
 	}

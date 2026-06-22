@@ -6,6 +6,8 @@
 	import { page } from '$app/stores';
 	import { EDGE_CATEGORIES, type ProjectKind, type ProjectStatus } from '$lib/data/types.js';
 	import { parseSet, serialiseSet } from '$lib/url-state.js';
+	import { writeParam } from '$lib/url-write.js';
+	import SelectionModal from '$lib/components/ui/SelectionModal.svelte';
 	import type { GraphEdge, LiveSimNode, SharedTechEdge } from '$lib/data/graph.js';
 	import { buildSimLinks, createForceSimulation } from '$lib/data/graph.js';
 	import { forceLink as d3ForceLink } from 'd3-force';
@@ -82,8 +84,8 @@
 		const max = Math.max(1, ...weights);
 		return (node: MapNode): number => {
 			const weight = node.commits ?? (node.linesOfCode ? node.linesOfCode / 50 : 0);
-			const base = 8 + 9 * Math.sqrt(weight / max);
-			return node.hub ? Math.max(15, base) : base;
+			const base = 8 + 17.5 * Math.sqrt(weight / max);
+			return node.hub ? Math.max(19, base) : base;
 		};
 	});
 
@@ -128,17 +130,30 @@
 		browser ? parseSet<EdgeType>($page.url.searchParams.get('show-edges')) : new Set<EdgeType>()
 	);
 
-	// Write a single URL search param, using replaceState so filter changes
-	// don't clutter the browser history. keepFocus preserves focus on the
-	// clicked control (important for keyboard users navigating the legend).
-	function writeParam(key: string, value: string | null): void {
-		const url = new URL($page.url);
-		if (value === null) {
-			url.searchParams.delete(key);
-		} else {
-			url.searchParams.set(key, value);
-		}
-		goto(url.toString(), { replaceState: true, keepFocus: true });
+	// --- Pinned selection state (deep-link) ---
+	// The pin is separate from the transient hover activeSlug. A pinned node
+	// stays highlighted after the pointer leaves, making the selection shareable.
+	const pinnedParam = $derived(browser ? $page.url.searchParams.get('project') : null);
+	// Validate the pin against the nodes actually present; a stale link must
+	// never dim the whole graph with nothing highlighted.
+	const pinnedSlug = $derived(
+		pinnedParam !== null && positions.has(pinnedParam) ? pinnedParam : null
+	);
+	// Hover overrides the pin; releasing the pointer/focus falls back to it.
+	const effectivePinnedSlug = $derived(activeSlug ?? pinnedSlug);
+
+	// Modal state: the node the user clicked, waiting for a Pin or Navigate action.
+	let selected = $state<{ slug: string; name: string; tagline: string } | null>(null);
+
+	function openModal(node: MapNode): void {
+		selected = { slug: node.slug, name: node.name, tagline: node.tagline };
+	}
+
+	function pinSelected(): void {
+		if (!selected) return;
+		// Toggle: clicking the already-pinned node clears the pin.
+		writeParam('project', pinnedSlug === selected.slug ? null : selected.slug);
+		selected = null;
 	}
 
 	// --- Visibility: default mode hides one type per click (multi-select);
@@ -178,7 +193,7 @@
 		url.searchParams.delete('hide-edges');
 		url.searchParams.delete('show-kinds');
 		url.searchParams.delete('show-edges');
-		goto(url.toString(), { replaceState: true, keepFocus: true });
+		goto(url.toString(), { replaceState: true, keepFocus: true, noScroll: true });
 	}
 
 	// Toggle isolate mode and atomically clear the now-irrelevant filter family
@@ -194,7 +209,7 @@
 			url.searchParams.delete('hide-kinds');
 			url.searchParams.delete('hide-edges');
 		}
-		goto(url.toString(), { replaceState: true, keepFocus: true });
+		goto(url.toString(), { replaceState: true, keepFocus: true, noScroll: true });
 	}
 
 	function nodeHidden(node: MapNode): boolean {
@@ -235,15 +250,30 @@
 			isolatedEdgeTypes.size > 0
 	);
 
-	// --- Dimming: hover/focus lifts a node and its neighbourhood, fading the rest. ---
+	// --- Dimming: hover/focus (or pin) lifts a node and its neighbourhood. ---
+	// Uses effectivePinnedSlug (hover overrides pin) so a pinned node keeps its
+	// neighbourhood lit after the pointer leaves.
+	//
+	// Stale-pin-hidden guard: if the pinned/hovered node is currently filtered
+	// out, treat it as null so an invisible anchor can't dim the whole graph.
+
+	function effectiveHighlight(): string | null {
+		const slug = effectivePinnedSlug;
+		if (slug === null) return null;
+		const node = positions.get(slug);
+		if (node && nodeHidden(node)) return null;
+		return slug;
+	}
 
 	function nodeDimmed(node: MapNode): boolean {
-		if (activeSlug === null || node.slug === activeSlug) return false;
-		return !adjacency.get(activeSlug)?.has(node.slug);
+		const highlight = effectiveHighlight();
+		if (highlight === null || node.slug === highlight) return false;
+		return !adjacency.get(highlight)?.has(node.slug);
 	}
 
 	function edgeDimmed(source: string, target: string): boolean {
-		return activeSlug !== null && source !== activeSlug && target !== activeSlug;
+		const highlight = effectiveHighlight();
+		return highlight !== null && source !== highlight && target !== highlight;
 	}
 
 	// --- Live force simulation (progressive enhancement) ---
@@ -276,8 +306,8 @@
 		const maxWeight = Math.max(1, ...weights);
 		const simNodes: LiveSimNode[] = nodes.map((n) => {
 			const weight = n.commits ?? (n.linesOfCode ? n.linesOfCode / 50 : 0);
-			const base = 16 + 26 * Math.sqrt(weight / maxWeight);
-			const radius = n.hub ? Math.max(34, base) : base;
+			const base = 16 + 39 * Math.sqrt(weight / maxWeight);
+			const radius = n.hub ? Math.max(43, base) : base;
 			return { slug: n.slug, radius, x: n.x, y: n.y };
 		});
 
@@ -411,7 +441,9 @@
 					class:map__node--dim={nodeDimmed(node)}
 					class:map__node--hidden={nodeHidden(node)}
 					class:map__node--labelled={node.labelled}
+					class:map__node--pinned={pinnedSlug === node.slug}
 					href="{base}/projects/{node.slug}"
+					onclick={(e) => { e.preventDefault(); openModal(node); }}
 					onpointerenter={() => (activeSlug = node.slug)}
 					onpointerleave={() => (activeSlug = null)}
 					onfocus={() => (activeSlug = node.slug)}
@@ -494,12 +526,36 @@
 		</div>
 
 		<p class="map__note">
-			Node size tracks commit activity; fainter dots are older. Click a type or connection to hide
-			it. Turn on Isolate, then click each connection or type you want to keep: you can select more
-			than one.
+			Node size tracks commit activity; fainter dots are older. Click a node to pin it or navigate
+			to the project. Click a type or connection to hide it. Turn on Isolate, then click each
+			connection or type you want to keep: you can select more than one.
 		</p>
 	</figcaption>
 </figure>
+
+{#if selected !== null}
+	{@const isPinned = pinnedSlug === selected.slug}
+	<SelectionModal
+		open={true}
+		title={selected.name}
+		onclose={() => (selected = null)}
+	>
+		<p class="map-modal__tagline">{selected.tagline}</p>
+		<button
+			type="button"
+			class="modal-action modal-action--primary"
+			onclick={pinSelected}
+		>
+			{isPinned ? 'Unpin' : 'Pin this project'}
+		</button>
+		<a
+			href="{base}/projects/{selected.slug}"
+			class="modal-action modal-action--secondary"
+		>
+			Go to project
+		</a>
+	</SelectionModal>
+{/if}
 
 <style>
 	.map {
@@ -578,9 +634,19 @@
 		pointer-events: none;
 	}
 
+	/*
+	 * Show only the selected "labelled" projects (a diverse ~10, chosen in the
+	 * data layer) plus any pinned node. The rest reveal on hover/focus.
+	 */
+	.map__node:not(.map__node--labelled):not(.map__node--pinned) .map__label {
+		opacity: 0;
+		transition: opacity var(--transition-base);
+	}
+
 	.map__node:hover .map__label,
 	.map__node:focus-visible .map__label {
 		fill: var(--color-text);
+		opacity: 1;
 	}
 
 	.map__node:focus-visible {
@@ -592,25 +658,20 @@
 		stroke-width: 3;
 	}
 
+	/* Pinned node: persistent ring so the selection reads as "locked". */
+	.map__node--pinned .map__dot {
+		stroke: var(--color-primary-text);
+		stroke-width: 2.5;
+	}
+
 	/*
 	 * Mobile: the SVG scales down with the viewport, so every label shrinks at
-	 * once and the picture turns to noise. Show only the selected "labelled"
-	 * projects (a diverse ten, chosen in the data layer) by default and reveal
-	 * the rest on hover/focus, with larger type so what remains stays readable.
+	 * once and the picture turns to noise. Larger type so the ~10 standing labels
+	 * stay readable; the hide/reveal logic is already in the base rules above.
 	 */
 	@media (max-width: 40rem) {
 		.map__label {
 			font-size: 22px;
-		}
-
-		.map__node:not(.map__node--labelled) .map__label {
-			opacity: 0;
-			transition: opacity var(--transition-base);
-		}
-
-		.map__node:hover .map__label,
-		.map__node:focus-visible .map__label {
-			opacity: 1;
 		}
 	}
 
@@ -706,11 +767,67 @@
 		color: var(--color-text-muted);
 	}
 
+	/* Modal tagline (shown in the map modal since it has the tagline available) */
+	.map-modal__tagline {
+		font-size: var(--text-sm);
+		color: var(--color-text-subtle);
+		margin: 0;
+		line-height: 1.5;
+	}
+
+	/* Modal action buttons */
+	.modal-action {
+		display: block;
+		width: 100%;
+		padding: var(--space-3) var(--space-4);
+		border-radius: var(--radius-md);
+		font-size: var(--text-sm);
+		font-weight: 600;
+		text-align: center;
+		text-decoration: none;
+		cursor: pointer;
+		transition:
+			background-color var(--transition-fast),
+			border-color var(--transition-fast),
+			color var(--transition-fast);
+	}
+
+	.modal-action:focus-visible {
+		outline: 2px solid var(--color-primary-text);
+		outline-offset: 2px;
+	}
+
+	.modal-action--primary {
+		background-color: var(--color-primary-bg);
+		border: 1px solid var(--color-primary);
+		color: var(--color-primary-text);
+	}
+
+	.modal-action--primary:hover {
+		background-color: var(--color-primary);
+		color: var(--color-surface);
+	}
+
+	.modal-action--secondary {
+		background-color: var(--color-surface);
+		border: 1px solid var(--color-border);
+		color: var(--color-text-subtle);
+	}
+
+	.modal-action--secondary:hover {
+		border-color: var(--color-border-strong);
+		color: var(--color-text);
+	}
+
 	@media (prefers-reduced-motion: reduce) {
 		.map__edge,
 		.map__node,
 		.map__dot,
 		.map__label {
+			transition: none;
+		}
+
+		.modal-action {
 			transition: none;
 		}
 	}

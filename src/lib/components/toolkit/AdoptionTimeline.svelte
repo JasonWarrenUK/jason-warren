@@ -1,8 +1,13 @@
 <script lang="ts">
+	import { browser } from '$app/environment';
 	import { base } from '$app/paths';
+	import { page } from '$app/stores';
 	import type { TagKind } from '$lib/data/types.js';
 	import type { TechAdoption } from '$lib/data/adoption.js';
 	import { categoryColour } from '$lib/components/graph/graph-style.js';
+	import { encodeTechLabel, decodeTechLabel } from '$lib/url-state.js';
+	import { writeParam } from '$lib/url-write.js';
+	import SelectionModal from '$lib/components/ui/SelectionModal.svelte';
 
 	interface Props {
 		items: TechAdoption[];
@@ -117,6 +122,29 @@
 	// opacity/transform channel on that element stays uncontested.
 	let activeLabel = $state<string | null>(null);
 
+	// URL search params are only readable in the browser; during prerender we
+	// show the full chart so the prerendered HTML is always complete.
+	const pinnedParam = $derived(browser ? $page.url.searchParams.get('tech') : null);
+	// Validate the decoded label against items actually present — a stale link
+	// must never dim the whole chart with nothing highlighted.
+	const pinnedLabel = $derived(decodeTechLabel(pinnedParam, items.map((i) => i.label)));
+	// Hover overrides the pin; releasing the pointer/focus falls back to it.
+	const effectiveLabel = $derived(activeLabel ?? pinnedLabel);
+
+	// Modal state: the tech the user clicked.
+	let selected = $state<TechAdoption | null>(null);
+
+	function openModal(item: TechAdoption): void {
+		selected = item;
+	}
+
+	function pinSelected(): void {
+		if (!selected) return;
+		// Toggle: clicking the already-pinned tech clears the pin.
+		writeParam('tech', pinnedLabel === selected.label ? null : encodeTechLabel(selected.label));
+		selected = null;
+	}
+
 	// Returns the accessible description for an item — shared between the
 	// SVG <title> tooltip and the aria-label so the two never drift.
 	function describe(item: PlacedItem): string {
@@ -191,11 +219,16 @@
 			{#each layout.placed as item, index (item.label)}
 				<g
 					class="adoption__item"
-					class:adoption__item--active={activeLabel === item.label}
-					class:adoption__item--dim={activeLabel !== null && activeLabel !== item.label}
+					class:adoption__item--active={effectiveLabel === item.label}
+					class:adoption__item--dim={effectiveLabel !== null && effectiveLabel !== item.label}
+					class:adoption__item--pinned={pinnedLabel === item.label}
 					style="--reveal-delay: {Math.min(index * 28, 700)}ms; color: {kindColour(item.kind)}"
-					role="img"
-					aria-label={describe(item)}
+					role="button"
+					tabindex="0"
+					aria-pressed={pinnedLabel === item.label}
+					aria-label="{describe(item)}. {pinnedLabel === item.label ? 'Pinned. Activate to unpin' : 'Activate to pin'}"
+					onclick={() => openModal(item)}
+					onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openModal(item); } }}
 					onpointerenter={() => (activeLabel = item.label)}
 					onpointerleave={() => (activeLabel = null)}
 					onfocus={() => (activeLabel = item.label)}
@@ -252,6 +285,35 @@
 		{/if}
 	</figcaption>
 </figure>
+
+{#if selected !== null}
+	{@const isPinned = pinnedLabel === selected.label}
+	<SelectionModal
+		open={true}
+		title={selected.label}
+		onclose={() => (selected = null)}
+	>
+		<p class="adoption-modal__desc">
+			First used in {selected.firstYear}{selected.dateSource === 'derived'
+				? ` (estimated from ${selected.firstProjectName})`
+				: ''}, across {selected.projectCount}
+			{selected.projectCount === 1 ? 'project' : 'projects'}.
+		</p>
+		<button
+			type="button"
+			class="modal-action modal-action--primary"
+			onclick={pinSelected}
+		>
+			{isPinned ? 'Unpin' : 'Pin this technology'}
+		</button>
+		<a
+			href="{base}/projects?tag={encodeURIComponent(selected.label)}"
+			class="modal-action modal-action--secondary"
+		>
+			See projects using this
+		</a>
+	</SelectionModal>
+{/if}
 
 <style>
 	.adoption {
@@ -336,6 +398,19 @@
 		opacity: 0.3;
 	}
 
+	/* Pinned tech: persistent highlight on dot stroke so the selection reads as
+	   "locked". Deliberately targets children only — never opacity/transform on
+	   .adoption__item, which is owned by the reveal animation. */
+	.adoption__item--pinned .adoption__dot {
+		stroke: var(--color-text);
+		stroke-width: 2.5;
+	}
+
+	.adoption__item--pinned .adoption__label {
+		fill: var(--color-primary-text);
+		font-weight: 700;
+	}
+
 	/* Reveal: only active once JS has added the animate class. Default (no JS,
 	   reduced motion) leaves items at full opacity. */
 	.adoption__svg--animate .adoption__item {
@@ -398,6 +473,58 @@
 		font-style: italic;
 	}
 
+	/* Modal desc */
+	.adoption-modal__desc {
+		font-size: var(--text-sm);
+		color: var(--color-text-subtle);
+		margin: 0;
+		line-height: 1.5;
+	}
+
+	/* Modal action buttons */
+	.modal-action {
+		display: block;
+		width: 100%;
+		padding: var(--space-3) var(--space-4);
+		border-radius: var(--radius-md);
+		font-size: var(--text-sm);
+		font-weight: 600;
+		text-align: center;
+		text-decoration: none;
+		cursor: pointer;
+		transition:
+			background-color var(--transition-fast),
+			border-color var(--transition-fast),
+			color var(--transition-fast);
+	}
+
+	.modal-action:focus-visible {
+		outline: 2px solid var(--color-primary-text);
+		outline-offset: 2px;
+	}
+
+	.modal-action--primary {
+		background-color: var(--color-primary-bg);
+		border: 1px solid var(--color-primary);
+		color: var(--color-primary-text);
+	}
+
+	.modal-action--primary:hover {
+		background-color: var(--color-primary);
+		color: var(--color-surface);
+	}
+
+	.modal-action--secondary {
+		background-color: var(--color-surface);
+		border: 1px solid var(--color-border);
+		color: var(--color-text-subtle);
+	}
+
+	.modal-action--secondary:hover {
+		border-color: var(--color-border-strong);
+		color: var(--color-text);
+	}
+
 	/* Visually hidden, available to screen readers. */
 	.adoption__sr {
 		position: absolute;
@@ -421,6 +548,10 @@
 		/* Kill highlight transitions too — state still applies instantly. */
 		.adoption__dot,
 		.adoption__label {
+			transition: none;
+		}
+
+		.modal-action {
 			transition: none;
 		}
 	}

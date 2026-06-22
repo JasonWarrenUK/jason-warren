@@ -3,23 +3,20 @@
  * links live in exactly one place.
  */
 
+export const AUTHOR = 'Jason Warren';
+export const EMAIL = 'contact.jwarren@gmail.com';
+// export const EMAIL = 'jason@foundersandcoders.com';
+
 /** Canonical production origin. No trailing slash. */
 export const SITE_URL = 'https://jason-warren.vercel.app';
 
-export const AUTHOR = 'Jason Warren';
-
 /** URL of the portfolio source repository. */
 export const GITHUB_REPO_URL = 'https://github.com/JasonWarrenUK/jason-warren';
-
 /** URL of the GitHub profile. */
 export const GITHUB_PROFILE_URL = 'https://github.com/JasonWarrenUK';
 
 export const BLUESKY_URL = 'https://bsky.app/profile/neurosocialist.bsky.social';
-
 export const BLUESKY_HANDLE = '@neurosocialist.bsky.social';
-
-/** Primary contact email. */
-export const EMAIL = 'jason@foundersandcoders.com';
 
 /** Fallback description for pages that do not set their own. */
 export const DEFAULT_DESCRIPTION =
