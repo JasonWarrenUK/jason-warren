@@ -809,6 +809,58 @@
 				color: var(--text-dim) !important;
 			}
 
+			/* ── Node colours by classDef ── */
+			/* driven from CSS vars so graph stays in lockstep with the legend
+			   across light / dark mode (classDefs cannot use var() — parse error) */
+			.mermaid .node.open rect,
+			.mermaid .node.open path {
+				fill: var(--color-todo-bg) !important;
+				stroke: var(--color-todo) !important;
+			}
+			.mermaid .node.open .nodeLabel { color: var(--color-todo-text) !important; }
+
+			.mermaid .node.blocked rect,
+			.mermaid .node.blocked path {
+				fill: var(--color-blocked-bg) !important;
+				stroke: var(--color-blocked) !important;
+			}
+			.mermaid .node.blocked .nodeLabel { color: var(--color-blocked-text) !important; }
+
+			.mermaid .node.in_progress rect,
+			.mermaid .node.in_progress path {
+				fill: var(--color-in-progress-bg) !important;
+				stroke: var(--color-in-progress) !important;
+			}
+			.mermaid .node.in_progress .nodeLabel { color: var(--color-in-progress-text) !important; }
+
+			.mermaid .node.done rect,
+			.mermaid .node.done path {
+				fill: var(--color-done-bg) !important;
+				stroke: var(--color-done) !important;
+			}
+			.mermaid .node.done .nodeLabel { color: var(--color-done-text) !important; }
+
+			.mermaid .node.mile rect,
+			.mermaid .node.mile path {
+				fill: var(--color-milestone-bg) !important;
+				stroke: var(--color-milestone) !important;
+			}
+			.mermaid .node.mile .nodeLabel { color: var(--color-milestone-text) !important; }
+
+			.mermaid .node.miledone rect,
+			.mermaid .node.miledone path {
+				fill: var(--color-milestone-done-bg) !important;
+				stroke: var(--color-milestone-done) !important;
+			}
+			.mermaid .node.miledone .nodeLabel { color: var(--color-milestone-done-text) !important; }
+
+			.mermaid .node.ship rect,
+			.mermaid .node.ship path {
+				fill: var(--color-milestone-bg) !important;
+				stroke: var(--color-milestone) !important;
+			}
+			.mermaid .node.ship .nodeLabel { color: var(--color-milestone-text) !important; }
+
 			.legend {
 				display: flex;
 				gap: 18px;
@@ -1430,7 +1482,6 @@
 				<section class="diagram-shell">
 					<p class="diagram-shell__hint">
 						Ctrl/Cmd + wheel to zoom. Scroll to pan. Drag to pan when zoomed. Double-click to fit.
-						Completed work omitted.
 					</p>
 					<div class="mermaid-wrap">
 						<div class="zoom-controls">
@@ -1526,7 +1577,7 @@
 
 						%% ── Milestone 1: Content ─────────────────────────────────────
 						m1{"Milestone 1<br/>Content"}:::mile
-						subgraph m1group
+						subgraph m1group["Milestone 1: Content Depth & Polish"]
 						   1CO.1["1CO.1<br/>audit entry depth"]:::done
 						   1CO.2["1CO.2<br/>all entries flagship-ready"]:::done
 						   1CO.3["1CO.3<br/>contribution notes"]:::done
@@ -1558,7 +1609,7 @@
 						%% ── Milestone 2: Features ────────────────────────────────────
 						m2{"Milestone 2<br/>Features"}:::mile
 
-						subgraph m2group
+						subgraph m2group["Milestone 2: Exploration & New Features"]
 						   2FE.1["2FE.1<br/>client-side search"]:::blocked
 						   2FE.2["2FE.2<br/>deep-link views"]:::done
 						   2FE.3["2FE.3<br/>polish interactions"]:::done
@@ -1584,7 +1635,7 @@
 						%% ── Milestone 3: Design ──────────────────────────────────────
 						m3{"Milestone 3<br/>Design"}:::mile
 
-						subgraph m3group
+						subgraph m3group["Milestone 3: Design & Interaction Polish"]
 						   3DE.0["3DE.0<br/>visual direction"]:::open
 						   3DE.1["3DE.1<br/>typography pass"]:::blocked
 						   3DE.2["3DE.2<br/>responsive audit"]:::open
@@ -1609,7 +1660,7 @@
 						%% ── Milestone 4: Quality ─────────────────────────────────────
 						m4{"Milestone 4<br/>Quality"}:::mile
 
-						subgraph m4group
+						subgraph m4group["Milestone 4: Quality & Reach"]
 						   4QU.1["4QU.1<br/>a11y audit"]:::blocked
 						   4QU.3["4QU.3<br/>SEO + perf sanity"]:::blocked
 						   4QU.4["4QU.4<br/>OG coverage"]:::open
@@ -1630,7 +1681,7 @@
 						%% ── Milestone 5: Drift Decoupling ────────────────────────────
 						m5{"Milestone 5<br/>Drift Decoupling"}:::mile
 
-						subgraph m5group
+						subgraph m5group["Milestone 5: Drift Decoupling"]
 						   5DR.1["5DR.1<br/>boundary doc"]:::open
 						   5DR.2["5DR.2<br/>coupling inventory"]:::open
 						   5DR.3["5DR.3<br/>config layer"]:::blocked
@@ -1682,14 +1733,14 @@
 						m4 --> SHIP
 						m5 --> SHIP
 
-						classDef blocked  			fill:#fff8f3,stroke:#ac5c00,color:#371d00;
-						classDef open     			fill:#fff3fc,stroke:#740068,color:#44003c;
-						classDef in_progress    fill:#dcffe6,stroke:#008147,color:#002812;
-						classDef done     			fill:#e8f6ff,stroke:#00749d,color:#001d2a;
-						classDef mile     			fill:#fff8f5,stroke:#cd3c00,color:#401600;
-						classDef miledone 			fill:#e3f7ff,stroke:#007590,color:#001f28;
-						classDef ship     			fill:#fff8f5,stroke:#cd3c00,color:#401600;
-						classDef gateEdge 			stroke:#0071af,stroke-width:3px;
+						classDef blocked      stroke-width:1.5px;
+						classDef open         stroke-width:1.5px;
+						classDef in_progress  stroke-width:1.5px;
+						classDef done         stroke-width:1.5px;
+						classDef mile         stroke-width:1.5px;
+						classDef miledone     stroke-width:1.5px;
+						classDef ship         stroke-width:1.5px;
+						classDef gateEdge     stroke:#0071af,stroke-width:3px;
 
 						class gate1,gate2,gate3,gate4,gate5 gateEdge
 						linkStyle default stroke:#8b8b8b,stroke-width:1.5px;

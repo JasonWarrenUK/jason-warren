@@ -78,6 +78,7 @@ _None._
 - [ ] 2FE.5. Cross-view continuity (carry selection from map → project → timeline) — builds on the shared `?project=` param landed in 2FE.2
 - [ ] 2FE.6. Tech-stack constellation visualisation — a `ProjectMap` variant clustering projects by shared stack; islands = niche tech, dense core = default toolkit
 - [ ] 2FE.7. Technology lineage edges — hand-authored `leads-to` / `replaced-by` relationships between technologies, rendered as directed edges on the adoption chart or constellation; modelled on `ProjectRelationship`. Feasibility note: adoption-date ordering (`adoption.ts`) + same-`TagKind` grouping + per-project co-occurrence decay can seed and rank *candidates*, but the replacement/coexistence judgement is editorial and cannot be auto-derived (TypeScript augments JavaScript; Express and FastAPI coexist). Requires a new `TechRelationship { kind: 'leads-to' | 'replaced-by'; source: label; target: label; note?: string }` structure and hand-authored edge data. Template: `ProjectRelationship` → `threads.ts` → `GraphEdge` normalisation in `graph.ts` — **may depend on 2FE.6** if rendered inside the constellation
+- [ ] 2FE.8. Overhaul map placement — robustly redraw an optimal (low-crossing) layout on every filter toggle. Build-time best-of-N (seed lottery + crossing count) already exists for the unfiltered layout; extend that robustness to live filter toggles, which today reheat a single d3-force sim with no crossing minimisation — **depends on 2FE.2**
 
 <a name="m2-blocked"><h4>Blocked (Milestone 2)</h4></a>
 
@@ -108,7 +109,7 @@ _None._
 
 - [ ] 3DE.1. Typography pass (scale, rhythm, measure) across all routes — **depends on 3DE.0**
 - [ ] 3DE.3. Motion pass: meaningful transitions, respect `prefers-reduced-motion` — **depends on 3DE.0, 3DE.1**
-- [ ] 3DE.4. Refine graph aesthetics (edge styling, clustering legibility, constellation view) — **depends on 2FE.6, 3DE.0, 3DE.5**
+- [ ] 3DE.4. Refine graph aesthetics (edge styling, clustering legibility, constellation view) — **depends on 2FE.6, 2FE.8, 3DE.0, 3DE.5**
 - [ ] 3DE.5. Consistency sweep of semantic colour aliases vs Reasonable Colors usage — **depends on 3DE.0**
 
 <a name="m3-done"><h4>Completed (Milestone 3)</h4></a>
@@ -240,12 +241,14 @@ flowchart TD
 	2FE.5["`*2FE.5*<br/>**Features**<br/>cross-view continuity`"]:::open
 	2FE.6["`*2FE.6*<br/>**Features**<br/>tech-stack constellation`"]:::open
 	2FE.7["`*2FE.7*<br/>**Features**<br/>tech lineage edges`"]:::open
+	2FE.8["`*2FE.8*<br/>**Features**<br/>robust filter-toggle relayout`"]:::open
 
 	%% M2 — deps
 	2FE.2 --> 2FE.5
 	2FE.2 --> 2FE.4
 	2FE.4 --> 2FE.1
 	2FE.6 --> 2FE.7
+	2FE.2 --> 2FE.8
 
 	%% M2 track completers → m2
 	2FE.1 --> m2
@@ -253,6 +256,7 @@ flowchart TD
 	2FE.6 --> m2
 	2FE.3 --> m2
 	2FE.7 --> m2
+	2FE.8 --> m2
 
 	%% ── Milestone 3: Design & Interaction Polish ──────────────────────
 	m3{"`**Milestone 3**<br/>Design & Interaction`"}:::mile
@@ -359,6 +363,7 @@ flowchart TD
 	%% ── Cross-milestone gates ────────────────────────────────────────
 	1CO.2 ==>|gates OG| 4QU.4
 	2FE.6 ==>|gates design| 3DE.4
+	2FE.8 ==>|feeds aesthetics| 3DE.4
 	2FE.6 ==>|gates a11y| 4QU.7
 	1CO.2 ==>|enables search| 2FE.1
 	3DE.4 ==>|gates| 4QU.7
