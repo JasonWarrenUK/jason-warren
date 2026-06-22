@@ -4,6 +4,7 @@
 	import {
 		AUTHOR,
 		SITE_URL,
+		EMAIL,
 		GITHUB_PROFILE_URL,
 		BLUESKY_URL,
 		BLUESKY_HANDLE,
@@ -103,9 +104,7 @@
 				<div class="section__prose">
 					<p>
 						The best way to reach me is by email:
-						<a href="mailto:jason@foundersandcoders.com" class="link">
-							jason@foundersandcoders.com
-						</a>
+						<a href={`mailto:${EMAIL}`} class="link">{EMAIL}</a>
 					</p>
 					<p>
 						You can also find me on
