@@ -8,6 +8,7 @@
 	import ProjectGrid from '$lib/components/project/ProjectGrid.svelte';
 	import FilterBar from '$lib/components/filter/FilterBar.svelte';
 	import Seo from '$lib/components/seo/Seo.svelte';
+	import { writeParam } from '$lib/url-write.js';
 
 	let { data } = $props();
 
@@ -32,16 +33,6 @@
 			status: activeStatus ?? undefined
 		}).sort((a, b) => (b.lastCommit ?? '').localeCompare(a.lastCommit ?? ''))
 	);
-
-	function setParam(key: string, value: string | null): void {
-		const url = new URL($page.url);
-		if (value === null) {
-			url.searchParams.delete(key);
-		} else {
-			url.searchParams.set(key, value);
-		}
-		goto(url.toString(), { replaceState: true, keepFocus: true });
-	}
 
 	// Persist filters across navigation: returning from a project (or the
 	// in-page breadcrumb) lands on a bare /projects URL, so restore the last
@@ -81,15 +72,15 @@
 		<FilterBar
 			kinds={data.kinds}
 			{activeKind}
-			onkind={(kind) => setParam('type', kind)}
+			onkind={(kind) => writeParam('type', kind)}
 			statuses={data.statuses}
 			{activeStatus}
-			onstatus={(s) => setParam('status', s)}
+			onstatus={(s) => writeParam('status', s)}
 			tagsByKind={data.tagsByKind}
 			{activeTag}
 			{activeRole}
-			ontag={(tag) => setParam('tag', tag)}
-			onrole={(role) => setParam('role', role)}
+			ontag={(tag) => writeParam('tag', tag)}
+			onrole={(role) => writeParam('role', role)}
 		/>
 	</aside>
 
