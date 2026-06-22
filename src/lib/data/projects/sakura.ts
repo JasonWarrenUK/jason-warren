@@ -11,8 +11,9 @@ export const sakura: AuthoredProject = {
 	kind: 'app',
 	contribution: {
 		role: 'lead',
+		collaboration: { team: 'FAC-30 cohort', employer: 'Founders and Coders' },
 		contributionNote:
-			'Jason led the ASP.NET Core API, designing the Entity Framework Core data model, the privacy-filtered collections endpoints, and the colour-matching engine in ColourSearch.cs that converts between hex, RGB and HSL to resolve colours by name.',
+			"Led the ASP.NET Core API on a FAC-30 cohort project: a colour-matching engine (hex/RGB/HSL conversion, nearest-colour name resolution), Entity Framework Core data model with a ColourCollection join table, privacy-filtered collections endpoints scoped to the authenticated user, and Swagger-documented REST with ASP.NET Identity auth.",
 	},
 	status: 'finished',
 	repoUrl: 'https://github.com/fac30/sakura-api',

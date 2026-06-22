@@ -11,8 +11,8 @@ export const chirpdb: AuthoredProject = {
 	kind: 'app',
 	contribution: {
 		role: 'collaborator',
-		contributionNote:
-			'28 commits. Contributed documentation, an understand-anything knowledge graph of the codebase, and Claude Code configuration to support ongoing development.',
+		collaboration: { team: 'Tandem', employer: 'Tandem Creative Dev', client: 'Zig Zag AI' },
+		contributionNote: 'PLACEHOLDER',
 	},
 	status: 'wip',
 	repoUrl: 'https://github.com/ZigZag-Technology/CHIRPdb',

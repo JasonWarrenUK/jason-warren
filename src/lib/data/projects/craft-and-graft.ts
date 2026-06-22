@@ -11,8 +11,9 @@ export const craftAndGraft: AuthoredProject = {
 	kind: 'app',
 	contribution: {
 		role: 'lead',
+		collaboration: { team: 'FAC-30 cohort', employer: 'Founders and Coders' },
 		contributionNote:
-			"Jason led the React storefront, building the authentication flow, the database-driven product views, the Netlify continuous-deployment pipeline, and the team's GitHub Actions automation (stale-issue bot, first-contributor greeter).",
+			"Led the React storefront on a FAC-30 cohort e-commerce project: session-based auth with bcrypt and connect-pg-simple, product views fetched live from an Express/PostgreSQL API, Netlify CD pipeline, and two GitHub Actions bots covering CI ergonomics from the first sprint.",
 	},
 	status: 'finished',
 	repoUrl: 'https://github.com/fac30/craft-and-graft-front',

@@ -11,8 +11,8 @@ export const guardrails: AuthoredProject = {
 	kind: 'tool',
 	contribution: {
 		role: 'collaborator',
-		contributionNote:
-			'4 merged PRs. Improved PII detection for UK postcodes and name initials (PR #86); added Google Gemini as a third AI provider alongside Claude and OpenAI (PR #22); built the file-attachment warning in the extension sidebar (PR #45); added Claude Code skills and Git workflow documentation (PR #23). +6,500 / −173 lines.',
+		collaboration: { team: 'Yalla Cooperative', employer: 'Yalla Cooperative' },
+		contributionNote: 'PLACEHOLDER',
 	},
 	status: 'wip',
 	repoUrl: 'https://github.com/yalla-coop/yalla-labs-guardrails',

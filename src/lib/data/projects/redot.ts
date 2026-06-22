@@ -11,8 +11,9 @@ export const redot: AuthoredProject = {
 	kind: 'tool',
 	contribution: {
 		role: 'collaborator',
+		collaboration: { team: 'FAC-31 cohort', employer: 'Founders and Coders' },
 		contributionNote:
-			'6 merged PRs. Replaced the LangChain dependency with the Anthropic SDK directly (PR #6); improved prompts with XML structure and batch processing (PR #12); prepared the action for public distribution (PR #5). Also added documentation and PR banner.',
+			'6 PRs on a FAC-31 cohort GitHub Action. Replaced LangChain with the Anthropic SDK directly, cutting abstraction layers and the transitive dependency surface; improved prompts with XML structure and batch processing; prepared the action for public distribution with a full action.yml input schema.',
 	},
 	status: 'finished',
 	repoUrl: 'https://github.com/fac-31/ReDoT',

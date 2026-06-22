@@ -11,8 +11,9 @@ export const facCra: AuthoredProject = {
 	kind: 'app',
 	contribution: {
 		role: 'collaborator',
+		collaboration: { team: 'Founders and Coders', employer: 'Founders and Coders' },
 		contributionNote:
-			'320 commits, shipping whole features and well-scoped fixes into a large, established platform. Headliners: Lead Pool multi-axis candidate segmentation (6 axes, query functions, hydration orchestrator, pattern-based strength classification, PR #144); distribution pipeline (saved-query folder system, workshop runsheet queries, batch lead-scoring, markdown email composer, lead-pool widget); learner dashboard (collapsible tiles + health metrics + responsive layout, Article Stats tab, admin view PR #72); full Playwright E2E suite; security/a11y audit pass removing 17 unused packages; KaTeX bundling fix and a run of precise distribution fixes (PRs #211–218). +31,500 / −28,600 lines.',
+			"320 commits into Founders and Coders' core platform over several months. Key features: Lead Pool candidate segmentation (6 axes, composable signal groups, hydration orchestrator); learner dashboard restructure (collapsible tiles, health metrics, Article Stats tab); full Playwright E2E suite (first automated browser tests on the project); distribution pipeline extensions; security and a11y audit pass removing 17 unused packages. +31,500 / −28,600 lines.",
 	},
 	status: 'wip',
 	repoUrl: 'https://github.com/izaakrogan/fac-cra',

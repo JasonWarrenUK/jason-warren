@@ -11,8 +11,9 @@ export const beacons: AuthoredProject = {
 	kind: 'app',
 	contribution: {
 		role: 'lead',
+		collaboration: { team: 'Founders and Coders', employer: 'Founders and Coders', client: 'LIFT' },
 		contributionNote:
-			'Jason architected and built the Neo4j-backed grammar engine: the graph queries, the natural-language verb encoding, the magic-link authentication, and a cron-scheduled database nudge that power the Beacons backend.',
+			"Owned the Beacons backend end-to-end: a Neo4j grammar engine where statements decompose into subject/verb nodes, a compromise.js NLP pipeline that extracts verbs from the graph for semantic search, passwordless magic-link auth, and a Deno Cron job keeping the database warm.",
 	},
 	status: 'archived',
 	repoUrl: 'https://github.com/foundersandcoders/beacons-backend',
