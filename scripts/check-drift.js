@@ -100,7 +100,8 @@ async function git(args, cwd) {
 // Extended-regex alternation over Jason's git identities across repos, so the
 // "by me" metrics (recent commits, line churn) count his work and not a team's.
 // One editable place: a miss degrades to 0, never an error.
-const AUTHOR_PATTERN = 'Jason Warren|jasonwarren|jason@foundersandcoders\\.com';
+const AUTHOR_PATTERN =
+	'Jason Warren|jasonwarren|contact\\.jwarren@gmail\\.com|jason@yallacooperative\\.com|jason@foundersandcoders\\.com';
 
 // Trailing window for "recent" metrics. Appears in report output too.
 const RECENT_WINDOW = '4 weeks ago';
