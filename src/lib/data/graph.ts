@@ -361,16 +361,115 @@ export function getHubSlugs(projectList: Project[] = projects): Set<ProjectSlug>
 	return new Set(projectList.filter((p) => substanceScore(p) >= threshold).map((p) => p.slug));
 }
 
+// ---------------------------------------------------------------------------
+// Edge-crossing helpers (build-time only)
+// ---------------------------------------------------------------------------
+
+/**
+ * Returns true if segment AB crosses segment CD, sharing NO endpoint.
+ * Uses the CCW orientation test (cross-product sign).
+ */
+function segmentsIntersect(
+	ax: number, ay: number,
+	bx: number, by: number,
+	cx: number, cy: number,
+	dx: number, dy: number
+): boolean {
+	// Shared endpoint → not a crossing.
+	if ((ax === cx && ay === cy) || (ax === dx && ay === dy)) return false;
+	if ((bx === cx && by === cy) || (bx === dx && by === dy)) return false;
+
+	const cross = (ox: number, oy: number, px: number, py: number, qx: number, qy: number): number =>
+		(px - ox) * (qy - oy) - (py - oy) * (qx - ox);
+
+	const d1 = cross(cx, cy, dx, dy, ax, ay);
+	const d2 = cross(cx, cy, dx, dy, bx, by);
+	const d3 = cross(ax, ay, bx, by, cx, cy);
+	const d4 = cross(ax, ay, bx, by, dx, dy);
+
+	if (((d1 > 0 && d2 < 0) || (d1 < 0 && d2 > 0)) &&
+		((d3 > 0 && d4 < 0) || (d3 < 0 && d4 > 0))) return true;
+
+	// Collinear cases: treat as non-crossing to avoid false positives on
+	// T-junctions formed by shared-tech edges meeting at a hub.
+	return false;
+}
+
+/**
+ * Counts the number of crossing edge pairs in a settled candidate layout.
+ * O(E²) but E is small (~40 nodes, low-hundreds of edges) so cost is trivial.
+ * Tie-breaking secondary score: total edge length (lower is better).
+ */
+function scoreLayout(
+	nodes: SimNode[],
+	links: SimLink[]
+): { crossings: number; totalLength: number } {
+	const pos = new Map<string, { x: number; y: number }>();
+	for (const n of nodes) pos.set(n.slug, { x: n.x ?? 0, y: n.y ?? 0 });
+
+	// Resolve slug-keyed links (after simulation, source/target are still slugs
+	// because buildSimLinks uses string ids and forceLink resolves them internally
+	// by mutating; we re-resolve manually from the slug strings we passed in).
+	const resolved: Array<{ ax: number; ay: number; bx: number; by: number }> = [];
+	let totalLength = 0;
+	for (const link of links) {
+		const src = typeof link.source === 'object'
+			? (link.source as { slug: string }).slug
+			: (link.source as string);
+		const tgt = typeof link.target === 'object'
+			? (link.target as { slug: string }).slug
+			: (link.target as string);
+		const a = pos.get(src);
+		const b = pos.get(tgt);
+		if (!a || !b) continue;
+		resolved.push({ ax: a.x, ay: a.y, bx: b.x, by: b.y });
+		const dx = b.x - a.x;
+		const dy = b.y - a.y;
+		totalLength += Math.sqrt(dx * dx + dy * dy);
+	}
+
+	let crossings = 0;
+	for (let i = 0; i < resolved.length; i++) {
+		for (let j = i + 1; j < resolved.length; j++) {
+			const e = resolved[i];
+			const f = resolved[j];
+			if (segmentsIntersect(e.ax, e.ay, e.bx, e.by, f.ax, f.ay, f.bx, f.by)) {
+				crossings++;
+			}
+		}
+	}
+
+	return { crossings, totalLength };
+}
+
+// ---------------------------------------------------------------------------
+// Build-time force layout
+// ---------------------------------------------------------------------------
+
+/**
+ * How many distinct deterministic seeds to try. Each uses a different initial
+ * ring rotation; the layout with fewest edge crossings wins. 12 candidates
+ * cost ~12 × 320 ticks on ~40 nodes (sub-second) and yield a meaningfully
+ * better layout than a single seed by lottery.
+ */
+const LAYOUT_CANDIDATES = 12;
+
+/** Golden angle in radians — maximally spreads candidate seeds apart. */
+const GOLDEN_ANGLE = Math.PI * (3 - Math.sqrt(5));
+
 /**
  * Force-directed layout, run to completion at build time so the prerendered SVG
  * stays static (no runtime simulation, no JavaScript needed to view it).
  *
  * Position reflects connection: curated extraction/related edges pull hard,
  * shared-stack edges pull gently, charge separates, and collision keeps the
- * activity-scaled dots from overlapping. Determinism is guaranteed by fixed
- * initial positions (a ring by registry index), a fixed tick count, and
- * d3-force's own deterministic PRNG, so identical input yields identical
- * coordinates across builds.
+ * activity-scaled dots from overlapping.
+ *
+ * Determinism is guaranteed: all seeding uses only the integer candidate index
+ * (no Math.random), d3-force's own PRNG is deterministic given the same input,
+ * and the tick count is fixed — so identical input always yields identical
+ * coordinates across builds. The best-of-N pass selects the candidate with the
+ * fewest edge crossings (ties broken by shorter total edge length).
  */
 export function computeForceLayout(
 	graph: ProjectGraph,
@@ -383,47 +482,73 @@ export function computeForceLayout(
 	const maxWeight = Math.max(1, ...weights);
 
 	const radiusOf = (project: Project): number => {
-		const base = 16 + 26 * Math.sqrt(substanceScore(project) / maxWeight);
+		const base = 16 + 39 * Math.sqrt(substanceScore(project) / maxWeight);
 		// Hubs (p85 substance) keep a minimum radius so they read as network anchors.
-		return hubSlugs.has(project.slug) ? Math.max(34, base) : base;
+		return hubSlugs.has(project.slug) ? Math.max(43, base) : base;
 	};
 
-	// Deterministic initial placement: an even ring, ordered by registry index.
-	const nodes: SimNode[] = graph.nodes.map((node, index) => {
-		const angle = (2 * Math.PI * index) / graph.nodes.length - Math.PI / 2;
-		return {
-			slug: node.slug,
-			radius: radiusOf(node.project),
-			x: centre + size * 0.3 * Math.cos(angle),
-			y: centre + size * 0.3 * Math.sin(angle)
-		};
-	});
-
 	// All curated + shared-tech edges; constants live in buildSimLinks.
-	// The gentler shared-tech strength comment still applies (see buildSimLinks).
 	const links = buildSimLinks(graph.edges, sharedEdges);
 
-	const simulation = forceSimulation<SimNode>(nodes)
-		.force(
-			'link',
-			forceLink<SimNode, SimLink>(links)
-				.id((node) => node.slug)
-				.distance((link) => link.distance)
-				.strength((link) => link.strength)
-		)
-		.force('charge', forceManyBody<SimNode>().strength(-320))
-		.force('collide', forceCollide<SimNode>((node) => node.radius + 22).strength(1))
-		.force('centre', forceCenter<SimNode>(centre, centre))
-		.force('x', forceX<SimNode>(centre).strength(0.04))
-		.force('y', forceY<SimNode>(centre).strength(0.04))
-		.stop();
+	/**
+	 * Runs one candidate: a ring seeded with angle offset `seed * GOLDEN_ANGLE`,
+	 * ticked to convergence. Returns the settled SimNodes (mutated in place by d3).
+	 */
+	function runCandidate(seed: number): SimNode[] {
+		const angleOffset = seed * GOLDEN_ANGLE;
+		const nodes: SimNode[] = graph.nodes.map((node, index) => {
+			const angle = (2 * Math.PI * index) / graph.nodes.length - Math.PI / 2 + angleOffset;
+			return {
+				slug: node.slug,
+				radius: radiusOf(node.project),
+				x: centre + size * 0.3 * Math.cos(angle),
+				y: centre + size * 0.3 * Math.sin(angle)
+			};
+		});
 
-	// Run to convergence synchronously; no animation reaches the client.
-	for (let i = 0; i < 320; i++) simulation.tick();
+		// Re-build links each time so forceLink resolves fresh node references.
+		const candidateLinks = buildSimLinks(graph.edges, sharedEdges);
+
+		const simulation = forceSimulation<SimNode>(nodes)
+			.force(
+				'link',
+				forceLink<SimNode, SimLink>(candidateLinks)
+					.id((node) => node.slug)
+					.distance((link) => link.distance)
+					.strength((link) => link.strength)
+			)
+			.force('charge', forceManyBody<SimNode>().strength(-320))
+			.force('collide', forceCollide<SimNode>((node) => node.radius + 22).strength(1))
+			.force('centre', forceCenter<SimNode>(centre, centre))
+			.force('x', forceX<SimNode>(centre).strength(0.04))
+			.force('y', forceY<SimNode>(centre).strength(0.04))
+			.stop();
+
+		for (let i = 0; i < 320; i++) simulation.tick();
+
+		return nodes;
+	}
+
+	// Run all candidates and pick the one with fewest crossings (shorter total
+	// edge length as tiebreaker). Seed 0 is the canonical ring (original
+	// behaviour baseline); subsequent seeds rotate the ring by golden-angle
+	// increments for maximally diverse starting configurations.
+	const candidates = Array.from({ length: LAYOUT_CANDIDATES }, (_, seed) => {
+		const settled = runCandidate(seed);
+		return { settled, ...scoreLayout(settled, links) };
+	});
+
+	const best = candidates.reduce((a, b) =>
+		b.crossings < a.crossings || (b.crossings === a.crossings && b.totalLength < a.totalLength)
+			? b
+			: a
+	);
+
+	const winner = best.settled;
 
 	// Normalise the settled cloud to fill the canvas with uniform scaling.
-	const xs = nodes.map((n) => n.x ?? centre);
-	const ys = nodes.map((n) => n.y ?? centre);
+	const xs = winner.map((n) => n.x ?? centre);
+	const ys = winner.map((n) => n.y ?? centre);
 	const minX = Math.min(...xs);
 	const maxX = Math.max(...xs);
 	const minY = Math.min(...ys);
@@ -437,7 +562,7 @@ export function computeForceLayout(
 	const offsetY = pad + (usable - spanY * scale) / 2;
 
 	const positions = new Map<ProjectSlug, Point>();
-	for (const node of nodes) {
+	for (const node of winner) {
 		positions.set(node.slug, {
 			x: offsetX + ((node.x ?? centre) - minX) * scale,
 			y: offsetY + ((node.y ?? centre) - minY) * scale
