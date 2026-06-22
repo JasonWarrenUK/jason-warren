@@ -3,6 +3,8 @@
 	import { base } from '$app/paths';
 	import { page } from '$app/stores';
 	import type { ThemeWithProjects } from '$lib/data/themes.js';
+	import { writeParam } from '$lib/url-write.js';
+	import SelectionModal from '$lib/components/ui/SelectionModal.svelte';
 
 	interface Props {
 		themes: ThemeWithProjects[];
@@ -42,6 +44,20 @@
 	);
 	// Hover overrides the pin; releasing the pointer/focus falls back to it.
 	const effectiveSlug = $derived(activeSlug ?? pinnedSlug);
+
+	// Modal state: the project chip the user clicked (full variant only).
+	let selected = $state<{ slug: string; name: string } | null>(null);
+
+	function openModal(slug: string, name: string): void {
+		selected = { slug, name };
+	}
+
+	function pinSelected(): void {
+		if (!selected) return;
+		// Toggle: clicking the already-pinned project clears the pin.
+		writeParam('project', pinnedSlug === selected.slug ? null : selected.slug);
+		selected = null;
+	}
 </script>
 
 {#if variant === 'compact'}
@@ -82,11 +98,13 @@
 									href="{base}/projects/{project.slug}"
 									class="themes__chip"
 									class:themes__chip--active={effectiveSlug === project.slug}
+									class:themes__chip--pinned={pinnedSlug === project.slug}
 									class:themes__chip--spanning={spans}
 									class:themes__chip--dimmed={effectiveSlug !== null &&
 										effectiveSlug !== project.slug}
-									onmouseenter={() => (activeSlug = project.slug)}
-									onmouseleave={() => (activeSlug = null)}
+									onclick={(e) => { e.preventDefault(); openModal(project.slug, project.name); }}
+									onpointerenter={() => (activeSlug = project.slug)}
+									onpointerleave={() => (activeSlug = null)}
 									onfocus={() => (activeSlug = project.slug)}
 									onblur={() => (activeSlug = null)}
 								>
@@ -107,6 +125,29 @@
 			Diamonds mark projects that span more than one territory. Hover a project to trace it across themes.
 		</p>
 	</section>
+
+	{#if selected !== null}
+		{@const isPinned = pinnedSlug === selected.slug}
+		<SelectionModal
+			open={true}
+			title={selected.name}
+			onclose={() => (selected = null)}
+		>
+			<button
+				type="button"
+				class="modal-action modal-action--primary"
+				onclick={pinSelected}
+			>
+				{isPinned ? 'Unpin' : 'Pin this project'}
+			</button>
+			<a
+				href="{base}/projects/{selected.slug}"
+				class="modal-action modal-action--secondary"
+			>
+				Go to project
+			</a>
+		</SelectionModal>
+	{/if}
 {/if}
 
 <style>
@@ -194,9 +235,60 @@
 		border-color: var(--color-border-strong);
 	}
 
+	/* Pinned chip: stays highlighted after hover leaves */
+	.themes__chip--pinned {
+		color: var(--color-primary-text);
+		background-color: var(--color-primary-bg);
+		border-color: var(--color-primary);
+	}
+
 	.themes__chip:focus-visible {
 		outline: 2px solid var(--color-primary-text);
 		outline-offset: 2px;
+	}
+
+	/* Modal action buttons */
+	.modal-action {
+		display: block;
+		width: 100%;
+		padding: var(--space-3) var(--space-4);
+		border-radius: var(--radius-md);
+		font-size: var(--text-sm);
+		font-weight: 600;
+		text-align: center;
+		text-decoration: none;
+		cursor: pointer;
+		transition:
+			background-color var(--transition-fast),
+			border-color var(--transition-fast),
+			color var(--transition-fast);
+	}
+
+	.modal-action:focus-visible {
+		outline: 2px solid var(--color-primary-text);
+		outline-offset: 2px;
+	}
+
+	.modal-action--primary {
+		background-color: var(--color-primary-bg);
+		border: 1px solid var(--color-primary);
+		color: var(--color-primary-text);
+	}
+
+	.modal-action--primary:hover {
+		background-color: var(--color-primary);
+		color: var(--color-surface);
+	}
+
+	.modal-action--secondary {
+		background-color: var(--color-surface);
+		border: 1px solid var(--color-border);
+		color: var(--color-text-subtle);
+	}
+
+	.modal-action--secondary:hover {
+		border-color: var(--color-border-strong);
+		color: var(--color-text);
 	}
 
 	.themes__note {
