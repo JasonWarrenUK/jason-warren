@@ -165,6 +165,8 @@ _None._
 
 - [ ] 5DR.1. Boundary doc: define the core-engine vs Svelte-integration contract (what each layer owns)
 - [ ] 5DR.2. Coupling inventory: annotate the 6 couplings in code with their resolution path (light task — the map already exists)
+- [ ] 5DR.13. `drift init` scaffold verb: generate `src/lib/data/sources.local.json` with the correct structure but empty `paths`, replacing the manual `cp sources.local.json.example sources.local.json` step (models the file-writing pattern in `runExclude`/`runAccept`)
+- [ ] 5DR.14. Rename Drift verbs so they signpost intent more clearly (e.g. `update`/`accept`/`exclude` → clearer names); updates `KNOWN_VERBS`, the dispatch switch, and help text. Breaking change to the CLI surface — best landed before the new verbs to avoid renaming churn
 
 <a name="m5-blocked"><h4>Blocked (Milestone 5)</h4></a>
 
@@ -177,6 +179,9 @@ _None._
 - [ ] 5DR.9. Drift docs: config reference, data model, metric-precedence lifecycle diagram — **depends on 5DR.5, 5DR.6**
 - [ ] 5DR.10. Authoring guide: document which fields Drift populates automatically vs which require / accept hand-authored values, and where override files live — a short dev-facing reference so the authoring workflow is unambiguous — **depends on 5DR.1, 5DR.5**
 - [ ] 5DR.11. Drift `audit` verb: score every authored entry against the content-depth rubric (`docs/audits/content-depth.md`) and emit a per-entry tier report; the automated successor to the 1CO.1 manual audit — **depends on 5DR.5, 5DR.6**
+- [ ] 5DR.15. `drift author <slug>` verb: create `src/lib/data/projects/<slug>.ts` from a template if absent, then open it in `$EDITOR` (spawn precedent: the prettier `spawnSync` at the top of the script) — **depends on 5DR.6**
+- [ ] 5DR.16. `drift pin <slug>` verb: set `pin: true` in the slug's `.ts` overlay (creating the overlay if needed); pin/hide live only in overlays, never JSON — **depends on 5DR.6**
+- [ ] 5DR.17. `drift hide <slug>` verb: set `hide: true` in the slug's `.ts` overlay (creating the overlay if needed) — **depends on 5DR.6**
 
 <a name="m5-done"><h4>Completed (Milestone 5)</h4></a>
 
@@ -307,6 +312,11 @@ flowchart TD
 	5DR.10["`*5DR.10*<br/>**Drift**<br/>authoring guide`"]:::blocked
 	5DR.11["`*5DR.11*<br/>**Drift**<br/>audit verb`"]:::blocked
 	5DR.12["`*5DR.12*<br/>**Drift**<br/>npm → Bun migration`"]:::done
+	5DR.13["`*5DR.13*<br/>**Drift**<br/>init scaffold verb`"]:::open
+	5DR.14["`*5DR.14*<br/>**Drift**<br/>rename verbs`"]:::open
+	5DR.15["`*5DR.15*<br/>**Drift**<br/>author verb`"]:::blocked
+	5DR.16["`*5DR.16*<br/>**Drift**<br/>pin verb`"]:::blocked
+	5DR.17["`*5DR.17*<br/>**Drift**<br/>hide verb`"]:::blocked
 
 	%% M5 — deps
 	5DR.0 --> 5DR.1
@@ -326,6 +336,9 @@ flowchart TD
 	5DR.4 --> 5DR.6
 	5DR.12 --> 5DR.6
 	5DR.12 --> 5DR.8
+	5DR.6 --> 5DR.15
+	5DR.6 --> 5DR.16
+	5DR.6 --> 5DR.17
 
 	%% M5 track completers → m5
 	5DR.7 --> m5
@@ -333,6 +346,11 @@ flowchart TD
 	5DR.9 --> m5
 	5DR.10 --> m5
 	5DR.11 --> m5
+	5DR.13 --> m5
+	5DR.14 --> m5
+	5DR.15 --> m5
+	5DR.16 --> m5
+	5DR.17 --> m5
 
 	%% ── Cross-milestone gates ────────────────────────────────────────
 	1CO.2 ==>|gates OG| 4QU.4
