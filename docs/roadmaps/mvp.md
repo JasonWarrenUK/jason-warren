@@ -12,7 +12,7 @@ The site is live and substantially built (full routes, graph/timeline/map/toolki
 | **Features** | Search absent; map/timeline/toolkit selections now deep-linkable; filters URL-backed but single-select         | Multi-select filters, cross-view continuity, new viz  | Search (needs multi-select)                                          |
 | **Design**   | Reasonable Colors tokens, dark mode                                                                            | Visual identity, then typography/motion               | Direction decision first                                             |
 | **Quality**  | Strict types, data-integrity tests, prerendered                                                                | Interaction test coverage (4QU.5)                     | a11y audit and SEO blocked on 4QU.5; new-view a11y blocked on M2 viz |
-| **Drift**    | 2.5k-line CLI, manifest registry, cache, verbs, Bun migration                                                  | Config layer, engine/integration split                | Most decoupling tasks (sequence)                                     |
+| **Drift**    | 2.5k-line CLI, manifest registry, cache, verbs, Bun migration                                                  | Config layer, engine/integration split (M5); tests & docs after (M6) | Most decoupling tasks (sequence)                                     |
 
 ---
 
@@ -23,7 +23,8 @@ The site is live and substantially built (full routes, graph/timeline/map/toolki
   - [Milestone 2: Exploration & New Features](#m2)
   - [Milestone 3: Design & Interaction Polish](#m3)
   - [Milestone 4: Quality & Reach](#m4)
-  - [Milestone 5: Drift Decoupling](#m5)
+  - [Milestone 5: Drift Decoupling — Engine & Verbs](#m5)
+  - [Milestone 6: Drift — Tests & Docs](#m6)
 - [Progress Map](#map)
 - [Links](#links)
 - [Beyond MVP](#post-mvp)
@@ -102,8 +103,8 @@ _None._
 
 <a name="m3-todo"><h4>To Do (Milestone 3)</h4></a>
 
-- [ ] 3DE.0. Define visual direction / signature — mood, type pairing, motion language, graph styling principles; the foundation everything else depends on
-- [ ] 3DE.2. Responsive audit: map / timeline / grids on small viewports (independent of direction decision)
+- [ ] 3DE.0. Define visual direction / signature — mood, type pairing, motion language, graph styling principles; the foundation everything else depends on — **depends on m1, m2**
+- [ ] 3DE.2. Responsive audit: map / timeline / grids on small viewports — **depends on 3DE.3, 3DE.4** (the motion and aesthetics passes must land first so the audit covers the settled design)
 
 <a name="m3-blocked"><h4>Blocked (Milestone 3)</h4></a>
 
@@ -129,8 +130,8 @@ _None._
 
 <a name="m4-todo"><h4>To Do (Milestone 4)</h4></a>
 
-- [ ] 4QU.5. Component / interaction test coverage for the connection views (beyond existing data-integrity tests)
-- [ ] 4QU.4. Confirm OG image coverage for every route and project
+- [ ] 4QU.5. Component / interaction test coverage for the connection views (beyond existing data-integrity tests) — **depends on 2FE.1–2FE.8** (tests cover the complete feature set)
+- [ ] 4QU.4. Confirm OG image coverage for every route and project — **depends on 2FE.1–2FE.8** (new routes and views must exist before coverage can be confirmed)
 
 <a name="m4-blocked"><h4>Blocked (Milestone 4)</h4></a>
 
@@ -144,10 +145,10 @@ _None yet._
 
 ---
 
-<a name="m5"><h3>Milestone 5: Drift Decoupling</h3></a>
+<a name="m5"><h3>Milestone 5: Drift Decoupling — Engine & Verbs</h3></a>
 
 > [!IMPORTANT]
-> **Goal:** Break Drift's 6 hard-coded portfolio couplings into a config-driven design, producing a clean internal boundary: a framework-agnostic core engine (emits typed/JSON data) alongside a Svelte integration layer. Stays in this repo — packaging and distribution is Beyond MVP. The unbuilt in-repo backlog (branch awareness, `in-progress.json` staging pipeline, docs) gets built correctly inside this decoupled design rather than separately.
+> **Goal:** Break Drift's 6 hard-coded portfolio couplings into a config-driven design, producing a clean internal boundary: a framework-agnostic core engine (emits typed/JSON data) alongside a Svelte integration layer. Stays in this repo — packaging and distribution is Beyond MVP. The unbuilt in-repo backlog (branch awareness, `in-progress.json` staging pipeline, new verbs) gets built correctly inside this decoupled design rather than separately. Test suites and developer docs land in Milestone 6 once the engine is stable.
 
 The 6 couplings to resolve (all in `scripts/check-drift.js`):
 
@@ -175,9 +176,6 @@ _None._
 - [ ] 5DR.5. Define engine's public data schema (the typed/JSON output contract) — **depends on 5DR.1**
 - [ ] 5DR.6. Split core engine from Svelte integration: move `.ts`-scraping (`curatedLanguages`/`curatedStatus`) into the integration layer — **depends on 5DR.3, 5DR.4, 5DR.12**
 - [ ] 5DR.7. Build subsumed in-repo backlog inside the decoupled design: branch awareness (Phase 5 of `drift-improvement-plan.md`) + `in-progress.json` staging pipeline (Phase 6) — **depends on 5DR.6**
-- [ ] 5DR.8. Engine test suite: config resolution, fingerprinting, drift computation — **depends on 5DR.6, 5DR.12**
-- [ ] 5DR.9. Drift docs: config reference, data model, metric-precedence lifecycle diagram — **depends on 5DR.5, 5DR.6**
-- [ ] 5DR.10. Authoring guide: document which fields Drift populates automatically vs which require / accept hand-authored values, and where override files live — a short dev-facing reference so the authoring workflow is unambiguous — **depends on 5DR.1, 5DR.5**
 - [ ] 5DR.11. Drift `audit` verb: score every authored entry against the content-depth rubric (`docs/audits/content-depth.md`) and emit a per-entry tier report; the automated successor to the 1CO.1 manual audit — **depends on 5DR.5, 5DR.6**
 - [ ] 5DR.13. `drift init` scaffold verb: generate `src/lib/data/sources.local.json` with the correct structure but empty `paths`, replacing the manual `cp sources.local.json.example sources.local.json` step (models the file-writing pattern in `runExclude`/`runAccept`) — **depends on 5DR.14**
 - [ ] 5DR.15. `drift author <slug>` verb: create `src/lib/data/projects/<slug>.ts` from a template if absent, then open it in `$EDITOR` (spawn precedent: the prettier `spawnSync` at the top of the script) — **depends on 5DR.6, 5DR.14**
@@ -188,6 +186,31 @@ _None._
 
 - [x] 5DR.0. Drift CLI foundation: subcommand dispatcher, async fingerprinting + cache, manifest-driven registry, shared tag taxonomy, gum interactive UX, `snapshot` / `report` / `exclude` verbs (shipped in-repo; see `docs/drift-improvement-plan.md`)
 - [x] 5DR.12. Migrate repo package manager from npm to Bun: switch lockfile (`bun install`, delete `package-lock.json`), update the four drift scripts in `package.json` from `node scripts/check-drift.js` to `bun run`, confirm Vite/Vitest/svelte-check all run under Bun — the portfolio should dogfood the preferred toolkit, and a Bun-native runtime is a prerequisite for packaging Drift as a distributable CLI
+
+---
+
+<a name="m6"><h3>Milestone 6: Drift — Tests & Docs</h3></a>
+
+> [!IMPORTANT]
+> **Goal:** Once the engine is stable (M5 complete), lock it down with a test suite and document it for future maintainers. A tested, documented engine is a shippable one.
+
+<a name="m6-doing"><h4>In Progress (Milestone 6)</h4></a>
+
+_None._
+
+<a name="m6-todo"><h4>To Do (Milestone 6)</h4></a>
+
+_None._
+
+<a name="m6-blocked"><h4>Blocked (Milestone 6)</h4></a>
+
+- [ ] 5DR.8. Engine test suite: config resolution, fingerprinting, drift computation — **depends on 5DR.6, 5DR.12**
+- [ ] 5DR.9. Drift docs: config reference, data model, metric-precedence lifecycle diagram — **depends on 5DR.5, 5DR.6**
+- [ ] 5DR.10. Authoring guide: document which fields Drift populates automatically vs which require / accept hand-authored values, and where override files live — a short dev-facing reference so the authoring workflow is unambiguous — **depends on 5DR.1, 5DR.5**
+
+<a name="m6-done"><h4>Completed (Milestone 6)</h4></a>
+
+_None yet._
 
 ---
 
@@ -228,6 +251,7 @@ flowchart TD
 
 	%% M1 track completers → m1
 	1CO.6 --> m1
+	1CO.7 --> m1
 	1CO.8 --> m1
 	1CO.10 --> m1
 
@@ -249,13 +273,13 @@ flowchart TD
 	2FE.4 --> 2FE.1
 	2FE.6 --> 2FE.7
 	2FE.2 --> 2FE.8
+	%% B2: 2FE.1, 2FE.5, 2FE.7 gate 2FE.3 (polish is the final integration step)
+	2FE.1 --> 2FE.3
+	2FE.5 --> 2FE.3
+	2FE.7 --> 2FE.3
 
-	%% M2 track completers → m2
-	2FE.1 --> m2
-	2FE.5 --> m2
-	2FE.6 --> m2
+	%% M2 track completers → m2 (B2: only 2FE.3 and 2FE.8; B3: 2FE.6 removed)
 	2FE.3 --> m2
-	2FE.7 --> m2
 	2FE.8 --> m2
 
 	%% ── Milestone 3: Design & Interaction Polish ──────────────────────
@@ -269,6 +293,9 @@ flowchart TD
 	3DE.5["`*3DE.5*<br/>**Design**<br/>colour consistency`"]:::blocked
 
 	%% M3 — deps
+	%% B4: 3DE.0 starts after M1 & M2 are complete
+	m1 --> 3DE.0
+	m2 --> 3DE.0
 	3DE.0 --> 3DE.1
 	3DE.0 --> 3DE.3
 	3DE.0 --> 3DE.4
@@ -276,9 +303,9 @@ flowchart TD
 	3DE.1 --> 3DE.3
 	3DE.5 --> 3DE.4
 
-	%% M3 track completers → m3
-	3DE.3 --> m3
-	3DE.4 --> m3
+	%% M3 track completers → m3 (B5: 3DE.3 and 3DE.4 gate 3DE.2; only 3DE.2 gates m3)
+	3DE.3 --> 3DE.2
+	3DE.4 --> 3DE.2
 	3DE.2 --> m3
 
 	%% ── Milestone 4: Quality & Reach ─────────────────────────────────
@@ -294,14 +321,34 @@ flowchart TD
 	4QU.5 --> 4QU.1
 	4QU.1 --> 4QU.3
 	4QU.1 --> 4QU.7
+	%% B6: 4QU.4 and 4QU.5 gated by all 2FE features they test
+	2FE.1 --> 4QU.4
+	2FE.2 --> 4QU.4
+	2FE.3 --> 4QU.4
+	2FE.4 --> 4QU.4
+	2FE.5 --> 4QU.4
+	2FE.6 --> 4QU.4
+	2FE.7 --> 4QU.4
+	2FE.8 --> 4QU.4
+	2FE.1 --> 4QU.5
+	2FE.2 --> 4QU.5
+	2FE.3 --> 4QU.5
+	2FE.4 --> 4QU.5
+	2FE.5 --> 4QU.5
+	2FE.6 --> 4QU.5
+	2FE.7 --> 4QU.5
+	2FE.8 --> 4QU.5
 
 	%% M4 track completers → m4
 	4QU.3 --> m4
 	4QU.4 --> m4
 	4QU.7 --> m4
 
-	%% ── Milestone 5: Drift Decoupling ────────────────────────────────
-	m5{"`**Milestone 5**<br/>Drift Decoupling`"}:::mile
+	%% ── Milestone 5: Drift Decoupling — Engine & Verbs ──────────────
+	m5{"`**Milestone 5**<br/>Drift: Engine & Verbs`"}:::mile
+
+	%% ── Milestone 6: Drift — Tests & Docs ───────────────────────────
+	m6{"`**Milestone 6**<br/>Drift: Tests & Docs`"}:::mile
 
 	5DR.0["`*5DR.0*<br/>**Drift**<br/>CLI foundation`"]:::done
 	5DR.1["`*5DR.1*<br/>**Drift**<br/>boundary doc`"]:::open
@@ -348,17 +395,19 @@ flowchart TD
 	5DR.14 --> 5DR.16
 	5DR.14 --> 5DR.17
 
-	%% M5 track completers → m5
+	%% M5 track completers → m5 (engine + verbs)
 	5DR.7 --> m5
-	5DR.8 --> m5
-	5DR.9 --> m5
-	5DR.10 --> m5
 	5DR.11 --> m5
 	5DR.13 --> m5
 	5DR.14 --> m5
 	5DR.15 --> m5
 	5DR.16 --> m5
 	5DR.17 --> m5
+
+	%% M6 track completers → m6 (tests + docs)
+	5DR.8 --> m6
+	5DR.9 --> m6
+	5DR.10 --> m6
 
 	%% ── Cross-milestone gates ────────────────────────────────────────
 	1CO.2 ==>|gates OG| 4QU.4
@@ -375,6 +424,7 @@ flowchart TD
 	m3 --> SHIP
 	m4 --> SHIP
 	m5 --> SHIP
+	m6 --> SHIP
 
 	classDef open     fill:#fff3fc,stroke:#740068,color:#44003c;
 	classDef blocked  fill:#fff8f3,stroke:#ac5c00,color:#371d00;
