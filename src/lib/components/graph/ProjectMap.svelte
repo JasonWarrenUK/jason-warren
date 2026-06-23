@@ -9,7 +9,8 @@
 	import { writeParam } from '$lib/url-write.js';
 	import SelectionModal from '$lib/components/ui/SelectionModal.svelte';
 	import type { GraphEdge, LiveSimNode, SharedTechEdge } from '$lib/data/graph.js';
-	import { buildSimLinks, createForceSimulation } from '$lib/data/graph.js';
+	import { buildSimLinks, createForceSimulation, computeRelayoutTargets } from '$lib/data/graph.js';
+	import { validatePin, nextPinValue, projectHref } from '$lib/selection.js';
 	import { forceLink as d3ForceLink } from 'd3-force';
 	import {
 		statusColour,
@@ -134,11 +135,9 @@
 	// The pin is separate from the transient hover activeSlug. A pinned node
 	// stays highlighted after the pointer leaves, making the selection shareable.
 	const pinnedParam = $derived(browser ? $page.url.searchParams.get('project') : null);
-	// Validate the pin against the nodes actually present; a stale link must
-	// never dim the whole graph with nothing highlighted.
-	const pinnedSlug = $derived(
-		pinnedParam !== null && positions.has(pinnedParam) ? pinnedParam : null
-	);
+	// Validate the pin via the shared helper: stale / absent → null so a dead
+	// link never dims the whole graph with nothing highlighted.
+	const pinnedSlug = $derived(validatePin(pinnedParam, (slug) => positions.has(slug)));
 	// Hover overrides the pin; releasing the pointer/focus falls back to it.
 	const effectivePinnedSlug = $derived(activeSlug ?? pinnedSlug);
 
@@ -151,8 +150,7 @@
 
 	function pinSelected(): void {
 		if (!selected) return;
-		// Toggle: clicking the already-pinned node clears the pin.
-		writeParam('project', pinnedSlug === selected.slug ? null : selected.slug);
+		writeParam('project', nextPinValue(pinnedSlug, selected.slug));
 		selected = null;
 	}
 
@@ -344,6 +342,7 @@
 		// The curEdges/curShared reads must precede the firstRun guard so that
 		// Svelte still registers the dependency on the first (no-op) pass.
 		let firstRun = true;
+		let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 		const stopEffect = $effect.root(() => {
 			$effect(() => {
 				// Snapshot the current visible edges (touches reactive state so Svelte tracks it).
@@ -357,28 +356,55 @@
 					return;
 				}
 
-				// Replace the link force with only the currently-visible edges, then reheat.
-				// d3-force exposes the forceLink instance via sim.force('link'); calling
-				// .links() on it updates the data in place without rebuilding the simulation.
-				const fl = sim.force<ReturnType<typeof d3ForceLink>>('link');
-				if (fl) {
-					fl.links(buildSimLinks(curEdges, curShared) as never);
+				// Under reduced-motion, skip debounce — run synchronously and snap.
+				if (prefersReducedMotion) {
+					const targets = computeRelayoutTargets(
+						{ nodes: simNodes, visibleEdges: curEdges, visibleSharedEdges: curShared, size },
+						{ candidates: 5, ticks: 220 }
+					);
+					for (const n of simNodes) {
+						const t = targets.get(n.slug);
+						if (t) { n.x = t.x; n.y = t.y; }
+					}
+					const fl = sim.force<ReturnType<typeof d3ForceLink>>('link');
+					if (fl) fl.links(buildSimLinks(curEdges, curShared) as never);
+					for (let i = 0; i < 60; i++) sim.tick();
+					flush();
+					return;
 				}
 
-				sim.alpha(0.5).restart();
+				// Debounce rapid filter toggles (~120ms) so we don't stack lotteries
+				// during quick chip-clicking, then run the reduced best-of-N relayout.
+				if (debounceTimer !== null) clearTimeout(debounceTimer);
+				debounceTimer = setTimeout(() => {
+					debounceTimer = null;
 
-				if (!prefersReducedMotion) {
+					// Run a reduced seeded lottery over the visible subgraph to find a
+					// low-crossing topology, then seed the live nodes toward it. The sim
+					// then relaxes from that target, preserving physical motion.
+					const targets = computeRelayoutTargets(
+						{ nodes: simNodes, visibleEdges: curEdges, visibleSharedEdges: curShared, size },
+						{ candidates: 5, ticks: 220 }
+					);
+					for (const n of simNodes) {
+						const t = targets.get(n.slug);
+						if (t) { n.x = t.x; n.y = t.y; }
+					}
+
+					// Re-feed the link force with only the now-visible edges.
+					const fl = sim.force<ReturnType<typeof d3ForceLink>>('link');
+					if (fl) fl.links(buildSimLinks(curEdges, curShared) as never);
+
+					sim.alpha(0.5).restart();
 					cancelAnimationFrame(rafId);
 					rafId = requestAnimationFrame(loop);
-				} else {
-					for (let i = 0; i < 320; i++) sim.tick();
-					flush();
-				}
+				}, 120);
 			});
 		});
 
 		return () => {
 			cancelAnimationFrame(rafId);
+			if (debounceTimer !== null) clearTimeout(debounceTimer);
 			sim.stop();
 			stopEffect();
 		};
@@ -549,7 +575,7 @@
 			{isPinned ? 'Unpin' : 'Pin this project'}
 		</button>
 		<a
-			href="{base}/projects/{selected.slug}"
+			href={projectHref(base, selected.slug)}
 			class="modal-action modal-action--secondary"
 		>
 			Go to project

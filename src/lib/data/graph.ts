@@ -399,9 +399,12 @@ function segmentsIntersect(
  * Counts the number of crossing edge pairs in a settled candidate layout.
  * O(E²) but E is small (~40 nodes, low-hundreds of edges) so cost is trivial.
  * Tie-breaking secondary score: total edge length (lower is better).
+ *
+ * Accepts both `SimNode` (build-time) and `LiveSimNode` (client-time) since
+ * both carry `slug`, `x?`, and `y?`.
  */
 function scoreLayout(
-	nodes: SimNode[],
+	nodes: Array<{ slug: ProjectSlug; x?: number; y?: number }>,
 	links: SimLink[]
 ): { crossings: number; totalLength: number } {
 	const pos = new Map<string, { x: number; y: number }>();
@@ -443,6 +446,38 @@ function scoreLayout(
 }
 
 // ---------------------------------------------------------------------------
+// Shared force-simulation constants
+// ---------------------------------------------------------------------------
+
+/**
+ * Force constants shared by the build-time best-of-N layout and the
+ * client-side relayout lottery. Centralised so both paths stay in lockstep.
+ */
+export const FORCE_TUNING = {
+	/** Repulsion strength (negative = repel). */
+	chargeStrength: -320,
+	/** Extra padding around each node radius for collision detection. */
+	collidePadding: 22,
+	/** Weak pull toward the canvas centre on each axis. */
+	axisStrength: 0.04,
+	/** Fraction of canvas size used as the initial ring radius. */
+	ringRadiusFactor: 0.3,
+	/** Fixed tick count per candidate (build-time and relayout lottery). */
+	ticks: 320
+} as const;
+
+/**
+ * Thin export so tests can assert crossing counts without duplicating the
+ * geometry. Wraps the private `scoreLayout`.
+ */
+export function countCrossings(
+	nodes: Array<{ slug: ProjectSlug; x?: number; y?: number }>,
+	links: SimLink[]
+): number {
+	return scoreLayout(nodes, links).crossings;
+}
+
+// ---------------------------------------------------------------------------
 // Build-time force layout
 // ---------------------------------------------------------------------------
 
@@ -456,6 +491,113 @@ const LAYOUT_CANDIDATES = 12;
 
 /** Golden angle in radians — maximally spreads candidate seeds apart. */
 const GOLDEN_ANGLE = Math.PI * (3 - Math.sqrt(5));
+
+// ---------------------------------------------------------------------------
+// Client-side relayout lottery
+// ---------------------------------------------------------------------------
+
+export interface RelayoutInput {
+	/** Live node array (positions used as seed reference; radii copied). */
+	nodes: LiveSimNode[];
+	/** Only edges currently visible on the map. */
+	visibleEdges: GraphEdge[];
+	/** Only shared-tech edges currently visible. */
+	visibleSharedEdges: SharedTechEdge[];
+	/** Canvas size in pixels — must match the SVG viewBox. */
+	size?: number;
+}
+
+export interface RelayoutOptions {
+	/** Number of seeded candidates to try. Default: 5. */
+	candidates?: number;
+	/** Synchronous ticks per candidate. Default: 220. */
+	ticks?: number;
+}
+
+/**
+ * Deterministic reduced best-of-N layout lottery over the VISIBLE subgraph.
+ *
+ * Runs `candidates` seeded ring configurations (identical force parameters to
+ * the build-time pass, using `FORCE_TUNING`), counts crossings via
+ * `scoreLayout`, and returns the lowest-crossing candidate's positions.
+ *
+ * Intended as a filter-toggle reheat seed: write the returned positions into
+ * the live `simNodes`, re-feed links, then `sim.alpha(0.5).restart()`. The
+ * live sim relaxes from the low-crossing starting topology rather than from
+ * wherever it last settled (which may be tangled).
+ *
+ * Properties:
+ * - No `Math.random` — fully deterministic given the same visible subgraph.
+ * - No DOM — safe to call on the main thread.
+ * - Does NOT normalise-to-canvas (the running sim's centre/x/y forces reframe).
+ * - Hidden-only nodes are omitted from the returned Map.
+ */
+export function computeRelayoutTargets(
+	input: RelayoutInput,
+	options: RelayoutOptions = {}
+): Map<ProjectSlug, Point> {
+	const { nodes, visibleEdges, visibleSharedEdges, size = 1000 } = input;
+	const { candidates = 5, ticks = 220 } = options;
+	const centre = size / 2;
+	const links = buildSimLinks(visibleEdges, visibleSharedEdges);
+
+	// Determine the visible node set (only nodes incident to a visible edge,
+	// or all nodes — using all keeps the relayout sensible when edges are hidden
+	// but nodes remain).
+	const candidateResults = Array.from({ length: candidates }, (_, seed) => {
+		const angleOffset = seed * GOLDEN_ANGLE;
+		const simNodes: SimNode[] = nodes.map((n, index) => {
+			const angle =
+				(2 * Math.PI * index) / nodes.length - Math.PI / 2 + angleOffset;
+			return {
+				slug: n.slug,
+				radius: n.radius,
+				x: centre + size * FORCE_TUNING.ringRadiusFactor * Math.cos(angle),
+				y: centre + size * FORCE_TUNING.ringRadiusFactor * Math.sin(angle)
+			};
+		});
+
+		const candidateLinks = buildSimLinks(visibleEdges, visibleSharedEdges);
+
+		const sim = forceSimulation<SimNode>(simNodes)
+			.force(
+				'link',
+				forceLink<SimNode, SimLink>(candidateLinks)
+					.id((n) => n.slug)
+					.distance((l) => l.distance)
+					.strength((l) => l.strength)
+			)
+			.force('charge', forceManyBody<SimNode>().strength(FORCE_TUNING.chargeStrength))
+			.force(
+				'collide',
+				forceCollide<SimNode>((n) => n.radius + FORCE_TUNING.collidePadding).strength(1)
+			)
+			.force('centre', forceCenter<SimNode>(centre, centre))
+			.force('x', forceX<SimNode>(centre).strength(FORCE_TUNING.axisStrength))
+			.force('y', forceY<SimNode>(centre).strength(FORCE_TUNING.axisStrength))
+			.stop();
+
+		for (let i = 0; i < ticks; i++) sim.tick();
+
+		return { simNodes, ...scoreLayout(simNodes, links) };
+	});
+
+	const best = candidateResults.reduce((a, b) =>
+		b.crossings < a.crossings || (b.crossings === a.crossings && b.totalLength < a.totalLength)
+			? b
+			: a
+	);
+
+	const positions = new Map<ProjectSlug, Point>();
+	for (const n of best.simNodes) {
+		positions.set(n.slug, { x: n.x ?? centre, y: n.y ?? centre });
+	}
+	return positions;
+}
+
+// ---------------------------------------------------------------------------
+// Build-time force layout
+// ---------------------------------------------------------------------------
 
 /**
  * Force-directed layout, run to completion at build time so the prerendered SVG

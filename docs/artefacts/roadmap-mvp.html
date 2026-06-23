@@ -1099,8 +1099,8 @@
 
 			<div class="hero animate" style="--i: 4">
 				<div>
-					<div class="hero__big">11<span>/47</span></div>
-					<div class="hero__label">tasks complete &middot; 23%</div>
+					<div class="hero__big">15<span>/47</span></div>
+					<div class="hero__label">tasks complete &middot; 32%</div>
 				</div>
 				<div class="hero__breakdown">
 					<div class="stat stat--prog">
@@ -1108,7 +1108,7 @@
 						<div class="stat__lab">In progress</div>
 					</div>
 					<div class="stat stat--todo">
-						<div class="stat__num">6</div>
+						<div class="stat__num">2</div>
 						<div class="stat__lab">To do</div>
 					</div>
 					<div class="stat stat--blk">
@@ -1116,7 +1116,7 @@
 						<div class="stat__lab">Blocked</div>
 					</div>
 					<div class="stat stat--done">
-						<div class="stat__num">11</div>
+						<div class="stat__num">15</div>
 						<div class="stat__lab">Done</div>
 					</div>
 				</div>
@@ -1134,9 +1134,9 @@
 				<div class="ms-mini">
 					<div class="ms-mini__num">Milestone 2</div>
 					<div class="ms-mini__name">Exploration &amp; New Features</div>
-					<div class="ms-mini__count"><span>4 blocked</span><b>1 / 8</b></div>
+					<div class="ms-mini__count"><span>5 done</span><b>5 / 8</b></div>
 					<div class="progress-bar">
-						<div class="progress-fill fill--done" style="width: 13%"></div>
+						<div class="progress-fill fill--done" style="width: 63%"></div>
 					</div>
 				</div>
 				<div class="ms-mini">
@@ -1262,7 +1262,7 @@
 				<summary>
 					<span class="ms-tag">M2</span>
 					<span class="ms-sum__name">Exploration &amp; New Features</span>
-					<span class="ms-sum__count">1 / 8</span>
+					<span class="ms-sum__count">5 / 8</span>
 				</summary>
 				<div class="ms-body">
 					<p class="ms-goal">
@@ -1270,37 +1270,13 @@
 						deep-linkable selections on the non-projects views, multi-select filters, polishing
 						the static interactions, and one new angle: a tech-stack constellation.
 					</p>
-					<div class="task-group tg--todo">
-						<div class="task-group__label">To do</div>
-						<ul class="tasks">
-							<li>
-								<span class="task-id">2FE.4</span>Multi-select filters &mdash; combine dimensions
-								(filters are single-select today)
-							</li>
-							<li>
-								<span class="task-id">2FE.5</span>Cross-view continuity (carry selection map
-								&rarr; project &rarr; timeline) &mdash; builds on the shared
-								<code>?project=</code> param from 2FE.2
-							</li>
-							<li>
-								<span class="task-id">2FE.8</span>Robust filter-toggle relayout &mdash; redraw an
-								optimal low-crossing layout on every filter toggle (extend the build-time
-								best-of-N seed lottery to live filter changes)
-								<span class="task-dep">&larr; 2FE.2</span>
-							</li>
-						</ul>
-					</div>
 					<div class="task-group tg--blk">
 						<div class="task-group__label">Blocked</div>
 						<ul class="tasks">
 							<li>
-								<span class="task-id">2FE.1</span>Client-side search across projects (title, tags,
-								description) <span class="task-dep">&larr; 2FE.4</span>
-							</li>
-							<li>
-								<span class="task-id">2FE.3</span>Re-do once 2FE.1/2FE.5/2FE.7/2FE.8 are
+								<span class="task-id">2FE.3</span>Re-do once 2FE.7/2FE.8 are
 								complete &mdash; the final polish pass covers all new interactions.
-								<span class="task-dep">&larr; 2FE.1, 2FE.5, 2FE.7, 2FE.8</span><br/>
+								<span class="task-dep">&larr; 2FE.7, 2FE.8</span><br/>
 								<em>Previously completed: AdoptionTimeline hover/focus highlight with
 								date-honesty distinction; TimelineChart pointer events, node titles,
 								reduced-motion guard.</em>
@@ -1321,11 +1297,39 @@
 						<div class="task-group__label">Done</div>
 						<ul class="tasks">
 							<li>
+								<span class="task-id">2FE.1</span><span class="task-done-text">Client-side search across
+									projects (title, tags, description) &mdash; <code>filterProjects</code> extended
+									with a <code>query</code> field; case-insensitive substring match;
+									<code>SearchInput</code> with debounced input; <code>?q=</code> URL param;
+									full query test coverage</span>
+							</li>
+							<li>
 								<span class="task-id">2FE.2</span><span class="task-done-text">Deep-link map / timeline / toolkit
 									selections &mdash; click opens a modal with
 									Pin (writes <code>?project=</code> / <code>?tech=</code>, persists the highlight)
 									or Go to project; shared <code>?project=</code> gives cross-view continuity;
 									shared <code>writeParam</code> helper and tech-label codec</span>
+							</li>
+							<li>
+								<span class="task-id">2FE.4</span><span class="task-done-text">Multi-select filters &mdash;
+									each dimension accumulates a set of selections: OR within a dimension, AND across.
+									URL params pluralised; per-token percent-encoding for <code>C#</code>,
+									<code>.NET 8</code>; <code>FilterBar</code> widened to <code>Set&lt;T&gt;</code>;
+									full test coverage</span>
+							</li>
+							<li>
+								<span class="task-id">2FE.5</span><span class="task-done-text">Cross-view continuity &mdash;
+									shared <code>validatePin</code> / <code>nextPinValue</code> helpers in
+									<code>src/lib/selection.ts</code>; all three connection views use them; project detail
+									page gains &ldquo;View in map / timeline / toolkit&rdquo; links carrying
+									<code>?project=</code>; modal links via <code>projectHref</code></span>
+							</li>
+							<li>
+								<span class="task-id">2FE.8</span><span class="task-done-text">Robust filter-toggle relayout &mdash;
+									<code>computeRelayoutTargets</code> (5-seed reduced best-of-N, crossing-minimised)
+									exported from <code>graph.ts</code>; <code>ProjectMap</code> reheat debounced
+									120ms and seeded from the lowest-crossing topology; <code>FORCE_TUNING</code>
+									and <code>countCrossings</code> exported for tests</span>
 							</li>
 						</ul>
 					</div>
@@ -1674,14 +1678,14 @@
 						m2{"Milestone 2<br/>Features"}:::mile
 
 						subgraph m2group["Milestone 2: Exploration & New Features"]
-							2FE.1["2FE.1<br/>client-side search"]:::blocked
+							2FE.1["2FE.1<br/>client-side search"]:::done
 							2FE.2["2FE.2<br/>deep-link views"]:::done
 							2FE.3["2FE.3<br/>polish interactions"]:::blocked
-							2FE.4["2FE.4<br/>multi-select filters"]:::open
-							2FE.5["2FE.5<br/>cross-view continuity"]:::open
+							2FE.4["2FE.4<br/>multi-select filters"]:::done
+							2FE.5["2FE.5<br/>cross-view continuity"]:::done
 							2FE.6["2FE.6<br/>tech-stack constellation"]:::blocked
 							2FE.7["2FE.7<br/>tech lineage edges"]:::blocked
-							2FE.8["2FE.8<br/>robust filter-toggle relayout"]:::open
+							2FE.8["2FE.8<br/>robust filter-toggle relayout"]:::done
 
 							%% M2 deps
 							2FE.2 --> 2FE.5
@@ -1842,22 +1846,6 @@
 			</p>
 
 			<div class="next-group">
-				<div class="next-group__head">Milestone 2 &middot; Features</div>
-				<div class="next-item">
-					<span class="task-id">2FE.4</span><span class="next-item__desc">Multi-select filters (unblocks
-						search)</span><span class="pill">Ready</span>
-				</div>
-				<div class="next-item">
-					<span class="task-id">2FE.5</span><span class="next-item__desc">Cross-view continuity (carry selection across
-						views)</span><span class="pill">Ready</span>
-				</div>
-				<div class="next-item">
-					<span class="task-id">2FE.8</span><span class="next-item__desc">Robust filter-toggle relayout (low-crossing
-						live layouts)</span><span class="pill">Ready</span>
-				</div>
-			</div>
-
-			<div class="next-group">
 				<div class="next-group__head">Milestone 5 &middot; Drift: Engine &amp; Verbs</div>
 				<div class="next-item">
 					<span class="task-id">5DR.1</span><span class="next-item__desc">Boundary doc: core-engine vs
@@ -1875,8 +1863,8 @@
 
 			<div class="footer">
 				Source: <a href="../roadmaps/mvp.md">docs/roadmaps/mvp.md</a><br />
-				Generated artefact &middot; 47 tasks across 6 milestones &middot; 0 in progress, 6 ready,
-				30 blocked, 11 done
+				Generated artefact &middot; 47 tasks across 6 milestones &middot; 0 in progress, 2 ready,
+				30 blocked, 15 done
 			</div>
 		</div>
 		<!-- /main -->

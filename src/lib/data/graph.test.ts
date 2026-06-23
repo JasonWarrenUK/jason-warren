@@ -14,9 +14,13 @@ import {
 	getTechIndex,
 	getSharedTechEdges,
 	computeForceLayout,
+	computeRelayoutTargets,
+	countCrossings,
+	buildSimLinks,
 	selectLabelledSlugs,
 	MAP_LABEL_COUNT
 } from './graph.js';
+import type { LiveSimNode } from './graph.js';
 import type { Project, ProjectSlug } from './types.js';
 
 const slugs = new Set<ProjectSlug>(projects.map((p) => p.slug));
@@ -288,5 +292,97 @@ describe('computeForceLayout', () => {
 		for (const [slug, point] of a.positions) {
 			expect(b.positions.get(slug)).toEqual(point);
 		}
+	});
+});
+
+// ---------------------------------------------------------------------------
+// computeRelayoutTargets
+// ---------------------------------------------------------------------------
+
+/**
+ * Build a minimal hand-crafted LiveSimNode array from a slug list,
+ * positioned in a line so crossings between diagonal links are guaranteed.
+ */
+function makeNodes(slugs: string[], size = 500): LiveSimNode[] {
+	return slugs.map((slug, i) => ({
+		slug: slug as ProjectSlug,
+		radius: 18,
+		x: (size / (slugs.length + 1)) * (i + 1),
+		y: i % 2 === 0 ? 100 : 400 // alternating rows → crossing-prone with cross-links
+	}));
+}
+
+describe('computeRelayoutTargets', () => {
+	const graph = getProjectGraph();
+	const shared = getSharedTechEdges();
+
+	// Use the first four slugs from the actual graph for a realistic smoke test.
+	const slugs = graph.nodes.slice(0, 6).map((n) => n.slug);
+	const edges = graph.edges.filter(
+		(e) => slugs.includes(e.source as ProjectSlug) && slugs.includes(e.target as ProjectSlug)
+	);
+	const sharedEdges = shared.filter(
+		(e) => slugs.includes(e.source as ProjectSlug) && slugs.includes(e.target as ProjectSlug)
+	);
+	const nodes = makeNodes(slugs);
+
+	it('is deterministic: identical input yields identical positions', () => {
+		const a = computeRelayoutTargets({ nodes, visibleEdges: edges, visibleSharedEdges: sharedEdges });
+		const b = computeRelayoutTargets({ nodes, visibleEdges: edges, visibleSharedEdges: sharedEdges });
+		expect(a.size).toBe(b.size);
+		for (const [slug, point] of a) {
+			expect(b.get(slug)).toEqual(point);
+		}
+	});
+
+	it('covers all input node slugs', () => {
+		const result = computeRelayoutTargets({ nodes, visibleEdges: edges, visibleSharedEdges: sharedEdges });
+		for (const node of nodes) {
+			expect(result.has(node.slug), `${node.slug} missing from result`).toBe(true);
+		}
+	});
+
+	it('returns positions that are all finite', () => {
+		const result = computeRelayoutTargets({ nodes, visibleEdges: edges, visibleSharedEdges: sharedEdges });
+		for (const [slug, point] of result) {
+			expect(Number.isFinite(point.x), `${slug}.x not finite`).toBe(true);
+			expect(Number.isFinite(point.y), `${slug}.y not finite`).toBe(true);
+		}
+	});
+
+	it('best-of-5 has lower or equal crossings than single seed on the tangled fixture', () => {
+		// Hand-craft a crossing-prone 4-node layout with crossing links:
+		//   A---D  (link A→D crosses link B→C when A/B are left, C/D are right)
+		//   B---C
+		const crossingNodes: LiveSimNode[] = [
+			{ slug: 'a' as ProjectSlug, radius: 18, x: 50, y: 50 },
+			{ slug: 'b' as ProjectSlug, radius: 18, x: 50, y: 200 },
+			{ slug: 'c' as ProjectSlug, radius: 18, x: 200, y: 200 },
+			{ slug: 'd' as ProjectSlug, radius: 18, x: 200, y: 50 }
+		];
+		const crossingEdges = [
+			{ source: 'a' as ProjectSlug, target: 'd' as ProjectSlug, kind: 'related' as const },
+			{ source: 'b' as ProjectSlug, target: 'c' as ProjectSlug, kind: 'related' as const }
+		];
+
+		const links = buildSimLinks(crossingEdges, []);
+
+		const multi = computeRelayoutTargets(
+			{ nodes: crossingNodes, visibleEdges: crossingEdges, visibleSharedEdges: [], size: 300 },
+			{ candidates: 5, ticks: 150 }
+		);
+		const single = computeRelayoutTargets(
+			{ nodes: crossingNodes, visibleEdges: crossingEdges, visibleSharedEdges: [], size: 300 },
+			{ candidates: 1, ticks: 150 }
+		);
+
+		// Convert Map<slug, Point> to the shape scoreLayout expects.
+		const toNodes = (m: Map<string, { x: number; y: number }>) =>
+			[...m.entries()].map(([slug, p]) => ({ slug: slug as ProjectSlug, x: p.x, y: p.y }));
+
+		const multiCrossings = countCrossings(toNodes(multi), links);
+		const singleCrossings = countCrossings(toNodes(single), links);
+
+		expect(multiCrossings).toBeLessThanOrEqual(singleCrossings);
 	});
 });
