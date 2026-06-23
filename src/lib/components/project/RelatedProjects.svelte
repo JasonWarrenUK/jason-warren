@@ -4,6 +4,7 @@
 	import { getBySlug } from '$lib/data/queries.js';
 	import { getNeighbours } from '$lib/data/graph.js';
 	import NeighbourhoodGraph from '$lib/components/graph/NeighbourhoodGraph.svelte';
+	import { projectHref } from '$lib/selection.js';
 
 	interface Props {
 		slug: ProjectSlug;
@@ -44,7 +45,7 @@
 			{#each neighbours as neighbour (neighbour.project.slug)}
 				<li class="related__item">
 					<span class="related__kind">{label(neighbour.kind, neighbour.direction)}</span>
-					<a href="{base}/projects/{neighbour.project.slug}" class="related__link">
+					<a href={projectHref(base, neighbour.project.slug)} class="related__link">
 						{neighbour.project.name}
 					</a>
 					{#if neighbour.note}

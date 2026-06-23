@@ -10,6 +10,7 @@
 	import ExternalLink from '$lib/components/ui/ExternalLink.svelte';
 	import Seo from '$lib/components/seo/Seo.svelte';
 	import { AUTHOR, SITE_URL } from '$lib/config.js';
+	import { viewHref } from '$lib/selection.js';
 
 	let { data } = $props();
 
@@ -77,6 +78,12 @@
 		</div>
 
 		<TechTagList tags={data.project.tags} />
+
+		<nav class="page__crossviews" aria-label="See this project in other views">
+			<a href={viewHref(base, 'map', data.project.slug)} class="page__view-link">View in map</a>
+			<a href={viewHref(base, 'timeline', data.project.slug)} class="page__view-link">View in timeline</a>
+			<a href={viewHref(base, 'toolkit', data.project.slug)} class="page__view-link">View in toolkit</a>
+		</nav>
 	</header>
 
 	<div class="page__body">
@@ -193,6 +200,30 @@
 		display: flex;
 		gap: var(--space-3);
 		flex-wrap: wrap;
+	}
+
+	.page__crossviews {
+		display: flex;
+		gap: var(--space-3);
+		flex-wrap: wrap;
+		padding-top: var(--space-1);
+	}
+
+	.page__view-link {
+		font-size: var(--text-sm);
+		color: var(--color-text-subtle);
+		text-decoration: none;
+		padding: var(--space-1) var(--space-3);
+		border: 1px solid var(--color-border);
+		border-radius: var(--radius-full);
+		transition:
+			color var(--transition-fast),
+			border-color var(--transition-fast);
+	}
+
+	.page__view-link:hover {
+		color: var(--color-primary-text);
+		border-color: var(--color-primary-text);
 	}
 
 	.page__body {

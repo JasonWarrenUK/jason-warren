@@ -5,6 +5,7 @@
 	import type { ThemeWithProjects } from '$lib/data/themes.js';
 	import { writeParam } from '$lib/url-write.js';
 	import SelectionModal from '$lib/components/ui/SelectionModal.svelte';
+	import { validatePin, nextPinValue, projectHref } from '$lib/selection.js';
 
 	interface Props {
 		themes: ThemeWithProjects[];
@@ -37,10 +38,10 @@
 	const pinnedParam = $derived(
 		browser && variant === 'full' ? $page.url.searchParams.get('project') : null
 	);
-	// Ignore a pin that names no project here, so a stale link can never dim the
-	// whole view with nothing highlighted.
+	// Validate the pin via the shared helper: stale / absent / compact variant → null
+	// so a dead link never dims the whole view with nothing highlighted.
 	const pinnedSlug = $derived(
-		pinnedParam !== null && themeCountBySlug.has(pinnedParam) ? pinnedParam : null
+		validatePin(pinnedParam, (slug) => themeCountBySlug.has(slug))
 	);
 	// Hover overrides the pin; releasing the pointer/focus falls back to it.
 	const effectiveSlug = $derived(activeSlug ?? pinnedSlug);
@@ -54,8 +55,7 @@
 
 	function pinSelected(): void {
 		if (!selected) return;
-		// Toggle: clicking the already-pinned project clears the pin.
-		writeParam('project', pinnedSlug === selected.slug ? null : selected.slug);
+		writeParam('project', nextPinValue(pinnedSlug, selected.slug));
 		selected = null;
 	}
 </script>
@@ -141,7 +141,7 @@
 				{isPinned ? 'Unpin' : 'Pin this project'}
 			</button>
 			<a
-				href="{base}/projects/{selected.slug}"
+				href={projectHref(base, selected.slug)}
 				class="modal-action modal-action--secondary"
 			>
 				Go to project

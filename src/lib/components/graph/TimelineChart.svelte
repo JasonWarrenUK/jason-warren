@@ -6,6 +6,7 @@
 	import { statusColour, statusLabel, statusOrder } from './graph-style.js';
 	import { writeParam } from '$lib/url-write.js';
 	import SelectionModal from '$lib/components/ui/SelectionModal.svelte';
+	import { validatePin, nextPinValue, projectHref } from '$lib/selection.js';
 
 	interface TimelineRow {
 		slug: string;
@@ -33,10 +34,10 @@
 	// show the full chart so the prerendered HTML is always complete.
 	let activeSlug = $state<string | null>(null);
 	const pinnedParam = $derived(browser ? $page.url.searchParams.get('project') : null);
-	// Ignore a pin that names no row here, so a stale link can never dim the whole
-	// chart with nothing highlighted.
+	// Validate the pin via the shared helper: stale / absent → null so a dead
+	// link never dims the whole chart with nothing highlighted.
 	const pinnedSlug = $derived(
-		pinnedParam !== null && rows.some((r) => r.slug === pinnedParam) ? pinnedParam : null
+		validatePin(pinnedParam, (slug) => rows.some((r) => r.slug === slug))
 	);
 	// Hover overrides the pin; releasing the pointer/focus falls back to it.
 	const effectiveSlug = $derived(activeSlug ?? pinnedSlug);
@@ -50,8 +51,7 @@
 
 	function pinSelected(): void {
 		if (!selected) return;
-		// Toggle: clicking the already-pinned row clears the pin.
-		writeParam('project', pinnedSlug === selected.slug ? null : selected.slug);
+		writeParam('project', nextPinValue(pinnedSlug, selected.slug));
 		selected = null;
 	}
 
@@ -177,7 +177,7 @@
 			{isPinned ? 'Unpin' : 'Pin this project'}
 		</button>
 		<a
-			href="{base}/projects/{selected.slug}"
+			href={projectHref(base, selected.slug)}
 			class="modal-action modal-action--secondary"
 		>
 			Go to project
