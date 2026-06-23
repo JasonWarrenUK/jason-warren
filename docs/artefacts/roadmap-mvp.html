@@ -7,14 +7,13 @@
 	<title>Portfolio Roadmap — Forward Roadmap (mvp)</title>
 
 	<!-- Reasonable Colors palette (project default) -->
-	<link rel="stylesheet"
-		href="https://unpkg.com/reasonable-colors@0.4.0/reasonable-colors.css" />
+	<link rel="stylesheet" href="https://unpkg.com/reasonable-colors@0.4.0/reasonable-colors.css" />
 
 	<!-- Nunito Sans (Avenir Next web fallback) + Fira Code -->
 	<link rel="preconnect" href="https://fonts.googleapis.com" />
 	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 	<link rel="stylesheet"
-		href="https://fonts.googleapis.com/css2?family=Nunito+Sans:ital,opsz,wght@0,6..12,400;0,6..12,500;0,6..12,600;0,6..12,700;1,6..12,400&family=Fira+Code:wght@400;500;600&display=swap"/>
+		href="https://fonts.googleapis.com/css2?family=Nunito+Sans:ital,opsz,wght@0,6..12,400;0,6..12,500;0,6..12,600;0,6..12,700;1,6..12,400&family=Fira+Code:wght@400;500;600&display=swap" />
 
 	<style>
 		/* |====| Palette |===========================================|
@@ -1100,8 +1099,8 @@
 
 			<div class="hero animate" style="--i: 4">
 				<div>
-					<div class="hero__big">13<span>/47</span></div>
-					<div class="hero__label">tasks complete &middot; 28%</div>
+					<div class="hero__big">11<span>/47</span></div>
+					<div class="hero__label">tasks complete &middot; 23%</div>
 				</div>
 				<div class="hero__breakdown">
 					<div class="stat stat--prog">
@@ -1109,15 +1108,15 @@
 						<div class="stat__lab">In progress</div>
 					</div>
 					<div class="stat stat--todo">
-						<div class="stat__num">13</div>
+						<div class="stat__num">6</div>
 						<div class="stat__lab">To do</div>
 					</div>
 					<div class="stat stat--blk">
-						<div class="stat__num">21</div>
+						<div class="stat__num">30</div>
 						<div class="stat__lab">Blocked</div>
 					</div>
 					<div class="stat stat--done">
-						<div class="stat__num">13</div>
+						<div class="stat__num">11</div>
 						<div class="stat__lab">Done</div>
 					</div>
 				</div>
@@ -1127,23 +1126,23 @@
 				<div class="ms-mini">
 					<div class="ms-mini__num">Milestone 1</div>
 					<div class="ms-mini__name">Content Depth &amp; Polish</div>
-					<div class="ms-mini__count"><span>9 done</span><b>9 / 10</b></div>
+					<div class="ms-mini__count"><span>8 done</span><b>8 / 10</b></div>
 					<div class="progress-bar">
-						<div class="progress-fill fill--done" style="width: 90%"></div>
+						<div class="progress-fill fill--done" style="width: 80%"></div>
 					</div>
 				</div>
 				<div class="ms-mini">
 					<div class="ms-mini__num">Milestone 2</div>
 					<div class="ms-mini__name">Exploration &amp; New Features</div>
-					<div class="ms-mini__count"><span>2 done</span><b>2 / 8</b></div>
+					<div class="ms-mini__count"><span>4 blocked</span><b>1 / 8</b></div>
 					<div class="progress-bar">
-						<div class="progress-fill fill--done" style="width: 25%"></div>
+						<div class="progress-fill fill--done" style="width: 13%"></div>
 					</div>
 				</div>
 				<div class="ms-mini">
 					<div class="ms-mini__num">Milestone 3</div>
 					<div class="ms-mini__name">Design &amp; Interaction Polish</div>
-					<div class="ms-mini__count"><span>4 blocked</span><b>0 / 6</b></div>
+					<div class="ms-mini__count"><span>6 blocked</span><b>0 / 6</b></div>
 					<div class="progress-bar">
 						<div class="progress-fill fill--blk" style="width: 2%"></div>
 					</div>
@@ -1151,9 +1150,9 @@
 				<div class="ms-mini">
 					<div class="ms-mini__num">Milestone 4</div>
 					<div class="ms-mini__name">Quality &amp; Reach</div>
-					<div class="ms-mini__count"><span>0 done</span><b>0 / 5</b></div>
+					<div class="ms-mini__count"><span>5 blocked</span><b>0 / 5</b></div>
 					<div class="progress-bar">
-						<div class="progress-fill fill--todo" style="width: 2%"></div>
+						<div class="progress-fill fill--blk" style="width: 2%"></div>
 					</div>
 				</div>
 				<div class="ms-mini">
@@ -1182,7 +1181,7 @@
 				<summary>
 					<span class="ms-tag">M1</span>
 					<span class="ms-sum__name">Content Depth &amp; Polish</span>
-					<span class="ms-sum__count">9 / 10</span>
+					<span class="ms-sum__count">8 / 10</span>
 				</summary>
 				<div class="ms-body">
 					<p class="ms-goal">
@@ -1190,12 +1189,20 @@
 						surfaceable as a flagship; which one is foregrounded rotates. No tier of "flagship
 						projects" &mdash; every entry gets there.
 					</p>
-					<div class="task-group tg--todo">
-						<div class="task-group__label">To do</div>
+					<div class="task-group tg--blk">
+						<div class="task-group__label">Blocked</div>
 						<ul class="tasks">
 							<li>
+								<span class="task-id">1CO.5</span>Re-do after M5: the Drift decoupling will change
+								the Colophon's Drift narrative, so this must be rewritten once the engine
+								architecture is settled. <span class="task-dep">&larr; m5</span><br/>
+								<em>Previously completed: full editorial rewrite, corrected data-model snippets,
+								headlined Drift section, Shiki syntax highlighting, collapsed sections.</em>
+							</li>
+							<li>
 								<span class="task-id">1CO.8</span>Pass all copy through the writing-style guide
-								(British spelling, no em-dashes, voice) &mdash; deps now satisfied
+								(British spelling, no em-dashes, voice)
+								<span class="task-dep">&larr; 1CO.2, 1CO.3, 1CO.5, 1CO.7, 1CO.9</span>
 							</li>
 						</ul>
 					</div>
@@ -1223,11 +1230,6 @@
 									leading with stance, positioning lede,
 									four credibility specifics retained, h2 scale fixed, GitHub links via
 									constants</span>
-							</li>
-							<li>
-								<span class="task-id">1CO.5</span><span class="task-done-text">Expand Colophon: full editorial rewrite,
-									corrected data-model snippets,
-									headlined Drift section, Shiki syntax highlighting, collapsed sections</span>
 							</li>
 							<li>
 								<span class="task-id">1CO.6</span><span class="task-done-text">Theme coherence &mdash; three blurbs
@@ -1260,7 +1262,7 @@
 				<summary>
 					<span class="ms-tag">M2</span>
 					<span class="ms-sum__name">Exploration &amp; New Features</span>
-					<span class="ms-sum__count">2 / 8</span>
+					<span class="ms-sum__count">1 / 8</span>
 				</summary>
 				<div class="ms-body">
 					<p class="ms-goal">
@@ -1281,15 +1283,6 @@
 								<code>?project=</code> param from 2FE.2
 							</li>
 							<li>
-								<span class="task-id">2FE.6</span>Tech-stack constellation visualisation &mdash; a
-								<code>ProjectMap</code> variant clustering by shared stack
-							</li>
-							<li>
-								<span class="task-id">2FE.7</span>Technology lineage edges &mdash; hand-authored
-								<code>leads-to</code> / <code>replaced-by</code> relationships rendered as directed
-								edges <span class="task-dep">&larr; may depend on 2FE.6</span>
-							</li>
-							<li>
 								<span class="task-id">2FE.8</span>Robust filter-toggle relayout &mdash; redraw an
 								optimal low-crossing layout on every filter toggle (extend the build-time
 								best-of-N seed lottery to live filter changes)
@@ -1304,6 +1297,24 @@
 								<span class="task-id">2FE.1</span>Client-side search across projects (title, tags,
 								description) <span class="task-dep">&larr; 2FE.4</span>
 							</li>
+							<li>
+								<span class="task-id">2FE.3</span>Re-do once 2FE.1/2FE.5/2FE.7/2FE.8 are
+								complete &mdash; the final polish pass covers all new interactions.
+								<span class="task-dep">&larr; 2FE.1, 2FE.5, 2FE.7, 2FE.8</span><br/>
+								<em>Previously completed: AdoptionTimeline hover/focus highlight with
+								date-honesty distinction; TimelineChart pointer events, node titles,
+								reduced-motion guard.</em>
+							</li>
+							<li>
+								<span class="task-id">2FE.6</span>Tech-stack constellation visualisation &mdash; a
+								<code>ProjectMap</code> variant clustering by shared stack
+								<span class="task-dep">&larr; m1</span>
+							</li>
+							<li>
+								<span class="task-id">2FE.7</span>Technology lineage edges &mdash; hand-authored
+								<code>leads-to</code> / <code>replaced-by</code> relationships rendered as directed
+								edges <span class="task-dep">&larr; 2FE.6</span>
+							</li>
 						</ul>
 					</div>
 					<div class="task-group tg--done">
@@ -1315,13 +1326,6 @@
 									Pin (writes <code>?project=</code> / <code>?tech=</code>, persists the highlight)
 									or Go to project; shared <code>?project=</code> gives cross-view continuity;
 									shared <code>writeParam</code> helper and tech-label codec</span>
-							</li>
-							<li>
-								<span class="task-id">2FE.3</span><span class="task-done-text">Polish existing interactions &mdash;
-									AdoptionTimeline hover/focus highlight with
-									date-honesty distinction; TimelineChart pointer events, node titles,
-									reduced-motion guard
-									<span class="task-dep">&larr; 2FE.1, 2FE.5, 2FE.7</span></span>
 							</li>
 						</ul>
 					</div>
@@ -1341,38 +1345,33 @@
 						flow from that decision. The responsive audit follows once the motion and graph
 						aesthetics passes are settled.
 					</p>
-					<div class="task-group tg--todo">
-						<div class="task-group__label">To do</div>
+					<div class="task-group tg--blk">
+						<div class="task-group__label">Blocked</div>
 						<ul class="tasks">
 							<li>
 								<span class="task-id">3DE.0</span>Define visual direction / signature &mdash;
 								mood, type pairing, motion language, graph styling principles
-								<span class="task-dep">&larr; m1, m2</span>
+								<span class="task-dep">&larr; m2</span>
 							</li>
-							<li>
-								<span class="task-id">3DE.2</span>Responsive audit: map / timeline / grids on
-								small viewports <span class="task-dep">&larr; 3DE.3, 3DE.4</span>
-							</li>
-						</ul>
-					</div>
-					<div class="task-group tg--blk">
-						<div class="task-group__label">Blocked</div>
-						<ul class="tasks">
 							<li>
 								<span class="task-id">3DE.1</span>Typography pass (scale, rhythm, measure) across
 								all routes <span class="task-dep">&larr; 3DE.0</span>
 							</li>
 							<li>
 								<span class="task-id">3DE.3</span>Motion pass: meaningful transitions, respect
-								<code>prefers-reduced-motion</code> <span class="task-dep">&larr; 3DE.0, 3DE.1</span>
+								<code>prefers-reduced-motion</code> <span class="task-dep">&larr; 3DE.1</span>
 							</li>
 							<li>
 								<span class="task-id">3DE.4</span>Refine graph aesthetics (edge styling,
-								clustering, constellation) <span class="task-dep">&larr; 3DE.0, 3DE.5, 2FE.6, 2FE.8</span>
+								clustering, constellation) <span class="task-dep">&larr; 3DE.5</span>
 							</li>
 							<li>
 								<span class="task-id">3DE.5</span>Consistency sweep of semantic colour aliases vs
 								Reasonable Colors usage <span class="task-dep">&larr; 3DE.0</span>
+							</li>
+							<li>
+								<span class="task-id">3DE.2</span>Responsive audit: map / timeline / grids on
+								small viewports <span class="task-dep">&larr; 3DE.3, 3DE.4</span>
 							</li>
 						</ul>
 					</div>
@@ -1391,23 +1390,18 @@
 						excluded &mdash; tracker-free is a statement. Performance is already strong (fully
 						prerendered) so it folds into the SEO pass rather than standing alone.
 					</p>
-					<div class="task-group tg--todo">
-						<div class="task-group__label">To do</div>
+					<div class="task-group tg--blk">
+						<div class="task-group__label">Blocked</div>
 						<ul class="tasks">
 							<li>
 								<span class="task-id">4QU.5</span>Component / interaction test coverage for the
 								connection views
-								<span class="task-dep">&larr; 2FE.1&ndash;2FE.8</span>
+								<span class="task-dep">&larr; m3</span>
 							</li>
 							<li>
 								<span class="task-id">4QU.4</span>Confirm OG image coverage for every route and
-								project <span class="task-dep">&larr; 2FE.1&ndash;2FE.8</span>
+								project <span class="task-dep">&larr; m3</span>
 							</li>
-						</ul>
-					</div>
-					<div class="task-group tg--blk">
-						<div class="task-group__label">Blocked</div>
-						<ul class="tasks">
 							<li>
 								<span class="task-id">4QU.1</span>Accessibility audit: keyboard nav, ARIA,
 								contrast, SVG view semantics <span class="task-dep">&larr; 4QU.5</span>
@@ -1419,7 +1413,7 @@
 							</li>
 							<li>
 								<span class="task-id">4QU.7</span>a11y regression pass on the tech-stack
-								constellation <span class="task-dep">&larr; 2FE.6, 3DE.4, 4QU.1</span>
+								constellation <span class="task-dep">&larr; 4QU.1</span>
 							</li>
 						</ul>
 					</div>
@@ -1449,10 +1443,12 @@
 							<li>
 								<span class="task-id">5DR.2</span>Coupling inventory: annotate the 6 couplings in
 								code with their resolution path
+								<span class="task-dep">&larr; 5DR.12</span>
 							</li>
 							<li>
 								<span class="task-id">5DR.14</span>Rename Drift verbs so they signpost intent
 								more clearly (breaking change to CLI surface; gates all new verbs)
+								<span class="task-dep">&larr; 5DR.0</span>
 							</li>
 						</ul>
 					</div>
@@ -1475,7 +1471,7 @@
 							<li>
 								<span class="task-id">5DR.6</span>Split core engine from Svelte integration (move
 								<code>.ts</code>-scraping into integration)
-								<span class="task-dep">&larr; 5DR.3, 5DR.4, 5DR.12</span>
+								<span class="task-dep">&larr; 5DR.4, 5DR.14</span>
 							</li>
 							<li>
 								<span class="task-id">5DR.7</span>Build subsumed backlog: branch awareness +
@@ -1489,22 +1485,22 @@
 							<li>
 								<span class="task-id">5DR.13</span>Drift <code>init</code> scaffold verb: generate
 								<code>sources.local.json</code> with correct structure but empty paths
-								<span class="task-dep">&larr; 5DR.14</span>
+								<span class="task-dep">&larr; 5DR.7</span>
 							</li>
 							<li>
 								<span class="task-id">5DR.15</span>Drift <code>author &lt;slug&gt;</code> verb:
 								create project overlay from template and open in <code>$EDITOR</code>
-								<span class="task-dep">&larr; 5DR.6, 5DR.14</span>
+								<span class="task-dep">&larr; 5DR.6</span>
 							</li>
 							<li>
 								<span class="task-id">5DR.16</span>Drift <code>pin &lt;slug&gt;</code> verb: set
 								<code>pin: true</code> in overlay (creating if needed)
-								<span class="task-dep">&larr; 5DR.6, 5DR.14</span>
+								<span class="task-dep">&larr; 5DR.6</span>
 							</li>
 							<li>
 								<span class="task-id">5DR.17</span>Drift <code>hide &lt;slug&gt;</code> verb: set
 								<code>hide: true</code> in overlay (creating if needed)
-								<span class="task-dep">&larr; 5DR.6, 5DR.14</span>
+								<span class="task-dep">&larr; 5DR.16</span>
 							</li>
 						</ul>
 					</div>
@@ -1544,17 +1540,17 @@
 							<li>
 								<span class="task-id">5DR.8</span>Engine test suite: config resolution,
 								fingerprinting, drift computation
-								<span class="task-dep">&larr; 5DR.6, 5DR.12</span>
+								<span class="task-dep">&larr; m3, m5</span>
 							</li>
 							<li>
 								<span class="task-id">5DR.9</span>Drift docs: config reference, data model,
 								metric-precedence lifecycle diagram
-								<span class="task-dep">&larr; 5DR.5, 5DR.6</span>
+								<span class="task-dep">&larr; m3, m5</span>
 							</li>
 							<li>
 								<span class="task-id">5DR.10</span>Authoring guide: which fields Drift populates
 								automatically vs hand-authored, where override files live
-								<span class="task-dep">&larr; 5DR.1, 5DR.5</span>
+								<span class="task-dep">&larr; m3, m5</span>
 							</li>
 						</ul>
 					</div>
@@ -1645,32 +1641,32 @@
 						%% ── Milestone 1: Content ─────────────────────────────────────
 						m1{"Milestone 1<br/>Content"}:::mile
 						subgraph m1group["Milestone 1: Content Depth & Polish"]
-						   1CO.1["1CO.1<br/>audit entry depth"]:::done
-						   1CO.2["1CO.2<br/>all entries flagship-ready"]:::done
-						   1CO.3["1CO.3<br/>contribution notes"]:::done
-						   1CO.4["1CO.4<br/>About narrative"]:::done
-						   1CO.5["1CO.5<br/>Colophon + Drift story"]:::done
-						   1CO.6["1CO.6<br/>theme coherence"]:::done
-						   1CO.7["1CO.7<br/>thread narratives"]:::done
-						   1CO.8["1CO.8<br/>style-guide pass"]:::open
-						   1CO.9["1CO.9<br/>CV / hire-me copy"]:::done
-						   1CO.10["1CO.10<br/>rotation mechanism"]:::done
-						end
+							1CO.1["1CO.1<br/>audit entry depth"]:::done
+							1CO.2["1CO.2<br/>all entries flagship-ready"]:::done
+							1CO.3["1CO.3<br/>contribution notes"]:::done
+							1CO.4["1CO.4<br/>About narrative"]:::done
+							1CO.5["1CO.5<br/>Colophon + Drift story"]:::blocked
+							1CO.6["1CO.6<br/>theme coherence"]:::done
+							1CO.7["1CO.7<br/>thread narratives"]:::done
+							1CO.8["1CO.8<br/>style-guide pass"]:::blocked
+							1CO.9["1CO.9<br/>CV / hire-me copy"]:::done
+							1CO.10["1CO.10<br/>rotation mechanism"]:::done
 
-						%% M1 deps
-						1CO.1 --> 1CO.2
-						1CO.1 --> 1CO.6
-						1CO.2 --> 1CO.10
-						1CO.4 --> 1CO.9
-						1CO.2 --> 1CO.8
-						1CO.3 --> 1CO.8
-						1CO.4 --> 1CO.8
-						1CO.5 --> 1CO.8
-						1CO.9 --> 1CO.8
+							%% M1 deps
+							1CO.1 --> 1CO.2
+							1CO.1 --> 1CO.6
+							1CO.2 --> 1CO.10
+							1CO.4 --> 1CO.7
+							1CO.4 --> 1CO.9
+							1CO.2 --> 1CO.8
+							1CO.3 --> 1CO.8
+							1CO.5 --> 1CO.8
+							1CO.7 --> 1CO.8
+							1CO.9 --> 1CO.8
+						end
 
 						%% M1 track completers
 						1CO.6 --> m1
-						1CO.7 --> m1
 						1CO.8 --> m1
 						1CO.10 --> m1
 
@@ -1678,53 +1674,49 @@
 						m2{"Milestone 2<br/>Features"}:::mile
 
 						subgraph m2group["Milestone 2: Exploration & New Features"]
-						   2FE.1["2FE.1<br/>client-side search"]:::blocked
-						   2FE.2["2FE.2<br/>deep-link views"]:::done
-						   2FE.3["2FE.3<br/>polish interactions"]:::done
-						   2FE.4["2FE.4<br/>multi-select filters"]:::open
-						   2FE.5["2FE.5<br/>cross-view continuity"]:::open
-						   2FE.6["2FE.6<br/>tech-stack constellation"]:::open
-						   2FE.7["2FE.7<br/>tech lineage edges"]:::open
-						   2FE.8["2FE.8<br/>robust filter-toggle relayout"]:::open
-						end
+							2FE.1["2FE.1<br/>client-side search"]:::blocked
+							2FE.2["2FE.2<br/>deep-link views"]:::done
+							2FE.3["2FE.3<br/>polish interactions"]:::blocked
+							2FE.4["2FE.4<br/>multi-select filters"]:::open
+							2FE.5["2FE.5<br/>cross-view continuity"]:::open
+							2FE.6["2FE.6<br/>tech-stack constellation"]:::blocked
+							2FE.7["2FE.7<br/>tech lineage edges"]:::blocked
+							2FE.8["2FE.8<br/>robust filter-toggle relayout"]:::open
 
-						%% M2 deps
-						2FE.2 --> 2FE.5
-						2FE.2 --> 2FE.4
-						2FE.4 --> 2FE.1
-						2FE.6 --> 2FE.7
-						2FE.2 --> 2FE.8
-						%% B2: 2FE.1, 2FE.5, 2FE.7 now gate 2FE.3 (polish is final integration step)
-						2FE.1 --> 2FE.3
-						2FE.5 --> 2FE.3
-						2FE.7 --> 2FE.3
+							%% M2 deps
+							2FE.2 --> 2FE.5
+							2FE.2 --> 2FE.4
+							2FE.4 --> 2FE.1
+							2FE.6 --> 2FE.7
+							2FE.2 --> 2FE.8
+							2FE.1 --> 2FE.3
+							2FE.5 --> 2FE.3
+							2FE.7 --> 2FE.3
+							2FE.8 --> 2FE.3
+						end
 
 						%% M2 track completers (B2: only 2FE.3 and 2FE.8 gate m2; B3: 2FE.6 removed)
 						2FE.3 --> m2
-						2FE.8 --> m2
 
 						%% ── Milestone 3: Design ──────────────────────────────────────
 						m3{"Milestone 3<br/>Design"}:::mile
 
 						subgraph m3group["Milestone 3: Design & Interaction Polish"]
-						   3DE.0["3DE.0<br/>visual direction"]:::open
-						   3DE.1["3DE.1<br/>typography pass"]:::blocked
-						   3DE.2["3DE.2<br/>responsive audit"]:::open
-						   3DE.3["3DE.3<br/>motion pass"]:::blocked
-						   3DE.4["3DE.4<br/>graph aesthetics"]:::blocked
-						   3DE.5["3DE.5<br/>colour consistency"]:::blocked
-						end
+							3DE.0["3DE.0<br/>visual direction"]:::blocked
+							3DE.1["3DE.1<br/>typography pass"]:::blocked
+							3DE.2["3DE.2<br/>responsive audit"]:::blocked
+							3DE.3["3DE.3<br/>motion pass"]:::blocked
+							3DE.4["3DE.4<br/>graph aesthetics"]:::blocked
+							3DE.5["3DE.5<br/>colour consistency"]:::blocked
 
-						%% M3 deps
-						3DE.0 --> 3DE.1
-						3DE.0 --> 3DE.3
-						3DE.0 --> 3DE.4
-						3DE.0 --> 3DE.5
-						3DE.1 --> 3DE.3
-						3DE.5 --> 3DE.4
-						%% B5: 3DE.3 and 3DE.4 now gate 3DE.2 (responsive audit is final M3 step)
-						3DE.3 --> 3DE.2
-						3DE.4 --> 3DE.2
+							%% M3 deps
+							3DE.0 --> 3DE.1
+							3DE.0 --> 3DE.5
+							3DE.1 --> 3DE.3
+							3DE.5 --> 3DE.4
+							3DE.3 --> 3DE.2
+							3DE.4 --> 3DE.2
+						end
 
 						%% M3 track completer (B5: only 3DE.2 gates m3)
 						3DE.2 --> m3
@@ -1733,17 +1725,17 @@
 						m4{"Milestone 4<br/>Quality"}:::mile
 
 						subgraph m4group["Milestone 4: Quality & Reach"]
-						   4QU.1["4QU.1<br/>a11y audit"]:::blocked
-						   4QU.3["4QU.3<br/>SEO + perf sanity"]:::blocked
-						   4QU.4["4QU.4<br/>OG coverage"]:::open
-						   4QU.5["4QU.5<br/>view test coverage"]:::open
-						   4QU.7["4QU.7<br/>constellation a11y"]:::blocked
-						end
+							4QU.1["4QU.1<br/>a11y audit"]:::blocked
+							4QU.3["4QU.3<br/>SEO + perf sanity"]:::blocked
+							4QU.4["4QU.4<br/>OG coverage"]:::blocked
+							4QU.5["4QU.5<br/>view test coverage"]:::blocked
+							4QU.7["4QU.7<br/>constellation a11y"]:::blocked
 
-						%% M4 deps
-						4QU.5 --> 4QU.1
-						4QU.1 --> 4QU.3
-						4QU.1 --> 4QU.7
+							%% M4 deps
+							4QU.5 --> 4QU.1
+							4QU.1 --> 4QU.3
+							4QU.1 --> 4QU.7
+						end
 
 						%% M4 track completers
 						4QU.3 --> m4
@@ -1754,45 +1746,45 @@
 						m5{"Milestone 5<br/>Drift: Engine & Verbs"}:::mile
 
 						subgraph m5group["Milestone 5: Drift Decoupling — Engine & Verbs"]
-						   5DR.0["5DR.0<br/>CLI foundation"]:::done
-						   5DR.1["5DR.1<br/>boundary doc"]:::open
-						   5DR.2["5DR.2<br/>coupling inventory"]:::open
-						   5DR.3["5DR.3<br/>config layer"]:::blocked
-						   5DR.4["5DR.4<br/>taxonomy relocation"]:::blocked
-						   5DR.5["5DR.5<br/>engine data schema"]:::blocked
-						   5DR.6["5DR.6<br/>engine / integration split"]:::blocked
-						   5DR.7["5DR.7<br/>branch awareness + staging"]:::blocked
-						   5DR.11["5DR.11<br/>audit verb"]:::blocked
-						   5DR.12["5DR.12<br/>npm → Bun migration"]:::done
-						   5DR.13["5DR.13<br/>init scaffold verb"]:::blocked
-						   5DR.14["5DR.14<br/>rename verbs"]:::open
-						   5DR.15["5DR.15<br/>author verb"]:::blocked
-						   5DR.16["5DR.16<br/>pin verb"]:::blocked
-						   5DR.17["5DR.17<br/>hide verb"]:::blocked
+							5DR.0["5DR.0<br/>CLI foundation"]:::done
+							5DR.1["5DR.1<br/>boundary doc"]:::open
+							5DR.2["5DR.2<br/>coupling inventory"]:::open
+							5DR.3["5DR.3<br/>config layer"]:::blocked
+							5DR.4["5DR.4<br/>taxonomy relocation"]:::blocked
+							5DR.5["5DR.5<br/>engine data schema"]:::blocked
+							5DR.6["5DR.6<br/>engine / integration split"]:::blocked
+							5DR.7["5DR.7<br/>branch awareness + staging"]:::blocked
+							5DR.11["5DR.11<br/>audit verb"]:::blocked
+							5DR.12["5DR.12<br/>npm → Bun migration"]:::done
+							5DR.13["5DR.13<br/>init scaffold verb"]:::blocked
+							5DR.14["5DR.14<br/>rename verbs"]:::open
+							5DR.15["5DR.15<br/>author verb"]:::blocked
+							5DR.16["5DR.16<br/>pin verb"]:::blocked
+							5DR.17["5DR.17<br/>hide verb"]:::blocked
+
+							%% M5 deps
+							5DR.0 --> 5DR.1
+							5DR.0 --> 5DR.14
+							5DR.12 --> 5DR.2
+							5DR.1 --> 5DR.3
+							5DR.1 --> 5DR.5
+							5DR.2 --> 5DR.3
+							5DR.3 --> 5DR.4
+							5DR.4 --> 5DR.6
+							5DR.5 --> 5DR.11
+							5DR.6 --> 5DR.7
+							5DR.6 --> 5DR.11
+							5DR.6 --> 5DR.15
+							5DR.6 --> 5DR.16
+							5DR.7 --> 5DR.13
+							5DR.16 --> 5DR.17
+							5DR.14 --> 5DR.6
 						end
 
-						%% M5 deps
-						5DR.0 --> 5DR.1
-						5DR.1 --> 5DR.3
-						5DR.1 --> 5DR.5
-						5DR.2 --> 5DR.3
-						5DR.3 --> 5DR.4
-						5DR.4 --> 5DR.6
-						5DR.5 --> 5DR.11
-						5DR.6 --> 5DR.7
-						5DR.6 --> 5DR.11
-						5DR.6 --> 5DR.15
-						5DR.6 --> 5DR.16
-						5DR.6 --> 5DR.17
-						5DR.12 --> 5DR.6
-						5DR.14 --> 5DR.6
-
 						%% M5 track completers
-						5DR.7 --> m5
 						5DR.11 --> m5
 						5DR.13 --> m5
 						5DR.15 --> m5
-						5DR.16 --> m5
 						5DR.17 --> m5
 
 						%% ── Milestone 6: Drift — Tests & Docs ────────────────────────
@@ -1805,6 +1797,9 @@
 						end
 
 						%% M6 deps (inbound from M5 tasks)
+						m3 --> 5DR.8
+						m3 --> 5DR.9
+						m3 --> 5DR.10
 						m5 --> 5DR.8
 						m5 --> 5DR.9
 						m5 --> 5DR.10
@@ -1815,13 +1810,11 @@
 						5DR.10 --> m6
 
 						%% ── Cross-milestone gates ────────────────────────────────────
-						1CO.2 gate5@==>|enables search| 2FE.1
 						m1 --> 2FE.6
-						m1 --> 3DE.0
 						m2 --> 3DE.0
-						3DE.2 ==> 4QU.4
-						3DE.4 gate6@==>|gates| 4QU.7
+						m3 --> 4QU.4
 						m3 --> 4QU.5
+						m5 --> 1CO.5
 
 						%% ── Convergence ──────────────────────────────────────────────
 						SHIP(["Portfolio v-next<br/>shipped"]):::ship
@@ -1849,14 +1842,6 @@
 			</p>
 
 			<div class="next-group">
-				<div class="next-group__head">Milestone 1 &middot; Content</div>
-				<div class="next-item">
-					<span class="task-id">1CO.8</span><span class="next-item__desc">Pass all copy through the writing-style guide
-						(deps now satisfied)</span><span class="pill">Ready</span>
-				</div>
-			</div>
-
-			<div class="next-group">
 				<div class="next-group__head">Milestone 2 &middot; Features</div>
 				<div class="next-item">
 					<span class="task-id">2FE.4</span><span class="next-item__desc">Multi-select filters (unblocks
@@ -1865,14 +1850,6 @@
 				<div class="next-item">
 					<span class="task-id">2FE.5</span><span class="next-item__desc">Cross-view continuity (carry selection across
 						views)</span><span class="pill">Ready</span>
-				</div>
-				<div class="next-item">
-					<span class="task-id">2FE.6</span><span class="next-item__desc">Tech-stack constellation
-						visualisation</span><span class="pill">Ready</span>
-				</div>
-				<div class="next-item">
-					<span class="task-id">2FE.7</span><span class="next-item__desc">Technology lineage edges (leads-to /
-						replaced-by)</span><span class="pill">Ready</span>
 				</div>
 				<div class="next-item">
 					<span class="task-id">2FE.8</span><span class="next-item__desc">Robust filter-toggle relayout (low-crossing
@@ -1898,8 +1875,8 @@
 
 			<div class="footer">
 				Source: <a href="../roadmaps/mvp.md">docs/roadmaps/mvp.md</a><br />
-				Generated artefact &middot; 47 tasks across 6 milestones &middot; 0 in progress, 13 ready,
-				21 blocked, 13 done
+				Generated artefact &middot; 47 tasks across 6 milestones &middot; 0 in progress, 6 ready,
+				30 blocked, 11 done
 			</div>
 		</div>
 		<!-- /main -->

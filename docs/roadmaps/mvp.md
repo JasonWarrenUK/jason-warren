@@ -6,13 +6,13 @@ description: Forward roadmap for the portfolio site plus Drift decoupling — br
 
 The site is live and substantially built (full routes, graph/timeline/map/toolkit views, 30+ typed projects, the Drift CLI). This roadmap captures what comes next: deepening the site as an artefact, and decoupling Drift's engine from its portfolio-specific couplings so it could power any frontend.
 
-|              | Status                                                                                                         | Next Up                                               | Blocked                                                              |
-| ------------ | -------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------- | -------------------------------------------------------------------- |
-| **Content**  | 30+ entries, themes, threads, Colophon in place; depth audit complete; every entry now at flagship-ready depth | Contribution notes; About narrative; theme coherence  | —                                                                    |
-| **Features** | Search absent; map/timeline/toolkit selections deep-linkable; filters URL-backed and now multi-select          | Client-side search (now unblocked), cross-view continuity, new viz | —                                                       |
-| **Design**   | Reasonable Colors tokens, dark mode                                                                            | Visual identity, then typography/motion               | Direction decision first                                             |
-| **Quality**  | Strict types, data-integrity tests, prerendered                                                                | Interaction test coverage (4QU.5)                     | a11y audit and SEO blocked on 4QU.5; new-view a11y blocked on M2 viz |
-| **Drift**    | 2.5k-line CLI, manifest registry, cache, verbs, Bun migration                                                  | Config layer, engine/integration split (M5); tests & docs after (M6) | Most decoupling tasks (sequence)                                     |
+|              | Status                                                                                                         | Next Up                                                      | Blocked                                                                     |
+| ------------ | -------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------ | --------------------------------------------------------------------------- |
+| **Content**  | 30+ entries, themes, threads, About, CV/hire; depth audit complete; 8 of 10 M1 tasks done                     | Colophon (1CO.5) and style-guide pass (1CO.8) after M5      | 1CO.5 blocked on M5; 1CO.8 blocked on 1CO.5                                |
+| **Features** | Deep-link selections (2FE.2) done; multi-select filters (2FE.4) being redone                                  | Multi-select (2FE.4), cross-view continuity (2FE.5), filter relayout (2FE.8) | Search (2FE.1) blocked on 2FE.4; constellation (2FE.6) blocked on m1       |
+| **Design**   | Reasonable Colors tokens, dark mode                                                                            | Visual direction (3DE.0) after M2                            | All M3 tasks blocked on M2 completion                                       |
+| **Quality**  | Strict types, data-integrity tests, prerendered                                                                | Test coverage (4QU.5) and OG coverage (4QU.4) after M3      | All M4 tasks blocked on M3; a11y (4QU.7) blocked on 4QU.1                  |
+| **Drift**    | 2.5k-line CLI, manifest registry, cache, verbs, Bun migration                                                  | Boundary doc (5DR.1), coupling inventory (5DR.2), verb rename (5DR.14) | Most decoupling tasks (sequence); tests & docs (M6) blocked on M3 + M5      |
 
 ---
 
@@ -44,21 +44,21 @@ _None._
 
 <a name="m1-todo"><h4>To Do (Milestone 1)</h4></a>
 
-- [ ] 1CO.8. Pass all copy through the writing-style guide (British spelling, no em-dashes, voice) — **depends on 1CO.3, 1CO.4, 1CO.5, 1CO.9**
+_None._
 
 <a name="m1-blocked"><h4>Blocked (Milestone 1)</h4></a>
 
-_None._
+- [ ] 1CO.5. Expand Colophon: explain the build, the data model, and headline the Drift tooling story — **re-do after M5**: the Drift decoupling changes the engine architecture described here, so the Colophon's Drift section must be rewritten once the design is settled — **depends on m5**. _Previously completed: full editorial rewrite; corrected `ProjectSlug` and `contributionNote` snippets; new headlined Drift section; build-time Shiki syntax highlighting (Vitesse light/dark, zero client JS); collapsed-by-default `<details>` sections._
+- [ ] 1CO.8. Pass all copy through the writing-style guide (British spelling, no em-dashes, voice) — **depends on 1CO.2, 1CO.3, 1CO.5, 1CO.7, 1CO.9**
 
 <a name="m1-done"><h4>Completed (Milestone 1)</h4></a>
 
 - [x] 1CO.1. Audit every project entry for depth — which read thin, which read full, what's structurally missing — output in [`docs/audits/content-depth.md`](../audits/content-depth.md)
 - [x] 1CO.2. Bring every project entry to flagship-ready depth — worklist in [`docs/audits/content-depth.md`](../audits/content-depth.md). All 7 sub-Full entries resolved (6 rewritten, `kamino` excluded) and an editorial polish pass run across all 27 Full entries.
-- [x] 1CO.6. Review theme groupings and theme copy for coherence — three blurbs corrected, `commons-traybake` removed from `graph-native`, `schema-forge` added to `terminal-native`, new `human-history` territory added (`historia`, `epoch`, `those-who-came-before`), toolkit count made dynamic.
-- [x] 1CO.7. Review engine-extraction thread narratives for clarity — rewrote all six relationship notes (3 `powers` + 3 `extracted-from`) to carry the extraction insight rather than restate card labels; standardised `extracted-from` notes to consistent "lifted out of … into the standalone … library" shape; light strapline tightening in `EngineThread.svelte`.
-- [x] 1CO.5. Expand Colophon: explain the build, the data model, and headline the Drift tooling story — full editorial rewrite; corrected outdated `ProjectSlug` and `contributionNote` snippets to match current `types.ts`; new headlined Drift section; build-time Shiki syntax highlighting (Vitesse light/dark, zero client JS); collapsed-by-default `<details>` sections for detail content.
 - [x] 1CO.3. Strengthen `contributionNote` copy across all team projects — structured `collaboration` field (team/employer/client) on all contributions; role-aware field-merge; rewritten notes across 11 overlays; colophon snippet updated; data test guards the invariant.
 - [x] 1CO.4. Rewrite About page narrative (positioning, voice) — leading with stance ("What I build") not autobiography; positioning lede under h1; four credibility specifics retained; h2 scale corrected; GitHub links via constants.
+- [x] 1CO.6. Review theme groupings and theme copy for coherence — three blurbs corrected, `commons-traybake` removed from `graph-native`, `schema-forge` added to `terminal-native`, new `human-history` territory added (`historia`, `epoch`, `those-who-came-before`), toolkit count made dynamic.
+- [x] 1CO.7. Review engine-extraction thread narratives for clarity — rewrote all six relationship notes (3 `powers` + 3 `extracted-from`) to carry the extraction insight rather than restate card labels; standardised `extracted-from` notes to consistent "lifted out of … into the standalone … library" shape; light strapline tightening in `EngineThread.svelte`.
 - [x] 1CO.9. CV / hire-me positioning copy — new `/hire` route with capabilities, three engagement shapes, and contact CTA; hamburger nav on narrow screens; `EMAIL` lifted into config.
 - [x] 1CO.10. Surfaced-project rotation / curation mechanism — fully derived: home hero scores by active-substance (recency × log-substance, 30-day half-life); no manual flagship flags; deal-another control cycles the full eligible pool; map hub set derived from p85 substance percentile (node size AND label visibility).
 
@@ -75,21 +75,20 @@ _None._
 
 <a name="m2-todo"><h4>To Do (Milestone 2)</h4></a>
 
-- [ ] 2FE.1. Client-side search across projects (title, tags, description) — unblocked now multi-select (2FE.4) has landed
+- [ ] 2FE.4. Multi-select filters — each dimension (role, type, status, tag) accumulates a set of selections: OR within a dimension, AND across dimensions — **re-do**: prior implementation will be revisited to integrate with the broader filter/search overhaul. _Previously completed: URL params pluralised (`roles`/`types`/`statuses`/`tags`); per-token percent-encoding for `C#`, `.NET 8` etc.; `FilterBar` widened to `Set<T>`; full test coverage._
 - [ ] 2FE.5. Cross-view continuity (carry selection from map → project → timeline) — builds on the shared `?project=` param landed in 2FE.2
-- [ ] 2FE.6. Tech-stack constellation visualisation — a `ProjectMap` variant clustering projects by shared stack; islands = niche tech, dense core = default toolkit
-- [ ] 2FE.7. Technology lineage edges — hand-authored `leads-to` / `replaced-by` relationships between technologies, rendered as directed edges on the adoption chart or constellation; modelled on `ProjectRelationship`. Feasibility note: adoption-date ordering (`adoption.ts`) + same-`TagKind` grouping + per-project co-occurrence decay can seed and rank *candidates*, but the replacement/coexistence judgement is editorial and cannot be auto-derived (TypeScript augments JavaScript; Express and FastAPI coexist). Requires a new `TechRelationship { kind: 'leads-to' | 'replaced-by'; source: label; target: label; note?: string }` structure and hand-authored edge data. Template: `ProjectRelationship` → `threads.ts` → `GraphEdge` normalisation in `graph.ts` — **may depend on 2FE.6** if rendered inside the constellation
-- [ ] 2FE.8. Overhaul map placement — robustly redraw an optimal (low-crossing) layout on every filter toggle. Build-time best-of-N (seed lottery + crossing count) already exists for the unfiltered layout; extend that robustness to live filter toggles, which today reheat a single d3-force sim with no crossing minimisation — **depends on 2FE.2**
+- [ ] 2FE.8. Overhaul map placement — robustly redraw an optimal (low-crossing) layout on every filter toggle. Build-time best-of-N (seed lottery + crossing count) already exists for the unfiltered layout; extend that robustness to live filter toggles — **depends on 2FE.2**
 
 <a name="m2-blocked"><h4>Blocked (Milestone 2)</h4></a>
 
-_None._
+- [ ] 2FE.1. Client-side search across projects (title, tags, description) — **depends on 2FE.4**
+- [ ] 2FE.3. Polish existing interactions — final integration pass covering all new interactions — **re-do once 2FE.1/2FE.5/2FE.7/2FE.8 are complete** — **depends on 2FE.1, 2FE.5, 2FE.7, 2FE.8**. _Previously completed: `AdoptionTimeline` hover/focus highlight with animated dot-scale, dim-others behaviour, and date-honesty distinction; TimelineChart pointer events for touch parity, per-node `<title>`, and `prefers-reduced-motion` guard._
+- [ ] 2FE.6. Tech-stack constellation visualisation — a `ProjectMap` variant clustering projects by shared stack; islands = niche tech, dense core = default toolkit — **depends on m1**
+- [ ] 2FE.7. Technology lineage edges — hand-authored `leads-to` / `replaced-by` relationships between technologies, rendered as directed edges on the adoption chart or constellation; modelled on `ProjectRelationship`. Requires a new `TechRelationship { kind: 'leads-to' | 'replaced-by'; source: label; target: label; note?: string }` structure and hand-authored edge data — **depends on 2FE.6**
 
 <a name="m2-done"><h4>Completed (Milestone 2)</h4></a>
 
 - [x] 2FE.2. Deep-link map / timeline / toolkit selections — clicking an item opens a `SelectionModal` (built on native `<dialog>`) offering Pin (writes the URL param, persists the highlight) or Go to project; the underlying `<a href>` stays the no-JS fallback. Shared `?project=` across map/timeline/themes (cross-view continuity substrate for 2FE.5); `?tech=` on the adoption chart with a tested `encodeTechLabel`/`decodeTechLabel` codec (handles `C#`, `.NET 8`). Extracted a shared `writeParam` (`src/lib/url-write.ts`) and deduped the projects-page `setParam` and ProjectMap's local copy onto it. Stale-pin and filter-hidden guards prevent a dead link dimming a whole view.
-- [x] 2FE.3. Polish existing interactions — TimelineChart was already fully interactive (hover-highlight, dim, `?project=` deep-link, connector lighting); work landed on `AdoptionTimeline`: hover/focus highlight with animated dot-scale, dim-others behaviour, and a curated-vs-derived date-honesty distinction (hollow outlined dots for estimated dates, legend entry). TimelineChart received three surgical polish commits: pointer events for touch parity, per-node `<title>`, and a `prefers-reduced-motion` guard.
-- [x] 2FE.4. Multi-select filters — each dimension (role, type, status, tag) now accumulates a set of selections instead of replacing: OR within a dimension, AND across dimensions. URL params pluralised (`roles`/`types`/`statuses`/`tags`) and store comma-joined sets via the existing `parseSet`/`serialiseSet` codec; tag labels get per-token percent-encoding (new `encodeTagSet`/`decodeTagSet` for `C#`, `.NET 8`, etc.). Tag matching switched from substring to exact. `FilterBar` props widened from scalars to `Set<T>`; chip active state uses set membership. Full test coverage for the filter logic and the new tag-set codec.
 
 ---
 
@@ -104,15 +103,16 @@ _None._
 
 <a name="m3-todo"><h4>To Do (Milestone 3)</h4></a>
 
-- [ ] 3DE.0. Define visual direction / signature — mood, type pairing, motion language, graph styling principles; the foundation everything else depends on — **depends on m1, m2**
-- [ ] 3DE.2. Responsive audit: map / timeline / grids on small viewports — **depends on 3DE.3, 3DE.4** (the motion and aesthetics passes must land first so the audit covers the settled design)
+_None._
 
 <a name="m3-blocked"><h4>Blocked (Milestone 3)</h4></a>
 
+- [ ] 3DE.0. Define visual direction / signature — mood, type pairing, motion language, graph styling principles; the foundation everything else depends on — **depends on m2**
 - [ ] 3DE.1. Typography pass (scale, rhythm, measure) across all routes — **depends on 3DE.0**
-- [ ] 3DE.3. Motion pass: meaningful transitions, respect `prefers-reduced-motion` — **depends on 3DE.0, 3DE.1**
-- [ ] 3DE.4. Refine graph aesthetics (edge styling, clustering legibility, constellation view) — **depends on 2FE.6, 2FE.8, 3DE.0, 3DE.5**
+- [ ] 3DE.3. Motion pass: meaningful transitions, respect `prefers-reduced-motion` — **depends on 3DE.1**
+- [ ] 3DE.4. Refine graph aesthetics (edge styling, clustering legibility, constellation view) — **depends on 3DE.5**
 - [ ] 3DE.5. Consistency sweep of semantic colour aliases vs Reasonable Colors usage — **depends on 3DE.0**
+- [ ] 3DE.2. Responsive audit: map / timeline / grids on small viewports — **depends on 3DE.3, 3DE.4**
 
 <a name="m3-done"><h4>Completed (Milestone 3)</h4></a>
 
@@ -131,14 +131,15 @@ _None._
 
 <a name="m4-todo"><h4>To Do (Milestone 4)</h4></a>
 
-- [ ] 4QU.5. Component / interaction test coverage for the connection views (beyond existing data-integrity tests) — **depends on 2FE.1–2FE.8** (tests cover the complete feature set)
-- [ ] 4QU.4. Confirm OG image coverage for every route and project — **depends on 2FE.1–2FE.8** (new routes and views must exist before coverage can be confirmed)
+_None._
 
 <a name="m4-blocked"><h4>Blocked (Milestone 4)</h4></a>
 
+- [ ] 4QU.5. Component / interaction test coverage for the connection views (beyond existing data-integrity tests) — **depends on m3**
+- [ ] 4QU.4. Confirm OG image coverage for every route and project — **depends on m3**
 - [ ] 4QU.1. Accessibility audit: keyboard nav, ARIA, contrast, SVG view semantics (the interactive graphs especially) — **depends on 4QU.5**
 - [ ] 4QU.3. SEO pass: structured data, meta completeness, sitemap verification; includes a light perf sanity-check (bundle size, hydration cost) — **depends on 4QU.1**
-- [ ] 4QU.7. a11y regression pass on the tech-stack constellation — **depends on 2FE.6, 3DE.4, 4QU.1**
+- [ ] 4QU.7. a11y regression pass on the tech-stack constellation — **depends on 4QU.1**
 
 <a name="m4-done"><h4>Completed (Milestone 4)</h4></a>
 
@@ -166,22 +167,22 @@ _None._
 
 <a name="m5-todo"><h4>To Do (Milestone 5)</h4></a>
 
-- [ ] 5DR.1. Boundary doc: define the core-engine vs Svelte-integration contract (what each layer owns)
-- [ ] 5DR.2. Coupling inventory: annotate the 6 couplings in code with their resolution path (light task — the map already exists)
-- [ ] 5DR.14. Rename Drift verbs so they signpost intent more clearly (e.g. `update`/`accept`/`exclude` → clearer names); updates `KNOWN_VERBS`, the dispatch switch, and help text. Breaking change to the CLI surface — all new verbs (5DR.13, 5DR.15–5DR.17) depend on this so renaming lands first
+- [ ] 5DR.1. Boundary doc: define the core-engine vs Svelte-integration contract (what each layer owns) — **depends on 5DR.0**
+- [ ] 5DR.2. Coupling inventory: annotate the 6 couplings in code with their resolution path (light task — the map already exists) — **depends on 5DR.12**
+- [ ] 5DR.14. Rename Drift verbs so they signpost intent more clearly (e.g. `update`/`accept`/`exclude` → clearer names); updates `KNOWN_VERBS`, the dispatch switch, and help text. Breaking change to the CLI surface — gates the engine split (5DR.6) and all new verbs — **depends on 5DR.0**
 
 <a name="m5-blocked"><h4>Blocked (Milestone 5)</h4></a>
 
 - [ ] 5DR.3. Config layer: paths, author pattern, scan root, excludes, gum theme all become user-config — **depends on 5DR.1, 5DR.2**
 - [ ] 5DR.4. Relocate / generalise tag taxonomy to the engine boundary — **depends on 5DR.3**
 - [ ] 5DR.5. Define engine's public data schema (the typed/JSON output contract) — **depends on 5DR.1**
-- [ ] 5DR.6. Split core engine from Svelte integration: move `.ts`-scraping (`curatedLanguages`/`curatedStatus`) into the integration layer — **depends on 5DR.3, 5DR.4, 5DR.12**
+- [ ] 5DR.6. Split core engine from Svelte integration: move `.ts`-scraping (`curatedLanguages`/`curatedStatus`) into the integration layer — **depends on 5DR.4, 5DR.14**
 - [ ] 5DR.7. Build subsumed in-repo backlog inside the decoupled design: branch awareness (Phase 5 of `drift-improvement-plan.md`) + `in-progress.json` staging pipeline (Phase 6) — **depends on 5DR.6**
 - [ ] 5DR.11. Drift `audit` verb: score every authored entry against the content-depth rubric (`docs/audits/content-depth.md`) and emit a per-entry tier report; the automated successor to the 1CO.1 manual audit — **depends on 5DR.5, 5DR.6**
-- [ ] 5DR.13. `drift init` scaffold verb: generate `src/lib/data/sources.local.json` with the correct structure but empty `paths`, replacing the manual `cp sources.local.json.example sources.local.json` step (models the file-writing pattern in `runExclude`/`runAccept`) — **depends on 5DR.14**
-- [ ] 5DR.15. `drift author <slug>` verb: create `src/lib/data/projects/<slug>.ts` from a template if absent, then open it in `$EDITOR` (spawn precedent: the prettier `spawnSync` at the top of the script) — **depends on 5DR.6, 5DR.14**
-- [ ] 5DR.16. `drift pin <slug>` verb: set `pin: true` in the slug's `.ts` overlay (creating the overlay if needed); pin/hide live only in overlays, never JSON — **depends on 5DR.6, 5DR.14**
-- [ ] 5DR.17. `drift hide <slug>` verb: set `hide: true` in the slug's `.ts` overlay (creating the overlay if needed) — **depends on 5DR.6, 5DR.14**
+- [ ] 5DR.13. `drift init` scaffold verb: generate `src/lib/data/sources.local.json` with the correct structure but empty `paths`, replacing the manual `cp sources.local.json.example sources.local.json` step — **depends on 5DR.7**
+- [ ] 5DR.15. `drift author <slug>` verb: create `src/lib/data/projects/<slug>.ts` from a template if absent, then open it in `$EDITOR` — **depends on 5DR.6**
+- [ ] 5DR.16. `drift pin <slug>` verb: set `pin: true` in the slug's `.ts` overlay (creating the overlay if needed); pin/hide live only in overlays, never JSON — **depends on 5DR.6**
+- [ ] 5DR.17. `drift hide <slug>` verb: set `hide: true` in the slug's `.ts` overlay (creating the overlay if needed) — **depends on 5DR.16**
 
 <a name="m5-done"><h4>Completed (Milestone 5)</h4></a>
 
@@ -205,9 +206,9 @@ _None._
 
 <a name="m6-blocked"><h4>Blocked (Milestone 6)</h4></a>
 
-- [ ] 5DR.8. Engine test suite: config resolution, fingerprinting, drift computation — **depends on 5DR.6, 5DR.12**
-- [ ] 5DR.9. Drift docs: config reference, data model, metric-precedence lifecycle diagram — **depends on 5DR.5, 5DR.6**
-- [ ] 5DR.10. Authoring guide: document which fields Drift populates automatically vs which require / accept hand-authored values, and where override files live — a short dev-facing reference so the authoring workflow is unambiguous — **depends on 5DR.1, 5DR.5**
+- [ ] 5DR.8. Engine test suite: config resolution, fingerprinting, drift computation — **depends on m3, m5**
+- [ ] 5DR.9. Drift docs: config reference, data model, metric-precedence lifecycle diagram — **depends on m3, m5**
+- [ ] 5DR.10. Authoring guide: document which fields Drift populates automatically vs which require / accept hand-authored values, and where override files live — a short dev-facing reference so the authoring workflow is unambiguous — **depends on m3, m5**
 
 <a name="m6-done"><h4>Completed (Milestone 6)</h4></a>
 
@@ -232,10 +233,10 @@ flowchart TD
 	1CO.2["`*1CO.2*<br/>**Content**<br/>all entries flagship-ready`"]:::done
 	1CO.3["`*1CO.3*<br/>**Content**<br/>contribution notes`"]:::done
 	1CO.4["`*1CO.4*<br/>**Content**<br/>About narrative`"]:::done
-	1CO.5["`*1CO.5*<br/>**Content**<br/>Colophon + Drift story`"]:::done
+	1CO.5["`*1CO.5*<br/>**Content**<br/>Colophon + Drift story`"]:::blocked
 	1CO.6["`*1CO.6*<br/>**Content**<br/>theme coherence`"]:::done
 	1CO.7["`*1CO.7*<br/>**Content**<br/>thread narratives`"]:::done
-	1CO.8["`*1CO.8*<br/>**Content**<br/>style-guide pass`"]:::open
+	1CO.8["`*1CO.8*<br/>**Content**<br/>style-guide pass`"]:::blocked
 	1CO.9["`*1CO.9*<br/>**Content**<br/>CV / hire-me copy`"]:::done
 	1CO.10["`*1CO.10*<br/>**Content**<br/>rotation mechanism`"]:::done
 
@@ -243,29 +244,29 @@ flowchart TD
 	1CO.1 --> 1CO.2
 	1CO.1 --> 1CO.6
 	1CO.2 --> 1CO.10
+	1CO.4 --> 1CO.7
 	1CO.4 --> 1CO.9
 	1CO.2 --> 1CO.8
 	1CO.3 --> 1CO.8
-	1CO.4 --> 1CO.8
 	1CO.5 --> 1CO.8
+	1CO.7 --> 1CO.8
 	1CO.9 --> 1CO.8
 
 	%% M1 track completers → m1
 	1CO.6 --> m1
-	1CO.7 --> m1
 	1CO.8 --> m1
 	1CO.10 --> m1
 
 	%% ── Milestone 2: Exploration & New Features ──────────────────────
 	m2{"`**Milestone 2**<br/>Exploration & Features`"}:::mile
 
-	2FE.1["`*2FE.1*<br/>**Features**<br/>client-side search`"]:::open
+	2FE.1["`*2FE.1*<br/>**Features**<br/>client-side search`"]:::blocked
 	2FE.2["`*2FE.2*<br/>**Features**<br/>deep-link map/timeline/toolkit`"]:::done
-	2FE.3["`*2FE.3*<br/>**Features**<br/>polish existing interactions`"]:::done
-	2FE.4["`*2FE.4*<br/>**Features**<br/>multi-select filters`"]:::done
+	2FE.3["`*2FE.3*<br/>**Features**<br/>polish existing interactions`"]:::blocked
+	2FE.4["`*2FE.4*<br/>**Features**<br/>multi-select filters`"]:::open
 	2FE.5["`*2FE.5*<br/>**Features**<br/>cross-view continuity`"]:::open
-	2FE.6["`*2FE.6*<br/>**Features**<br/>tech-stack constellation`"]:::open
-	2FE.7["`*2FE.7*<br/>**Features**<br/>tech lineage edges`"]:::open
+	2FE.6["`*2FE.6*<br/>**Features**<br/>tech-stack constellation`"]:::blocked
+	2FE.7["`*2FE.7*<br/>**Features**<br/>tech lineage edges`"]:::blocked
 	2FE.8["`*2FE.8*<br/>**Features**<br/>robust filter-toggle relayout`"]:::open
 
 	%% M2 — deps
@@ -274,39 +275,33 @@ flowchart TD
 	2FE.4 --> 2FE.1
 	2FE.6 --> 2FE.7
 	2FE.2 --> 2FE.8
-	%% B2: 2FE.1, 2FE.5, 2FE.7 gate 2FE.3 (polish is the final integration step)
 	2FE.1 --> 2FE.3
 	2FE.5 --> 2FE.3
 	2FE.7 --> 2FE.3
+	2FE.8 --> 2FE.3
 
-	%% M2 track completers → m2 (B2: only 2FE.3 and 2FE.8; B3: 2FE.6 removed)
+	%% M2 track completers → m2
 	2FE.3 --> m2
-	2FE.8 --> m2
 
 	%% ── Milestone 3: Design & Interaction Polish ──────────────────────
 	m3{"`**Milestone 3**<br/>Design & Interaction`"}:::mile
 
-	3DE.0["`*3DE.0*<br/>**Design**<br/>define visual direction`"]:::open
+	3DE.0["`*3DE.0*<br/>**Design**<br/>define visual direction`"]:::blocked
 	3DE.1["`*3DE.1*<br/>**Design**<br/>typography pass`"]:::blocked
-	3DE.2["`*3DE.2*<br/>**Design**<br/>responsive audit`"]:::open
+	3DE.2["`*3DE.2*<br/>**Design**<br/>responsive audit`"]:::blocked
 	3DE.3["`*3DE.3*<br/>**Design**<br/>motion pass`"]:::blocked
 	3DE.4["`*3DE.4*<br/>**Design**<br/>graph aesthetics`"]:::blocked
 	3DE.5["`*3DE.5*<br/>**Design**<br/>colour consistency`"]:::blocked
 
 	%% M3 — deps
-	%% B4: 3DE.0 starts after M1 & M2 are complete
-	m1 --> 3DE.0
-	m2 --> 3DE.0
 	3DE.0 --> 3DE.1
-	3DE.0 --> 3DE.3
-	3DE.0 --> 3DE.4
 	3DE.0 --> 3DE.5
 	3DE.1 --> 3DE.3
 	3DE.5 --> 3DE.4
-
-	%% M3 track completers → m3 (B5: 3DE.3 and 3DE.4 gate 3DE.2; only 3DE.2 gates m3)
 	3DE.3 --> 3DE.2
 	3DE.4 --> 3DE.2
+
+	%% M3 track completer → m3
 	3DE.2 --> m3
 
 	%% ── Milestone 4: Quality & Reach ─────────────────────────────────
@@ -314,31 +309,14 @@ flowchart TD
 
 	4QU.1["`*4QU.1*<br/>**Quality**<br/>a11y audit`"]:::blocked
 	4QU.3["`*4QU.3*<br/>**Quality**<br/>SEO + perf sanity`"]:::blocked
-	4QU.4["`*4QU.4*<br/>**Quality**<br/>OG coverage`"]:::open
-	4QU.5["`*4QU.5*<br/>**Quality**<br/>view test coverage`"]:::open
+	4QU.4["`*4QU.4*<br/>**Quality**<br/>OG coverage`"]:::blocked
+	4QU.5["`*4QU.5*<br/>**Quality**<br/>view test coverage`"]:::blocked
 	4QU.7["`*4QU.7*<br/>**Quality**<br/>constellation a11y`"]:::blocked
 
 	%% M4 — deps
 	4QU.5 --> 4QU.1
 	4QU.1 --> 4QU.3
 	4QU.1 --> 4QU.7
-	%% B6: 4QU.4 and 4QU.5 gated by all 2FE features they test
-	2FE.1 --> 4QU.4
-	2FE.2 --> 4QU.4
-	2FE.3 --> 4QU.4
-	2FE.4 --> 4QU.4
-	2FE.5 --> 4QU.4
-	2FE.6 --> 4QU.4
-	2FE.7 --> 4QU.4
-	2FE.8 --> 4QU.4
-	2FE.1 --> 4QU.5
-	2FE.2 --> 4QU.5
-	2FE.3 --> 4QU.5
-	2FE.4 --> 4QU.5
-	2FE.5 --> 4QU.5
-	2FE.6 --> 4QU.5
-	2FE.7 --> 4QU.5
-	2FE.8 --> 4QU.5
 
 	%% M4 track completers → m4
 	4QU.3 --> m4
@@ -372,59 +350,51 @@ flowchart TD
 
 	%% M5 — deps
 	5DR.0 --> 5DR.1
+	5DR.0 --> 5DR.14
+	5DR.12 --> 5DR.2
 	5DR.1 --> 5DR.3
 	5DR.1 --> 5DR.5
 	5DR.2 --> 5DR.3
 	5DR.3 --> 5DR.4
-	5DR.3 --> 5DR.6
-	5DR.5 --> 5DR.9
-	5DR.6 --> 5DR.7
-	5DR.6 --> 5DR.8
-	5DR.6 --> 5DR.9
-	5DR.1 --> 5DR.10
-	5DR.5 --> 5DR.10
-	5DR.5 --> 5DR.11
-	5DR.6 --> 5DR.11
 	5DR.4 --> 5DR.6
-	5DR.12 --> 5DR.6
-	5DR.12 --> 5DR.8
+	5DR.5 --> 5DR.11
+	5DR.6 --> 5DR.7
+	5DR.6 --> 5DR.11
 	5DR.6 --> 5DR.15
 	5DR.6 --> 5DR.16
-	5DR.6 --> 5DR.17
-	5DR.14 --> 5DR.13
-	5DR.14 --> 5DR.15
-	5DR.14 --> 5DR.16
-	5DR.14 --> 5DR.17
+	5DR.7 --> 5DR.13
+	5DR.16 --> 5DR.17
+	5DR.14 --> 5DR.6
 
-	%% M5 track completers → m5 (engine + verbs)
-	5DR.7 --> m5
+	%% M5 track completers → m5
 	5DR.11 --> m5
 	5DR.13 --> m5
-	5DR.14 --> m5
 	5DR.15 --> m5
-	5DR.16 --> m5
 	5DR.17 --> m5
 
-	%% M6 track completers → m6 (tests + docs)
+	%% M6 — inbound from M3 and M5
+	m3 --> 5DR.8
+	m3 --> 5DR.9
+	m3 --> 5DR.10
+	m5 --> 5DR.8
+	m5 --> 5DR.9
+	m5 --> 5DR.10
+
+	%% M6 track completers → m6
 	5DR.8 --> m6
 	5DR.9 --> m6
 	5DR.10 --> m6
 
 	%% ── Cross-milestone gates ────────────────────────────────────────
-	1CO.2 ==>|gates OG| 4QU.4
-	2FE.6 ==>|gates design| 3DE.4
-	2FE.8 ==>|feeds aesthetics| 3DE.4
-	2FE.6 ==>|gates a11y| 4QU.7
-	1CO.2 ==>|enables search| 2FE.1
-	3DE.4 ==>|gates| 4QU.7
+	m1 --> 2FE.6
+	m2 --> 3DE.0
+	m3 --> 4QU.4
+	m3 --> 4QU.5
+	m5 --> 1CO.5
 
 	%% ── Convergence ──────────────────────────────────────────────────
 	SHIP(["`**Portfolio v-next**<br/>shipped`"]):::ship
-	m1 --> SHIP
-	m2 --> SHIP
-	m3 --> SHIP
 	m4 --> SHIP
-	m5 --> SHIP
 	m6 --> SHIP
 
 	classDef open     fill:#fff3fc,stroke:#740068,color:#44003c;
