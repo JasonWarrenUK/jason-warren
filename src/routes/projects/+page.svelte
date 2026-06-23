@@ -7,6 +7,7 @@
 	import { filterProjects } from '$lib/data/queries.js';
 	import ProjectGrid from '$lib/components/project/ProjectGrid.svelte';
 	import FilterBar from '$lib/components/filter/FilterBar.svelte';
+	import SearchInput from '$lib/components/filter/SearchInput.svelte';
 	import Seo from '$lib/components/seo/Seo.svelte';
 	import { writeParam } from '$lib/url-write.js';
 	import { parseSet, serialiseSet, encodeTagSet, decodeTagSet } from '$lib/url-state.js';
@@ -33,6 +34,7 @@
 			? parseSet<ProjectStatus>($page.url.searchParams.get('statuses'))
 			: new Set<ProjectStatus>()
 	);
+	const activeQuery = $derived(browser ? ($page.url.searchParams.get('q') ?? '') : '');
 
 	function toggleParam<T extends string>(
 		current: Set<T>,
@@ -51,7 +53,8 @@
 			tags: activeTags,
 			roles: activeRoles,
 			kinds: activeKinds,
-			statuses: activeStatuses
+			statuses: activeStatuses,
+			query: activeQuery || undefined
 		}).sort((a, b) => (b.lastCommit ?? '').localeCompare(a.lastCommit ?? ''))
 	);
 
@@ -90,6 +93,7 @@
 	</header>
 
 	<aside class="page__filters">
+		<SearchInput value={activeQuery} onchange={(q) => writeParam('q', q)} />
 		<FilterBar
 			kinds={data.kinds}
 			activeKinds={activeKinds}
@@ -140,6 +144,9 @@
 
 	.page__filters {
 		grid-area: filters;
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-3);
 	}
 
 	.page__grid {
