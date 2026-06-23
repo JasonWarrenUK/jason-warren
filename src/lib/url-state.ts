@@ -66,3 +66,44 @@ export function decodeTechLabel(raw: string | null, known: Iterable<string>): st
 	}
 	return null;
 }
+
+// ---------------------------------------------------------------------------
+// Tag-set codec
+//
+// Tag labels (e.g. "C#", "Node.js", ".NET 8") contain characters that are
+// unsafe in URL search params. Each token is individually percent-encoded
+// before joining, so the comma delimiter is unambiguous and no label can
+// corrupt a neighbouring token.
+// ---------------------------------------------------------------------------
+
+/**
+ * Encode a Set of tag labels into a URL search-param string, or `null` when
+ * the set is empty (signals caller to delete the param).
+ *
+ * Each label is percent-encoded individually; the tokens are sorted for
+ * canonical, stable URLs.
+ */
+export function encodeTagSet(tags: Set<string>): string | null {
+	if (tags.size === 0) return null;
+	return [...tags]
+		.map(encodeURIComponent)
+		.sort()
+		.join(',');
+}
+
+/**
+ * Decode a `?tags=` search-param value into a Set of tag labels.
+ *
+ * `null` (param absent) and `''` (param present but empty) both produce an
+ * empty set. Unknown labels are included as-is; stale-pin validation is the
+ * caller's responsibility.
+ */
+export function decodeTagSet(raw: string | null): Set<string> {
+	if (!raw) return new Set<string>();
+	return new Set(
+		raw
+			.split(',')
+			.filter((v) => v.length > 0)
+			.map(decodeURIComponent)
+	);
+}

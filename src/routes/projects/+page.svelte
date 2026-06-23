@@ -9,28 +9,49 @@
 	import FilterBar from '$lib/components/filter/FilterBar.svelte';
 	import Seo from '$lib/components/seo/Seo.svelte';
 	import { writeParam } from '$lib/url-write.js';
+	import { parseSet, serialiseSet, encodeTagSet, decodeTagSet } from '$lib/url-state.js';
 
 	let { data } = $props();
 
 	// URL search params are only readable in the browser; during prerender we
 	// show all projects so the prerendered HTML is always complete.
-	const activeTag = $derived(browser ? $page.url.searchParams.get('tag') : null);
-	const activeRole = $derived(
-		browser ? ($page.url.searchParams.get('role') as ProjectRole | null) : null
+	const activeTags = $derived(
+		browser ? decodeTagSet($page.url.searchParams.get('tags')) : new Set<string>()
 	);
-	const activeKind = $derived(
-		browser ? ($page.url.searchParams.get('type') as ProjectKind | null) : null
+	const activeRoles = $derived(
+		browser
+			? parseSet<ProjectRole>($page.url.searchParams.get('roles'))
+			: new Set<ProjectRole>()
 	);
-	const activeStatus = $derived(
-		browser ? ($page.url.searchParams.get('status') as ProjectStatus | null) : null
+	const activeKinds = $derived(
+		browser
+			? parseSet<ProjectKind>($page.url.searchParams.get('types'))
+			: new Set<ProjectKind>()
 	);
+	const activeStatuses = $derived(
+		browser
+			? parseSet<ProjectStatus>($page.url.searchParams.get('statuses'))
+			: new Set<ProjectStatus>()
+	);
+
+	function toggleParam<T extends string>(
+		current: Set<T>,
+		value: T,
+		paramKey: string,
+		encode: (s: Set<T>) => string | null = serialiseSet
+	): void {
+		const next = new Set(current);
+		if (next.has(value)) next.delete(value);
+		else next.add(value);
+		writeParam(paramKey, encode(next));
+	}
 
 	const filtered = $derived(
 		filterProjects({
-			tag: activeTag ?? undefined,
-			role: activeRole ?? undefined,
-			kind: activeKind ?? undefined,
-			status: activeStatus ?? undefined
+			tags: activeTags,
+			roles: activeRoles,
+			kinds: activeKinds,
+			statuses: activeStatuses
 		}).sort((a, b) => (b.lastCommit ?? '').localeCompare(a.lastCommit ?? ''))
 	);
 
@@ -71,16 +92,16 @@
 	<aside class="page__filters">
 		<FilterBar
 			kinds={data.kinds}
-			{activeKind}
-			onkind={(kind) => writeParam('type', kind)}
+			activeKinds={activeKinds}
+			onkind={(kind) => toggleParam(activeKinds, kind, 'types')}
 			statuses={data.statuses}
-			{activeStatus}
-			onstatus={(s) => writeParam('status', s)}
+			activeStatuses={activeStatuses}
+			onstatus={(s) => toggleParam(activeStatuses, s, 'statuses')}
 			tagsByKind={data.tagsByKind}
-			{activeTag}
-			{activeRole}
-			ontag={(tag) => writeParam('tag', tag)}
-			onrole={(role) => writeParam('role', role)}
+			activeTags={activeTags}
+			activeRoles={activeRoles}
+			ontag={(tag) => toggleParam(activeTags, tag, 'tags', encodeTagSet)}
+			onrole={(role) => toggleParam(activeRoles, role, 'roles')}
 		/>
 	</aside>
 

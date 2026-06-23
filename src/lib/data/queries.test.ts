@@ -4,9 +4,9 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { getHeroPool, HERO_COUNT } from './queries.js';
+import { getHeroPool, HERO_COUNT, filterProjects } from './queries.js';
 import { heroScore } from './scoring.js';
-import type { Project, ProjectStatus } from './types.js';
+import type { Project, ProjectKind, ProjectRole, ProjectStatus } from './types.js';
 
 // ---------------------------------------------------------------------------
 // Fixture helpers
@@ -158,5 +158,80 @@ describe('getHeroPool — default top-3 snapshot', () => {
 		const pool = getHeroPool(BASE_NOW);
 		const top3 = pool.slice(0, HERO_COUNT).map((p) => p.slug);
 		expect(top3).toEqual(['iris', 'wyrd-tui', 'guardrails']);
+	});
+});
+
+// ---------------------------------------------------------------------------
+// filterProjects — multi-select set filters
+// ---------------------------------------------------------------------------
+
+describe('filterProjects — no filters', () => {
+	it('returns all projects when all filter sets are empty', () => {
+		const all = filterProjects({});
+		expect(all.length).toBeGreaterThan(0);
+	});
+});
+
+describe('filterProjects — single dimension', () => {
+	it('filters by a single kind', () => {
+		const result = filterProjects({ kinds: new Set<ProjectKind>(['app']) });
+		expect(result.every((p) => p.kind === 'app')).toBe(true);
+	});
+
+	it('filters by a single status', () => {
+		const result = filterProjects({ statuses: new Set<ProjectStatus>(['wip']) });
+		expect(result.every((p) => p.status === 'wip')).toBe(true);
+	});
+
+	it('filters by a single role', () => {
+		const result = filterProjects({ roles: new Set<ProjectRole>(['solo']) });
+		expect(result.every((p) => p.contribution.role === 'solo')).toBe(true);
+	});
+});
+
+describe('filterProjects — multi-value within a dimension (OR)', () => {
+	it('matches projects satisfying either kind (OR within dimension)', () => {
+		const result = filterProjects({ kinds: new Set<ProjectKind>(['app', 'library']) });
+		expect(result.length).toBeGreaterThan(0);
+		expect(result.every((p) => p.kind === 'app' || p.kind === 'library')).toBe(true);
+	});
+
+	it('matches projects satisfying either status (OR within dimension)', () => {
+		const result = filterProjects({ statuses: new Set<ProjectStatus>(['live', 'wip']) });
+		expect(result.every((p) => p.status === 'live' || p.status === 'wip')).toBe(true);
+	});
+});
+
+describe('filterProjects — cross-dimension (AND)', () => {
+	it('requires both kind and status to match (AND across dimensions)', () => {
+		const result = filterProjects({
+			kinds: new Set<ProjectKind>(['app']),
+			statuses: new Set<ProjectStatus>(['live'])
+		});
+		expect(result.every((p) => p.kind === 'app' && p.status === 'live')).toBe(true);
+	});
+});
+
+describe('filterProjects — tags', () => {
+	it('matches a project carrying the selected tag (exact match)', () => {
+		const result = filterProjects({ tags: new Set(['TypeScript']) });
+		expect(result.every((p) => p.tags.some((t) => t.label === 'TypeScript'))).toBe(true);
+	});
+
+	it('does not match projects that only carry a substring of the selected tag', () => {
+		// 'Type' must not match projects tagged 'TypeScript'
+		const forTypeScript = filterProjects({ tags: new Set(['TypeScript']) });
+		const forType = filterProjects({ tags: new Set(['Type']) });
+		// Every 'Type' result must have a tag labelled exactly 'Type', not just TypeScript
+		expect(forType.every((p) => p.tags.some((t) => t.label === 'Type'))).toBe(true);
+		// 'Type' must return fewer or equal results to 'TypeScript' (it's a stricter filter)
+		expect(forType.length).toBeLessThanOrEqual(forTypeScript.length);
+	});
+
+	it('matches a project carrying any one of the selected tags (OR within tags)', () => {
+		const result = filterProjects({ tags: new Set(['TypeScript', 'Svelte']) });
+		expect(
+			result.every((p) => p.tags.some((t) => t.label === 'TypeScript' || t.label === 'Svelte'))
+		).toBe(true);
 	});
 });

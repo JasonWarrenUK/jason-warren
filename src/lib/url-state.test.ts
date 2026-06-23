@@ -9,7 +9,14 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { parseSet, serialiseSet, encodeTechLabel, decodeTechLabel } from './url-state.js';
+import {
+	parseSet,
+	serialiseSet,
+	encodeTechLabel,
+	decodeTechLabel,
+	encodeTagSet,
+	decodeTagSet
+} from './url-state.js';
 
 // ---------------------------------------------------------------------------
 // parseSet
@@ -165,5 +172,78 @@ describe('tech-label round-trip', () => {
 	])('encodeTechLabel → decodeTechLabel round-trips %s', (label) => {
 		const encoded = encodeTechLabel(label);
 		expect(decodeTechLabel(encoded, knownLabels)).toBe(label);
+	});
+});
+
+// ---------------------------------------------------------------------------
+// encodeTagSet
+// ---------------------------------------------------------------------------
+
+describe('encodeTagSet', () => {
+	it('returns null for an empty set', () => {
+		expect(encodeTagSet(new Set())).toBeNull();
+	});
+
+	it('percent-encodes a label containing #', () => {
+		const result = encodeTagSet(new Set(['C#']));
+		expect(result).toBe('C%23');
+	});
+
+	it('percent-encodes a label containing a space', () => {
+		const result = encodeTagSet(new Set(['POSIX shell']));
+		expect(result).toBe('POSIX%20shell');
+	});
+
+	it('encodes multiple labels and sorts them', () => {
+		const result = encodeTagSet(new Set(['Svelte', 'C#']));
+		// C%23 sorts before Svelte
+		expect(result).toBe('C%23,Svelte');
+	});
+
+	it('produces the same output regardless of insertion order', () => {
+		const a = encodeTagSet(new Set(['Svelte', 'TypeScript']));
+		const b = encodeTagSet(new Set(['TypeScript', 'Svelte']));
+		expect(a).toBe(b);
+	});
+});
+
+// ---------------------------------------------------------------------------
+// decodeTagSet
+// ---------------------------------------------------------------------------
+
+describe('decodeTagSet', () => {
+	it('returns an empty set for null (param absent)', () => {
+		expect(decodeTagSet(null)).toEqual(new Set());
+	});
+
+	it('returns an empty set for an empty string', () => {
+		expect(decodeTagSet('')).toEqual(new Set());
+	});
+
+	it('decodes a single percent-encoded label', () => {
+		expect(decodeTagSet('C%23')).toEqual(new Set(['C#']));
+	});
+
+	it('decodes multiple comma-separated encoded labels', () => {
+		expect(decodeTagSet('C%23,Svelte')).toEqual(new Set(['C#', 'Svelte']));
+	});
+
+	it('drops empty tokens', () => {
+		expect(decodeTagSet('C%23,,Svelte')).toEqual(new Set(['C#', 'Svelte']));
+	});
+});
+
+// ---------------------------------------------------------------------------
+// Tag-set round-trip
+// ---------------------------------------------------------------------------
+
+describe('tag-set round-trip', () => {
+	it.each([
+		[new Set(['TypeScript'])],
+		[new Set(['C#', 'Node.js'])],
+		[new Set(['.NET 8', 'POSIX shell', 'Svelte'])],
+	])('encodeTagSet → decodeTagSet round-trips %s', (tags) => {
+		const encoded = encodeTagSet(tags);
+		expect(decodeTagSet(encoded)).toEqual(tags);
 	});
 });

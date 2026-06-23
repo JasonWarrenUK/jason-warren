@@ -81,26 +81,35 @@ export function getAllProjectsByInception(): Project[] {
 // ---------------------------------------------------------------------------
 
 export interface ProjectFilters {
-	role?: ProjectRole;
-	status?: ProjectStatus;
-	kind?: ProjectKind;
-	tag?: string;
+	roles?: Set<ProjectRole>;
+	statuses?: Set<ProjectStatus>;
+	kinds?: Set<ProjectKind>;
+	tags?: Set<string>;
 }
 
+/**
+ * Filter projects by up to four dimensions.
+ *
+ * Logic: AND across dimensions, OR within a dimension (a project must satisfy
+ * every non-empty filter set, but matching any one value in a set is
+ * sufficient). An absent or empty set means "no constraint on this dimension".
+ * Tag matching is exact and case-sensitive (labels come from the curated
+ * taxonomy, so free-text fuzzy matching is not needed).
+ */
 export function filterProjects(filters: ProjectFilters): Project[] {
 	return projects.filter((p) => {
-		if (filters.role !== undefined) {
-			if (p.contribution.role !== filters.role) return false;
+		if (filters.roles?.size) {
+			if (!filters.roles.has(p.contribution.role)) return false;
 		}
-		if (filters.status !== undefined) {
-			if (p.status !== filters.status) return false;
+		if (filters.statuses?.size) {
+			if (!filters.statuses.has(p.status)) return false;
 		}
-		if (filters.kind !== undefined) {
-			if (p.kind !== filters.kind) return false;
+		if (filters.kinds?.size) {
+			if (!filters.kinds.has(p.kind)) return false;
 		}
-		if (filters.tag !== undefined) {
-			const match = filters.tag.toLowerCase();
-			if (!p.tags.some((t) => t.label.toLowerCase().includes(match))) return false;
+		if (filters.tags?.size) {
+			const projectLabels = new Set(p.tags.map((t) => t.label));
+			if (![...filters.tags].some((tag) => projectLabels.has(tag))) return false;
 		}
 		return true;
 	});

@@ -18,34 +18,34 @@
 	interface Props {
 		/** All ProjectKind values present in the registry. */
 		kinds: ProjectKind[];
-		/** Currently active kind filter, or null. */
-		activeKind: ProjectKind | null;
-		onkind: (kind: ProjectKind | null) => void;
+		/** Currently active kind filters. */
+		activeKinds: Set<ProjectKind>;
+		onkind: (kind: ProjectKind) => void;
 		/** All ProjectStatus values present in the registry. */
 		statuses: ProjectStatus[];
-		/** Currently active status filter, or null. */
-		activeStatus: ProjectStatus | null;
-		onstatus: (status: ProjectStatus | null) => void;
+		/** Currently active status filters. */
+		activeStatuses: Set<ProjectStatus>;
+		onstatus: (status: ProjectStatus) => void;
 		/** Tag labels grouped by TagKind. */
 		tagsByKind: Record<TagKind, string[]>;
-		/** Currently active tag filter, or null. */
-		activeTag: string | null;
-		/** Currently active role filter, or null. */
-		activeRole: ProjectRole | null;
-		ontag: (tag: string | null) => void;
-		onrole: (role: ProjectRole | null) => void;
+		/** Currently active tag filters. */
+		activeTags: Set<string>;
+		/** Currently active role filters. */
+		activeRoles: Set<ProjectRole>;
+		ontag: (tag: string) => void;
+		onrole: (role: ProjectRole) => void;
 	}
 
 	let {
 		kinds,
-		activeKind,
+		activeKinds,
 		onkind,
 		statuses,
-		activeStatus,
+		activeStatuses,
 		onstatus,
 		tagsByKind,
-		activeTag,
-		activeRole,
+		activeTags,
+		activeRoles,
 		ontag,
 		onrole
 	}: Props = $props();
@@ -113,28 +113,28 @@
 <details class="filter-bar__all" bind:open>
 	<summary class="filter-bar__summary">Filters</summary>
 	<div class="filter-bar" role="group" aria-label="Filter projects">
-		<details class="filter-group" open={activeRole !== null}>
+		<details class="filter-group" open={activeRoles.size > 0}>
 			<summary class="filter-group__summary">Role</summary>
 			<div class="filter-group__chips">
 				{#each roles as role (role)}
 					<FilterChip
 						label={roleLabels[role]}
-						active={activeRole === role}
-						onclick={() => onrole(activeRole === role ? null : role)}
+						active={activeRoles.has(role)}
+						onclick={() => onrole(role)}
 					/>
 				{/each}
 			</div>
 		</details>
 
 		{#if kinds.length > 0}
-			<details class="filter-group" open={activeKind !== null}>
+			<details class="filter-group" open={activeKinds.size > 0}>
 				<summary class="filter-group__summary">Type</summary>
 				<div class="filter-group__chips">
 					{#each kinds.sort((a, b) => kindLabels[a].localeCompare(kindLabels[b])) as kind (kind)}
 						<FilterChip
 							label={kindLabels[kind]}
-							active={activeKind === kind}
-							onclick={() => onkind(activeKind === kind ? null : kind)}
+							active={activeKinds.has(kind)}
+							onclick={() => onkind(kind)}
 						/>
 					{/each}
 				</div>
@@ -142,14 +142,14 @@
 		{/if}
 
 		{#if statuses.length > 0}
-			<details class="filter-group" open={activeStatus !== null}>
+			<details class="filter-group" open={activeStatuses.size > 0}>
 				<summary class="filter-group__summary">Status</summary>
 				<div class="filter-group__chips">
 					{#each statusOrder.filter((s) => statuses.includes(s)) as s (s)}
 						<FilterChip
 							label={statusLabels[s]}
-							active={activeStatus === s}
-							onclick={() => onstatus(activeStatus === s ? null : s)}
+							active={activeStatuses.has(s)}
+							onclick={() => onstatus(s)}
 						/>
 					{/each}
 				</div>
@@ -159,14 +159,14 @@
 		{#each tagKindOrder as kind (kind)}
 			{@const tags = tagsByKind[kind]}
 			{#if tags.length > 0}
-				<details class="filter-group" open={activeTag !== null && tags.includes(activeTag)}>
+				<details class="filter-group" open={tags.some((t) => activeTags.has(t))}>
 					<summary class="filter-group__summary">{tagKindLabels[kind]}</summary>
 					<div class="filter-group__chips">
 						{#each tags as tag (tag)}
 							<FilterChip
 								label={tag}
-								active={activeTag === tag}
-								onclick={() => ontag(activeTag === tag ? null : tag)}
+								active={activeTags.has(tag)}
+								onclick={() => ontag(tag)}
 							/>
 						{/each}
 					</div>
