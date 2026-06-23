@@ -6,7 +6,7 @@
 import { describe, expect, it } from 'vitest';
 import { getHeroPool, HERO_COUNT, filterProjects } from './queries.js';
 import { heroScore } from './scoring.js';
-import type { Project, ProjectKind, ProjectRole, ProjectStatus } from './types.js';
+import type { Project, ProjectKind, ProjectRole, ProjectStatus, TechTag } from './types.js';
 
 // ---------------------------------------------------------------------------
 // Fixture helpers
@@ -22,17 +22,22 @@ function makeProject(
 		lastCommit?: string;
 		pin?: boolean;
 		hide?: boolean;
+		name?: string;
+		tagline?: string;
+		blurb?: string;
+		description?: string;
+		tags?: TechTag[];
 	} = {}
 ): Project {
 	return {
 		slug,
-		name: slug,
-		tagline: '',
-		blurb: '',
-		description: '',
+		name: overrides.name ?? slug,
+		tagline: overrides.tagline ?? '',
+		blurb: overrides.blurb ?? '',
+		description: overrides.description ?? '',
 		kind: 'repo',
 		contribution: { role: 'solo', commitShare: 1 },
-		tags: [],
+		tags: overrides.tags ?? [],
 		status: overrides.status ?? 'live',
 		repoUrl: `https://github.com/JasonWarrenUK/${slug}`,
 		highlights: [],
@@ -233,5 +238,65 @@ describe('filterProjects — tags', () => {
 		expect(
 			result.every((p) => p.tags.some((t) => t.label === 'TypeScript' || t.label === 'Svelte'))
 		).toBe(true);
+	});
+});
+
+// ---------------------------------------------------------------------------
+// filterProjects — query search
+// ---------------------------------------------------------------------------
+
+function searchHaystack(p: Project): string {
+	return [p.name, p.tagline, p.blurb, p.description, ...p.tags.map((t) => t.label)]
+		.join(' ')
+		.toLowerCase();
+}
+
+describe('filterProjects — query search', () => {
+	it('returns all projects when query is absent', () => {
+		const withoutQuery = filterProjects({});
+		const withUndefined = filterProjects({ query: undefined });
+		expect(withoutQuery.length).toBeGreaterThan(0);
+		expect(withoutQuery.length).toBe(withUndefined.length);
+	});
+
+	it('returns all projects when query is an empty string', () => {
+		const result = filterProjects({ query: '' });
+		const all = filterProjects({});
+		expect(result.length).toBe(all.length);
+	});
+
+	it('matches on name — "Iris" surfaces the iris project', () => {
+		const result = filterProjects({ query: 'Iris' });
+		expect(result.some((p) => p.slug === 'iris')).toBe(true);
+	});
+
+	it('matches on tagline — every result contains the query in its haystack', () => {
+		const result = filterProjects({ query: 'toolkit' });
+		expect(result.length).toBeGreaterThan(0);
+		expect(result.every((p) => searchHaystack(p).includes('toolkit'))).toBe(true);
+	});
+
+	it('matches on tag label — "TypeScript" query matches only projects with TypeScript in searchable fields', () => {
+		const result = filterProjects({ query: 'TypeScript' });
+		expect(result.length).toBeGreaterThan(0);
+		expect(result.every((p) => searchHaystack(p).includes('typescript'))).toBe(true);
+	});
+
+	it('returns no results when query matches nothing', () => {
+		const result = filterProjects({ query: 'zzz-no-project-has-this-xyzzy' });
+		expect(result).toHaveLength(0);
+	});
+
+	it('is case-insensitive — uppercase and lowercase queries return the same results', () => {
+		const lower = filterProjects({ query: 'svelte' });
+		const upper = filterProjects({ query: 'SVELTE' });
+		expect(lower.length).toBeGreaterThan(0);
+		expect(lower.map((p) => p.slug).sort()).toEqual(upper.map((p) => p.slug).sort());
+	});
+
+	it('composes with kinds filter — AND relationship holds', () => {
+		const result = filterProjects({ query: 'svelte', kinds: new Set<ProjectKind>(['app']) });
+		expect(result.every((p) => p.kind === 'app')).toBe(true);
+		expect(result.every((p) => searchHaystack(p).includes('svelte'))).toBe(true);
 	});
 });
