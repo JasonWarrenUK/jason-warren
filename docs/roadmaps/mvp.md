@@ -75,8 +75,8 @@ _None._
 
 <a name="m2-todo"><h4>To Do (Milestone 2)</h4></a>
 
-- [ ] 2FE.4. Multi-select filters — each dimension (role, type, status, tag) accumulates a set of selections: OR within a dimension, AND across dimensions — **re-do**: prior implementation will be revisited to integrate with the broader filter/search overhaul. _Previously completed: URL params pluralised (`roles`/`types`/`statuses`/`tags`); per-token percent-encoding for `C#`, `.NET 8` etc.; `FilterBar` widened to `Set<T>`; full test coverage._
-- [ ] 2FE.5. Cross-view continuity (carry selection from map → project → timeline) — builds on the shared `?project=` param landed in 2FE.2
+- [ ] 2FE.4. Multi-select filters — each dimension (role, type, status, tag) accumulates a set of selections: OR within a dimension, AND across dimensions — **re-do**: prior implementation will be revisited to integrate with the broader filter/search overhaul — **depends on 2FE.2**. _Previously completed: URL params pluralised (`roles`/`types`/`statuses`/`tags`); per-token percent-encoding for `C#`, `.NET 8` etc.; `FilterBar` widened to `Set<T>`; full test coverage._
+- [ ] 2FE.5. Cross-view continuity (carry selection from map → project → timeline) — builds on the shared `?project=` param landed in 2FE.2 — **depends on 2FE.2**
 - [ ] 2FE.8. Overhaul map placement — robustly redraw an optimal (low-crossing) layout on every filter toggle. Build-time best-of-N (seed lottery + crossing count) already exists for the unfiltered layout; extend that robustness to live filter toggles — **depends on 2FE.2**
 
 <a name="m2-blocked"><h4>Blocked (Milestone 2)</h4></a>
