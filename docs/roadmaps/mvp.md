@@ -9,7 +9,7 @@ The site is live and substantially built (full routes, graph/timeline/map/toolki
 |              | Status                                                                                                         | Next Up                                                      | Blocked                                                                     |
 | ------------ | -------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------ | --------------------------------------------------------------------------- |
 | **Content**  | 30+ entries, themes, threads, About, CV/hire; depth audit complete; 8 of 10 M1 tasks done                     | Colophon (1CO.5) and style-guide pass (1CO.8) after M5      | 1CO.5 blocked on M5; 1CO.8 blocked on 1CO.5                                |
-| **Features** | Deep-link selections (2FE.2) done; multi-select filters (2FE.4) being redone                                  | Multi-select (2FE.4), cross-view continuity (2FE.5), filter relayout (2FE.8) | Search (2FE.1) blocked on 2FE.4; constellation (2FE.6) blocked on m1       |
+| **Features** | 2FE.1–2FE.5, 2FE.8 done; all connection views built (search, multi-select, cross-view continuity, relayout)   | Polish pass (2FE.3) after 2FE.7; tech constellation (2FE.6) after M1        | 2FE.6 blocked on M1; 2FE.7 blocked on 2FE.6; 2FE.3 blocked on 2FE.7/2FE.8 |
 | **Design**   | Reasonable Colors tokens, dark mode                                                                            | Visual direction (3DE.0) after M2                            | All M3 tasks blocked on M2 completion                                       |
 | **Quality**  | Strict types, data-integrity tests, prerendered                                                                | Test coverage (4QU.5) and OG coverage (4QU.4) after M3      | All M4 tasks blocked on M3; a11y (4QU.7) blocked on 4QU.1                  |
 | **Drift**    | 2.5k-line CLI, manifest registry, cache, verbs, Bun migration                                                  | Boundary doc (5DR.1), coupling inventory (5DR.2), verb rename (5DR.14) | Most decoupling tasks (sequence); tests & docs (M6) blocked on M3 + M5      |
@@ -75,20 +75,21 @@ _None._
 
 <a name="m2-todo"><h4>To Do (Milestone 2)</h4></a>
 
-- [ ] 2FE.4. Multi-select filters — each dimension (role, type, status, tag) accumulates a set of selections: OR within a dimension, AND across dimensions — **re-do**: prior implementation will be revisited to integrate with the broader filter/search overhaul — **depends on 2FE.2**. _Previously completed: URL params pluralised (`roles`/`types`/`statuses`/`tags`); per-token percent-encoding for `C#`, `.NET 8` etc.; `FilterBar` widened to `Set<T>`; full test coverage._
-- [ ] 2FE.5. Cross-view continuity (carry selection from map → project → timeline) — builds on the shared `?project=` param landed in 2FE.2 — **depends on 2FE.2**
-- [ ] 2FE.8. Overhaul map placement — robustly redraw an optimal (low-crossing) layout on every filter toggle. Build-time best-of-N (seed lottery + crossing count) already exists for the unfiltered layout; extend that robustness to live filter toggles — **depends on 2FE.2**
+_None._
 
 <a name="m2-blocked"><h4>Blocked (Milestone 2)</h4></a>
 
-- [ ] 2FE.1. Client-side search across projects (title, tags, description) — **depends on 2FE.4**
-- [ ] 2FE.3. Polish existing interactions — final integration pass covering all new interactions — **re-do once 2FE.1/2FE.5/2FE.7/2FE.8 are complete** — **depends on 2FE.1, 2FE.5, 2FE.7, 2FE.8**. _Previously completed: `AdoptionTimeline` hover/focus highlight with animated dot-scale, dim-others behaviour, and date-honesty distinction; TimelineChart pointer events for touch parity, per-node `<title>`, and `prefers-reduced-motion` guard._
+- [ ] 2FE.3. Polish existing interactions — final integration pass covering all new interactions — **re-do once 2FE.7/2FE.8 are complete** — **depends on 2FE.7, 2FE.8**. _Previously completed: `AdoptionTimeline` hover/focus highlight with animated dot-scale, dim-others behaviour, and date-honesty distinction; TimelineChart pointer events for touch parity, per-node `<title>`, and `prefers-reduced-motion` guard._
 - [ ] 2FE.6. Tech-stack constellation visualisation — a `ProjectMap` variant clustering projects by shared stack; islands = niche tech, dense core = default toolkit — **depends on m1**
 - [ ] 2FE.7. Technology lineage edges — hand-authored `leads-to` / `replaced-by` relationships between technologies, rendered as directed edges on the adoption chart or constellation; modelled on `ProjectRelationship`. Requires a new `TechRelationship { kind: 'leads-to' | 'replaced-by'; source: label; target: label; note?: string }` structure and hand-authored edge data — **depends on 2FE.6**
 
 <a name="m2-done"><h4>Completed (Milestone 2)</h4></a>
 
+- [x] 2FE.1. Client-side search across projects (title, tags, description) — `filterProjects` extended with a `query` field; case-insensitive substring match across name, tagline, blurb, description, and tag labels; `SearchInput` component with debounced input; `?q=` URL param wired into `FilterBar`; full query test coverage in `queries.test.ts`.
 - [x] 2FE.2. Deep-link map / timeline / toolkit selections — clicking an item opens a `SelectionModal` (built on native `<dialog>`) offering Pin (writes the URL param, persists the highlight) or Go to project; the underlying `<a href>` stays the no-JS fallback. Shared `?project=` across map/timeline/themes (cross-view continuity substrate for 2FE.5); `?tech=` on the adoption chart with a tested `encodeTechLabel`/`decodeTechLabel` codec (handles `C#`, `.NET 8`). Extracted a shared `writeParam` (`src/lib/url-write.ts`) and deduped the projects-page `setParam` and ProjectMap's local copy onto it. Stale-pin and filter-hidden guards prevent a dead link dimming a whole view.
+- [x] 2FE.4. Multi-select filters — each dimension (role, type, status, tag) accumulates a set of selections: OR within a dimension, AND across dimensions. URL params pluralised (`roles`/`types`/`statuses`/`tags`); per-token percent-encoding for `C#`, `.NET 8` etc.; `FilterBar` widened to `Set<T>`; full test coverage.
+- [x] 2FE.5. Cross-view continuity — shared `validatePin`/`nextPinValue` helpers extracted into `src/lib/selection.ts`; all three connection views (`ProjectMap`, `TimelineChart`, `ThemeTerritories`) use them; project detail page gains "View in map / timeline / toolkit" links carrying `?project=`; modal "Go to project" links route via `projectHref`; `RelatedProjects` neighbour links via `projectHref`.
+- [x] 2FE.8. Robust filter-toggle relayout — `computeRelayoutTargets` exported from `graph.ts`: deterministic reduced best-of-N (5 seeds × 220 ticks) over the visible subgraph, crossing-minimised. `ProjectMap` reheat debounced (120ms) and seeded from the lowest-crossing topology before the live d3 simulation relaxes. `FORCE_TUNING` and `countCrossings` exported for tests.
 
 ---
 
@@ -260,14 +261,14 @@ flowchart TD
 	%% ── Milestone 2: Exploration & New Features ──────────────────────
 	m2{"`**Milestone 2**<br/>Exploration & Features`"}:::mile
 
-	2FE.1["`*2FE.1*<br/>**Features**<br/>client-side search`"]:::blocked
+	2FE.1["`*2FE.1*<br/>**Features**<br/>client-side search`"]:::done
 	2FE.2["`*2FE.2*<br/>**Features**<br/>deep-link map/timeline/toolkit`"]:::done
 	2FE.3["`*2FE.3*<br/>**Features**<br/>polish existing interactions`"]:::blocked
-	2FE.4["`*2FE.4*<br/>**Features**<br/>multi-select filters`"]:::open
-	2FE.5["`*2FE.5*<br/>**Features**<br/>cross-view continuity`"]:::open
+	2FE.4["`*2FE.4*<br/>**Features**<br/>multi-select filters`"]:::done
+	2FE.5["`*2FE.5*<br/>**Features**<br/>cross-view continuity`"]:::done
 	2FE.6["`*2FE.6*<br/>**Features**<br/>tech-stack constellation`"]:::blocked
 	2FE.7["`*2FE.7*<br/>**Features**<br/>tech lineage edges`"]:::blocked
-	2FE.8["`*2FE.8*<br/>**Features**<br/>robust filter-toggle relayout`"]:::open
+	2FE.8["`*2FE.8*<br/>**Features**<br/>robust filter-toggle relayout`"]:::done
 
 	%% M2 — deps
 	2FE.2 --> 2FE.5
