@@ -9,7 +9,7 @@ The site is live and substantially built (full routes, graph/timeline/map/toolki
 |              | Status                                                                                                         | Next Up                                               | Blocked                                                              |
 | ------------ | -------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------- | -------------------------------------------------------------------- |
 | **Content**  | 30+ entries, themes, threads, Colophon in place; depth audit complete; every entry now at flagship-ready depth | Contribution notes; About narrative; theme coherence  | —                                                                    |
-| **Features** | Search absent; map/timeline/toolkit selections now deep-linkable; filters URL-backed but single-select         | Multi-select filters, cross-view continuity, new viz  | Search (needs multi-select)                                          |
+| **Features** | Search absent; map/timeline/toolkit selections deep-linkable; filters URL-backed and now multi-select          | Client-side search (now unblocked), cross-view continuity, new viz | —                                                       |
 | **Design**   | Reasonable Colors tokens, dark mode                                                                            | Visual identity, then typography/motion               | Direction decision first                                             |
 | **Quality**  | Strict types, data-integrity tests, prerendered                                                                | Interaction test coverage (4QU.5)                     | a11y audit and SEO blocked on 4QU.5; new-view a11y blocked on M2 viz |
 | **Drift**    | 2.5k-line CLI, manifest registry, cache, verbs, Bun migration                                                  | Config layer, engine/integration split (M5); tests & docs after (M6) | Most decoupling tasks (sequence)                                     |
@@ -75,7 +75,7 @@ _None._
 
 <a name="m2-todo"><h4>To Do (Milestone 2)</h4></a>
 
-- [ ] 2FE.4. Multi-select filters — allow combining dimensions (e.g. two tags, role + status); filters are single-select today
+- [ ] 2FE.1. Client-side search across projects (title, tags, description) — unblocked now multi-select (2FE.4) has landed
 - [ ] 2FE.5. Cross-view continuity (carry selection from map → project → timeline) — builds on the shared `?project=` param landed in 2FE.2
 - [ ] 2FE.6. Tech-stack constellation visualisation — a `ProjectMap` variant clustering projects by shared stack; islands = niche tech, dense core = default toolkit
 - [ ] 2FE.7. Technology lineage edges — hand-authored `leads-to` / `replaced-by` relationships between technologies, rendered as directed edges on the adoption chart or constellation; modelled on `ProjectRelationship`. Feasibility note: adoption-date ordering (`adoption.ts`) + same-`TagKind` grouping + per-project co-occurrence decay can seed and rank *candidates*, but the replacement/coexistence judgement is editorial and cannot be auto-derived (TypeScript augments JavaScript; Express and FastAPI coexist). Requires a new `TechRelationship { kind: 'leads-to' | 'replaced-by'; source: label; target: label; note?: string }` structure and hand-authored edge data. Template: `ProjectRelationship` → `threads.ts` → `GraphEdge` normalisation in `graph.ts` — **may depend on 2FE.6** if rendered inside the constellation
@@ -83,12 +83,13 @@ _None._
 
 <a name="m2-blocked"><h4>Blocked (Milestone 2)</h4></a>
 
-- [ ] 2FE.1. Client-side search across projects (title, tags, description) — **depends on 2FE.4** (multi-select), still to do
+_None._
 
 <a name="m2-done"><h4>Completed (Milestone 2)</h4></a>
 
 - [x] 2FE.2. Deep-link map / timeline / toolkit selections — clicking an item opens a `SelectionModal` (built on native `<dialog>`) offering Pin (writes the URL param, persists the highlight) or Go to project; the underlying `<a href>` stays the no-JS fallback. Shared `?project=` across map/timeline/themes (cross-view continuity substrate for 2FE.5); `?tech=` on the adoption chart with a tested `encodeTechLabel`/`decodeTechLabel` codec (handles `C#`, `.NET 8`). Extracted a shared `writeParam` (`src/lib/url-write.ts`) and deduped the projects-page `setParam` and ProjectMap's local copy onto it. Stale-pin and filter-hidden guards prevent a dead link dimming a whole view.
 - [x] 2FE.3. Polish existing interactions — TimelineChart was already fully interactive (hover-highlight, dim, `?project=` deep-link, connector lighting); work landed on `AdoptionTimeline`: hover/focus highlight with animated dot-scale, dim-others behaviour, and a curated-vs-derived date-honesty distinction (hollow outlined dots for estimated dates, legend entry). TimelineChart received three surgical polish commits: pointer events for touch parity, per-node `<title>`, and a `prefers-reduced-motion` guard.
+- [x] 2FE.4. Multi-select filters — each dimension (role, type, status, tag) now accumulates a set of selections instead of replacing: OR within a dimension, AND across dimensions. URL params pluralised (`roles`/`types`/`statuses`/`tags`) and store comma-joined sets via the existing `parseSet`/`serialiseSet` codec; tag labels get per-token percent-encoding (new `encodeTagSet`/`decodeTagSet` for `C#`, `.NET 8`, etc.). Tag matching switched from substring to exact. `FilterBar` props widened from scalars to `Set<T>`; chip active state uses set membership. Full test coverage for the filter logic and the new tag-set codec.
 
 ---
 
@@ -258,10 +259,10 @@ flowchart TD
 	%% ── Milestone 2: Exploration & New Features ──────────────────────
 	m2{"`**Milestone 2**<br/>Exploration & Features`"}:::mile
 
-	2FE.1["`*2FE.1*<br/>**Features**<br/>client-side search`"]:::blocked
+	2FE.1["`*2FE.1*<br/>**Features**<br/>client-side search`"]:::open
 	2FE.2["`*2FE.2*<br/>**Features**<br/>deep-link map/timeline/toolkit`"]:::done
 	2FE.3["`*2FE.3*<br/>**Features**<br/>polish existing interactions`"]:::done
-	2FE.4["`*2FE.4*<br/>**Features**<br/>multi-select filters`"]:::open
+	2FE.4["`*2FE.4*<br/>**Features**<br/>multi-select filters`"]:::done
 	2FE.5["`*2FE.5*<br/>**Features**<br/>cross-view continuity`"]:::open
 	2FE.6["`*2FE.6*<br/>**Features**<br/>tech-stack constellation`"]:::open
 	2FE.7["`*2FE.7*<br/>**Features**<br/>tech lineage edges`"]:::open
