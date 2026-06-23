@@ -85,6 +85,7 @@ export interface ProjectFilters {
 	statuses?: Set<ProjectStatus>;
 	kinds?: Set<ProjectKind>;
 	tags?: Set<string>;
+	query?: string;
 }
 
 /**
@@ -110,6 +111,13 @@ export function filterProjects(filters: ProjectFilters): Project[] {
 		if (filters.tags?.size) {
 			const projectLabels = new Set(p.tags.map((t) => t.label));
 			if (![...filters.tags].some((tag) => projectLabels.has(tag))) return false;
+		}
+		if (filters.query) {
+			const needle = filters.query.toLowerCase();
+			const haystack = [p.name, p.tagline, p.blurb, p.description, ...p.tags.map((t) => t.label)]
+				.join(' ')
+				.toLowerCase();
+			if (!haystack.includes(needle)) return false;
 		}
 		return true;
 	});
