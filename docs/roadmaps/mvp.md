@@ -12,7 +12,7 @@ The site is live and substantially built (full routes, graph/timeline/map/toolki
 | **Features** | 2FE.1, 2FE.2, 2FE.4, 2FE.5, 2FE.8 done; all connection views built (search, multi-select, cross-view continuity, relayout) | Polish pass (2FE.3) after 2FE.7; tech constellation (2FE.6) after M1 | 2FE.6 blocked on M1; 2FE.7 blocked on 2FE.6; 2FE.3 blocked on 2FE.7/2FE.8 |
 | **Design**   | Reasonable Colors tokens, dark mode                                                                                        | Visual direction (3DE.0) after M2                                    | All M3 tasks blocked on M2 completion                                     |
 | **Quality**  | Strict types, data-integrity tests, prerendered                                                                            | Test coverage (4QU.5) and OG coverage (4QU.4) after M3               | All M4 tasks blocked on M3; a11y (4QU.7) blocked on 4QU.1                 |
-| **Drift**    | 2.5k-line CLI, manifest registry, cache, verbs, Bun migration                                                              | Boundary doc (5DR.1)                                                 | Most decoupling tasks (sequence); tests & docs (M6) blocked on M3 + M5    |
+| **Drift**    | 2.5k-line CLI, manifest registry, cache, verbs, Bun migration, boundary doc                                                | Config layer (5DR.3) and engine data schema (5DR.5)                  | Most decoupling tasks (sequence); tests & docs (M6) blocked on M3 + M5    |
 
 ---
 
@@ -168,7 +168,7 @@ _None._
 
 <a name="m5-todo"><h4>To Do (Milestone 5)</h4></a>
 
-- [ ] 5DR.1. Boundary doc: define the core-engine vs Svelte-integration contract (what each layer owns) — **depends on 5DR.0**
+_None._
 
 <a name="m5-blocked"><h4>Blocked (Milestone 5)</h4></a>
 
@@ -189,6 +189,7 @@ _None._
 - [x] 5DR.12. Migrate repo package manager from npm to Bun: switch lockfile (`bun install`, delete `package-lock.json`), update the four drift scripts in `package.json` from `node scripts/check-drift.js` to `bun run`, confirm Vite/Vitest/svelte-check all run under Bun — the portfolio should dogfood the preferred toolkit, and a Bun-native runtime is a prerequisite for packaging Drift as a distributable CLI
 - [x] 5DR.14. Rename Drift verbs so they signpost intent more clearly (`update`→`sync`, `accept`→`keep`, `accept-all`→`keep-all`, `exclude`→`hide`); updates `KNOWN_VERBS`, both dispatch switches, both help objects, menu rows, `package.json` scripts, data-file notes, hook example, and docs. Hard cut — no aliases. Breaking change to the CLI surface — gates the engine split (5DR.6) and all new verbs — **depends on 5DR.0**
 - [x] 5DR.2. Coupling inventory: annotate the 6 couplings in `scripts/check-drift.js` with `// COUPLING [5DR.N]:` markers + resolver task. Extracted gum brand colours (`#3E7F96`/`#B34480`) to `BRAND_PRIMARY`/`BRAND_ACCENT` constants, collapsing 14 literals to 2. No behaviour change — **depends on 5DR.12**
+- [x] 5DR.1. Boundary doc: define the core-engine vs Svelte-integration contract (what each layer owns) — **depends on 5DR.0**
 
 ---
 
@@ -331,7 +332,7 @@ flowchart TD
 	m6{"`**Milestone 6**<br/>Drift: Tests & Docs`"}:::mile
 
 	5DR.0["`*5DR.0*<br/>**Drift**<br/>CLI foundation`"]:::done
-	5DR.1["`*5DR.1*<br/>**Drift**<br/>boundary doc`"]:::open
+	5DR.1["`*5DR.1*<br/>**Drift**<br/>boundary doc`"]:::done
 	5DR.2["`*5DR.2*<br/>**Drift**<br/>coupling inventory`"]:::done
 	5DR.3["`*5DR.3*<br/>**Drift**<br/>config layer`"]:::blocked
 	5DR.4["`*5DR.4*<br/>**Drift**<br/>tag taxonomy relocation`"]:::blocked
