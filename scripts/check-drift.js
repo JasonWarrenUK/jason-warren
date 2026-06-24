@@ -26,6 +26,8 @@ import { cpus, homedir } from 'os';
 import { parseArgs, promisify } from 'node:util';
 
 const execFileAsync = promisify(execFile);
+// COUPLING [5DR.4]: tag taxonomy lives under the Svelte app's src/lib/data.
+// Resolved by relocating it to the engine boundary (5DR.4).
 import { EXTENSION_LANGUAGE } from '../src/lib/data/tag-taxonomy.js';
 
 // ---------------------------------------------------------------------------
@@ -34,6 +36,8 @@ import { EXTENSION_LANGUAGE } from '../src/lib/data/tag-taxonomy.js';
 
 const scriptDir = fileURLToPath(new URL('.', import.meta.url));
 const repoRoot = resolve(scriptDir, '..');
+// COUPLING [5DR.3]: data-file paths are hard-coded to this repo's layout
+// (src/lib/data/*). Resolved by the config layer (5DR.3).
 const sourcesPath = join(repoRoot, 'src/lib/data/sources.json');
 const localPath = join(repoRoot, 'src/lib/data/sources.local.json');
 const overridesPath = join(repoRoot, 'src/lib/data/overrides.json');
@@ -98,6 +102,7 @@ async function git(args, cwd) {
 	}
 }
 
+// COUPLING [5DR.3]: author identities are hard-coded to one person. Resolved by the config layer (5DR.3).
 // Extended-regex alternation over Jason's git identities across repos, so the
 // "by me" metrics (recent commits, line churn) count his work and not a team's.
 // One editable place: a miss degrades to 0, never an error.
@@ -529,6 +534,8 @@ function diffFingerprint(saved, current) {
 // Curated language tags (the significance gate). Read best-effort from the
 // project's data file so the report can flag detected languages that are not
 // yet curated. The app reads only these tags; the scan never feeds the render.
+// COUPLING [5DR.6]: reading curated .ts overlays by regex binds the engine to
+// the Svelte app's data files. Resolved by the engine/integration split (5DR.6).
 // ---------------------------------------------------------------------------
 
 function curatedLanguages(slug) {
@@ -581,6 +588,8 @@ function curatedStatus(slug) {
 // Two axes:
 //   repoNames — gates the directory scan by folder name (before a slug exists)
 //   slugs     — gates the public site by manifest slug (after fingerprinting)
+// COUPLING [5DR.3]: repoNames exclusions are portfolio-specific folder names
+// paired to the ~/Code scan root. Both move to config together (5DR.3).
 // ---------------------------------------------------------------------------
 
 /**
@@ -860,6 +869,7 @@ async function computeDrift(
 	}
 
 	// Scan ~/Code for git repos not yet in the manifest.
+	// COUPLING [5DR.3]: scan root is hard-coded to ~/Code. Resolved by the config layer (5DR.3).
 	const knownSlugs = new Set(Object.keys(manifest.sources));
 	const codeRoot = join(homedir(), 'Code');
 	const newRepos = [];
@@ -2080,6 +2090,11 @@ all fields. Does not write anything.${RESET}
 // Single-shot: choose a verb, run it in-process, done.
 // ---------------------------------------------------------------------------
 
+// COUPLING [5DR.3]: brand colours are hard-coded; one editable place until
+// the theme config lands. Resolved by the config/theme layer (5DR.3).
+const BRAND_PRIMARY = '#3E7F96'; // teal: cursor, selection, borders
+const BRAND_ACCENT = '#B34480'; // magenta: item foreground, wordmark text
+
 // ANSI Shadow figlet wordmark for the menu header.
 // Generated via `npx figlet-cli -f "ANSI Shadow" DRIFT`; embedded as a
 // hardcoded string so the menu works without figlet at runtime.
@@ -2105,9 +2120,9 @@ function printWordmark() {
 			'--border',
 			'rounded',
 			'--border-foreground',
-			'#3E7F96',
+			BRAND_PRIMARY,
 			'--foreground',
-			'#B34480',
+			BRAND_ACCENT,
 			'--padding',
 			'1 3',
 			'--align',
@@ -2167,9 +2182,9 @@ async function runInteractiveMenu({ manifests, palette, useGum, onProgress, clea
 			'choose',
 			'--label-delimiter=:',
 			'--cursor=> ',
-			'--cursor.foreground=#3E7F96',
-			'--selected.foreground=#3E7F96',
-			'--item.foreground=#B34480',
+			`--cursor.foreground=${BRAND_PRIMARY}`,
+			`--selected.foreground=${BRAND_PRIMARY}`,
+			`--item.foreground=${BRAND_ACCENT}`,
 			...items
 		],
 		{ stdio: ['inherit', 'pipe', 'inherit'], encoding: 'utf8' }
@@ -2247,9 +2262,9 @@ async function runInteractiveMenu({ manifests, palette, useGum, onProgress, clea
 					'choose',
 					'--label-delimiter=:',
 					'--cursor=> ',
-					'--cursor.foreground=#3E7F96',
-					'--selected.foreground=#3E7F96',
-					'--item.foreground=#B34480',
+					`--cursor.foreground=${BRAND_PRIMARY}`,
+					`--selected.foreground=${BRAND_PRIMARY}`,
+					`--item.foreground=${BRAND_ACCENT}`,
 					...ovItems
 				],
 				{ stdio: ['inherit', 'pipe', 'inherit'], encoding: 'utf8' }
@@ -2278,9 +2293,9 @@ async function runInteractiveMenu({ manifests, palette, useGum, onProgress, clea
 					'--label-delimiter=:',
 					'--header=Keep this field across all projects:',
 					'--cursor=> ',
-					'--cursor.foreground=#3E7F96',
-					'--selected.foreground=#3E7F96',
-					'--item.foreground=#B34480',
+					`--cursor.foreground=${BRAND_PRIMARY}`,
+					`--selected.foreground=${BRAND_PRIMARY}`,
+					`--item.foreground=${BRAND_ACCENT}`,
 					...fieldItems
 				],
 				{ stdio: ['inherit', 'pipe', 'inherit'], encoding: 'utf8' }
@@ -2308,9 +2323,9 @@ async function runInteractiveMenu({ manifests, palette, useGum, onProgress, clea
 						'--label-delimiter=:',
 						'--header=Choose a slug to hide:',
 						'--cursor=> ',
-						'--cursor.foreground=#3E7F96',
-						'--selected.foreground=#3E7F96',
-						'--item.foreground=#B34480',
+						`--cursor.foreground=${BRAND_PRIMARY}`,
+						`--selected.foreground=${BRAND_PRIMARY}`,
+						`--item.foreground=${BRAND_ACCENT}`,
 						...slugItems
 					],
 					{ stdio: ['inherit', 'pipe', 'inherit'], encoding: 'utf8' }
