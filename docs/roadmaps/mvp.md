@@ -172,7 +172,6 @@ _None._
 
 <a name="m5-blocked"><h4>Blocked (Milestone 5)</h4></a>
 
-- [ ] 5DR.4. Relocate / generalise tag taxonomy to the engine boundary — **depends on 5DR.3**
 - [ ] 5DR.5. Define engine's public data schema (the typed/JSON output contract) — **depends on 5DR.1**
 - [ ] 5DR.6. Split core engine from Svelte integration: move `.ts`-scraping (`curatedLanguages`/`curatedStatus`) into the integration layer — **depends on 5DR.4, 5DR.14**
 - [ ] 5DR.7. Build subsumed in-repo backlog inside the decoupled design: branch awareness (Phase 5 of `drift-improvement-plan.md`) + `in-progress.json` staging pipeline (Phase 6) — **depends on 5DR.6**
@@ -187,6 +186,7 @@ _None._
 - [x] 5DR.0. Drift CLI foundation: subcommand dispatcher, async fingerprinting + cache, manifest-driven registry, shared tag taxonomy, gum interactive UX, `snapshot` / `report` / `hide` verbs (shipped in-repo; see `docs/drift-improvement-plan.md`)
 - [x] 5DR.12. Migrate repo package manager from npm to Bun: switch lockfile (`bun install`, delete `package-lock.json`), update the four drift scripts in `package.json` from `node scripts/check-drift.js` to `bun run`, confirm Vite/Vitest/svelte-check all run under Bun — the portfolio should dogfood the preferred toolkit, and a Bun-native runtime is a prerequisite for packaging Drift as a distributable CLI
 - [x] 5DR.14. Rename Drift verbs so they signpost intent more clearly (`update`→`sync`, `accept`→`keep`, `accept-all`→`keep-all`, `exclude`→`hide`); updates `KNOWN_VERBS`, both dispatch switches, both help objects, menu rows, `package.json` scripts, data-file notes, hook example, and docs. Hard cut — no aliases. Breaking change to the CLI surface — gates the engine split (5DR.6) and all new verbs — **depends on 5DR.0**
+- [x] 5DR.4. Relocate tag taxonomy to the engine boundary: moved `tag-taxonomy.js` (all five maps) from `src/lib/data/` to `scripts/tag-taxonomy.js` alongside the engine; engine import localised to `./tag-taxonomy.js`; integration layer (`defaults.ts`) repointed to `../../../scripts/tag-taxonomy.js`; coupling comment updated; boundary doc and roadmap updated — **depends on 5DR.3**
 - [x] 5DR.3. Config layer: paths, author pattern, scan root, excludes, gum theme all become user-config — `scripts/drift-config.js` owns built-in defaults and best-effort loader; `drift.config.ts` (gitignored) provides per-machine overrides; `repoNames` moved to config (paired to `scanRoot`); `excluded.json` trimmed to `slugs`-only — **depends on 5DR.1, 5DR.2**
 - [x] 5DR.2. Coupling inventory: annotate the 6 couplings in `scripts/check-drift.js` with `// COUPLING [5DR.N]:` markers + resolver task. Extracted gum brand colours (`#3E7F96`/`#B34480`) to `BRAND_PRIMARY`/`BRAND_ACCENT` constants, collapsing 14 literals to 2. No behaviour change — **depends on 5DR.12**
 - [x] 5DR.1. Boundary doc: define the core-engine vs Svelte-integration contract (what each layer owns) — **depends on 5DR.0**

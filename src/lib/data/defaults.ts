@@ -18,7 +18,7 @@
 
 import type { Project, AuthoredProject, AuthoredContribution, Collaboration, Contribution, TechTag } from './types.js';
 import type { SyncedSource } from './index.js';
-import { LANGUAGE_TAGS, RUNTIME_TAGS, FRAMEWORK_TAGS, DATABASE_TAGS } from './tag-taxonomy.js';
+import { LANGUAGE_TAGS, RUNTIME_TAGS, FRAMEWORK_TAGS, DATABASE_TAGS } from '../../../scripts/tag-taxonomy.js';
 
 // ---------------------------------------------------------------------------
 // Name humanisation

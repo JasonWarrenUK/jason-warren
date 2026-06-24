@@ -45,7 +45,7 @@ The integration layer:
 | `excluded.json` — reading | Both | Engine filters scan; integration filters registry |
 | `excluded.json` — writing | Engine only | `drift hide` only |
 | `.drift-cache.json` | Engine only | Never read by the Svelte build |
-| Tag taxonomy (`tag-taxonomy.js`) | Integration (leaks to engine) | **Coupling [5DR.4]** — engine imports `EXTENSION_LANGUAGE` directly. Resolves by moving taxonomy to the engine boundary. |
+| Tag taxonomy (`tag-taxonomy.js`) | Engine (`scripts/tag-taxonomy.js`) | **Resolved (5DR.4)** — taxonomy moved to the engine; integration imports the four `*_TAGS` maps from `scripts/tag-taxonomy.js`. |
 | `AuthoredProject` / `Project` types | Integration | TypeScript types the engine cannot import (plain JS) |
 | `projects/*.ts` authored overlays | Integration | Engine reads them today by regex — **Coupling [5DR.6]** |
 | `curatedLanguages(slug)` / `curatedStatus(slug)` | Engine (transitional) | Text-parses `.ts` overlay files. Belongs in integration. **Coupling [5DR.6]** |
@@ -133,21 +133,16 @@ The engine must not add fields to this shape without a corresponding update to
 
 ---
 
-## The two active couplings
+## The active coupling
 
-These are the violations of the boundary that 5DR.6 and its prerequisites exist to fix.
+The remaining violation of the boundary that 5DR.6 exists to fix.
 
-### Coupling [5DR.4] — tag taxonomy import
+### Coupling [5DR.4] — tag taxonomy import (resolved)
 
-```js
-// check-drift.js line 31
-import { EXTENSION_LANGUAGE } from '../src/lib/data/tag-taxonomy.js';
-```
-
-The engine needs `EXTENSION_LANGUAGE` to map file extensions to language labels. Because
-`tag-taxonomy.js` lives under `src/lib/data/`, the engine is importing from the Svelte
-app tree. Resolves by moving `tag-taxonomy.js` (or the subset the engine needs) to a
-shared location outside `src/lib/data/`.
+`tag-taxonomy.js` moved to `scripts/tag-taxonomy.js` (5DR.4). The engine now imports
+`EXTENSION_LANGUAGE` locally (`./tag-taxonomy.js`); the integration layer imports the
+four `*_TAGS` maps back from `../../../scripts/tag-taxonomy.js`. The engine no longer
+imports from `src/lib/data/` for the taxonomy.
 
 ### Coupling [5DR.6] — regex-parse of `.ts` overlays
 
@@ -189,7 +184,7 @@ When the engine/integration split lands:
 2. The integration layer (or a build step) exposes overlay data as JSON so the engine
    can read it without parsing TypeScript.
 3. The engine no longer has any import from `src/lib/data/`.
-4. `tag-taxonomy.js` (or the engine's slice of it) moves to a shared boundary location.
+4. ~~`tag-taxonomy.js` moves to a shared boundary location~~ — done in 5DR.4: moved to `scripts/tag-taxonomy.js`.
 
 After 5DR.6, the engine's only dependency on the rest of the repo is the four data
 files it reads and writes. It can in principle be extracted into a standalone package.

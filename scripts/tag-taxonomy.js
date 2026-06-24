@@ -1,10 +1,10 @@
 /**
  * Shared tag taxonomy for the portfolio.
  *
- * This file is deliberately plain ESM JavaScript (not TypeScript) so it can be
- * imported by both the typed SvelteKit app and the plain-JS drift CLI script
- * (scripts/check-drift.js). The companion tag-taxonomy.d.ts provides explicit
- * TypeScript declarations for the app.
+ * Lives in scripts/ alongside the Drift engine (check-drift.js) so the engine
+ * can import without reaching into the Svelte app tree. The Svelte integration
+ * layer (src/lib/data/defaults.ts) imports the four *_TAGS maps back from here.
+ * The companion tag-taxonomy.d.ts provides TypeScript declarations for the app.
  *
  * Taxonomy rules:
  * - Keys are canonical identities (file extension, package name, lock-file name).
@@ -17,7 +17,6 @@
 
 // ---------------------------------------------------------------------------
 // Extension -> language name
-// Lifted verbatim from scripts/check-drift.js so both consumers stay in sync.
 // Keys are lowercase file extensions. Values are the canonical language label
 // used throughout the tag system and card renderer.
 // ---------------------------------------------------------------------------
