@@ -16,9 +16,9 @@
 		"format": "prettier --write .",
 		"lint": "prettier --check .",
 		"drift": "bun run scripts/check-drift.js",
-		"drift:update": "bun run scripts/check-drift.js update",
-		"drift:accept": "bun run scripts/check-drift.js accept",
-		"drift:accept-all": "bun run scripts/check-drift.js accept-all"
+		"drift:sync": "bun run scripts/check-drift.js sync",
+		"drift:keep": "bun run scripts/check-drift.js keep",
+		"drift:keep-all": "bun run scripts/check-drift.js keep-all"
 	},
 	"devDependencies": {
 		"@fontsource/inter": "^5.2.8",

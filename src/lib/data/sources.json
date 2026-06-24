@@ -1,7 +1,7 @@
 {
 	"$schema": "./sources.schema.json",
-	"_note": "Last-synced fingerprints for each source repo. Run `bun run scripts/check-drift.js` to update. Local paths live in sources.local.json (gitignored).",
-	"_firstCommitNote": "firstCommit values are PROVISIONAL estimates derived from commit volume and lastCommit, seeded so the /toolkit adoption timeline can render before a real sync. `bun run scripts/check-drift.js --update` overwrites them with true root-commit dates. After syncing, set firstCommitProvisional to false.",
+	"_note": "Last-synced fingerprints for each source repo. Run `bun run scripts/check-drift.js sync` to update. Local paths live in sources.local.json (gitignored).",
+	"_firstCommitNote": "firstCommit values are PROVISIONAL estimates derived from commit volume and lastCommit, seeded so the /toolkit adoption timeline can render before a real sync. `bun run scripts/check-drift.js sync` overwrites them with true root-commit dates. After syncing, set firstCommitProvisional to false.",
 	"firstCommitProvisional": false,
 	"lastSyncedAt": "2026-06-18",
 	"sources": {

@@ -9,12 +9,13 @@
  * Run `drift --help` for full usage.
  *
  * Usage:
- *   drift [report]                      # compare synced state to current git state (default)
- *   drift update                        # rewrite sources.json with current fingerprints
- *   drift accept <slug> <field>         # refresh one override's synced baseline
- *   drift accept --all-projects <field> # refresh one field's baseline across all projects
- *   drift accept-all                    # refresh every flagged override baseline
- *   drift --full                        # field-level diff across ALL repos (no HEAD gate)
+ *   drift [report]                    # compare synced state to current git state (default)
+ *   drift sync                        # rewrite sources.json with current fingerprints
+ *   drift keep <slug> <field>         # keep your override value, refresh its baseline
+ *   drift keep --all-projects <field> # refresh one field's baseline across all projects
+ *   drift keep-all                    # refresh every flagged override baseline
+ *   drift hide <slug>                 # append a slug to excluded.json (hide from site)
+ *   drift --full                      # field-level diff across ALL repos (no HEAD gate)
  */
 
 import { execFile, spawnSync } from 'child_process';
@@ -576,7 +577,7 @@ function curatedStatus(slug) {
 }
 
 // ---------------------------------------------------------------------------
-// Exclusion list — read from excluded.json (committed; editable via `drift exclude`).
+// Exclusion list — read from excluded.json (committed; editable via `drift hide`).
 // Two axes:
 //   repoNames — gates the directory scan by folder name (before a slug exists)
 //   slugs     — gates the public site by manifest slug (after fingerprinting)
@@ -1006,7 +1007,7 @@ function renderReportMarkdown(result, manifest, full) {
 		lines.push('');
 		for (const c of conflicts) {
 			lines.push(
-				`- **${c.slug}.${c.field}**: you set \`${c.value}\` when synced was \`${c.was}\`; synced is now \`${c.now}\`. Run \`drift accept ${c.slug} ${c.field}\` to keep your value and dismiss.`
+				`- **${c.slug}.${c.field}**: you set \`${c.value}\` when synced was \`${c.was}\`; synced is now \`${c.now}\`. Run \`drift keep ${c.slug} ${c.field}\` to keep your value and dismiss.`
 			);
 		}
 		lines.push('');
@@ -1334,7 +1335,7 @@ function runReport({ result, manifest, palette, json, full, useGum }) {
 		console.log(`${YELLOW}${BOLD}Manual overrides to review (${conflicts.length}):${RESET}`);
 		for (const c of conflicts) {
 			console.log(
-				`  ${YELLOW}${c.slug}.${c.field}: you set ${c.value} when synced was ${c.was}; synced is now ${c.now} (run \`drift accept ${c.slug} ${c.field}\` to keep your value and dismiss)${RESET}`
+				`  ${YELLOW}${c.slug}.${c.field}: you set ${c.value} when synced was ${c.was}; synced is now ${c.now} (run \`drift keep ${c.slug} ${c.field}\` to keep your value and dismiss)${RESET}`
 			);
 		}
 		console.log();
@@ -1363,9 +1364,9 @@ function runReport({ result, manifest, palette, json, full, useGum }) {
 }
 
 // ---------------------------------------------------------------------------
-// Update: rewrite sources.json with current fingerprints.
+// Sync: rewrite sources.json with current fingerprints.
 // The ONE sanctioned write to sources.json. Never touches overrides.json.
-// --full is accepted for symmetry but is a no-op: update already backfills
+// --full is accepted for symmetry but is a no-op: sync already backfills
 // every resolvable repo regardless of HEAD movement.
 // ---------------------------------------------------------------------------
 
@@ -1391,7 +1392,7 @@ function runUpdate({ result, manifest, palette, useGum, args = [], dryRun = fals
 			args.filter((slug) => fresh[slug]).map((slug) => [slug, fresh[slug]])
 		);
 		if (Object.keys(scopedFresh).length === 0) {
-			console.log('No resolvable repos in the provided slugs — nothing to update.');
+			console.log('No resolvable repos in the provided slugs — nothing to sync.');
 			return;
 		}
 	}
@@ -1462,13 +1463,13 @@ function runUpdate({ result, manifest, palette, useGum, args = [], dryRun = fals
 	}
 
 	writeJson(sourcesPath, manifest);
-	console.log(`${GREEN}sources.json updated.${RESET}`);
+	console.log(`${GREEN}sources.json synced.${RESET}`);
 }
 
 // ---------------------------------------------------------------------------
-// Accept: refresh the syncedWhenSet baseline for one or all flagged override
+// Keep: refresh the syncedWhenSet baseline for one or all flagged override
 // fields, keeping the manual value intact.
-// The ONE sanctioned write to overrides.json. update never touches it.
+// The ONE sanctioned write to overrides.json. sync never touches it.
 // ---------------------------------------------------------------------------
 
 function runAccept({ result, args, acceptAll, allProjects, palette }) {
@@ -1477,14 +1478,14 @@ function runAccept({ result, args, acceptAll, allProjects, palette }) {
 
 	let fieldsToAccept;
 	if (acceptAll) {
-		// accept-all: refresh every currently-flagged conflict regardless of field name.
+		// keep-all: refresh every currently-flagged conflict regardless of field name.
 		fieldsToAccept = conflicts.map((c) => ({ slug: c.slug, field: c.field }));
 	} else if (allProjects) {
-		// accept --all-projects <field>: refresh one named field across every project
-		// that currently has it flagged. Distinct from accept-all (which takes all fields).
+		// keep --all-projects <field>: refresh one named field across every project
+		// that currently has it flagged. Distinct from keep-all (which takes all fields).
 		const field = args[0];
 		if (!field) {
-			process.stderr.write('Usage: drift accept --all-projects <field>\n');
+			process.stderr.write('Usage: drift keep --all-projects <field>\n');
 			process.exit(1);
 		}
 		fieldsToAccept = conflicts
@@ -1495,10 +1496,10 @@ function runAccept({ result, args, acceptAll, allProjects, palette }) {
 			return; // friendly, exit 0
 		}
 	} else {
-		// accept <slug> <field>: refresh one specific override.
+		// keep <slug> <field>: refresh one specific override.
 		fieldsToAccept = [{ slug: args[0], field: args[1] }];
 		if (!fieldsToAccept[0]?.slug || !fieldsToAccept[0]?.field) {
-			process.stderr.write('Usage: drift accept <slug> <field>\n');
+			process.stderr.write('Usage: drift keep <slug> <field>\n');
 			process.exit(1);
 		}
 	}
@@ -1524,21 +1525,21 @@ function runAccept({ result, args, acceptAll, allProjects, palette }) {
 		const fp = fresh[slug];
 		if (!fp) {
 			process.stderr.write(
-				`Cannot accept ${slug}.${field}: repo not resolvable on this machine (no local path or not a git repo)\n`
+				`Cannot keep ${slug}.${field}: repo not resolvable on this machine (no local path or not a git repo)\n`
 			);
 			process.exit(1);
 		}
 		const now = fp[syncedField];
 		if (now === undefined) {
 			process.stderr.write(
-				`Cannot accept ${slug}.${field}: synced field '${syncedField}' is absent from the current fingerprint\n`
+				`Cannot keep ${slug}.${field}: synced field '${syncedField}' is absent from the current fingerprint\n`
 			);
 			process.exit(1);
 		}
 
 		entry.syncedWhenSet = now;
 		console.log(
-			`${GREEN}Accepted ${slug}.${field}: baseline refreshed to ${now}, your value ${entry.value} kept.${RESET}`
+			`${GREEN}Kept ${slug}.${field}: baseline refreshed to ${now}, your value ${entry.value} kept.${RESET}`
 		);
 		accepted++;
 	}
@@ -1575,7 +1576,7 @@ function applyCheckExit(result, palette, full) {
 // ---------------------------------------------------------------------------
 
 // ---------------------------------------------------------------------------
-// drift exclude — mark a slug as excluded from the public site
+// drift hide — append a slug to excluded.json, removing it from the public site
 // ---------------------------------------------------------------------------
 
 /**
@@ -1589,7 +1590,7 @@ function runExclude({ args, manifest, palette }) {
 	const slug = args[0]?.trim();
 
 	if (!slug) {
-		process.stderr.write(`${RED}Usage: drift exclude <slug>${RESET}\n`);
+		process.stderr.write(`${RED}Usage: drift hide <slug>${RESET}\n`);
 		process.exit(1);
 	}
 
@@ -1619,7 +1620,7 @@ function runExclude({ args, manifest, palette }) {
 	excluded.slugs = [...excluded.slugs, slug].sort();
 	writeJson(excludedPath, excluded);
 	process.stdout.write(
-		`${GREEN}${BOLD}Excluded:${RESET} '${slug}' added to excluded.json.slugs.\n` +
+		`${GREEN}${BOLD}Hidden:${RESET} '${slug}' added to excluded.json.slugs.\n` +
 			`Rebuild the site to remove it from the public portfolio.\n`
 	);
 }
@@ -1846,20 +1847,20 @@ Compare synced fingerprints against current git state and surface new repos.
 
 - \`drift [report] [--json] [--full] [--check] [--no-color]\`
 - \`drift snapshot [--json] [--no-color]\`
-- \`drift update\`
-- \`drift accept <slug> <field>\`
-- \`drift accept --all-projects <field>\`
-- \`drift accept-all\`
-- \`drift exclude <slug>\`
+- \`drift sync\`
+- \`drift keep <slug> <field>\`
+- \`drift keep --all-projects <field>\`
+- \`drift keep-all\`
+- \`drift hide <slug>\`
 
 ## Verbs
 
 - \`report\` · compare synced fingerprints to current git state (default); shows only deltas
 - \`snapshot\` · show ALL current metrics for every project, colourised changed vs unchanged
-- \`update\` · rewrite sources.json with current fingerprints
-- \`accept\` · refresh one override's synced baseline, keeping your value
-- \`accept-all\` · refresh every flagged override baseline at once
-- \`exclude\` · mark a slug as excluded from the public site (writes excluded.json)
+- \`sync\` · rewrite sources.json with current fingerprints
+- \`keep\` · keep your manual override value, refreshing its synced baseline to dismiss the flag
+- \`keep-all\` · refresh every flagged override baseline at once
+- \`hide\` · append a slug to excluded.json, removing it from the public site
 
 ## Flags
 
@@ -1871,13 +1872,13 @@ Compare synced fingerprints against current git state and surface new repos.
 
 Run \`drift help <verb>\` for verb-specific help. With no flags in an interactive terminal (and gum installed), drift opens a menu.`,
 
-	update: `# drift update · rewrite sources.json with current fingerprints
+	sync: `# drift sync · rewrite sources.json with current fingerprints
 
 Backfills every resolvable repo (not only those whose HEAD moved) so new
 fields populate across the whole manifest. Writes sources.json only; never
 touches overrides.json.
 
-\`--full\` is accepted for symmetry but is a no-op: update already covers all
+\`--full\` is accepted for symmetry but is a no-op: sync already covers all
 resolvable repos regardless of HEAD movement.
 
 In an interactive terminal with gum installed, drift will ask for confirmation
@@ -1886,50 +1887,50 @@ before writing.
 ## Usage
 
 \`\`\`
-drift update
-drift update --full  # accepted; no-op
+drift sync
+drift sync --full  # accepted; no-op
 \`\`\``,
 
-	accept: `# drift accept · dismiss override-drift flags
+	keep: `# drift keep · dismiss override-drift flags
 
 Refreshes an override's \`syncedWhenSet\` baseline to the current synced value,
 keeping your manual value intact. Writes overrides.json only.
 
-\`--all-projects <field>\` accepts that one named field on every project currently
-flagged for it. Distinct from \`accept-all\`, which accepts every flagged field
+\`--all-projects <field>\` keeps that one named field on every project currently
+flagged for it. Distinct from \`keep-all\`, which keeps every flagged field
 regardless of name.
 
 ## Usage
 
 \`\`\`
-drift accept <slug> <field>
-drift accept --all-projects <field>
+drift keep <slug> <field>
+drift keep --all-projects <field>
 \`\`\`
 
 ## Examples
 
 \`\`\`
-drift accept lyra-rose commitsMine
-drift accept --all-projects commitsMine
+drift keep lyra-rose commitsMine
+drift keep --all-projects commitsMine
 \`\`\``,
 
-	'accept-all': `# drift accept-all · dismiss every override-drift flag at once
+	'keep-all': `# drift keep-all · dismiss every override-drift flag at once
 
 Refreshes the syncedWhenSet baseline for all currently flagged override fields.
 Writes overrides.json only.
 
-Differs from \`drift accept --all-projects <field>\`, which targets a single named
+Differs from \`drift keep --all-projects <field>\`, which targets a single named
 field across projects (rather than every field across all projects).
 
 ## Usage
 
 \`\`\`
-drift accept-all
+drift keep-all
 \`\`\``,
 
-	exclude: `# drift exclude · remove a slug from the public site
+	hide: `# drift hide · remove a slug from the public site
 
-Appends a slug to \`excluded.json.slugs\`. Excluded slugs are absent from the
+Appends a slug to \`excluded.json.slugs\`. Hidden slugs are absent from the
 projects registry, all filter views, the map, the timeline, the sitemap, and
 OG prerender. Writes excluded.json only.
 
@@ -1939,20 +1940,20 @@ once the slug is fingerprinted).
 ## Usage
 
 \`\`\`
-drift exclude <slug>
+drift hide <slug>
 \`\`\`
 
 ## Examples
 
 \`\`\`
-drift exclude mood-time
-drift exclude some-private-experiment
+drift hide mood-time
+drift hide some-private-experiment
 \`\`\``,
 
 	snapshot: `# drift snapshot · view all current metrics
 
 Shows every metric's current value for every resolvable project, colourised
-so changed-vs-saved fields (since the last \`drift update\`) stand out from
+so changed-vs-saved fields (since the last \`drift sync\`) stand out from
 unchanged ones. Unlike \`report\`, which shows only deltas, snapshot always
 shows firstCommit, the full commit grid, churn grid, languages, and
 dependency fields.
@@ -1988,19 +1989,19 @@ function printHelp(verb, palette, useGum) {
 ${BOLD}Usage:${RESET}
   drift [report] [--json] [--full] [--check] [--no-color]
   drift snapshot [--json] [--no-color]
-  drift update
-  drift accept <slug> <field>
-  drift accept --all-projects <field>
-  drift accept-all
-  drift exclude <slug>
+  drift sync
+  drift keep <slug> <field>
+  drift keep --all-projects <field>
+  drift keep-all
+  drift hide <slug>
 
 ${BOLD}Verbs:${RESET}
-  report        Compare synced fingerprints to current git state (default). Shows only deltas.
-  snapshot      Show ALL current metrics for every project, colourised changed vs unchanged.
-  update        Rewrite sources.json with current fingerprints.
-  accept        Refresh one override's synced baseline, keeping your value.
-  accept-all    Refresh every flagged override baseline at once.
-  exclude       Mark a slug as excluded from the public site (writes excluded.json).
+  report      Compare synced fingerprints to current git state (default). Shows only deltas.
+  snapshot    Show ALL current metrics for every project, colourised changed vs unchanged.
+  sync        Rewrite sources.json with current fingerprints.
+  keep        Keep your manual override value, refreshing its baseline to dismiss the flag.
+  keep-all    Refresh every flagged override baseline at once.
+  hide        Append a slug to excluded.json, removing it from the public site.
 
 ${BOLD}Flags:${RESET}
   --full        Field-level diff across ALL resolvable repos (surfaces windowed decay
@@ -2013,55 +2014,55 @@ ${BOLD}Flags:${RESET}
 ${DIM}Run \`drift help <verb>\` for verb-specific help. With no flags in an interactive
 terminal (and gum installed), drift opens a menu.${RESET}`,
 
-		update: `${BOLD}drift update${RESET} - rewrite sources.json with current fingerprints
+		sync: `${BOLD}drift sync${RESET} - rewrite sources.json with current fingerprints
 
 Backfills every resolvable repo (not only those whose HEAD moved), so new
 fields populate across the whole manifest. Writes sources.json only; never
 touches overrides.json.
 
-${DIM}--full is accepted for symmetry but is a no-op: update already covers all
+${DIM}--full is accepted for symmetry but is a no-op: sync already covers all
 resolvable repos. In an interactive terminal with gum, drift asks for
 confirmation before writing.${RESET}
 
-  Usage: drift update`,
+  Usage: drift sync`,
 
-		accept: `${BOLD}drift accept <slug> <field>${RESET} - dismiss one override-drift flag
+		keep: `${BOLD}drift keep <slug> <field>${RESET} - dismiss one override-drift flag
 
-Refreshes the override's syncedWhenSet baseline to the current synced value,
-keeping your manual value intact. Writes overrides.json only.
+Keeps your manual override value, refreshing its syncedWhenSet baseline to
+the current synced value. Writes overrides.json only.
 
-${DIM}--all-projects <field> accepts that one field on every project currently
-flagged for it. Differs from accept-all (which accepts every flagged field).${RESET}
+${DIM}--all-projects <field> keeps that one field on every project currently
+flagged for it. Differs from keep-all (which keeps every flagged field).${RESET}
 
-  Usage:   drift accept <slug> <field>
-           drift accept --all-projects <field>
-  Example: drift accept lyra-rose commitsMine
-           drift accept --all-projects commitsMine`,
+  Usage:   drift keep <slug> <field>
+           drift keep --all-projects <field>
+  Example: drift keep lyra-rose commitsMine
+           drift keep --all-projects commitsMine`,
 
-		'accept-all': `${BOLD}drift accept-all${RESET} - dismiss every override-drift flag at once
+		'keep-all': `${BOLD}drift keep-all${RESET} - dismiss every override-drift flag at once
 
 Refreshes the baseline for all currently flagged override fields. Writes
 overrides.json only.
 
-${DIM}Differs from \`accept --all-projects <field>\`, which targets a single named
+${DIM}Differs from \`keep --all-projects <field>\`, which targets a single named
 field across projects rather than every field.${RESET}
 
-  Usage: drift accept-all`,
+  Usage: drift keep-all`,
 
-		exclude: `${BOLD}drift exclude <slug>${RESET} - remove a slug from the public site
+		hide: `${BOLD}drift hide <slug>${RESET} - remove a slug from the public site
 
 Appends a slug to excluded.json.slugs. Writes excluded.json only. Rebuild
 the site to apply the exclusion.
 
 ${DIM}Warns when the slug is not yet in sources.json.${RESET}
 
-  Usage:   drift exclude <slug>
-  Example: drift exclude some-private-experiment`,
+  Usage:   drift hide <slug>
+  Example: drift hide some-private-experiment`,
 
 		snapshot: `${BOLD}drift snapshot${RESET} - view all current metrics
 
 Shows every metric's current value for every resolvable project, colourised
-so changed-vs-saved fields (since the last drift update) stand out from
+so changed-vs-saved fields (since the last drift sync) stand out from
 unchanged ones. Unlike report, which shows only deltas, snapshot always
 shows firstCommit, the full commit and churn grid, languages, and
 dependency fields.
@@ -2138,15 +2139,15 @@ async function runInteractiveMenu({ manifests, palette, useGum, onProgress, clea
 			'report-full'
 		],
 		['Snapshot', 'Every current metric value, changed fields highlighted', 'snapshot'],
-		['Update', 'Rewrite sources.json with current git fingerprints', 'update'],
-		['Accept override', 'Clear one drift flag, keeping your pinned value', 'accept'],
+		['Sync', 'Rewrite sources.json with current git fingerprints', 'sync'],
+		['Keep override', 'Keep your pinned value, dismiss one drift flag', 'keep'],
 		[
-			'Accept field everywhere',
-			"Clear one field's drift flag on every project",
-			'accept-all-projects'
+			'Keep field everywhere',
+			"Keep one field's value, dismiss its flag on every project",
+			'keep-all-projects'
 		],
-		['Accept all', 'Clear every flagged override at once', 'accept-all'],
-		['Exclude', 'Hide a slug from the public site', 'exclude'],
+		['Keep all', 'Keep every pinned value, dismiss all drift flags at once', 'keep-all'],
+		['Hide', 'Append a slug to excluded.json, removing it from the site', 'hide'],
 		['Help', 'Show the command reference', 'help']
 	];
 
@@ -2211,7 +2212,7 @@ async function runInteractiveMenu({ manifests, palette, useGum, onProgress, clea
 				useGum
 			});
 			break;
-		case 'update':
+		case 'sync':
 			runUpdate({
 				result: await scan(false),
 				manifest: manifests.manifest,
@@ -2221,7 +2222,7 @@ async function runInteractiveMenu({ manifests, palette, useGum, onProgress, clea
 				dryRun: false
 			});
 			break;
-		case 'accept-all':
+		case 'keep-all':
 			runAccept({
 				result: await scan(false),
 				args: [],
@@ -2230,14 +2231,14 @@ async function runInteractiveMenu({ manifests, palette, useGum, onProgress, clea
 				palette
 			});
 			break;
-		case 'accept': {
+		case 'keep': {
 			const result = await scan(false);
 			const { conflicts } = result;
 			if (conflicts.length === 0) {
-				console.log('No flagged overrides to accept.');
+				console.log('No flagged overrides to keep.');
 				return;
 			}
-			// Second picker: choose one conflict to accept.
+			// Second picker: choose one conflict to keep.
 			// Label is "slug.field" (human-readable); value is "slug field" (space-separated).
 			const ovItems = conflicts.map((c) => `${c.slug}.${c.field}:${c.slug} ${c.field}`);
 			const pick = spawnSync(
@@ -2259,12 +2260,12 @@ async function runInteractiveMenu({ manifests, palette, useGum, onProgress, clea
 			runAccept({ result, args: [slug, field], acceptAll: false, allProjects: false, palette });
 			break;
 		}
-		case 'accept-all-projects': {
-			// Second picker: choose a field name to accept across all projects.
+		case 'keep-all-projects': {
+			// Second picker: choose a field name to keep across all projects.
 			const result = await scan(false);
 			const { conflicts } = result;
 			if (conflicts.length === 0) {
-				console.log('No flagged overrides to accept.');
+				console.log('No flagged overrides to keep.');
 				return;
 			}
 			// Distinct field names across all conflicts.
@@ -2275,7 +2276,7 @@ async function runInteractiveMenu({ manifests, palette, useGum, onProgress, clea
 				[
 					'choose',
 					'--label-delimiter=:',
-					'--header=Accept this field across all projects:',
+					'--header=Keep this field across all projects:',
 					'--cursor=> ',
 					'--cursor.foreground=#3E7F96',
 					'--selected.foreground=#3E7F96',
@@ -2289,8 +2290,8 @@ async function runInteractiveMenu({ manifests, palette, useGum, onProgress, clea
 			runAccept({ result, args: [chosenField], acceptAll: false, allProjects: true, palette });
 			break;
 		}
-		case 'exclude': {
-			// Prompt for a slug to exclude — offer the non-excluded manifest keys.
+		case 'hide': {
+			// Prompt for a slug to hide — offer the non-excluded manifest keys.
 			const { excludedSlugs: currentExcluded } = loadExcluded();
 			const manifest = manifests.manifest;
 			const candidateSlugs = Object.keys(manifest.sources)
@@ -2305,7 +2306,7 @@ async function runInteractiveMenu({ manifests, palette, useGum, onProgress, clea
 					[
 						'choose',
 						'--label-delimiter=:',
-						'--header=Choose a slug to exclude:',
+						'--header=Choose a slug to hide:',
 						'--cursor=> ',
 						'--cursor.foreground=#3E7F96',
 						'--selected.foreground=#3E7F96',
@@ -2317,8 +2318,8 @@ async function runInteractiveMenu({ manifests, palette, useGum, onProgress, clea
 				if (pick.status !== 0 || !pick.stdout.trim()) return;
 				chosenSlug = pick.stdout.trim();
 			} else {
-				// Fallback: free-text input when all manifest slugs are already excluded.
-				const input = spawnSync('gum', ['input', '--placeholder', 'slug to exclude'], {
+				// Fallback: free-text input when all manifest slugs are already hidden.
+				const input = spawnSync('gum', ['input', '--placeholder', 'slug to hide'], {
 					stdio: ['inherit', 'pipe', 'inherit'],
 					encoding: 'utf8'
 				});
@@ -2361,15 +2362,7 @@ async function main() {
 	}
 
 	// Subcommand dispatcher. The first positional is the verb; slug/field follow.
-	const KNOWN_VERBS = new Set([
-		'report',
-		'snapshot',
-		'update',
-		'accept',
-		'accept-all',
-		'exclude',
-		'help'
-	]);
+	const KNOWN_VERBS = new Set(['report', 'snapshot', 'sync', 'keep', 'keep-all', 'hide', 'help']);
 	const verb = KNOWN_VERBS.has(positionals[0]) ? positionals[0] : 'report';
 	// args[0] = slug, args[1] = field (for accept). When the verb was explicit,
 	// slice it off; when the default 'report' was inferred, positionals are not args.
@@ -2417,17 +2410,17 @@ async function main() {
 		return;
 	}
 
-	// exclude does not need a drift scan — run it immediately and return.
-	if (verb === 'exclude') {
+	// hide does not need a drift scan — run it immediately and return.
+	if (verb === 'hide') {
 		runExclude({ args, manifest: manifests.manifest, palette });
 		return;
 	}
 
 	// snapshot always needs the full field comparison to compute drift per-project.
 	const needsFullScan = values.full || verb === 'snapshot';
-	// Cache is bypassed for update (needs live values) and --full (windowed-metric
+	// Cache is bypassed for sync (needs live values) and --full (windowed-metric
 	// decay must be visible). --no-cache forces a fresh scan for any verb.
-	const useCache = !values['no-cache'] && !needsFullScan && verb !== 'update';
+	const useCache = !values['no-cache'] && !needsFullScan && verb !== 'sync';
 	const result = await computeDrift(manifests, { full: needsFullScan, onProgress, useCache });
 	clearProgress();
 
@@ -2441,7 +2434,7 @@ async function main() {
 				useGum
 			});
 			break;
-		case 'update':
+		case 'sync':
 			runUpdate({
 				result,
 				manifest: manifests.manifest,
@@ -2451,10 +2444,10 @@ async function main() {
 				dryRun: values['dry-run']
 			});
 			break;
-		case 'accept':
+		case 'keep':
 			runAccept({ result, args, acceptAll: false, allProjects: values['all-projects'], palette });
 			break;
-		case 'accept-all':
+		case 'keep-all':
 			runAccept({ result, args, acceptAll: true, allProjects: false, palette });
 			break;
 		case 'report':

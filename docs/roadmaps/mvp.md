@@ -6,13 +6,13 @@ description: Forward roadmap for the portfolio site plus Drift decoupling — br
 
 The site is live and substantially built (full routes, graph/timeline/map/toolkit views, 30+ typed projects, the Drift CLI). This roadmap captures what comes next: deepening the site as an artefact, and decoupling Drift's engine from its portfolio-specific couplings so it could power any frontend.
 
-|              | Status                                                                                                         | Next Up                                                      | Blocked                                                                     |
-| ------------ | -------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------ | --------------------------------------------------------------------------- |
-| **Content**  | 30+ entries, themes, threads, About, CV/hire; depth audit complete; 8 of 10 M1 tasks done                     | Colophon (1CO.5) and style-guide pass (1CO.8) after M5      | 1CO.5 blocked on M5; 1CO.8 blocked on 1CO.5                                |
-| **Features** | 2FE.1, 2FE.2, 2FE.4, 2FE.5, 2FE.8 done; all connection views built (search, multi-select, cross-view continuity, relayout)   | Polish pass (2FE.3) after 2FE.7; tech constellation (2FE.6) after M1        | 2FE.6 blocked on M1; 2FE.7 blocked on 2FE.6; 2FE.3 blocked on 2FE.7/2FE.8 |
-| **Design**   | Reasonable Colors tokens, dark mode                                                                            | Visual direction (3DE.0) after M2                            | All M3 tasks blocked on M2 completion                                       |
-| **Quality**  | Strict types, data-integrity tests, prerendered                                                                | Test coverage (4QU.5) and OG coverage (4QU.4) after M3      | All M4 tasks blocked on M3; a11y (4QU.7) blocked on 4QU.1                  |
-| **Drift**    | 2.5k-line CLI, manifest registry, cache, verbs, Bun migration                                                  | Boundary doc (5DR.1), coupling inventory (5DR.2), verb rename (5DR.14) | Most decoupling tasks (sequence); tests & docs (M6) blocked on M3 + M5      |
+|              | Status                                                                                                                     | Next Up                                                              | Blocked                                                                   |
+| ------------ | -------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| **Content**  | 30+ entries, themes, threads, About, CV/hire; depth audit complete; 8 of 10 M1 tasks done                                  | Colophon (1CO.5) and style-guide pass (1CO.8) after M5               | 1CO.5 blocked on M5; 1CO.8 blocked on 1CO.5                               |
+| **Features** | 2FE.1, 2FE.2, 2FE.4, 2FE.5, 2FE.8 done; all connection views built (search, multi-select, cross-view continuity, relayout) | Polish pass (2FE.3) after 2FE.7; tech constellation (2FE.6) after M1 | 2FE.6 blocked on M1; 2FE.7 blocked on 2FE.6; 2FE.3 blocked on 2FE.7/2FE.8 |
+| **Design**   | Reasonable Colors tokens, dark mode                                                                                        | Visual direction (3DE.0) after M2                                    | All M3 tasks blocked on M2 completion                                     |
+| **Quality**  | Strict types, data-integrity tests, prerendered                                                                            | Test coverage (4QU.5) and OG coverage (4QU.4) after M3               | All M4 tasks blocked on M3; a11y (4QU.7) blocked on 4QU.1                 |
+| **Drift**    | 2.5k-line CLI, manifest registry, cache, verbs, Bun migration                                                              | Boundary doc (5DR.1), coupling inventory (5DR.2)                     | Most decoupling tasks (sequence); tests & docs (M6) blocked on M3 + M5    |
 
 ---
 
@@ -170,7 +170,6 @@ _None._
 
 - [ ] 5DR.1. Boundary doc: define the core-engine vs Svelte-integration contract (what each layer owns) — **depends on 5DR.0**
 - [ ] 5DR.2. Coupling inventory: annotate the 6 couplings in code with their resolution path (light task — the map already exists) — **depends on 5DR.12**
-- [ ] 5DR.14. Rename Drift verbs so they signpost intent more clearly (e.g. `update`/`accept`/`exclude` → clearer names); updates `KNOWN_VERBS`, the dispatch switch, and help text. Breaking change to the CLI surface — gates the engine split (5DR.6) and all new verbs — **depends on 5DR.0**
 
 <a name="m5-blocked"><h4>Blocked (Milestone 5)</h4></a>
 
@@ -183,12 +182,13 @@ _None._
 - [ ] 5DR.13. `drift init` scaffold verb: generate `src/lib/data/sources.local.json` with the correct structure but empty `paths`, replacing the manual `cp sources.local.json.example sources.local.json` step — **depends on 5DR.7**
 - [ ] 5DR.15. `drift author <slug>` verb: create `src/lib/data/projects/<slug>.ts` from a template if absent, then open it in `$EDITOR` — **depends on 5DR.6**
 - [ ] 5DR.16. `drift pin <slug>` verb: set `pin: true` in the slug's `.ts` overlay (creating the overlay if needed); pin/hide live only in overlays, never JSON — **depends on 5DR.6**
-- [ ] 5DR.17. `drift hide <slug>` verb: set `hide: true` in the slug's `.ts` overlay (creating the overlay if needed) — **depends on 5DR.16**
+- [ ] 5DR.17. `drift hide <slug>` verb: set `hide: true` in the slug's `.ts` overlay (creating the overlay if needed) — **depends on 5DR.16** — ⚠️ name collision: 5DR.14 renamed `exclude` to `hide` (writes `excluded.json.slugs`); this verb will need a different name at build time (e.g. `overlay-hide` or integrated into 5DR.16)
 
 <a name="m5-done"><h4>Completed (Milestone 5)</h4></a>
 
-- [x] 5DR.0. Drift CLI foundation: subcommand dispatcher, async fingerprinting + cache, manifest-driven registry, shared tag taxonomy, gum interactive UX, `snapshot` / `report` / `exclude` verbs (shipped in-repo; see `docs/drift-improvement-plan.md`)
+- [x] 5DR.0. Drift CLI foundation: subcommand dispatcher, async fingerprinting + cache, manifest-driven registry, shared tag taxonomy, gum interactive UX, `snapshot` / `report` / `hide` verbs (shipped in-repo; see `docs/drift-improvement-plan.md`)
 - [x] 5DR.12. Migrate repo package manager from npm to Bun: switch lockfile (`bun install`, delete `package-lock.json`), update the four drift scripts in `package.json` from `node scripts/check-drift.js` to `bun run`, confirm Vite/Vitest/svelte-check all run under Bun — the portfolio should dogfood the preferred toolkit, and a Bun-native runtime is a prerequisite for packaging Drift as a distributable CLI
+- [x] 5DR.14. Rename Drift verbs so they signpost intent more clearly (`update`→`sync`, `accept`→`keep`, `accept-all`→`keep-all`, `exclude`→`hide`); updates `KNOWN_VERBS`, both dispatch switches, both help objects, menu rows, `package.json` scripts, data-file notes, hook example, and docs. Hard cut — no aliases. Breaking change to the CLI surface — gates the engine split (5DR.6) and all new verbs — **depends on 5DR.0**
 
 ---
 
@@ -344,7 +344,7 @@ flowchart TD
 	5DR.11["`*5DR.11*<br/>**Drift**<br/>audit verb`"]:::blocked
 	5DR.12["`*5DR.12*<br/>**Drift**<br/>npm → Bun migration`"]:::done
 	5DR.13["`*5DR.13*<br/>**Drift**<br/>init scaffold verb`"]:::blocked
-	5DR.14["`*5DR.14*<br/>**Drift**<br/>rename verbs`"]:::open
+	5DR.14["`*5DR.14*<br/>**Drift**<br/>rename verbs`"]:::done
 	5DR.15["`*5DR.15*<br/>**Drift**<br/>author verb`"]:::blocked
 	5DR.16["`*5DR.16*<br/>**Drift**<br/>pin verb`"]:::blocked
 	5DR.17["`*5DR.17*<br/>**Drift**<br/>hide verb`"]:::blocked

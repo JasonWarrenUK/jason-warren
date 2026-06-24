@@ -10,7 +10,7 @@
 #     chmod +x /path/to/source-repo/.git/hooks/post-commit
 #
 # This hook is NOT auto-installed. It is entirely opt-in per source repo.
-# It runs `drift update <slug>` which writes only that one slug's entry in
+# It runs `drift sync <slug>` which writes only that one slug's entry in
 # sources.json. Run `drift` afterwards to review the change.
 #
 # VARIABLES (edit before installing)
@@ -28,4 +28,4 @@ if [ ! -f "${DRIFT}" ]; then
 	exit 0
 fi
 
-bun run "${DRIFT}" update "${SLUG}"
+bun run "${DRIFT}" sync "${SLUG}"

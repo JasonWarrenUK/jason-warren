@@ -36,8 +36,8 @@ Verified environment: Node v25.2.1 (`node:util` `parseArgs` available); `gum` 0.
 
 - The core script stays dependency-free in `node:*` terms. `gum`/`glow` are external binaries invoked via child process, capability-gated.
 - British spelling, tabs for indentation, no em-dashes (CLAUDE.md).
-- Preserve write-isolation: `update` never touches `overrides.json`; `accept` only touches `overrides.json`.
-- A subcommand-style CLI (`drift <verb>`) reads better than flag soup. `--update`/`--accept` are migrated to verbs.
+- Preserve write-isolation: `sync` never touches `overrides.json`; `keep` only touches `overrides.json`.
+- A subcommand-style CLI (`drift <verb>`) reads better than flag soup. `--update`/`--accept` were migrated to verbs (now renamed `sync`/`keep` per 5DR.14).
 
 ---
 
@@ -49,9 +49,9 @@ Work that landed during the build but was not part of any numbered phase in the 
 - **Shared tag taxonomy module** (`789facc`, `772ab88`) — `src/lib/data/tag-taxonomy.js` + `.d.ts`; `EXTENSION_LANGUAGE`, `LANGUAGE_TAGS`, `RUNTIME_TAGS`, `FRAMEWORK_TAGS`, `DATABASE_TAGS` extracted from the CLI so both the app and the script share one source of truth.
 - **Per-project card renderer** (`ab9f195`, `ed2cd11`) — `renderProjectCard()` shared between the `report` and `snapshot` paths; field-level drift markers, two-column metric grid.
 - **Manifest-driven registry inversion** (`4b7cf7e`, `685dd13`) — `sources.json` manifest is now the authoritative source of slugs; registry builder (`defaultProjectFromManifest`) and `mergeAuthored` overlay.
-- **Committed exclusion list** (`7976320`, `6bd0800`) — `src/lib/data/excluded.json` for repos and slugs to suppress; loaded at scan time, editable via `drift exclude`.
+- **Committed exclusion list** (`7976320`, `6bd0800`) — `src/lib/data/excluded.json` for repos and slugs to suppress; loaded at scan time, editable via `drift hide` (was `drift exclude` before 5DR.14).
 - **DRIFT wordmark above interactive menu** (`05b487f`) — gum-rendered ASCII wordmark sits above the `gum choose` picker on bare invocation.
-- **`exclude` verb** (`f8d50d2`) — appends a slug to `excluded.json.slugs`; interactive gum confirm gate.
+- **`hide` verb** (`f8d50d2`, renamed from `exclude` in 5DR.14) — appends a slug to `excluded.json.slugs`; interactive gum confirm gate.
 - **Coverage summary** (`50b3bd9`) — counts manifest slugs, excluded, overlay vs manifest-only; printed at the foot of every report.
 - **Tag taxonomy: SQL as data tag** (`fb1cd0d`) — `SQL: { label: 'SQL', kind: 'data' }` entry in `tag-taxonomy.js`; `inferTags()` special-cases the `.sql` file-extension scan to surface SQL as a data signal so the relational model resolves without a driver dependency.
 - **Cleanup: SessionStart hook removed** — `.claude/settings.local.json` `hooks` block is empty; `Bash(bun run scripts/check-drift.js*)` allow-entry kept for frictionless manual invocation.
@@ -78,7 +78,7 @@ All bullets landed in `932868f` (Phase 1 baseline) and subsequent commits on the
 - ✅ **Async fan-out.** `git()` converted from `execSync` to `execFile` (promisified); `getFingerprint` runs all independent git calls concurrently via `Promise.all`; `computeDrift` uses a bounded-concurrency worker pool (`os.cpus().length` workers). Wall-clock dropped ~8× on the 33-repo set (~5.8s cold → ~0.7s warm).
 - ✅ **De-duplicated `ls-files`.** `detectLanguages` and `countLinesOfCode` now share a single `listFiles()` result per repo instead of each spawning `git ls-files` independently.
 - ✅ **HEAD+TTL cache.** Gitignored `src/lib/data/.drift-cache.json` caches per-repo `{ head, fingerprint, syncedAt }`. Cache hit requires HEAD match AND entry age < 24h (so windowed metrics never go stale indefinitely). `update`, `--full`, and `--no-cache` all bypass.
-- ✅ **Opt-in source-repo git hook example.** `docs/drift-post-commit-hook.example.sh` — a `post-commit`/`post-merge` snippet a source repo can install to run `drift update <slug>` after each commit. Not auto-installed.
+- ✅ **Opt-in source-repo git hook example.** `docs/drift-post-commit-hook.example.sh` — a `post-commit`/`post-merge` snippet a source repo can install to run `drift sync <slug>` after each commit. Not auto-installed.
 
 **Files:** `scripts/check-drift.js`, `.gitignore`, `docs/drift-post-commit-hook.example.sh`.
 
@@ -107,7 +107,7 @@ All bullets landed in `932868f` (Phase 1 baseline) and subsequent commits on the
 
 **Remaining:**
 
-- `--only <slug...>` scoping for `report`, `update`, and `accept`
+- `--only <slug...>` scoping for `report`, `sync`, and `keep`
 - Dirty working-tree detection via `git status --porcelain`; advisory report section
 - Removed-vs-never-configured split (currently both land in `missing`)
 - Rename/move hint: correlate `missing` with `filteredNew` to suggest "looks like X moved to Y?"
