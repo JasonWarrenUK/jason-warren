@@ -26,3 +26,5 @@ vite.config.ts.timestamp-*
 src/lib/data/sources.local.json
 # Per-machine HEAD-SHA fingerprint cache (speeds up repeated drift checks)
 src/lib/data/.drift-cache.json
+# Per-machine Drift engine config (see drift.config.example.ts for the template)
+/drift.config.ts

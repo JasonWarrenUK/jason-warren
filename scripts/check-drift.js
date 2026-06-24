@@ -20,30 +20,37 @@
 
 import { execFile, spawnSync } from 'child_process';
 import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from 'fs';
-import { join, resolve } from 'path';
+import { join } from 'path';
 import { fileURLToPath } from 'url';
-import { cpus, homedir } from 'os';
+import { cpus } from 'os';
 import { parseArgs, promisify } from 'node:util';
 
 const execFileAsync = promisify(execFile);
 // COUPLING [5DR.4]: tag taxonomy lives under the Svelte app's src/lib/data.
 // Resolved by relocating it to the engine boundary (5DR.4).
 import { EXTENSION_LANGUAGE } from '../src/lib/data/tag-taxonomy.js';
+import { loadConfig } from './drift-config.js';
+
+// ---------------------------------------------------------------------------
+// Config — load once at module init; every coupling below derives from this.
+// Top-level await is valid in ESM and resolves before the run-guard calls main().
+// ---------------------------------------------------------------------------
+
+// COUPLING [5DR.3]: resolved — paths, author, scan root, excludes and theme now
+// come from the config layer (scripts/drift-config.js). Built-in defaults in that
+// module reproduce the previous hard-coded behaviour exactly.
+const config = await loadConfig();
 
 // ---------------------------------------------------------------------------
 // Resolve paths
 // ---------------------------------------------------------------------------
 
-const scriptDir = fileURLToPath(new URL('.', import.meta.url));
-const repoRoot = resolve(scriptDir, '..');
-// COUPLING [5DR.3]: data-file paths are hard-coded to this repo's layout
-// (src/lib/data/*). Resolved by the config layer (5DR.3).
-const sourcesPath = join(repoRoot, 'src/lib/data/sources.json');
-const localPath = join(repoRoot, 'src/lib/data/sources.local.json');
-const overridesPath = join(repoRoot, 'src/lib/data/overrides.json');
-const excludedPath = join(repoRoot, 'src/lib/data/excluded.json');
-const cachePath = join(repoRoot, 'src/lib/data/.drift-cache.json');
-const projectsDir = join(repoRoot, 'src/lib/data/projects');
+const sourcesPath = config.paths.sources;
+const localPath = config.paths.local;
+const overridesPath = config.paths.overrides;
+const excludedPath = config.paths.excluded;
+const cachePath = config.paths.cache;
+const projectsDir = config.paths.projects;
 
 // ---------------------------------------------------------------------------
 // File helpers
@@ -102,15 +109,15 @@ async function git(args, cwd) {
 	}
 }
 
-// COUPLING [5DR.3]: author identities are hard-coded to one person. Resolved by the config layer (5DR.3).
-// Extended-regex alternation over Jason's git identities across repos, so the
-// "by me" metrics (recent commits, line churn) count his work and not a team's.
-// One editable place: a miss degrades to 0, never an error.
-const AUTHOR_PATTERN =
-	'Jason Warren|jasonwarren|contact\\.jwarren@gmail\\.com|jason@yallacooperative\\.com|jason@foundersandcoders\\.com';
+// COUPLING [5DR.3]: resolved — author identity and recent window come from config.
+// Extended-regex alternation over the portfolio owner's git identities, so the
+// "by me" metrics (recent commits, line churn) count their work and not a team's.
+// A miss degrades to 0, never an error. Configure via drift.config.ts → author.pattern.
+const AUTHOR_PATTERN = config.author.pattern;
 
 // Trailing window for "recent" metrics. Appears in report output too.
-const RECENT_WINDOW = '4 weeks ago';
+// Configure via drift.config.ts → author.recentWindow.
+const RECENT_WINDOW = config.author.recentWindow;
 
 // Ordered list of every field getFingerprint returns. Used as the single source
 // of truth for diffFingerprint; explicit ordering keeps the field-drift section
@@ -584,32 +591,40 @@ function curatedStatus(slug) {
 }
 
 // ---------------------------------------------------------------------------
-// Exclusion list — read from excluded.json (committed; editable via `drift hide`).
-// Two axes:
+// Exclusion list — two axes:
 //   repoNames — gates the directory scan by folder name (before a slug exists)
-//   slugs     — gates the public site by manifest slug (after fingerprinting)
-// COUPLING [5DR.3]: repoNames exclusions are portfolio-specific folder names
-// paired to the ~/Code scan root. Both move to config together (5DR.3).
+//               COUPLING [5DR.3]: resolved — now sourced from config.excludedRepoNames,
+//               paired to config.scanRoot. Legacy repoNames in excluded.json are
+//               merged in for backward-compat; new installs configure via drift.config.ts.
+//   slugs     — gates the public site by manifest slug (after fingerprinting).
+//               Live data written by `drift hide`; lives in excluded.json only.
 // ---------------------------------------------------------------------------
 
 /**
- * Load the exclusion list from excluded.json.
- * Best-effort: returns empty Sets and warns on stderr if the file is missing
- * or malformed. Never crashes the CLI.
+ * Load the exclusion list.
+ *
+ * `repoNames` is sourced from `config.excludedRepoNames` (paired to `config.scanRoot`).
+ * Any `repoNames` still present in `excluded.json` are merged in for backward-compat,
+ * so un-migrated files keep filtering correctly without any manual action.
+ *
+ * `slugs` remains live data in `excluded.json`, written by `drift hide`.
+ *
+ * Best-effort: an unreadable `excluded.json` warns on stderr but still applies the
+ * config repoNames, so the scan is never left completely unfiltered.
  */
 function loadExcluded() {
+	let raw = {};
 	try {
-		const raw = JSON.parse(readFileSync(excludedPath, 'utf8'));
-		return {
-			excludedRepoNames: new Set(raw.repoNames ?? []),
-			excludedSlugs: new Set(raw.slugs ?? [])
-		};
+		raw = JSON.parse(readFileSync(excludedPath, 'utf8'));
 	} catch {
 		process.stderr.write(
-			`[drift] Warning: could not read excluded.json at ${excludedPath}. Exclusions disabled.\n`
+			`[drift] Warning: could not read excluded.json at ${excludedPath}. Slug exclusions disabled.\n`
 		);
-		return { excludedRepoNames: new Set(), excludedSlugs: new Set() };
 	}
+	return {
+		excludedRepoNames: new Set([...config.excludedRepoNames, ...(raw.repoNames ?? [])]),
+		excludedSlugs: new Set(raw.slugs ?? [])
+	};
 }
 
 // ---------------------------------------------------------------------------
@@ -868,14 +883,15 @@ async function computeDrift(
 		}
 	}
 
-	// Scan ~/Code for git repos not yet in the manifest.
-	// COUPLING [5DR.3]: scan root is hard-coded to ~/Code. Resolved by the config layer (5DR.3).
+	// Scan for git repos not yet in the manifest.
+	// COUPLING [5DR.3]: resolved — scan root and depth now come from config.
+	// Configure via drift.config.ts → scanRoot / scanDepth.
 	const knownSlugs = new Set(Object.keys(manifest.sources));
-	const codeRoot = join(homedir(), 'Code');
+	const codeRoot = config.scanRoot;
 	const newRepos = [];
 
 	function scanForGitRepos(dir, depth = 0) {
-		if (depth > 3) return;
+		if (depth > config.scanDepth) return;
 		let dirEntries;
 		try {
 			dirEntries = readdirSync(dir);
@@ -1253,7 +1269,7 @@ function runReport({ result, manifest, palette, json, full, useGum }) {
 	// Falls back to the plain console.log path on any failure.
 	if (useGum && process.stdout.isTTY) {
 		const md = renderReportMarkdown(result, manifest, full);
-		const out = spawnSync('gum', ['format', '--theme', 'pink'], { input: md, encoding: 'utf8' });
+		const out = spawnSync('gum', ['format', '--theme', config.theme.markdownTheme], { input: md, encoding: 'utf8' });
 		if (out.status === 0 && out.stdout) {
 			process.stdout.write('\n' + out.stdout + '\n');
 			return;
@@ -1834,7 +1850,7 @@ function runSnapshot({ result, manifest, palette, json, useGum }) {
 
 	if (useGum && process.stdout.isTTY) {
 		const md = renderSnapshotMarkdown(snapshot);
-		const out = spawnSync('gum', ['format', '--theme', 'pink'], { input: md, encoding: 'utf8' });
+		const out = spawnSync('gum', ['format', '--theme', config.theme.markdownTheme], { input: md, encoding: 'utf8' });
 		if (out.status === 0 && out.stdout) {
 			process.stdout.write('\n' + out.stdout + '\n');
 			return;
@@ -1984,7 +2000,7 @@ function printHelp(verb, palette, useGum) {
 	// gum markdown rendering — falls back to plain banners on any failure.
 	if (useGum && process.stdout.isTTY) {
 		const md = helpMarkdown[verb] ?? helpMarkdown.report;
-		const out = spawnSync('gum', ['format', '--theme', 'pink'], { input: md, encoding: 'utf8' });
+		const out = spawnSync('gum', ['format', '--theme', config.theme.markdownTheme], { input: md, encoding: 'utf8' });
 		if (out.status === 0 && out.stdout) {
 			process.stdout.write('\n' + out.stdout + '\n');
 			return;
@@ -2090,10 +2106,10 @@ all fields. Does not write anything.${RESET}
 // Single-shot: choose a verb, run it in-process, done.
 // ---------------------------------------------------------------------------
 
-// COUPLING [5DR.3]: brand colours are hard-coded; one editable place until
-// the theme config lands. Resolved by the config/theme layer (5DR.3).
-const BRAND_PRIMARY = '#3E7F96'; // teal: cursor, selection, borders
-const BRAND_ACCENT = '#B34480'; // magenta: item foreground, wordmark text
+// COUPLING [5DR.3]: resolved — brand colours come from config.theme.
+// Configure via drift.config.ts → theme.primary / theme.accent.
+const BRAND_PRIMARY = config.theme.primary; // teal: cursor, selection, borders
+const BRAND_ACCENT = config.theme.accent; // magenta: item foreground, wordmark text
 
 // ANSI Shadow figlet wordmark for the menu header.
 // Generated via `npx figlet-cli -f "ANSI Shadow" DRIFT`; embedded as a

@@ -1,25 +1,5 @@
 {
 	"$schema": "./excluded.schema.json",
-	"_note": "Two-axis exclusion list. repoNames gates the directory scan (by repository folder name, before a slug exists). slugs gates the public site (by manifest slug, after a repo has been fingerprinted). Neither list auto-writes project .ts files. Use `drift hide <slug>` to append to slugs.",
-	"repoNames": [
-		"portfolio",
-		"jason-warren",
-		"node_modules",
-		".git",
-		"JasonWarrenUK",
-		"JasonWarrenUK.github.io",
-		"seam",
-		"terminal-config",
-		"yalla-gym",
-		"beacons-backend",
-		"beacons-frontend-v2",
-		"craft-and-graft-front",
-		"craft-and-graft-api",
-		"sakura-api",
-		"sakura-front",
-		"mood-time-api",
-		"mood-time-front",
-		"mood-time"
-	],
+	"_note": "Live site-exclusion list. `slugs` gates the public site by manifest slug (after a repo has been fingerprinted). Written by `drift hide <slug>`. Repository folder names excluded from the directory scan have moved to drift.config.ts → excludedRepoNames (paired to scanRoot); see drift.config.example.ts for the template.",
 	"slugs": ["kamino"]
 }
