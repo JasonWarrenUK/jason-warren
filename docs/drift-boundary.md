@@ -51,8 +51,8 @@ The integration layer:
 | `curatedLanguages(slug)` / `curatedStatus(slug)` | Engine (transitional) | Text-parses `.ts` overlay files. Belongs in integration. **Coupling [5DR.6]** |
 | `defaultProjectFromManifest` / `mergeAuthored` | Integration | Pure build-time builders |
 | `withSyncedMetrics` | Integration | Applies override > synced > authored precedence |
-| Config (paths, scan root, author identity, brand colours) | Engine (hard-coded) | **Coupling [5DR.3]** — resolves to a config layer |
-| `repoNames` exclusion list | Engine | **Coupling [5DR.3]** — paired to the `~/Code` scan root |
+| Config (paths, scan root, author identity, brand colours) | Engine (`scripts/drift-config.js`) | **Resolved (5DR.3)** — `drift.config.ts` per-machine config; built-in defaults reproduce previous behaviour |
+| `repoNames` exclusion list | Engine (`config.excludedRepoNames`) | **Resolved (5DR.3)** — moved to `drift.config.ts`, paired with `scanRoot`; `excluded.json` now holds only `slugs` |
 | Project scoring / hero selection | Integration | `scoring.ts` — engine never touches this |
 | Graph / relationship edges | Integration | `graph.ts`, `threads.ts` |
 | Themes / visual data | Integration | `themes.ts` |
