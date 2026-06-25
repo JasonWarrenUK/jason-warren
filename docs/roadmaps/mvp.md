@@ -12,7 +12,7 @@ The site is live and substantially built (full routes, graph/timeline/map/toolki
 | **Features** | 2FE.1, 2FE.2, 2FE.4, 2FE.5, 2FE.8 done; all connection views built (search, multi-select, cross-view continuity, relayout) | Polish pass (2FE.3) after 2FE.7; tech constellation (2FE.6) after M1 | 2FE.6 blocked on M1; 2FE.7 blocked on 2FE.6; 2FE.3 blocked on 2FE.7/2FE.8 |
 | **Design**   | Reasonable Colors tokens, dark mode                                                                                        | Visual direction (3DE.0) after M2                                    | All M3 tasks blocked on M2 completion                                     |
 | **Quality**  | Strict types, data-integrity tests, prerendered                                                                            | Test coverage (4QU.5) and OG coverage (4QU.4) after M3               | All M4 tasks blocked on M3; a11y (4QU.7) blocked on 4QU.1                 |
-| **Drift**    | 2.5k-line CLI, manifest registry, cache, verbs, Bun migration, boundary doc, config layer (`scripts/drift-config.js`)      | Tag taxonomy relocation (5DR.4) and engine data schema (5DR.5)       | Most decoupling tasks (sequence); tests & docs (M6) blocked on M3 + M5    |
+| **Drift**    | 2.5k-line CLI, manifest registry, cache, verbs, Bun migration, boundary doc, config layer, tag taxonomy (5DR.4), engine schema (5DR.5), engine/integration split (5DR.6) | Branch awareness + staging (5DR.7) now that boundary is clean | Tests & docs (M6) blocked on M3 + M5; remaining verbs (5DR.7, 5DR.11, 5DR.13, 5DR.15-17) blocked on sequence |
 
 ---
 
@@ -172,8 +172,6 @@ _None._
 
 <a name="m5-blocked"><h4>Blocked (Milestone 5)</h4></a>
 
-- [ ] 5DR.5. Define engine's public data schema (the typed/JSON output contract) — **depends on 5DR.1**
-- [ ] 5DR.6. Split core engine from Svelte integration: move `.ts`-scraping (`curatedLanguages`/`curatedStatus`) into the integration layer — **depends on 5DR.4, 5DR.14**
 - [ ] 5DR.7. Build subsumed in-repo backlog inside the decoupled design: branch awareness (Phase 5 of `drift-improvement-plan.md`) + `in-progress.json` staging pipeline (Phase 6) — **depends on 5DR.6**
 - [ ] 5DR.11. Drift `audit` verb: score every authored entry against the content-depth rubric (`docs/audits/content-depth.md`) and emit a per-entry tier report; the automated successor to the 1CO.1 manual audit — **depends on 5DR.5, 5DR.6**
 - [ ] 5DR.13. `drift init` scaffold verb: generate `src/lib/data/sources.local.json` with the correct structure but empty `paths`, replacing the manual `cp sources.local.json.example sources.local.json` step; also generate a `drift.config.ts` with the correct structure and sensible defaults if one does not already exist — **depends on 5DR.7**
@@ -186,6 +184,8 @@ _None._
 - [x] 5DR.0. Drift CLI foundation: subcommand dispatcher, async fingerprinting + cache, manifest-driven registry, shared tag taxonomy, gum interactive UX, `snapshot` / `report` / `hide` verbs (shipped in-repo; see `docs/drift-improvement-plan.md`)
 - [x] 5DR.12. Migrate repo package manager from npm to Bun: switch lockfile (`bun install`, delete `package-lock.json`), update the four drift scripts in `package.json` from `node scripts/check-drift.js` to `bun run`, confirm Vite/Vitest/svelte-check all run under Bun — the portfolio should dogfood the preferred toolkit, and a Bun-native runtime is a prerequisite for packaging Drift as a distributable CLI
 - [x] 5DR.14. Rename Drift verbs so they signpost intent more clearly (`update`→`sync`, `accept`→`keep`, `accept-all`→`keep-all`, `exclude`→`hide`); updates `KNOWN_VERBS`, both dispatch switches, both help objects, menu rows, `package.json` scripts, data-file notes, hook example, and docs. Hard cut — no aliases. Breaking change to the CLI surface — gates the engine split (5DR.6) and all new verbs — **depends on 5DR.0**
+- [x] 5DR.6. Split core engine from Svelte integration: deleted `curatedLanguages`, `ungatedLanguages`, `curatedStatus` from the engine (Route B — engine drops the overlay dependency entirely); removed `ungated` and `statusHint` advisory hints from the report; correctness gate remains as CI test in `data.test.ts`; `statusHint` retired (no site-side analogue). Engine now reads/writes only the four data files. Boundary doc updated. — **depends on 5DR.4, 5DR.14**
+- [x] 5DR.5. Define engine's public data schema (the typed/JSON output contract): moved `sources.schema.json` to `scripts/sources.schema.json`; engine validates every `SyncedSource` record against it before writing; `FINGERPRINT_FIELDS` derived from schema; `sources.schema.test.ts` guards the contract — **depends on 5DR.1**
 - [x] 5DR.4. Relocate tag taxonomy to the engine boundary: moved `tag-taxonomy.js` (all five maps) from `src/lib/data/` to `scripts/tag-taxonomy.js` alongside the engine; engine import localised to `./tag-taxonomy.js`; integration layer (`defaults.ts`) repointed to `../../../scripts/tag-taxonomy.js`; coupling comment updated; boundary doc and roadmap updated — **depends on 5DR.3**
 - [x] 5DR.3. Config layer: paths, author pattern, scan root, excludes, gum theme all become user-config — `scripts/drift-config.js` owns built-in defaults and best-effort loader; `drift.config.ts` (gitignored) provides per-machine overrides; `repoNames` moved to config (paired to `scanRoot`); `excluded.json` trimmed to `slugs`-only — **depends on 5DR.1, 5DR.2**
 - [x] 5DR.2. Coupling inventory: annotate the 6 couplings in `scripts/check-drift.js` with `// COUPLING [5DR.N]:` markers + resolver task. Extracted gum brand colours (`#3E7F96`/`#B34480`) to `BRAND_PRIMARY`/`BRAND_ACCENT` constants, collapsing 14 literals to 2. No behaviour change — **depends on 5DR.12**
@@ -335,9 +335,9 @@ flowchart TD
 	5DR.1["`*5DR.1*<br/>**Drift**<br/>boundary doc`"]:::done
 	5DR.2["`*5DR.2*<br/>**Drift**<br/>coupling inventory`"]:::done
 	5DR.3["`*5DR.3*<br/>**Drift**<br/>config layer`"]:::done
-	5DR.4["`*5DR.4*<br/>**Drift**<br/>tag taxonomy relocation`"]:::blocked
-	5DR.5["`*5DR.5*<br/>**Drift**<br/>engine data schema`"]:::blocked
-	5DR.6["`*5DR.6*<br/>**Drift**<br/>engine / integration split`"]:::blocked
+	5DR.4["`*5DR.4*<br/>**Drift**<br/>tag taxonomy relocation`"]:::done
+	5DR.5["`*5DR.5*<br/>**Drift**<br/>engine data schema`"]:::done
+	5DR.6["`*5DR.6*<br/>**Drift**<br/>engine / integration split`"]:::done
 	5DR.7["`*5DR.7*<br/>**Drift**<br/>branch awareness + staging`"]:::blocked
 	5DR.8["`*5DR.8*<br/>**Drift**<br/>engine test suite`"]:::blocked
 	5DR.9["`*5DR.9*<br/>**Drift**<br/>Drift docs`"]:::blocked
