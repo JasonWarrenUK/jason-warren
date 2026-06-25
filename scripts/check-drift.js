@@ -26,9 +26,8 @@ import { cpus } from 'os';
 import { parseArgs, promisify } from 'node:util';
 
 const execFileAsync = promisify(execFile);
-// COUPLING [5DR.4]: tag taxonomy lives under the Svelte app's src/lib/data.
-// Resolved by relocating it to the engine boundary (5DR.4).
-import { EXTENSION_LANGUAGE } from '../src/lib/data/tag-taxonomy.js';
+// COUPLING [5DR.4]: resolved — tag taxonomy relocated to scripts/tag-taxonomy.js.
+import { EXTENSION_LANGUAGE } from './tag-taxonomy.js';
 import { loadConfig } from './drift-config.js';
 
 // ---------------------------------------------------------------------------
@@ -151,7 +150,7 @@ const FINGERPRINT_FIELDS = [
 // differences in detection do not produce spurious drift.
 const ARRAY_FINGERPRINT_FIELDS = new Set(['languages', 'runtime', 'database', 'framework']);
 
-// EXTENSION_LANGUAGE is imported from src/lib/data/tag-taxonomy.js above.
+// EXTENSION_LANGUAGE is imported from scripts/tag-taxonomy.js above.
 // That module is the single source of truth shared between the CLI and the app.
 
 /**
@@ -274,8 +273,8 @@ async function getFirstCommit(repoPath) {
  * normal; a failure degrades inference gracefully, never crashes.
  *
  * The identity strings returned MUST equal the keys in RUNTIME_TAGS,
- * FRAMEWORK_TAGS, and DATABASE_TAGS in tag-taxonomy.js — that is the single
- * contract binding the CLI parser to the app's tag inference.
+ * FRAMEWORK_TAGS, and DATABASE_TAGS in scripts/tag-taxonomy.js — that is the
+ * single contract binding the CLI parser to the app's tag inference.
  *
  * @param {string} repoPath
  * @returns {{ runtime: string[], framework: string[], database: string[] }}

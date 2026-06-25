@@ -5,7 +5,7 @@
  * keep these declarations in sync with it.
  */
 
-import type { TechTag } from './types.js';
+import type { TechTag } from '../src/lib/data/types.js';
 
 /** Maps lowercase file extensions to canonical language names. */
 export declare const EXTENSION_LANGUAGE: Record<string, string>;
