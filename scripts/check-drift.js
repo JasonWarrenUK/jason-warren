@@ -41,6 +41,26 @@ import { loadConfig } from './drift-config.js';
 const config = await loadConfig();
 
 // ---------------------------------------------------------------------------
+// Engine output schema — loaded once at module init.
+// scripts/sources.schema.json is the canonical contract for SyncedSource records.
+// If this file is missing or malformed every verb halts immediately — a missing
+// contract should not silently produce unchecked output.
+// ---------------------------------------------------------------------------
+
+let SCHEMA;
+try {
+	SCHEMA = JSON.parse(
+		readFileSync(new URL('./sources.schema.json', import.meta.url), 'utf8')
+	);
+} catch (err) {
+	process.stderr.write(
+		`drift: could not load sources.schema.json — ${err.message}\n` +
+		`  Expected: scripts/sources.schema.json (engine output contract)\n`
+	);
+	process.exit(1);
+}
+
+// ---------------------------------------------------------------------------
 // Resolve paths
 // ---------------------------------------------------------------------------
 
@@ -118,37 +138,20 @@ const AUTHOR_PATTERN = config.author.pattern;
 // Configure via drift.config.ts → author.recentWindow.
 const RECENT_WINDOW = config.author.recentWindow;
 
-// Ordered list of every field getFingerprint returns. Used as the single source
-// of truth for diffFingerprint; explicit ordering keeps the field-drift section
-// stable and survives a saved entry missing a field (undefined !== value).
-const FINGERPRINT_FIELDS = [
-	'head',
-	'commits',
-	'commitsRecentAll',
-	'commitsMine',
-	'commitsRecent',
-	'lastCommit',
-	'firstCommit',
-	'languages',
-	'linesOfCode',
-	'linesAdded',
-	'linesRemoved',
-	'linesAddedAll',
-	'linesRemovedAll',
-	'linesAddedRecent',
-	'linesRemovedRecent',
-	'linesAddedRecentAll',
-	'linesRemovedRecentAll',
-	// Dependency-manifest fields (Phase 6)
-	'remote',
-	'runtime',
-	'database',
-	'framework'
-];
+// Ordered list of every field getFingerprint returns. Derived from the engine's
+// public output schema (scripts/sources.schema.json) so the schema is the single
+// source of truth. Property order in the schema matches the desired field-drift
+// display order — see the SyncedSource description comment in the schema.
+const FINGERPRINT_FIELDS = Object.keys(SCHEMA.$defs.SyncedSource.properties);
 
-// Array-typed fingerprint fields. Compared by sorted join so element-order
+// Array-typed fingerprint fields. Derived from the schema: any SyncedSource
+// property whose type is 'array'. Compared by sorted join so element-order
 // differences in detection do not produce spurious drift.
-const ARRAY_FINGERPRINT_FIELDS = new Set(['languages', 'runtime', 'database', 'framework']);
+const ARRAY_FINGERPRINT_FIELDS = new Set(
+	FINGERPRINT_FIELDS.filter(
+		(f) => SCHEMA.$defs.SyncedSource.properties[f].type === 'array'
+	)
+);
 
 // EXTENSION_LANGUAGE is imported from scripts/tag-taxonomy.js above.
 // That module is the single source of truth shared between the CLI and the app.
@@ -497,6 +500,86 @@ async function getFingerprint(repoPath) {
 		...(framework.length > 0 && { framework }),
 		...(database.length > 0 && { database })
 	};
+}
+
+// ---------------------------------------------------------------------------
+// Schema validation helpers.
+// validateSource / validateManifest validate the assembled manifest against
+// the engine's public output schema (scripts/sources.schema.json) before the
+// single sanctioned write to sources.json. A violation means the engine emitted
+// something off-contract — a programming error, not user data — so we throw
+// rather than warn, and write nothing (fail-closed).
+// ---------------------------------------------------------------------------
+
+/**
+ * Validate one SyncedSource record against the schema's $defs/SyncedSource.
+ * Returns a list of human-readable violation strings, empty when the record is valid.
+ *
+ * @param {string} slug
+ * @param {Record<string, unknown>} record
+ * @returns {string[]}
+ */
+function validateSource(slug, record) {
+	const props = SCHEMA.$defs.SyncedSource.properties;
+	const violations = [];
+	for (const [key, value] of Object.entries(record)) {
+		if (!(key in props)) {
+			violations.push(`${slug}.${key} — unknown field (not in SyncedSource schema)`);
+			continue;
+		}
+		const spec = props[key];
+		if (spec.type === 'string') {
+			if (typeof value !== 'string') {
+				violations.push(`${slug}.${key} — expected string, got ${typeof value}`);
+			}
+		} else if (spec.type === 'integer') {
+			if (!Number.isInteger(value)) {
+				violations.push(`${slug}.${key} — expected integer, got ${JSON.stringify(value)}`);
+			} else if (typeof spec.minimum === 'number' && value < spec.minimum) {
+				violations.push(`${slug}.${key} — value ${value} is below minimum ${spec.minimum}`);
+			}
+		} else if (spec.type === 'array') {
+			if (!Array.isArray(value)) {
+				violations.push(`${slug}.${key} — expected array, got ${typeof value}`);
+			} else if (spec.items?.type) {
+				const badItem = value.find((v) => typeof v !== spec.items.type);
+				if (badItem !== undefined) {
+					violations.push(
+						`${slug}.${key} — array item ${JSON.stringify(badItem)} is not a ${spec.items.type}`
+					);
+				}
+			}
+		} else if (spec.type === 'boolean') {
+			if (typeof value !== 'boolean') {
+				violations.push(`${slug}.${key} — expected boolean, got ${typeof value}`);
+			}
+		}
+		if (value === null) {
+			violations.push(`${slug}.${key} — null not permitted in a written record`);
+		}
+	}
+	return violations;
+}
+
+/**
+ * Validate the full manifest object against sources.schema.json.
+ * Checks top-level keys and each SyncedSource entry in manifest.sources.
+ *
+ * @param {Record<string, unknown>} manifest
+ * @returns {string[]}
+ */
+function validateManifest(manifest) {
+	const violations = [];
+	const rootProps = SCHEMA.properties;
+	for (const key of Object.keys(manifest)) {
+		if (!(key in rootProps)) {
+			violations.push(`manifest.${key} — unknown top-level key`);
+		}
+	}
+	for (const [slug, record] of Object.entries(manifest.sources ?? {})) {
+		violations.push(...validateSource(slug, record));
+	}
+	return violations;
 }
 
 /**
@@ -1397,7 +1480,7 @@ function runReport({ result, manifest, palette, json, full, useGum }) {
 
 function runUpdate({ result, manifest, palette, useGum, args = [], dryRun = false }) {
 	const { fresh } = result;
-	const { GREEN, YELLOW, RESET, DIM } = palette;
+	const { GREEN, YELLOW, RED, RESET, DIM } = palette;
 
 	if (Object.keys(fresh).length === 0) return;
 
@@ -1484,6 +1567,19 @@ function runUpdate({ result, manifest, palette, useGum, args = [], dryRun = fals
 		manifest.firstCommitProvisional = false;
 		console.log(
 			`${DIM}firstCommitProvisional cleared — firstCommit values are now authoritative.${RESET}`
+		);
+	}
+
+	// Validate the fully-assembled manifest against the engine's public schema
+	// before the single sanctioned write. A violation is a programming error in
+	// the engine, not user data — throw and write nothing (fail-closed).
+	const violations = validateManifest(manifest);
+	if (violations.length > 0) {
+		for (const v of violations) {
+			process.stderr.write(`${RED}drift: schema violation — ${v}${RESET}\n`);
+		}
+		throw new Error(
+			`sources.json failed schema validation (${violations.length} violation(s)); nothing written.`
 		);
 	}
 
