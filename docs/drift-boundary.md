@@ -46,6 +46,7 @@ The integration layer:
 | `excluded.json` — writing | Engine only | `drift hide` only |
 | `.drift-cache.json` | Engine only | Never read by the Svelte build |
 | Tag taxonomy (`tag-taxonomy.js`) | Engine (`scripts/tag-taxonomy.js`) | **Resolved (5DR.4)** — taxonomy moved to the engine; integration imports the four `*_TAGS` maps from `scripts/tag-taxonomy.js`. |
+| Output schema (`sources.schema.json`) | Engine (`scripts/sources.schema.json`) | **Resolved (5DR.5)** — schema moved to the engine; validated at write time; `FINGERPRINT_FIELDS` derived from it. |
 | `AuthoredProject` / `Project` types | Integration | TypeScript types the engine cannot import (plain JS) |
 | `projects/*.ts` authored overlays | Integration | Engine reads them today by regex — **Coupling [5DR.6]** |
 | `curatedLanguages(slug)` / `curatedStatus(slug)` | Engine (transitional) | Text-parses `.ts` overlay files. Belongs in integration. **Coupling [5DR.6]** |
@@ -93,7 +94,14 @@ git repos on disk
 ## The engine's public output contract
 
 The engine writes `SyncedSource` records (one per slug) into `sources.json`. This is the
-only output the integration layer depends on. The shape is:
+only output the integration layer depends on.
+
+**Canonical contract:** `scripts/sources.schema.json` (`$defs/SyncedSource`) — a JSON Schema
+draft-07 definition with `additionalProperties: false`. The engine validates every assembled
+`SyncedSource` record against this schema before writing `sources.json`. A contract violation
+causes `drift sync` to throw and write nothing (fail-closed).
+
+The shape (for illustration — the schema is authoritative):
 
 ```typescript
 interface SyncedSource {
@@ -128,8 +136,10 @@ interface SyncedSource {
 ```
 
 All fields are optional. The integration layer must tolerate any subset being absent.
-The engine must not add fields to this shape without a corresponding update to
-`SyncedSource` in `index.ts`.
+Adding a field requires three coordinated edits: the schema property in
+`scripts/sources.schema.json` (the gate), the `SyncedSource` interface in `index.ts`,
+and the `getFingerprint` return value in `check-drift.js` (the `FINGERPRINT_FIELDS`
+derivation picks up the new field automatically once the schema is updated).
 
 ---
 

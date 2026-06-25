@@ -1,7 +1,7 @@
 {
 	"$schema": "http://json-schema.org/draft-07/schema#",
 	"title": "Portfolio sources manifest",
-	"description": "Last-synced git fingerprints for each portfolio source repo. Written by `scripts/check-drift.js --update`.",
+	"description": "Last-synced git fingerprints for each portfolio source repo. Written by `drift sync` (`scripts/check-drift.js`).",
 	"type": "object",
 	"required": ["lastSyncedAt", "sources"],
 	"additionalProperties": false,
@@ -11,12 +11,12 @@
 		"_firstCommitNote": { "type": "string" },
 		"firstCommitProvisional": {
 			"type": "boolean",
-			"description": "True while firstCommit values are provisional estimates. Set to false after a real --update sync."
+			"description": "True while firstCommit values are provisional estimates. Set to false after a real `drift sync`."
 		},
 		"lastSyncedAt": {
 			"type": "string",
 			"format": "date",
-			"description": "ISO date of the last `--update` run (YYYY-MM-DD)."
+			"description": "ISO date of the last `drift sync` run (YYYY-MM-DD)."
 		},
 		"sources": {
 			"type": "object",
@@ -30,31 +30,11 @@
 		"SyncedSource": {
 			"type": "object",
 			"additionalProperties": false,
-			"description": "Git fingerprint for one source repo. All fields optional — populated incrementally by check-drift.js.",
+			"description": "Git fingerprint for one source repo. All fields optional — populated incrementally by check-drift.js. Property order matches FINGERPRINT_FIELDS in check-drift.js so Object.keys() derivation preserves field-drift display order.",
 			"properties": {
 				"head": {
 					"type": "string",
 					"description": "Short SHA of HEAD at last sync."
-				},
-				"lastCommit": {
-					"type": "string",
-					"format": "date",
-					"description": "ISO date of the most recent commit."
-				},
-				"firstCommit": {
-					"type": "string",
-					"format": "date",
-					"description": "ISO date of the root commit (project inception)."
-				},
-				"languages": {
-					"type": "array",
-					"items": { "type": "string" },
-					"description": "Languages present in the repo, ordered by file count. Advisory only — language tags are hand-curated."
-				},
-				"linesOfCode": {
-					"type": "integer",
-					"minimum": 0,
-					"description": "Total lines across tracked source files, all authors."
 				},
 				"commits": {
 					"type": "integer",
@@ -75,6 +55,26 @@
 					"type": "integer",
 					"minimum": 0,
 					"description": "Jason-authored commit count, trailing 4 weeks."
+				},
+				"lastCommit": {
+					"type": "string",
+					"format": "date",
+					"description": "ISO date of the most recent commit."
+				},
+				"firstCommit": {
+					"type": "string",
+					"format": "date",
+					"description": "ISO date of the root commit (project inception)."
+				},
+				"languages": {
+					"type": "array",
+					"items": { "type": "string" },
+					"description": "Languages present in the repo, ordered by file count. Advisory only — language tags are hand-curated."
+				},
+				"linesOfCode": {
+					"type": "integer",
+					"minimum": 0,
+					"description": "Total lines across tracked source files, all authors."
 				},
 				"linesAdded": {
 					"type": "integer",

@@ -32,8 +32,13 @@ export * from './types.js';
 
 /**
  * One synced fingerprint from the drift manifest. Every field is optional: the
- * manifest is populated incrementally by `scripts/check-drift.js --update`, so
- * a freshly added repo may only carry a subset of fields until the next full sync.
+ * manifest is populated incrementally by `drift sync`, so a freshly added repo
+ * may only carry a subset of fields until the next full sync.
+ *
+ * Canonical contract: `scripts/sources.schema.json` (`$defs/SyncedSource`).
+ * The engine validates every record against that schema before writing sources.json.
+ * Any new field must be added to the schema first — the validation gate enforces this.
+ *
  * Field naming mirrors ProjectMetrics exactly; `commitsAll` is omitted here
  * because it is produced by the curation gate, not stored in the manifest.
  */
