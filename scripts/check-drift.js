@@ -620,59 +620,6 @@ function diffFingerprint(saved, current) {
 }
 
 // ---------------------------------------------------------------------------
-// Curated language tags (the significance gate). Read best-effort from the
-// project's data file so the report can flag detected languages that are not
-// yet curated. The app reads only these tags; the scan never feeds the render.
-// COUPLING [5DR.6]: reading curated .ts overlays by regex binds the engine to
-// the Svelte app's data files. Resolved by the engine/integration split (5DR.6).
-// ---------------------------------------------------------------------------
-
-function curatedLanguages(slug) {
-	const file = join(projectsDir, `${slug}.ts`);
-	if (!existsSync(file)) return null;
-	let source;
-	try {
-		source = readFileSync(file, 'utf8');
-	} catch {
-		return null;
-	}
-	const labels = [];
-	const re = /label:\s*'([^']+)',\s*kind:\s*'language'/g;
-	let match;
-	while ((match = re.exec(source)) !== null) {
-		labels.push(match[1]);
-	}
-	return labels;
-}
-
-/** Detected languages not yet present in the project's curated language tags. */
-function ungatedLanguages(slug, detected) {
-	const curated = curatedLanguages(slug);
-	if (curated === null) return [];
-	const gate = new Set(curated);
-	return detected.filter((language) => !gate.has(language));
-}
-
-/**
- * Read the project's authored status from its data file via regex.
- * Returns 'live' | 'wip' | 'finished' | 'prototype' | 'archived' | null.
- * Mirrors the curatedLanguages text-parse pattern — the script is plain JS
- * and cannot import the TypeScript project files directly.
- */
-function curatedStatus(slug) {
-	const file = join(projectsDir, `${slug}.ts`);
-	if (!existsSync(file)) return null;
-	let source;
-	try {
-		source = readFileSync(file, 'utf8');
-	} catch {
-		return null;
-	}
-	const m = source.match(/\bstatus:\s*'([^']+)'/);
-	return m ? m[1] : null;
-}
-
-// ---------------------------------------------------------------------------
 // Exclusion list — two axes:
 //   repoNames — gates the directory scan by folder name (before a slug exists)
 //               COUPLING [5DR.3]: resolved — now sourced from config.excludedRepoNames,
@@ -842,11 +789,9 @@ async function computeDrift(
 
 			const repoPath = localPaths[slug];
 			if (!repoPath) {
-				const status = curatedStatus(slug);
-				const statusHint = status === 'live' || status === 'wip' ? status : null;
 				results[i] = {
 					slug,
-					missing: { slug, reason: 'no local path in sources.local.json', statusHint }
+					missing: { slug, reason: 'no local path in sources.local.json' }
 				};
 				completed++;
 				onProgress?.({ index: completed, total, slug });
@@ -881,12 +826,10 @@ async function computeDrift(
 			}
 
 			if (!current) {
-				// Path configured but repo not found — could be offloaded. Check status.
-				const status = curatedStatus(slug);
-				const statusHint = status === 'live' || status === 'wip' ? status : null;
+				// Path configured but repo not found — could be offloaded.
 				results[i] = {
 					slug,
-					missing: { slug, reason: `path not found or not a git repo: ${repoPath}`, statusHint }
+					missing: { slug, reason: `path not found or not a git repo: ${repoPath}` }
 				};
 				completed++;
 				onProgress?.({ index: completed, total, slug });
@@ -952,8 +895,7 @@ async function computeDrift(
 				path: repoPath,
 				from: { head: saved.head, commits: saved.commits, lastCommit: saved.lastCommit },
 				to: current,
-				delta,
-				ungated: ungatedLanguages(slug, current.languages)
+				delta
 			});
 		}
 
@@ -1081,10 +1023,6 @@ function renderReportMarkdown(result, manifest, full) {
 				lines.push(`languages: ${r.to.languages.join(', ')}`);
 				lines.push('');
 			}
-			if (r.ungated.length > 0) {
-				lines.push(`**ungated** (consider adding to language tags): ${r.ungated.join(', ')}`);
-				lines.push('');
-			}
 		}
 	}
 
@@ -1135,11 +1073,6 @@ function renderReportMarkdown(result, manifest, full) {
 		lines.push('');
 		for (const r of missing) {
 			lines.push(`- ${r.slug}: ${r.reason}`);
-			if (r.statusHint) {
-				lines.push(
-					`  - still marked '${r.statusHint}' · consider reviewing its status in \`src/lib/data/projects/${r.slug}.ts\``
-				);
-			}
 		}
 		lines.push('');
 	}
@@ -1412,11 +1345,6 @@ function runReport({ result, manifest, palette, json, full, useGum }) {
 			if (r.to.languages.length > 0) {
 				console.log(`    ${DIM}languages: ${r.to.languages.join(', ')}${RESET}`);
 			}
-			if (r.ungated.length > 0) {
-				console.log(
-					`    ${YELLOW}ungated (consider adding to language tags): ${r.ungated.join(', ')}${RESET}`
-				);
-			}
 		}
 		console.log();
 	}
@@ -1461,11 +1389,6 @@ function runReport({ result, manifest, palette, json, full, useGum }) {
 		console.log(`${DIM}${BOLD}Repos without local paths (${missing.length}):${RESET}`);
 		for (const r of missing) {
 			console.log(`  ${DIM}${r.slug}: ${r.reason}${RESET}`);
-			if (r.statusHint) {
-				console.log(
-					`  ${YELLOW}  still marked '${r.statusHint}': consider reviewing its status in src/lib/data/projects/${r.slug}.ts${RESET}`
-				);
-			}
 		}
 		console.log();
 	}

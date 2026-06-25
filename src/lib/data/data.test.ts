@@ -151,6 +151,13 @@ describe('project registry', () => {
 		// repo lacks. Projects whose manifest entry has no languages yet (before
 		// the author runs the drift update) are skipped, so this stays green
 		// until there is truth to check against.
+		//
+		// Note: the inverse (detected languages not yet in curated tags) is
+		// deliberately NOT enforced here. Curation is a significance gate, not
+		// exhaustive coverage — omitting HTML, CSS, Shell etc. is intentional.
+		// That completeness nudge was previously an advisory hint in the Drift
+		// report (`ungated`); it was retired in 5DR.6 (Route B). If a completeness
+		// audit is desired, 5DR.11 (the `drift audit` verb) is the right place.
 		const offenders: string[] = [];
 		for (const project of projects) {
 			const detected = sources[project.slug]?.languages;
