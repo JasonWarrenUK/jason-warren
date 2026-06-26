@@ -291,3 +291,31 @@ export interface Project {
  * build-time failure on actual typos in overlay files and themes.
  */
 export type ProjectSlug = string;
+
+// ---------------------------------------------------------------------------
+// In-progress staging pipeline types
+//
+// Mirror the in-progress.schema.json contract. Used by index.ts to type the
+// provisional values imported from in-progress.json, and by the drift engine
+// (check-drift.js) for the inProgressStatus result entries.
+// ---------------------------------------------------------------------------
+
+/** A single provisionally-tracked metric field. */
+export interface TrackedField {
+	/** The provisional metric value on the in-progress branch. */
+	value: number;
+	/** The same metric at the merge target (baseline the branch diverged from). */
+	baseOnMain: number;
+}
+
+/** In-progress work tracking for one project. */
+export interface InProgressEntry {
+	/** The branch carrying the in-progress work. Must be pipeline[0]. */
+	branch: string;
+	/** Ordered promotion stages: [sourceBranch, ..., mergeTarget]. */
+	pipeline: string[];
+	/** 'public': provisional values surface on the site. 'local': CLI-only. */
+	visibility: 'public' | 'local';
+	/** Metric fields to surface provisionally, keyed by field name. */
+	tracked: Record<string, TrackedField>;
+}
