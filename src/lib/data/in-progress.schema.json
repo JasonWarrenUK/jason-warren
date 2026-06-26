@@ -1,0 +1,69 @@
+{
+	"$schema": "http://json-schema.org/draft-07/schema#",
+	"title": "Portfolio in-progress work",
+	"description": "Provisional metrics for in-flight work on unmerged branches. Written by hand; managed via `drift promote`. Values surface on the public site only for entries with visibility: 'public', and only until the branch lands and `drift sync` picks up the real numbers.",
+	"type": "object",
+	"required": ["inProgress"],
+	"additionalProperties": false,
+	"properties": {
+		"$schema": { "type": "string" },
+		"_note": { "type": "string" },
+		"inProgress": {
+			"type": "object",
+			"description": "Keyed by project slug (matches ProjectSlug in types.ts).",
+			"additionalProperties": {
+				"$ref": "#/$defs/InProgressEntry"
+			}
+		}
+	},
+	"$defs": {
+		"InProgressEntry": {
+			"type": "object",
+			"description": "In-progress work tracking for one project. Records the branch carrying the work, its promotion pipeline, site visibility, and the specific metrics to surface provisionally.",
+			"required": ["branch", "pipeline", "visibility", "tracked"],
+			"additionalProperties": false,
+			"properties": {
+				"branch": {
+					"type": "string",
+					"description": "The branch carrying the in-progress work. Must be pipeline[0]."
+				},
+				"pipeline": {
+					"type": "array",
+					"items": { "type": "string" },
+					"minItems": 1,
+					"description": "Ordered promotion stages: [sourceBranch, ..., mergeTarget]. The work advances through these stages; graduation is detected via git merge-base --is-ancestor."
+				},
+				"visibility": {
+					"type": "string",
+					"enum": ["public", "local"],
+					"description": "'public' — provisional values surface on the portfolio site. 'local' — tracked by the CLI only, never shown publicly."
+				},
+				"tracked": {
+					"type": "object",
+					"description": "Metric fields to surface provisionally, keyed by field name (must match a ProjectMetrics / SyncedSource field). Each entry carries the branch value and the baseline on the merge target for context.",
+					"additionalProperties": {
+						"$ref": "#/$defs/TrackedField"
+					}
+				}
+			}
+		},
+		"TrackedField": {
+			"type": "object",
+			"description": "A single provisionally-tracked metric. value = count on the working branch; baseOnMain = the same metric at the merge target, for context.",
+			"required": ["value", "baseOnMain"],
+			"additionalProperties": false,
+			"properties": {
+				"value": {
+					"type": "integer",
+					"minimum": 0,
+					"description": "The provisional metric value on the in-progress branch."
+				},
+				"baseOnMain": {
+					"type": "integer",
+					"minimum": 0,
+					"description": "The same metric at the merge target (the baseline the branch diverged from)."
+				}
+			}
+		}
+	}
+}
