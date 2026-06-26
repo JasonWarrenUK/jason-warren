@@ -70,6 +70,7 @@ const overridesPath = config.paths.overrides;
 const excludedPath = config.paths.excluded;
 const cachePath = config.paths.cache;
 const projectsDir = config.paths.projects;
+const inProgressPath = config.paths.inProgress;
 
 // ---------------------------------------------------------------------------
 // File helpers
@@ -870,6 +871,14 @@ function loadManifests() {
 		// No overrides file or unreadable — fine.
 	}
 
+	// Load in-progress work entries (best-effort: absence is the normal state).
+	let inProgress = {};
+	try {
+		inProgress = JSON.parse(readFileSync(inProgressPath, 'utf8')).inProgress ?? {};
+	} catch {
+		// No in-progress file or unreadable — fine.
+	}
+
 	let localPaths = {};
 	if (existsSync(localPath)) {
 		try {
@@ -886,7 +895,7 @@ function loadManifests() {
 	// Load per-machine HEAD-SHA cache (best-effort: missing/unreadable is silent).
 	const cache = loadCache();
 
-	return { manifest, overrideEntries, localPaths, cache };
+	return { manifest, overrideEntries, localPaths, cache, inProgress };
 }
 
 // ---------------------------------------------------------------------------
@@ -914,7 +923,7 @@ function loadManifests() {
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
 
 async function computeDrift(
-	{ manifest, overrideEntries, localPaths, cache },
+	{ manifest, overrideEntries, localPaths, cache, inProgress = {} },
 	{ full = false, onProgress = null, useCache = false } = {}
 ) {
 	const { excludedRepoNames } = loadExcluded();
@@ -1123,7 +1132,55 @@ async function computeDrift(
 		(r) => !excludedRepoNames.has(r.name) && !excludedRepoNames.has(r.normalised)
 	);
 
-	return { changed, missing, conflicts, fresh, filteredNew, fieldDrift };
+	// ---------------------------------------------------------------------------
+	// Graduation detection — Phase 6 staging pipeline.
+	//
+	// For each in-progress entry whose slug has a resolved local repo, test whether
+	// the branch has landed in the next pipeline stage via git merge-base --is-ancestor.
+	// Produces an inProgressStatus array for the report renderer.
+	// ---------------------------------------------------------------------------
+
+	const inProgressStatus = [];
+
+	for (const [slug, entry] of Object.entries(inProgress)) {
+		const repoPath = localPaths[slug];
+		if (!repoPath || !existsSync(join(repoPath, '.git'))) continue; // skip unresolvable repos
+
+		const { branch, pipeline, visibility, tracked } = entry;
+
+		// Walk the pipeline to find how far the branch has advanced.
+		// pipeline[0] is the branch tip (source); subsequent entries are merge targets.
+		// Find the furthest stage the branch tip has landed in.
+		let landedStage = 0; // 0 = still on source branch (has not landed anywhere yet)
+		for (let stageIdx = 1; stageIdx < pipeline.length; stageIdx++) {
+			const target = pipeline[stageIdx];
+			// --is-ancestor exits 0 when branchTip is an ancestor of target (i.e. already merged).
+			const r = await git(['merge-base', '--is-ancestor', branch, target], repoPath);
+			if (r.ok) {
+				landedStage = stageIdx;
+			} else {
+				break; // Not yet landed at this stage; stop walking.
+			}
+		}
+
+		const landed = landedStage >= pipeline.length - 1; // landed in the final target
+
+		for (const [field, { value, baseOnMain }] of Object.entries(tracked)) {
+			inProgressStatus.push({
+				slug,
+				field,
+				branch,
+				pipeline,
+				stage: landedStage,
+				value,
+				baseOnMain,
+				landed,
+				visibility
+			});
+		}
+	}
+
+	return { changed, missing, conflicts, fresh, filteredNew, fieldDrift, inProgressStatus };
 }
 
 // ---------------------------------------------------------------------------
@@ -1136,7 +1193,7 @@ async function computeDrift(
 // ---------------------------------------------------------------------------
 
 function renderReportMarkdown(result, manifest, full) {
-	const { changed, missing, conflicts, filteredNew, fieldDrift } = result;
+	const { changed, missing, conflicts, filteredNew, fieldDrift, inProgressStatus = [] } = result;
 	const lines = [];
 
 	lines.push(`# Portfolio source drift report`);
@@ -1154,6 +1211,7 @@ function renderReportMarkdown(result, manifest, full) {
 		missing.length === 0 &&
 		conflicts.length === 0 &&
 		headFallbacks.length === 0 &&
+		inProgressStatus.length === 0 &&
 		(!full || fieldDrift.length === 0);
 
 	if (allClear) {
@@ -1272,6 +1330,20 @@ function renderReportMarkdown(result, manifest, full) {
 		lines.push('');
 		for (const slug of headFallbacks) {
 			lines.push(`- \`${slug}\``);
+		}
+		lines.push('');
+	}
+
+	if (inProgressStatus.length > 0) {
+		lines.push(`## In-progress work (${inProgressStatus.length})`);
+		lines.push('');
+		for (const s of inProgressStatus) {
+			const target = s.pipeline[s.pipeline.length - 1];
+			const pipelinePos = `pipeline ${s.stage}/${s.pipeline.length - 1}`;
+			const landedNote = s.landed ? ' — **landed**, run `drift promote`' : '';
+			lines.push(
+				`- \`${s.slug}.${s.field}\`: ${s.value} on \`${s.branch}\` (${s.baseOnMain} on \`${target}\`) — ${pipelinePos}${landedNote}`
+			);
 		}
 		lines.push('');
 	}
@@ -1465,7 +1537,7 @@ function renderCardPlain({ slug, current, fields, firstCard = false, palette }) 
 // ---------------------------------------------------------------------------
 
 function runReport({ result, manifest, palette, json, full, useGum }) {
-	const { changed, missing, conflicts, filteredNew, fieldDrift } = result;
+	const { changed, missing, conflicts, filteredNew, fieldDrift, inProgressStatus = [] } = result;
 	const { RESET, BOLD, GREEN, YELLOW, CYAN, DIM } = palette;
 
 	// Machine-readable mode: emit JSON and suppress the human report entirely.
@@ -1473,7 +1545,7 @@ function runReport({ result, manifest, palette, json, full, useGum }) {
 	// escape sequences escape even if --json is omitted and output is piped.
 	// This branch is structurally first: --json can never reach the gum path.
 	if (json) {
-		const payload = { changed, conflicts, filteredNew, missing };
+		const payload = { changed, conflicts, filteredNew, missing, inProgressStatus };
 		if (full) payload.fieldDrift = fieldDrift;
 		process.stdout.write(JSON.stringify(payload, null, 2) + '\n');
 		return;
@@ -1506,6 +1578,7 @@ function runReport({ result, manifest, palette, json, full, useGum }) {
 		missing.length === 0 &&
 		conflicts.length === 0 &&
 		headFallbacks.length === 0 &&
+		inProgressStatus.length === 0 &&
 		(!full || fieldDrift.length === 0);
 
 	if (allClear) {
@@ -1612,6 +1685,26 @@ function runReport({ result, manifest, palette, json, full, useGum }) {
 		);
 		for (const slug of headFallbacks) {
 			console.log(`  ${YELLOW}${slug}${RESET}`);
+		}
+		console.log();
+	}
+
+	if (inProgressStatus.length > 0) {
+		console.log(`${BOLD}In-progress work (${inProgressStatus.length}):${RESET}`);
+		for (const s of inProgressStatus) {
+			const target = s.pipeline[s.pipeline.length - 1];
+			const pipelinePos = `pipeline ${s.stage}/${s.pipeline.length - 1}`;
+			if (s.landed) {
+				// Green: ready to promote.
+				console.log(
+					`  ${GREEN}${s.slug}.${s.field}: ${s.value} on \`${s.branch}\` (${s.baseOnMain} on \`${target}\`) — ${pipelinePos} — landed, run \`drift promote ${s.slug} ${s.field}\`${RESET}`
+				);
+			} else {
+				// Dim/cyan: still in flight.
+				console.log(
+					`  ${CYAN}${s.slug}.${s.field}${RESET}${DIM}: ${s.value} on \`${s.branch}\` (${s.baseOnMain} on \`${target}\`) — ${pipelinePos}${RESET}`
+				);
+			}
 		}
 		console.log();
 	}
@@ -1889,6 +1982,87 @@ function runExclude({ args, manifest, palette }) {
 	process.stdout.write(
 		`${GREEN}${BOLD}Hidden:${RESET} '${slug}' added to excluded.json.slugs.\n` +
 			`Rebuild the site to remove it from the public portfolio.\n`
+	);
+}
+
+// ---------------------------------------------------------------------------
+// promote verb
+// ---------------------------------------------------------------------------
+
+/**
+ * Graduates an in-progress entry out of in-progress.json once its branch has
+ * landed. Writes ONLY in-progress.json (write-isolation contract).
+ *
+ * The tracked value graduates into sources.json on the next `drift sync` run
+ * automatically: now that the branch has merged into the default branch,
+ * getFingerprint (measuring the default branch) will pick up the higher counts
+ * without any manual write to sources.json.
+ *
+ * @param {{ args: string[], result: object, palette: object }} options
+ */
+function runPromote({ args, palette }) {
+	const { GREEN, YELLOW, BOLD, RED, RESET, DIM } = palette;
+	const slug = args[0]?.trim();
+	const fieldArg = args[1]?.trim();
+
+	if (!slug) {
+		process.stderr.write(`${RED}Usage: drift promote <slug> [field]${RESET}\n`);
+		process.exit(1);
+	}
+
+	// Load the current in-progress manifest.
+	let ipManifest;
+	try {
+		ipManifest = JSON.parse(readFileSync(inProgressPath, 'utf8'));
+	} catch {
+		process.stderr.write(
+			`${RED}Error: could not read in-progress.json at ${inProgressPath}${RESET}\n`
+		);
+		process.exit(1);
+	}
+
+	const entry = ipManifest.inProgress?.[slug];
+	if (!entry) {
+		process.stdout.write(
+			`${YELLOW}Warning: '${slug}' is not in in-progress.json — nothing to promote.${RESET}\n`
+		);
+		return;
+	}
+
+	if (fieldArg) {
+		// Promote a single tracked field.
+		if (!entry.tracked?.[fieldArg]) {
+			process.stderr.write(
+				`${RED}Error: field '${fieldArg}' is not tracked for '${slug}' in in-progress.json${RESET}\n`
+			);
+			process.exit(1);
+		}
+		const removedValue = entry.tracked[fieldArg].value;
+		delete entry.tracked[fieldArg];
+
+		// If no tracked fields remain, remove the whole entry.
+		if (Object.keys(entry.tracked).length === 0) {
+			delete ipManifest.inProgress[slug];
+			process.stdout.write(
+				`${GREEN}${BOLD}Promoted:${RESET} ${DIM}removed ${slug}.${fieldArg} (value: ${removedValue}) — all tracked fields done; entry retired.${RESET}\n`
+			);
+		} else {
+			process.stdout.write(
+				`${GREEN}${BOLD}Promoted:${RESET} ${DIM}removed ${slug}.${fieldArg} (value: ${removedValue}) from in-progress.${RESET}\n`
+			);
+		}
+	} else {
+		// Promote the whole slug entry.
+		const fields = Object.keys(entry.tracked ?? {});
+		delete ipManifest.inProgress[slug];
+		process.stdout.write(
+			`${GREEN}${BOLD}Promoted:${RESET} ${DIM}retired in-progress entry for '${slug}' (${fields.length} field${fields.length === 1 ? '' : 's'}: ${fields.join(', ')}).${RESET}\n`
+		);
+	}
+
+	writeJson(inProgressPath, ipManifest);
+	process.stdout.write(
+		`${DIM}Run \`drift sync\` to pick up the graduated values from the default branch.${RESET}\n`
 	);
 }
 
@@ -2634,7 +2808,7 @@ async function main() {
 	}
 
 	// Subcommand dispatcher. The first positional is the verb; slug/field follow.
-	const KNOWN_VERBS = new Set(['report', 'snapshot', 'sync', 'keep', 'keep-all', 'hide', 'help']);
+	const KNOWN_VERBS = new Set(['report', 'snapshot', 'sync', 'keep', 'keep-all', 'hide', 'promote', 'help']);
 	const verb = KNOWN_VERBS.has(positionals[0]) ? positionals[0] : 'report';
 	// args[0] = slug, args[1] = field (for accept). When the verb was explicit,
 	// slice it off; when the default 'report' was inferred, positionals are not args.
@@ -2682,9 +2856,13 @@ async function main() {
 		return;
 	}
 
-	// hide does not need a drift scan — run it immediately and return.
+	// hide/promote do not need a drift scan — run them immediately and return.
 	if (verb === 'hide') {
 		runExclude({ args, manifest: manifests.manifest, palette });
+		return;
+	}
+	if (verb === 'promote') {
+		runPromote({ args, palette });
 		return;
 	}
 
