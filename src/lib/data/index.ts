@@ -44,6 +44,9 @@ export * from './types.js';
  */
 export interface SyncedSource {
 	head?: string;
+	// Ref the fingerprint was measured against (resolved default branch, or 'HEAD' fallback).
+	// Metadata only — excluded from drift comparison; used for the HEAD-fallback advisory.
+	measuredRef?: string;
 	// Commit grid
 	commits?: number;
 	commitsRecentAll?: number;
