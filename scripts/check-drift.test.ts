@@ -5,9 +5,9 @@
  * invocations (bun run scripts/check-drift.js <verb>) and temporary fixture
  * repos to exercise observable behaviours:
  *
- *  1. `drift promote` write-isolation — sources.json is never touched.
- *  2. `drift promote` read-modify-write — in-progress.json entry is removed.
- *  3. `drift promote <slug> <field>` — single-field promotion leaves other fields.
+ *  1. `drift promote` write-isolation: sources.json is never touched.
+ *  2. `drift promote` read-modify-write: in-progress.json entry is removed.
+ *  3. `drift promote <slug> <field>`: single-field promotion leaves other fields.
  *  4. `measuredRef` is excluded from drift comparison (DRIFT_SKIP_FIELDS).
  *
  * The last assertion is structural (verified against the schema and constant)
@@ -27,7 +27,7 @@ const repoRoot = join(scriptDir, '..');
 const checkDriftPath = join(scriptDir, 'check-drift.js');
 
 // ---------------------------------------------------------------------------
-// DRIFT_SKIP_FIELDS structural test — no subprocess needed
+// DRIFT_SKIP_FIELDS structural test (no subprocess needed)
 // ---------------------------------------------------------------------------
 
 describe('DRIFT_SKIP_FIELDS structural contract', () => {
@@ -116,7 +116,7 @@ function runPromoteWithConfig(dataDir: string, args: string[]) {
 // promote write-isolation tests
 // ---------------------------------------------------------------------------
 
-describe('drift promote — write-isolation', () => {
+describe('drift promote: write-isolation', () => {
 	let dataDir: string;
 	const sentinelSourcesContent = {
 		$schema: '../../scripts/sources.schema.json',

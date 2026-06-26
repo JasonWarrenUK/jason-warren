@@ -46,7 +46,7 @@ export * from './types.js';
 export interface SyncedSource {
 	head?: string;
 	// Ref the fingerprint was measured against (resolved default branch, or 'HEAD' fallback).
-	// Metadata only — excluded from drift comparison; used for the HEAD-fallback advisory.
+	// Metadata only; excluded from drift comparison and used for the HEAD-fallback advisory.
 	measuredRef?: string;
 	// Commit grid
 	commits?: number;
@@ -103,7 +103,7 @@ type SlugOverrides = Partial<Record<keyof ProjectMetrics, FieldOverride>> & {
 const overrides = overridesManifest.overrides as Record<string, SlugOverrides>;
 
 // ---------------------------------------------------------------------------
-// Provisional lookup — public-only in-progress values
+// Provisional lookup: public-only in-progress values
 //
 // Entries with visibility: 'local' are CLI-only and never surface on the site.
 // The precedence contract in withSyncedMetrics: override > synced > provisional > authored.
@@ -217,7 +217,7 @@ function withSyncedMetrics(project: Project): Project {
 		: (synced?.commitsMine ?? authored?.commits);
 	const contextCommits = isSolo ? undefined : (synced?.commits ?? undefined);
 
-	// Provisional field accessor — returns the in-progress tracked value for a metric
+	// Provisional field accessor: returns the in-progress tracked value for a metric
 	// field, or undefined when no provisional entry exists. Precedence: override > synced > provisional > authored.
 	const prov = (field: keyof ProjectMetrics): number | undefined =>
 		provisional?.tracked?.[field]?.value;

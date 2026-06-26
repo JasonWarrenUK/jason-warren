@@ -155,7 +155,7 @@ const ARRAY_FINGERPRINT_FIELDS = new Set(
 );
 
 // Fields excluded from drift comparison even though they live in the schema
-// and persist in sources.json. These are metadata / provenance fields — their
+// and persist in sources.json. These are metadata / provenance fields; their
 // changes are surfaced via advisory report sections, not as field drift.
 const DRIFT_SKIP_FIELDS = new Set(['measuredRef']);
 
@@ -181,7 +181,7 @@ async function listFiles(repoPath, ref = 'HEAD') {
 
 /**
  * Count lines across a set of source files in a repo at a given ref using
- * `git cat-file --batch` — a single long-lived child process that streams
+ * `git cat-file --batch`: a single long-lived child process that streams
  * all blob contents, avoiding a per-file spawn storm.
  *
  * Accepts the pre-fetched file listing (from listFiles) filtered to source
@@ -240,7 +240,7 @@ async function countLinesViaBlobs(repoPath, listing, ref = 'HEAD') {
 						blobBytesRemaining = Number(match[1]);
 						blobLinesBuffer = '';
 					}
-					// else: missing, ambiguous, or empty — skip
+					// else: missing, ambiguous, or empty; skip
 				} else {
 					// Content line inside a blob.
 					// Track approximate byte consumption; once we have seen at
@@ -251,7 +251,7 @@ async function countLinesViaBlobs(repoPath, listing, ref = 'HEAD') {
 					blobLinesBuffer += line + '\n';
 					blobBytesRemaining -= Buffer.byteLength(line + '\n');
 					if (blobBytesRemaining <= 0) {
-						// Blob complete — count lines.
+						// Blob complete: count lines.
 						if (blobLinesBuffer.length > 0) {
 							total += blobLinesBuffer.split('\n').length - 1;
 						}
@@ -389,7 +389,7 @@ async function defaultBranch(repoPath) {
 		if (r.ok) return { ref: candidate, fellBack: false };
 	}
 
-	// 3. Last resort — measure whatever is checked out.
+	// 3. Last resort: measure whatever is checked out.
 	return { ref: 'HEAD', fellBack: true };
 }
 
@@ -756,7 +756,7 @@ function validateManifest(manifest) {
 function diffFingerprint(saved, current) {
 	const diffs = [];
 	for (const field of FINGERPRINT_FIELDS) {
-		// Metadata fields are excluded from drift comparison — changes are surfaced
+		// Metadata fields are excluded from drift comparison; changes are surfaced
 		// via dedicated advisory report sections, not as field drift entries.
 		if (DRIFT_SKIP_FIELDS.has(field)) continue;
 		const now = current[field];
@@ -876,7 +876,7 @@ function loadManifests() {
 	try {
 		inProgress = JSON.parse(readFileSync(inProgressPath, 'utf8')).inProgress ?? {};
 	} catch {
-		// No in-progress file or unreadable — fine.
+		// No in-progress file or unreadable: fine.
 	}
 
 	let localPaths = {};
@@ -1133,7 +1133,7 @@ async function computeDrift(
 	);
 
 	// ---------------------------------------------------------------------------
-	// Graduation detection — Phase 6 staging pipeline.
+	// Graduation detection (Phase 6 staging pipeline).
 	//
 	// For each in-progress entry whose slug has a resolved local repo, test whether
 	// the branch has landed in the next pipeline stage via git merge-base --is-ancestor.
@@ -1200,7 +1200,7 @@ function renderReportMarkdown(result, manifest, full) {
 	lines.push(`_Last synced: ${manifest.lastSyncedAt}_`);
 	lines.push('');
 
-	// Repos where no default branch could be resolved — measured bare HEAD.
+	// Repos where no default branch could be resolved: measured bare HEAD.
 	const headFallbacks = Object.entries(result.fresh ?? {})
 		.filter(([, fp]) => fp.measuredRef === 'HEAD')
 		.map(([slug]) => slug);
@@ -1229,7 +1229,7 @@ function renderReportMarkdown(result, manifest, full) {
 			// Annotate negative deltas (history rewrite or branch switch) instead of
 			// rendering a misleading bare "-N commits".
 			const deltaStr = r.deltaUnreliable
-				? `${r.delta} commits _(baseline ahead — history rewrite or branch change?)_`
+				? `${r.delta} commits _(baseline ahead, history rewrite or branch change?)_`
 				: `${dir}${r.delta} commits`;
 			lines.push(`### ${r.slug}`);
 			lines.push('');
@@ -1340,9 +1340,9 @@ function renderReportMarkdown(result, manifest, full) {
 		for (const s of inProgressStatus) {
 			const target = s.pipeline[s.pipeline.length - 1];
 			const pipelinePos = `pipeline ${s.stage}/${s.pipeline.length - 1}`;
-			const landedNote = s.landed ? ' — **landed**, run `drift promote`' : '';
+			const landedNote = s.landed ? ' (landed, run `drift promote`)' : '';
 			lines.push(
-				`- \`${s.slug}.${s.field}\`: ${s.value} on \`${s.branch}\` (${s.baseOnMain} on \`${target}\`) — ${pipelinePos}${landedNote}`
+				`- \`${s.slug}.${s.field}\`: ${s.value} on \`${s.branch}\` (${s.baseOnMain} on \`${target}\`), ${pipelinePos}${landedNote}`
 			);
 		}
 		lines.push('');
@@ -1567,7 +1567,7 @@ function runReport({ result, manifest, palette, json, full, useGum }) {
 		`\n${BOLD}Portfolio source drift report${RESET} ${DIM}(${manifest.lastSyncedAt})${RESET}\n`
 	);
 
-	// Repos where no default branch could be resolved — measured bare HEAD.
+	// Repos where no default branch could be resolved: measured bare HEAD.
 	const headFallbacks = Object.entries(result.fresh ?? {})
 		.filter(([, fp]) => fp.measuredRef === 'HEAD')
 		.map(([slug]) => slug);
@@ -1594,7 +1594,7 @@ function runReport({ result, manifest, palette, json, full, useGum }) {
 			const dir = r.delta > 0 ? '+' : '';
 			// Annotate negative deltas (history rewrite or branch switch).
 			const deltaStr = r.deltaUnreliable
-				? `${r.delta} commits ${YELLOW}(baseline ahead — history rewrite or branch change?)${RESET}`
+				? `${r.delta} commits ${YELLOW}(baseline ahead, history rewrite or branch change?)${RESET}`
 				: `${dir}${r.delta} commits`;
 			console.log(`  ${CYAN}${r.slug}${RESET}`);
 			console.log(
@@ -1697,12 +1697,12 @@ function runReport({ result, manifest, palette, json, full, useGum }) {
 			if (s.landed) {
 				// Green: ready to promote.
 				console.log(
-					`  ${GREEN}${s.slug}.${s.field}: ${s.value} on \`${s.branch}\` (${s.baseOnMain} on \`${target}\`) — ${pipelinePos} — landed, run \`drift promote ${s.slug} ${s.field}\`${RESET}`
+					`  ${GREEN}${s.slug}.${s.field}: ${s.value} on \`${s.branch}\` (${s.baseOnMain} on \`${target}\`), ${pipelinePos}, landed. Run \`drift promote ${s.slug} ${s.field}\`${RESET}`
 				);
 			} else {
 				// Dim/cyan: still in flight.
 				console.log(
-					`  ${CYAN}${s.slug}.${s.field}${RESET}${DIM}: ${s.value} on \`${s.branch}\` (${s.baseOnMain} on \`${target}\`) — ${pipelinePos}${RESET}`
+					`  ${CYAN}${s.slug}.${s.field}${RESET}${DIM}: ${s.value} on \`${s.branch}\` (${s.baseOnMain} on \`${target}\`), ${pipelinePos}${RESET}`
 				);
 			}
 		}
@@ -2024,7 +2024,7 @@ function runPromote({ args, palette }) {
 	const entry = ipManifest.inProgress?.[slug];
 	if (!entry) {
 		process.stdout.write(
-			`${YELLOW}Warning: '${slug}' is not in in-progress.json — nothing to promote.${RESET}\n`
+			`${YELLOW}Warning: '${slug}' is not in in-progress.json, nothing to promote.${RESET}\n`
 		);
 		return;
 	}
@@ -2044,7 +2044,7 @@ function runPromote({ args, palette }) {
 		if (Object.keys(entry.tracked).length === 0) {
 			delete ipManifest.inProgress[slug];
 			process.stdout.write(
-				`${GREEN}${BOLD}Promoted:${RESET} ${DIM}removed ${slug}.${fieldArg} (value: ${removedValue}) — all tracked fields done; entry retired.${RESET}\n`
+				`${GREEN}${BOLD}Promoted:${RESET} ${DIM}removed ${slug}.${fieldArg} (value: ${removedValue}); all tracked fields done, entry retired.${RESET}\n`
 			);
 		} else {
 			process.stdout.write(
@@ -2856,7 +2856,7 @@ async function main() {
 		return;
 	}
 
-	// hide/promote do not need a drift scan — run them immediately and return.
+	// hide/promote do not need a drift scan; run them immediately and return.
 	if (verb === 'hide') {
 		runExclude({ args, manifest: manifests.manifest, palette });
 		return;

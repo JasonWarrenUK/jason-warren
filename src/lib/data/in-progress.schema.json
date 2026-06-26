@@ -36,7 +36,7 @@
 				"visibility": {
 					"type": "string",
 					"enum": ["public", "local"],
-					"description": "'public' — provisional values surface on the portfolio site. 'local' — tracked by the CLI only, never shown publicly."
+					"description": "'public': provisional values surface on the portfolio site. 'local': tracked by the CLI only, never shown publicly."
 				},
 				"tracked": {
 					"type": "object",

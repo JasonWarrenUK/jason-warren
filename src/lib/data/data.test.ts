@@ -675,7 +675,7 @@ describe('provisional (in-progress.json) precedence', () => {
 	it('public-visibility provisional values are visible in the registry when synced data is absent', () => {
 		// For each public entry, check that if synced data is absent for a tracked
 		// field, the project's metric shows the provisional value.
-		// With an empty in-progress.json, iterates zero times — vacuously green.
+		// With an empty in-progress.json, iterates zero times (vacuously green).
 		const syncedSources = sourcesManifest.sources as unknown as Record<
 			string,
 			Record<string, number | undefined>
@@ -684,7 +684,7 @@ describe('provisional (in-progress.json) precedence', () => {
 		for (const [slug, entry] of Object.entries(ipEntries)) {
 			if (entry.visibility !== 'public') continue;
 			const project = projects.find((p) => p.slug === slug);
-			if (!project) continue; // slug not in registry — skip gracefully
+			if (!project) continue; // slug not in registry; skip gracefully
 
 			for (const [field, tf] of Object.entries(entry.tracked)) {
 				const syncedValue = syncedSources[slug]?.[field];
@@ -702,7 +702,7 @@ describe('provisional (in-progress.json) precedence', () => {
 
 	it('synced data shadows provisional values (self-healing after branch lands)', () => {
 		// When BOTH synced and provisional values exist for the same field, synced must win.
-		// With an empty in-progress.json, iterates zero times — vacuously green.
+		// With an empty in-progress.json, iterates zero times (vacuously green).
 		const syncedSources = sourcesManifest.sources as unknown as Record<
 			string,
 			Record<string, number | undefined>

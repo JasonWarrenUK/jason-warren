@@ -60,7 +60,7 @@ describe('in-progress.json schema conformance', () => {
 			const violations: string[] = [];
 			for (const [slug, entry] of entries) {
 				if (!Array.isArray(entry.pipeline) || entry.pipeline.length === 0) {
-					violations.push(`${slug}.pipeline — must be a non-empty array`);
+					violations.push(`${slug}.pipeline: must be a non-empty array`);
 				}
 			}
 			expect(violations, violations.join('\n')).toHaveLength(0);
@@ -72,7 +72,7 @@ describe('in-progress.json schema conformance', () => {
 				const pipeline = Array.isArray(entry.pipeline) ? entry.pipeline : [];
 				if (entry.branch !== pipeline[0]) {
 					violations.push(
-						`${slug} — branch '${entry.branch}' !== pipeline[0] '${pipeline[0]}'`
+						`${slug}: branch '${entry.branch}' !== pipeline[0] '${pipeline[0]}'`
 					);
 				}
 			}
@@ -83,7 +83,7 @@ describe('in-progress.json schema conformance', () => {
 			const violations: string[] = [];
 			for (const [slug, entry] of entries) {
 				if (entry.visibility !== 'public' && entry.visibility !== 'local') {
-					violations.push(`${slug}.visibility — invalid: '${String(entry.visibility)}'`);
+					violations.push(`${slug}.visibility: invalid value '${String(entry.visibility)}'`);
 				}
 			}
 			expect(violations, violations.join('\n')).toHaveLength(0);
@@ -96,7 +96,7 @@ describe('in-progress.json schema conformance', () => {
 				for (const field of Object.keys(tracked)) {
 					if (!validMetricFields.has(field)) {
 						violations.push(
-							`${slug}.tracked.${field} — not a recognised metric field`
+							`${slug}.tracked.${field}: not a recognised metric field`
 						);
 					}
 				}
@@ -110,10 +110,10 @@ describe('in-progress.json schema conformance', () => {
 				const tracked = (entry.tracked ?? {}) as TrackedRaw;
 				for (const [field, tf] of Object.entries(tracked)) {
 					if (!Number.isInteger(tf.value) || (tf.value as number) < 0) {
-						violations.push(`${slug}.tracked.${field}.value — must be integer >= 0`);
+						violations.push(`${slug}.tracked.${field}.value: must be integer >= 0`);
 					}
 					if (!Number.isInteger(tf.baseOnMain) || (tf.baseOnMain as number) < 0) {
-						violations.push(`${slug}.tracked.${field}.baseOnMain — must be integer >= 0`);
+						violations.push(`${slug}.tracked.${field}.baseOnMain: must be integer >= 0`);
 					}
 				}
 			}
