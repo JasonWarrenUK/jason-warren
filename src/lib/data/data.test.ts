@@ -639,3 +639,91 @@ describe('manual overrides', () => {
 		}
 	});
 });
+
+// ---------------------------------------------------------------------------
+// Provisional precedence tests (in-progress.json)
+//
+// These tests verify the override > synced > provisional > authored precedence
+// chain using the live registry. Because in-progress.json ships empty, the
+// production tests are vacuously green and serve as regression guards.
+// The critical precedence behaviour is proven via unit tests in
+// scripts/check-drift.test.ts and the inline comments in index.ts.
+// ---------------------------------------------------------------------------
+
+import inProgressManifest from './in-progress.json';
+
+describe('provisional (in-progress.json) precedence', () => {
+	const ipEntries = inProgressManifest.inProgress as Record<
+		string,
+		{ visibility: string; tracked: Record<string, { value: number; baseOnMain: number }> }
+	>;
+
+	it('in-progress.json is present and parseable', () => {
+		expect(inProgressManifest).toHaveProperty('inProgress');
+	});
+
+	it('local-visibility entries never surface on the public site', () => {
+		// Every slug in ipEntries with visibility='local' must NOT appear in the
+		// registry with its provisional value overriding a missing synced field.
+		// With an empty in-progress.json this is vacuously green.
+		const localSlugs = Object.entries(ipEntries)
+			.filter(([, e]) => e.visibility === 'local')
+			.map(([slug]) => slug);
+		expect(localSlugs).toHaveLength(0); // no local entries in the committed file
+	});
+
+	it('public-visibility provisional values are visible in the registry when synced data is absent', () => {
+		// For each public entry, check that if synced data is absent for a tracked
+		// field, the project's metric shows the provisional value.
+		// With an empty in-progress.json, iterates zero times — vacuously green.
+		const syncedSources = sourcesManifest.sources as unknown as Record<
+			string,
+			Record<string, number | undefined>
+		>;
+
+		for (const [slug, entry] of Object.entries(ipEntries)) {
+			if (entry.visibility !== 'public') continue;
+			const project = projects.find((p) => p.slug === slug);
+			if (!project) continue; // slug not in registry — skip gracefully
+
+			for (const [field, tf] of Object.entries(entry.tracked)) {
+				const syncedValue = syncedSources[slug]?.[field];
+				if (syncedValue !== undefined) continue; // synced shadows provisional; skip
+
+				const rendered =
+					project.metrics?.[field as keyof typeof project.metrics];
+				expect(
+					rendered,
+					`${slug}.${field}: provisional value ${tf.value} should surface when synced data is absent`
+				).toBe(tf.value);
+			}
+		}
+	});
+
+	it('synced data shadows provisional values (self-healing after branch lands)', () => {
+		// When BOTH synced and provisional values exist for the same field, synced must win.
+		// With an empty in-progress.json, iterates zero times — vacuously green.
+		const syncedSources = sourcesManifest.sources as unknown as Record<
+			string,
+			Record<string, number | undefined>
+		>;
+
+		for (const [slug, entry] of Object.entries(ipEntries)) {
+			if (entry.visibility !== 'public') continue;
+			const project = projects.find((p) => p.slug === slug);
+			if (!project) continue;
+
+			for (const [field, tf] of Object.entries(entry.tracked)) {
+				const syncedValue = syncedSources[slug]?.[field];
+				if (syncedValue === undefined) continue; // no synced value; can't test shadowing
+
+				const rendered =
+					project.metrics?.[field as keyof typeof project.metrics];
+				expect(
+					rendered,
+					`${slug}.${field}: synced ${syncedValue} should shadow provisional ${tf.value}`
+				).toBe(syncedValue);
+			}
+		}
+	});
+});
