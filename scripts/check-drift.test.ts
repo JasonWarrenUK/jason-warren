@@ -220,3 +220,119 @@ describe('drift promote: write-isolation', () => {
 		expect(parsed.sources['test-project'].commits).toBe(42);
 	});
 });
+
+// ---------------------------------------------------------------------------
+// drift init tests
+// ---------------------------------------------------------------------------
+
+/**
+ * Run `drift init` in a sandboxed temp directory.
+ *
+ * DRIFT_CONFIG is set to a config file inside the temp dir. runInit derives
+ * the drift.config.ts write target from the same directory as DRIFT_CONFIG,
+ * so both generated files stay inside the temp dir — the real repo root is
+ * never touched.
+ *
+ * The config file passed via DRIFT_CONFIG points dataDir at the same temp dir
+ * so sources.local.json (config.paths.local) also resolves inside it.
+ */
+function runInitInDir(dir: string) {
+	// The DRIFT_CONFIG file lives in the temp dir. runInit writes drift.config.ts
+	// alongside it (dirname of DRIFT_CONFIG).
+	const configPath = join(dir, 'drift.config.mjs');
+	writeFileSync(
+		configPath,
+		`export default { dataDir: ${JSON.stringify(dir)} };\n`
+	);
+	return spawnSync(
+		'bun',
+		['run', checkDriftPath, 'init', '--no-color'],
+		{
+			cwd: repoRoot,
+			env: { ...process.env, DRIFT_CONFIG: configPath },
+			encoding: 'utf8',
+			timeout: 15_000
+		}
+	);
+}
+
+describe('drift init', () => {
+	let dir: string;
+
+	beforeEach(() => {
+		dir = mkdtempSync(join(tmpdir(), 'drift-init-test-'));
+	});
+
+	afterEach(() => {
+		rmSync(dir, { recursive: true, force: true });
+	});
+
+	it('creates sources.local.json with an empty paths object', () => {
+		const result = runInitInDir(dir);
+		expect(result.status, result.stderr).toBe(0);
+
+		const localPath = join(dir, 'sources.local.json');
+		const parsed = JSON.parse(readFileSync(localPath, 'utf8'));
+		expect(parsed).toHaveProperty('paths');
+		expect(parsed.paths).toEqual({});
+		expect(parsed).toHaveProperty('_note');
+	});
+
+	it('creates drift.config.ts as valid TypeScript with expected keys', () => {
+		const result = runInitInDir(dir);
+		expect(result.status, result.stderr).toBe(0);
+
+		const configPath = join(dir, 'drift.config.ts');
+		const source = readFileSync(configPath, 'utf8');
+		// Must export a default object
+		expect(source).toContain('export default');
+		// Must contain the core config keys
+		expect(source).toContain('scanRoot');
+		expect(source).toContain('scanDepth');
+		expect(source).toContain('pattern'); // author pattern key
+		// The type annotation must reference drift-config.js
+		expect(source).toContain('DriftUserConfig');
+	});
+
+	it('reports "created" for each new file in stdout', () => {
+		const result = runInitInDir(dir);
+		expect(result.status, result.stderr).toBe(0);
+		expect(result.stdout).toMatch(/created.*sources\.local\.json/);
+		expect(result.stdout).toMatch(/created.*drift\.config\.ts/);
+	});
+
+	it('is idempotent — second run reports skipping for both files', () => {
+		// First run creates the files
+		runInitInDir(dir);
+		// Second run must not overwrite them
+		const localBefore = readFileSync(join(dir, 'sources.local.json'), 'utf8');
+		const configBefore = readFileSync(join(dir, 'drift.config.ts'), 'utf8');
+
+		const result = runInitInDir(dir);
+		expect(result.status, result.stderr).toBe(0);
+		expect(result.stdout).toContain('already exists, skipping');
+
+		// Content must be byte-identical
+		expect(readFileSync(join(dir, 'sources.local.json'), 'utf8')).toBe(localBefore);
+		expect(readFileSync(join(dir, 'drift.config.ts'), 'utf8')).toBe(configBefore);
+	});
+
+	it('skips only the existing file when one already exists', () => {
+		// Pre-create only sources.local.json
+		writeFileSync(
+			join(dir, 'sources.local.json'),
+			JSON.stringify({ _note: 'pre-existing', paths: { 'my-project': '/some/path' } })
+		);
+
+		const result = runInitInDir(dir);
+		expect(result.status, result.stderr).toBe(0);
+		// sources.local.json skipped (pre-existing content preserved)
+		expect(result.stdout).toMatch(/already exists, skipping.*sources\.local\.json/);
+		// drift.config.ts still created
+		expect(result.stdout).toMatch(/created.*drift\.config\.ts/);
+
+		// Pre-existing file must be unchanged
+		const parsed = JSON.parse(readFileSync(join(dir, 'sources.local.json'), 'utf8'));
+		expect(parsed.paths).toHaveProperty('my-project');
+	});
+});
