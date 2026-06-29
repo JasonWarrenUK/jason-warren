@@ -8,11 +8,11 @@ The site is live and substantially built (full routes, graph/timeline/map/toolki
 
 |              | Status                                                                                                                                                                                                                                                                                               | Next Up                                                              | Blocked                                                                   |
 | ------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------- | ------------------------------------------------------------------------- |
-| **Content**  | 30+ entries, themes, threads, About, CV/hire; depth audit complete; 8 of 10 M1 tasks done                                                                                                                                                                                                            | Colophon (1CO.5) and style-guide pass (1CO.8) after M5               | 1CO.5 blocked on M5; 1CO.8 blocked on 1CO.5                               |
+| **Content**  | 30+ entries, themes, threads, About, CV/hire; depth audit complete; 8 of 10 M1 tasks done                                                                                                                                                                                                            | Colophon (1CO.5) unblocked by M5 — ready to start; style-guide pass (1CO.8) after 1CO.5 | 1CO.8 blocked on 1CO.5                                                     |
 | **Features** | 2FE.1, 2FE.2, 2FE.4, 2FE.5, 2FE.8 done; all connection views built (search, multi-select, cross-view continuity, relayout)                                                                                                                                                                           | Polish pass (2FE.3) after 2FE.7; tech constellation (2FE.6) after M1 | 2FE.6 blocked on M1; 2FE.7 blocked on 2FE.6; 2FE.3 blocked on 2FE.7/2FE.8 |
 | **Design**   | Reasonable Colors tokens, dark mode                                                                                                                                                                                                                                                                  | Visual direction (3DE.0) after M2                                    | All M3 tasks blocked on M2 completion                                     |
 | **Quality**  | Strict types, data-integrity tests, prerendered                                                                                                                                                                                                                                                      | Test coverage (4QU.5) and OG coverage (4QU.4) after M3               | All M4 tasks blocked on M3; a11y (4QU.7) blocked on 4QU.1                 |
-| **Drift**    | 2.5k-line CLI, manifest registry, cache, verbs, Bun migration, boundary doc, config layer, tag taxonomy (5DR.4), engine schema (5DR.5), engine/integration split (5DR.6), branch awareness + staging pipeline (5DR.7), init scaffold (5DR.13), audit verb (5DR.11), author/pin verbs (5DR.15/5DR.16) | `hide` overlay verb (5DR.17) unblocked by 5DR.16                     | Tests & docs (M6) blocked on M3 + M5; `hide` overlay (5DR.17) to do       |
+| **Drift**    | 2.5k-line CLI, manifest registry, cache, verbs, Bun migration, boundary doc, config layer, tag taxonomy (5DR.4), engine schema (5DR.5), engine/integration split (5DR.6), branch awareness + staging pipeline (5DR.7), init scaffold (5DR.13), audit verb (5DR.11), author/pin verbs (5DR.15/5DR.16), `flag` verb (5DR.17) — **M5 complete** | Colophon Drift story (1CO.5) unblocked                               | Tests & docs (M6) blocked on M3 + M5                                       |
 
 ---
 
@@ -168,7 +168,7 @@ _None._
 
 <a name="m5-todo"><h4>To Do (Milestone 5)</h4></a>
 
-- [ ] 5DR.17. `drift hide <slug>` verb: set `hide: true` in the slug's `.ts` overlay (creating the overlay if needed) — unblocked by 5DR.16. ⚠️ Name collision: 5DR.14 renamed `exclude` to `hide` (writes `excluded.json.slugs`); this verb will need a different surface name at build time (e.g. `overlay-hide` or merged into a generalised `drift flag` verb alongside `pin`).
+_None._
 
 <a name="m5-blocked"><h4>Blocked (Milestone 5)</h4></a>
 
@@ -176,6 +176,7 @@ _None._
 
 <a name="m5-done"><h4>Completed (Milestone 5)</h4></a>
 
+- [x] 5DR.17. `drift flag <slug> --pin | --hide` verb: set `pin: true` or `hide: true` in the slug's `.ts` overlay (creating the overlay if needed) — hard cut replacing `drift pin`; `flag` exposes both overlay-level curation flags under one verb, sidestepping the naming collision with the engine-level `drift hide` (which writes `excluded.json.slugs`); `setOverlayFlag(slug, flagName, palette)` is the shared core extracted from `runPin`; mutual-exclusivity guard; idempotent; 14 new tests; `BREAKING CHANGE: drift pin <slug>` replaced by `drift flag <slug> --pin`. Depends on 5DR.16.
 - [x] 5DR.16. `drift pin <slug>` verb: set `pin: true` in the slug's `.ts` overlay (creating the overlay if needed); TypeScript compiler API text-splice — never touches the four JSON data files. Overlay templates use the same `createOverlayIfAbsent` helper as 5DR.15. Idempotent. Depends on 5DR.6.
 - [x] 5DR.15. `drift author <slug>` verb: scaffolds `src/lib/data/projects/<slug>.ts` from a full commented template if absent, then opens it in `$EDITOR`; slug-to-camelCase binding; full rubric-hint comments; never overwrites. Depends on 5DR.6.
 - [x] 5DR.11. `drift audit` verb: mechanical-proxy tier scoring (Full/Partial/Thin) across all authored overlays via per-file dynamic `import()`; thresholds from the content-depth rubric (desc words, highlight count, team contributionNote); worst-axis rule; borderline flagging; gum-format markdown + ANSI fallback + `--json` mode; 26 new tests. Recomputes from live files; never consults the stale committed scorecard. Boundary doc updated to document the sanctioned overlay read. Depends on 5DR.5, 5DR.6.
@@ -348,7 +349,7 @@ flowchart TD
 	5DR.14["`*5DR.14*<br/>**Drift**<br/>rename verbs`"]:::done
 	5DR.15["`*5DR.15*<br/>**Drift**<br/>author verb`"]:::done
 	5DR.16["`*5DR.16*<br/>**Drift**<br/>pin verb`"]:::done
-	5DR.17["`*5DR.17*<br/>**Drift**<br/>hide verb`"]:::open
+	5DR.17["`*5DR.17*<br/>**Drift**<br/>flag verb`"]:::done
 
 	%% M5 — deps
 	5DR.0 --> 5DR.1

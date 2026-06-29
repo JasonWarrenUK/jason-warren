@@ -483,7 +483,7 @@ describe('drift author', () => {
 // drift pin tests
 // ---------------------------------------------------------------------------
 
-describe('drift pin', () => {
+describe('drift flag', () => {
 	let dir: string;
 	let configPath: string;
 
@@ -495,18 +495,19 @@ describe('drift pin', () => {
 		rmSync(dir, { recursive: true, force: true });
 	});
 
-	it('creates the overlay and sets pin: true when the overlay is absent', () => {
-		const result = runVerbInSandbox(configPath, ['pin', 'fresh-slug']);
+	// ---- --pin flag -----------------------------------------------------------
+
+	it('--pin creates the overlay and sets pin: true when the overlay is absent', () => {
+		const result = runVerbInSandbox(configPath, ['flag', 'fresh-slug', '--pin']);
 		expect(result.status, result.stderr).toBe(0);
-		expect(result.stdout).toMatch(/pinned/i);
+		expect(result.stdout).toMatch(/pin/i);
 
 		const source = readFileSync(join(dir, 'projects', 'fresh-slug.ts'), 'utf8');
 		expect(source).toContain('pin: true');
 		expect(source).toContain('fresh-slug');
 	});
 
-	it('inserts pin: true into an existing overlay that lacks it, leaving other fields intact', () => {
-		// Write a minimal real-shape overlay without pin.
+	it('--pin inserts pin: true into an existing overlay that lacks it, leaving other fields intact', () => {
 		const overlayPath = join(dir, 'projects', 'has-no-pin.ts');
 		writeFileSync(
 			overlayPath,
@@ -525,17 +526,17 @@ describe('drift pin', () => {
 			].join('\n')
 		);
 
-		const result = runVerbInSandbox(configPath, ['pin', 'has-no-pin']);
+		const result = runVerbInSandbox(configPath, ['flag', 'has-no-pin', '--pin']);
 		expect(result.status, result.stderr).toBe(0);
 
 		const modified = readFileSync(overlayPath, 'utf8');
 		expect(modified).toContain('pin: true');
-		// Sibling fields must survive.
+		// Sibling fields must survive (write-isolation).
 		expect(modified).toContain('Has No Pin');
 		expect(modified).toContain('A test overlay without a pin field.');
 	});
 
-	it('flips pin: false to pin: true', () => {
+	it('--pin flips pin: false to pin: true', () => {
 		const overlayPath = join(dir, 'projects', 'pinned-false.ts');
 		writeFileSync(
 			overlayPath,
@@ -553,7 +554,7 @@ describe('drift pin', () => {
 			].join('\n')
 		);
 
-		const result = runVerbInSandbox(configPath, ['pin', 'pinned-false']);
+		const result = runVerbInSandbox(configPath, ['flag', 'pinned-false', '--pin']);
 		expect(result.status, result.stderr).toBe(0);
 
 		const modified = readFileSync(overlayPath, 'utf8');
@@ -561,7 +562,7 @@ describe('drift pin', () => {
 		expect(modified).not.toContain('pin: false');
 	});
 
-	it('is idempotent when already pin: true', () => {
+	it('--pin is idempotent when already pin: true', () => {
 		const overlayPath = join(dir, 'projects', 'already-pinned.ts');
 		writeFileSync(
 			overlayPath,
@@ -580,35 +581,119 @@ describe('drift pin', () => {
 		);
 		const before = readFileSync(overlayPath, 'utf8');
 
-		const result = runVerbInSandbox(configPath, ['pin', 'already-pinned']);
+		const result = runVerbInSandbox(configPath, ['flag', 'already-pinned', '--pin']);
 		expect(result.status, result.stderr).toBe(0);
-		expect(result.stdout).toMatch(/already pinned/i);
+		expect(result.stdout).toMatch(/already/i);
 
 		// File bytes must be unchanged.
 		expect(readFileSync(overlayPath, 'utf8')).toBe(before);
 	});
 
+	// ---- --hide flag ----------------------------------------------------------
+
+	it('--hide creates the overlay and sets hide: true when the overlay is absent', () => {
+		const result = runVerbInSandbox(configPath, ['flag', 'hide-me', '--hide']);
+		expect(result.status, result.stderr).toBe(0);
+		expect(result.stdout).toMatch(/hid/i);
+
+		const source = readFileSync(join(dir, 'projects', 'hide-me.ts'), 'utf8');
+		expect(source).toContain('hide: true');
+		expect(source).toContain('hide-me');
+	});
+
+	it('--hide inserts hide: true independently, leaving a pre-existing pin: true untouched', () => {
+		const overlayPath = join(dir, 'projects', 'has-pin-no-hide.ts');
+		writeFileSync(
+			overlayPath,
+			[
+				"import type { AuthoredProject } from '../types.js';",
+				'',
+				'export const hasPinNoHide: AuthoredProject = {',
+				"\tslug: 'has-pin-no-hide',",
+				'\tpin: true,',
+				'\thighlights: [],',
+				'\trelationships: [],',
+				'\ttags: []',
+				'};',
+				''
+			].join('\n')
+		);
+
+		const result = runVerbInSandbox(configPath, ['flag', 'has-pin-no-hide', '--hide']);
+		expect(result.status, result.stderr).toBe(0);
+
+		const modified = readFileSync(overlayPath, 'utf8');
+		expect(modified).toContain('hide: true');
+		// Pre-existing pin must survive.
+		expect(modified).toContain('pin: true');
+	});
+
+	it('--hide is idempotent when already hide: true', () => {
+		const overlayPath = join(dir, 'projects', 'already-hidden.ts');
+		writeFileSync(
+			overlayPath,
+			[
+				"import type { AuthoredProject } from '../types.js';",
+				'',
+				'export const alreadyHidden: AuthoredProject = {',
+				"\tslug: 'already-hidden',",
+				'\thide: true,',
+				'\thighlights: [],',
+				'\trelationships: [],',
+				'\ttags: []',
+				'};',
+				''
+			].join('\n')
+		);
+		const before = readFileSync(overlayPath, 'utf8');
+
+		const result = runVerbInSandbox(configPath, ['flag', 'already-hidden', '--hide']);
+		expect(result.status, result.stderr).toBe(0);
+		expect(result.stdout).toMatch(/already/i);
+
+		// File bytes must be unchanged.
+		expect(readFileSync(overlayPath, 'utf8')).toBe(before);
+	});
+
+	// ---- validation -----------------------------------------------------------
+
 	it('exits 1 on a missing slug argument', () => {
-		const result = runVerbInSandbox(configPath, ['pin']);
+		const result = runVerbInSandbox(configPath, ['flag']);
 		expect(result.status).toBe(1);
-		expect(result.stderr).toMatch(/usage.*pin/i);
+		expect(result.stderr).toMatch(/usage.*flag/i);
+	});
+
+	it('exits 1 when neither --pin nor --hide is given', () => {
+		const result = runVerbInSandbox(configPath, ['flag', 'iris']);
+		expect(result.status).toBe(1);
+		expect(result.stderr).toMatch(/--pin|--hide/i);
+	});
+
+	it('exits 1 when both --pin and --hide are given', () => {
+		const result = runVerbInSandbox(configPath, ['flag', 'iris', '--pin', '--hide']);
+		expect(result.status).toBe(1);
+		expect(result.stderr).toMatch(/mutually exclusive/i);
 	});
 
 	it('exits 1 on a malformed slug', () => {
-		const result = runVerbInSandbox(configPath, ['pin', 'Bad/Slug']);
+		const result = runVerbInSandbox(configPath, ['flag', 'Bad/Slug', '--pin']);
 		expect(result.status).toBe(1);
 		expect(result.stderr).toMatch(/invalid slug/i);
 	});
 
-	it('the modified overlay still imports cleanly via Bun', async () => {
-		runVerbInSandbox(configPath, ['pin', 'importable']);
-		const overlayPath = join(dir, 'projects', 'importable.ts');
-		// The file imports '../types.js' using a relative path that won't resolve
-		// from the temp dir. Drop the import line and verify the module shape instead.
-		const source = readFileSync(overlayPath, 'utf8');
+	it('the modified overlay has balanced braces after --pin', () => {
+		runVerbInSandbox(configPath, ['flag', 'importable', '--pin']);
+		const source = readFileSync(join(dir, 'projects', 'importable.ts'), 'utf8');
 		expect(source).toContain('pin: true');
-		expect(source).toContain('importable');
-		// Confirm the braces are balanced (basic syntax check).
+		const openBraces = (source.match(/\{/g) ?? []).length;
+		const closeBraces = (source.match(/\}/g) ?? []).length;
+		expect(openBraces).toBe(closeBraces);
+	});
+
+	it('the modified overlay has balanced braces after --hide', () => {
+		runVerbInSandbox(configPath, ['flag', 'importable-hide', '--hide']);
+		const source = readFileSync(join(dir, 'projects', 'importable-hide.ts'), 'utf8');
+		expect(source).toContain('hide: true');
 		const openBraces = (source.match(/\{/g) ?? []).length;
 		const closeBraces = (source.match(/\}/g) ?? []).length;
 		expect(openBraces).toBe(closeBraces);

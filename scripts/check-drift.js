@@ -2455,42 +2455,35 @@ function runAuthor({ args, palette }) {
 }
 
 // ---------------------------------------------------------------------------
-// pin verb
+// flag verb (5DR.17)
 //
-// Sets pin: true in the slug's .ts overlay, creating it from the template if
-// absent. Uses the TypeScript compiler API for a targeted text-splice so no
-// existing field or comment is disturbed. pin lives only in overlays, never
-// in any of the four JSON data files.
+// Shared engine: setOverlayFlag(slug, flagName, palette)
+// Sets <flagName>: true in the slug's .ts overlay, creating it from the
+// template if absent. Uses the TypeScript compiler API for a targeted
+// text-splice so no existing field or comment is disturbed. Overlay flags
+// live only in overlays — never in any of the four JSON data files.
+//
+// Supported flagName values:
+//   'pin'  — float the project to the top of the home-page hero pool
+//   'hide' — exclude the project from the hero pool entirely
 //
 // Write-isolation: writes ONLY projects/<slug>.ts.
 //
-// NOTE: runPin is the natural home to generalise into setOverlayFlag(slug,
-// 'pin'|'hide') when 5DR.17 (drift hide <slug> overlay) lands. At that point
-// replace the hard-coded 'pin' property name with a parameter.
+// runFlag is the thin verb entry point. It validates the slug and the
+// --pin / --hide option, then delegates to setOverlayFlag.
 // ---------------------------------------------------------------------------
 
 /**
- * Sets pin: true in the slug's .ts overlay. Creates the overlay from the
- * template first when absent. Idempotent: no-op when already pinned.
+ * Sets <flagName>: true in the slug's .ts overlay. Creates the overlay from
+ * the template first when absent. Idempotent: no-op when already set.
  * Writes ONLY projects/<slug>.ts (write-isolation contract).
  *
- * @param {{ args: string[], palette: object, useGum: boolean }} options
+ * @param {string} slug
+ * @param {'pin' | 'hide'} flagName
+ * @param {object} palette
  */
-async function runPin({ args, palette }) {
+async function setOverlayFlag(slug, flagName, palette) {
 	const { GREEN, RED, YELLOW, BOLD, DIM, RESET } = palette;
-	const slug = args[0]?.trim();
-
-	if (!slug) {
-		process.stderr.write(`${RED}Usage: drift pin <slug>${RESET}\n`);
-		process.exit(1);
-	}
-
-	if (!/^[a-z0-9]+(-[a-z0-9]+)*$/.test(slug)) {
-		process.stderr.write(
-			`${RED}Error: invalid slug '${slug}'. Use lowercase kebab-case (e.g. my-project).${RESET}\n`
-		);
-		process.exit(1);
-	}
 
 	const { path, created } = createOverlayIfAbsent(slug);
 	const relPath = path.replace(config.repoRoot + '/', '');
@@ -2500,7 +2493,7 @@ async function runPin({ args, palette }) {
 	}
 
 	// Lazy-import the TypeScript compiler API. This avoids loading it on every
-	// verb invocation; only pin (and future overlay-flag verbs) pay the cost.
+	// verb invocation; only the flag verb (pin and hide) pays the cost.
 	const ts = (await import('typescript')).default;
 
 	const text = readFileSync(path, 'utf8');
@@ -2535,35 +2528,81 @@ async function runPin({ args, palette }) {
 		process.exit(1);
 	}
 
-	// Look for an existing `pin` property assignment.
-	const pinProp = objLit.properties.find(
-		(p) => ts.isPropertyAssignment(p) && p.name.getText(sf) === 'pin'
+	// Look for an existing property assignment matching flagName.
+	const flagProp = objLit.properties.find(
+		(p) => ts.isPropertyAssignment(p) && p.name.getText(sf) === flagName
 	);
+
+	const alreadyMsg =
+		flagName === 'pin'
+			? `${YELLOW}'${slug}' is already pinned — nothing to do.${RESET}\n`
+			: `${YELLOW}'${slug}' is already hidden — nothing to do.${RESET}\n`;
+
+	const successMsg =
+		flagName === 'pin'
+			? `${GREEN}${BOLD}Pinned:${RESET} '${slug}' now floats to the top of the hero pool.\n` +
+				`${DIM}Rebuild the site to apply.${RESET}\n`
+			: `${GREEN}${BOLD}Hidden:${RESET} '${slug}' is now excluded from the hero pool.\n` +
+				`${DIM}Rebuild the site to apply.${RESET}\n`;
 
 	let splicedText;
 
-	if (pinProp) {
-		const initNode = pinProp.initializer;
+	if (flagProp) {
+		const initNode = flagProp.initializer;
 		if (initNode.kind === ts.SyntaxKind.TrueKeyword) {
-			// Already pinned — idempotent no-op.
-			process.stdout.write(`${YELLOW}'${slug}' is already pinned — nothing to do.${RESET}\n`);
+			// Already set — idempotent no-op.
+			process.stdout.write(alreadyMsg);
 			return;
 		}
 		// Present but not true (e.g. false, variable reference) — splice to true.
 		splicedText = text.slice(0, initNode.getStart(sf)) + 'true' + text.slice(initNode.getEnd());
 	} else {
-		// Absent — insert `pin: true,` immediately after the opening brace.
+		// Absent — insert `<flagName>: true,` immediately after the opening brace.
 		const insertPos = objLit.getStart(sf) + 1; // position just past '{'
-		splicedText = text.slice(0, insertPos) + '\n\tpin: true,' + text.slice(insertPos);
+		splicedText = text.slice(0, insertPos) + `\n\t${flagName}: true,` + text.slice(insertPos);
 	}
 
 	writeFileSync(path, splicedText, 'utf8');
 	spawnSync('npx', ['prettier', '--write', path], { stdio: 'ignore' });
 
-	process.stdout.write(
-		`${GREEN}${BOLD}Pinned:${RESET} '${slug}' now floats to the top of the hero pool.\n` +
-			`${DIM}Rebuild the site to apply.${RESET}\n`
-	);
+	process.stdout.write(successMsg);
+}
+
+/**
+ * Validates the slug and the --pin / --hide option, then delegates to
+ * setOverlayFlag. Requires exactly one of --pin or --hide.
+ *
+ * @param {{ args: string[], values: object, palette: object }} options
+ */
+async function runFlag({ args, values, palette }) {
+	const { RED, RESET } = palette;
+	const slug = args[0]?.trim();
+
+	if (!slug) {
+		process.stderr.write(`${RED}Usage: drift flag <slug> --pin | --hide${RESET}\n`);
+		process.exit(1);
+	}
+
+	if (!/^[a-z0-9]+(-[a-z0-9]+)*$/.test(slug)) {
+		process.stderr.write(
+			`${RED}Error: invalid slug '${slug}'. Use lowercase kebab-case (e.g. my-project).${RESET}\n`
+		);
+		process.exit(1);
+	}
+
+	if (values.pin && values.hide) {
+		process.stderr.write(
+			`${RED}Error: --pin and --hide are mutually exclusive. Specify one.${RESET}\n`
+		);
+		process.exit(1);
+	}
+
+	if (!values.pin && !values.hide) {
+		process.stderr.write(`${RED}Usage: drift flag <slug> --pin | --hide${RESET}\n`);
+		process.exit(1);
+	}
+
+	await setOverlayFlag(slug, values.hide ? 'hide' : 'pin', palette);
 }
 
 // ---------------------------------------------------------------------------
@@ -3030,7 +3069,7 @@ Compare synced fingerprints against current git state and surface new repos.
 - \`drift keep-all\`
 - \`drift hide <slug>\`
 - \`drift author <slug>\`
-- \`drift pin <slug>\`
+- \`drift flag <slug> --pin | --hide\`
 - \`drift audit [--json]\`
 - \`drift init\`
 
@@ -3043,7 +3082,7 @@ Compare synced fingerprints against current git state and surface new repos.
 - \`keep-all\` · refresh every flagged override baseline at once
 - \`hide\` · append a slug to excluded.json, removing it from the public site
 - \`author\` · scaffold src/lib/data/projects/\<slug\>.ts from a template, then open in \$EDITOR
-- \`pin\` · set pin: true in the slug's overlay (creating it if absent) to float it above the hero score
+- \`flag\` · set pin: true or hide: true in the slug's overlay (creating it if absent)
 - \`audit\` · score every authored overlay against the content-depth rubric and report per-entry tiers
 - \`init\` · scaffold drift.config.ts and sources.local.json for this machine
 
@@ -3202,27 +3241,35 @@ drift author my-new-project
 drift author schema-forge
 \`\`\``,
 
-	pin: `# drift pin · float a project to the top of the hero pool
+	flag: `# drift flag · set a curation flag on a project overlay
 
-Sets \`pin: true\` in \`src/lib/data/projects/<slug>.ts\`. If the overlay does
-not exist, creates it from the standard template first. Idempotent: no-op
-when the overlay already has \`pin: true\`.
+Sets \`pin: true\` or \`hide: true\` in \`src/lib/data/projects/<slug>.ts\`.
+If the overlay does not exist, creates it from the standard template first.
+Idempotent: no-op when the flag is already set to true.
 
-A pinned project appears above all score-ranked entries in the home-page hero
-pool regardless of its drift metrics. Pin lives only in the authored overlay,
-never in any of the four JSON data files.
+Both flags live only in the authored overlay, never in any of the four JSON
+data files.
+
+- \`--pin\` · float the project to the top of the home-page hero pool above
+  all score-ranked entries
+- \`--hide\` · exclude the project from the hero pool entirely (it remains
+  visible everywhere else on the site)
+
+Exactly one of \`--pin\` or \`--hide\` must be given. Passing both is an error.
 
 ## Usage
 
 \`\`\`
-drift pin <slug>
+drift flag <slug> --pin
+drift flag <slug> --hide
 \`\`\`
 
 ## Examples
 
 \`\`\`
-drift pin iris
-drift pin lyra-rose
+drift flag iris --pin
+drift flag lyra-rose --pin
+drift flag kitchen-gremlin --hide
 \`\`\``,
 
 	audit: `# drift audit · score every authored overlay against the depth rubric
@@ -3282,7 +3329,7 @@ ${BOLD}Usage:${RESET}
   drift keep-all
   drift hide <slug>
   drift author <slug>
-  drift pin <slug>
+  drift flag <slug> --pin | --hide
   drift audit [--json]
   drift init
 
@@ -3294,7 +3341,7 @@ ${BOLD}Verbs:${RESET}
   keep-all    Refresh every flagged override baseline at once.
   hide        Append a slug to excluded.json, removing it from the public site.
   author      Scaffold projects/<slug>.ts from a template, then open in $EDITOR.
-  pin         Set pin: true in the slug's overlay (creating it if absent).
+  flag        Set pin: true or hide: true in the slug's overlay (creating it if absent).
   audit       Score every authored overlay against the content-depth rubric.
   init        Scaffold drift.config.ts and sources.local.json for this machine.
 
@@ -3392,16 +3439,22 @@ the depth rubric and enum options. Use \`drift audit\` to check tiers.${RESET}
   Usage:   drift author <slug>
   Example: drift author my-new-project`,
 
-		pin: `${BOLD}drift pin <slug>${RESET} - float a project to the top of the hero pool
+		flag: `${BOLD}drift flag <slug> --pin | --hide${RESET} - set a curation flag on a project overlay
 
-Sets pin: true in projects/<slug>.ts. Creates the overlay from the standard
-template if it does not exist. Idempotent when already pinned.
+Sets pin: true or hide: true in projects/<slug>.ts. Creates the overlay from
+the standard template if it does not exist. Idempotent when the flag is
+already set to true. Exactly one of --pin or --hide is required.
 
-${DIM}Pin lives only in the authored overlay, never in any JSON data file.
+  --pin   Float the project to the top of the home-page hero pool.
+  --hide  Exclude the project from the hero pool (still visible elsewhere).
+
+${DIM}Both flags live only in the authored overlay, never in any JSON data file.
 Rebuild the site to apply.${RESET}
 
-  Usage:   drift pin <slug>
-  Example: drift pin iris`,
+  Usage:   drift flag <slug> --pin
+           drift flag <slug> --hide
+  Example: drift flag iris --pin
+           drift flag kitchen-gremlin --hide`,
 
 		audit: `${BOLD}drift audit${RESET} - score every authored overlay against the depth rubric
 
@@ -3500,7 +3553,7 @@ async function runInteractiveMenu({ manifests, palette, useGum, onProgress, clea
 		['Keep all', 'Keep every pinned value, dismiss all drift flags at once', 'keep-all'],
 		['Hide', 'Append a slug to excluded.json, removing it from the site', 'hide'],
 		['Author', 'Scaffold a project overlay and open it in your editor', 'author'],
-		['Pin', 'Float a project to the top of the hero pool', 'pin'],
+		['Flag', 'Pin a project to the hero pool or hide it from there', 'flag'],
 		['Audit', 'Score every authored overlay against the depth rubric', 'audit'],
 		['Help', 'Show the command reference', 'help']
 	];
@@ -3716,8 +3769,8 @@ async function runInteractiveMenu({ manifests, palette, useGum, onProgress, clea
 			runAuthor({ args: [chosenSlug], palette, useGum });
 			break;
 		}
-		case 'pin': {
-			// Prompt for a slug to pin — offer manifest keys as candidates.
+		case 'flag': {
+			// Prompt for a slug — offer manifest keys as candidates.
 			const candidateSlugs = Object.keys(manifests.manifest.sources).sort();
 			let chosenSlug;
 			if (candidateSlugs.length > 0) {
@@ -3727,7 +3780,7 @@ async function runInteractiveMenu({ manifests, palette, useGum, onProgress, clea
 					[
 						'choose',
 						'--label-delimiter=:',
-						'--header=Choose a slug to pin:',
+						'--header=Choose a slug to flag:',
 						'--cursor=> ',
 						`--cursor.foreground=${BRAND_PRIMARY}`,
 						`--selected.foreground=${BRAND_PRIMARY}`,
@@ -3746,7 +3799,30 @@ async function runInteractiveMenu({ manifests, palette, useGum, onProgress, clea
 				if (input.status !== 0 || !input.stdout.trim()) return;
 				chosenSlug = input.stdout.trim();
 			}
-			await runPin({ args: [chosenSlug], palette, useGum });
+			// Second picker: choose the flag to set.
+			const flagPick = spawnSync(
+				'gum',
+				[
+					'choose',
+					'--label-delimiter=:',
+					'--header=Pin or hide?',
+					'--cursor=> ',
+					`--cursor.foreground=${BRAND_PRIMARY}`,
+					`--selected.foreground=${BRAND_PRIMARY}`,
+					`--item.foreground=${BRAND_ACCENT}`,
+					'Pin   Float to the top of the hero pool:pin',
+					'Hide  Exclude from the hero pool:hide'
+				],
+				{ stdio: ['inherit', 'pipe', 'inherit'], encoding: 'utf8' }
+			);
+			if (flagPick.status !== 0 || !flagPick.stdout.trim()) return;
+			const chosenFlag = flagPick.stdout.trim();
+			await runFlag({
+				args: [chosenSlug],
+				values: { pin: chosenFlag === 'pin', hide: chosenFlag === 'hide' },
+				palette,
+				useGum
+			});
 			break;
 		}
 		case 'audit':
@@ -3776,7 +3852,9 @@ async function main() {
 				'dry-run': { type: 'boolean', default: false },
 				'no-cache': { type: 'boolean', default: false },
 				'no-color': { type: 'boolean', default: false },
-				help: { type: 'boolean', short: 'h', default: false }
+				help: { type: 'boolean', short: 'h', default: false },
+				pin: { type: 'boolean', default: false },
+				hide: { type: 'boolean', default: false }
 			}
 		}));
 	} catch (err) {
@@ -3794,7 +3872,7 @@ async function main() {
 		'hide',
 		'promote',
 		'author',
-		'pin',
+		'flag',
 		'audit',
 		'init',
 		'help'
@@ -3829,8 +3907,8 @@ async function main() {
 		runAuthor({ args, palette, useGum });
 		return;
 	}
-	if (verb === 'pin') {
-		await runPin({ args, palette, useGum });
+	if (verb === 'flag') {
+		await runFlag({ args, values, palette, useGum });
 		return;
 	}
 	if (verb === 'audit') {
