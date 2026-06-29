@@ -164,15 +164,13 @@ describe('decodeTechLabel', () => {
 describe('tech-label round-trip', () => {
 	const knownLabels = ['C#', 'Node.js', '.NET 8', 'POSIX shell'];
 
-	it.each([
-		['C#'],
-		['Node.js'],
-		['.NET 8'],
-		['POSIX shell'],
-	])('encodeTechLabel → decodeTechLabel round-trips %s', (label) => {
-		const encoded = encodeTechLabel(label);
-		expect(decodeTechLabel(encoded, knownLabels)).toBe(label);
-	});
+	it.each([['C#'], ['Node.js'], ['.NET 8'], ['POSIX shell']])(
+		'encodeTechLabel → decodeTechLabel round-trips %s',
+		(label) => {
+			const encoded = encodeTechLabel(label);
+			expect(decodeTechLabel(encoded, knownLabels)).toBe(label);
+		}
+	);
 });
 
 // ---------------------------------------------------------------------------
@@ -241,7 +239,7 @@ describe('tag-set round-trip', () => {
 	it.each([
 		[new Set(['TypeScript'])],
 		[new Set(['C#', 'Node.js'])],
-		[new Set(['.NET 8', 'POSIX shell', 'Svelte'])],
+		[new Set(['.NET 8', 'POSIX shell', 'Svelte'])]
 	])('encodeTagSet → decodeTagSet round-trips %s', (tags) => {
 		const encoded = encodeTagSet(tags);
 		expect(decodeTagSet(encoded)).toEqual(tags);

@@ -49,13 +49,11 @@ const config = await loadConfig();
 
 let SCHEMA;
 try {
-	SCHEMA = JSON.parse(
-		readFileSync(new URL('./sources.schema.json', import.meta.url), 'utf8')
-	);
+	SCHEMA = JSON.parse(readFileSync(new URL('./sources.schema.json', import.meta.url), 'utf8'));
 } catch (err) {
 	process.stderr.write(
 		`drift: could not load sources.schema.json — ${err.message}\n` +
-		`  Expected: scripts/sources.schema.json (engine output contract)\n`
+			`  Expected: scripts/sources.schema.json (engine output contract)\n`
 	);
 	process.exit(1);
 }
@@ -184,9 +182,7 @@ const FINGERPRINT_FIELDS = Object.keys(SCHEMA.$defs.SyncedSource.properties);
 // property whose type is 'array'. Compared by sorted join so element-order
 // differences in detection do not produce spurious drift.
 const ARRAY_FINGERPRINT_FIELDS = new Set(
-	FINGERPRINT_FIELDS.filter(
-		(f) => SCHEMA.$defs.SyncedSource.properties[f].type === 'array'
-	)
+	FINGERPRINT_FIELDS.filter((f) => SCHEMA.$defs.SyncedSource.properties[f].type === 'array')
 );
 
 // Fields excluded from drift comparison even though they live in the schema
@@ -1590,7 +1586,10 @@ function runReport({ result, manifest, palette, json, full, useGum }) {
 	// Falls back to the plain console.log path on any failure.
 	if (useGum && process.stdout.isTTY) {
 		const md = renderReportMarkdown(result, manifest, full);
-		const out = spawnSync('gum', ['format', '--theme', config.theme.markdownTheme], { input: md, encoding: 'utf8' });
+		const out = spawnSync('gum', ['format', '--theme', config.theme.markdownTheme], {
+			input: md,
+			encoding: 'utf8'
+		});
 		if (out.status === 0 && out.stdout) {
 			process.stdout.write('\n' + out.stdout + '\n');
 			return;
@@ -2123,12 +2122,7 @@ function runPromote({ args, palette }) {
 function gumInput(prompt, def) {
 	const res = spawnSync(
 		'gum',
-		[
-			'input',
-			`--prompt=${prompt}: `,
-			`--prompt.foreground=${BRAND_PRIMARY}`,
-			`--value=${def}`
-		],
+		['input', `--prompt=${prompt}: `, `--prompt.foreground=${BRAND_PRIMARY}`, `--value=${def}`],
 		{ stdio: ['inherit', 'pipe', 'inherit'], encoding: 'utf8' }
 	);
 	return res.status === 0 && res.stdout.trim() ? res.stdout.trim() : def;
@@ -2259,11 +2253,18 @@ function runInit({ palette, useGum }) {
 
 	if (useGum) {
 		process.stdout.write(`\n${BOLD}drift init${RESET} — scaffold per-machine config files\n\n`);
-		process.stdout.write(`${DIM}Press Enter to accept the default for each prompt. Ctrl-C to cancel a prompt and keep its default.${RESET}\n\n`);
+		process.stdout.write(
+			`${DIM}Press Enter to accept the default for each prompt. Ctrl-C to cancel a prompt and keep its default.${RESET}\n\n`
+		);
 
 		scanRoot = gumInput('Scan root (directory to scan for repos)', defScanRoot);
-		scanDepth = parseInt(gumInput('Scan depth (max directory depth)', String(defScanDepth)), 10) || defScanDepth;
-		authorPattern = gumInput('Author pattern (git --author alternation, pipe-separated)', defAuthorPattern);
+		scanDepth =
+			parseInt(gumInput('Scan depth (max directory depth)', String(defScanDepth)), 10) ||
+			defScanDepth;
+		authorPattern = gumInput(
+			'Author pattern (git --author alternation, pipe-separated)',
+			defAuthorPattern
+		);
 		recentWindow = gumInput('Recent window (git --since value)', defRecentWindow);
 		excludedRepoNames = gumInput('Excluded repo names (comma-separated)', defExcludes.join(','))
 			.split(',')
@@ -2283,7 +2284,8 @@ function runInit({ palette, useGum }) {
 		process.stdout.write(`${YELLOW}already exists, skipping:${RESET} ${relLocal}\n`);
 	} else {
 		writeJson(localPath, {
-			_note: "Per-machine local paths for each source repo. Gitignored. Run `drift sync` after filling in paths.",
+			_note:
+				'Per-machine local paths for each source repo. Gitignored. Run `drift sync` after filling in paths.',
 			paths: {}
 		});
 		process.stdout.write(`${GREEN}${BOLD}created${RESET} ${relLocal}\n`);
@@ -2441,7 +2443,7 @@ function runAuthor({ args, palette }) {
 		} else {
 			process.stdout.write(
 				`${DIM}No editor found. Set $EDITOR or run: git config --global core.editor <cmd>\n` +
-				`Edit the file directly: ${relPath}${RESET}\n`
+					`Edit the file directly: ${relPath}${RESET}\n`
 			);
 		}
 	} else {
@@ -2499,14 +2501,20 @@ async function runPin({ args, palette }) {
 	const ts = (await import('typescript')).default;
 
 	const text = readFileSync(path, 'utf8');
-	const sf = ts.createSourceFile(path, text, ts.ScriptTarget.Latest, /* setParentNodes */ true, ts.ScriptKind.TS);
+	const sf = ts.createSourceFile(
+		path,
+		text,
+		ts.ScriptTarget.Latest,
+		/* setParentNodes */ true,
+		ts.ScriptKind.TS
+	);
 
 	// Find the single exported VariableStatement whose initializer is an
 	// ObjectLiteralExpression. Every well-formed overlay has exactly one such export.
 	let objLit = null;
 	for (const stmt of sf.statements) {
 		if (!ts.isVariableStatement(stmt)) continue;
-		if (!(stmt.modifiers?.some((m) => m.kind === ts.SyntaxKind.ExportKeyword))) continue;
+		if (!stmt.modifiers?.some((m) => m.kind === ts.SyntaxKind.ExportKeyword)) continue;
 		for (const decl of stmt.declarationList.declarations) {
 			if (decl.initializer && ts.isObjectLiteralExpression(decl.initializer)) {
 				objLit = decl.initializer;
@@ -2519,7 +2527,7 @@ async function runPin({ args, palette }) {
 	if (!objLit) {
 		process.stderr.write(
 			`${RED}Error: could not locate the exported object literal in ${relPath}.\n` +
-			`Expected one named export with an object literal initializer.${RESET}\n`
+				`Expected one named export with an object literal initializer.${RESET}\n`
 		);
 		process.exit(1);
 	}
@@ -2539,17 +2547,11 @@ async function runPin({ args, palette }) {
 			return;
 		}
 		// Present but not true (e.g. false, variable reference) — splice to true.
-		splicedText =
-			text.slice(0, initNode.getStart(sf)) +
-			'true' +
-			text.slice(initNode.getEnd());
+		splicedText = text.slice(0, initNode.getStart(sf)) + 'true' + text.slice(initNode.getEnd());
 	} else {
 		// Absent — insert `pin: true,` immediately after the opening brace.
 		const insertPos = objLit.getStart(sf) + 1; // position just past '{'
-		splicedText =
-			text.slice(0, insertPos) +
-			'\n\tpin: true,' +
-			text.slice(insertPos);
+		splicedText = text.slice(0, insertPos) + '\n\tpin: true,' + text.slice(insertPos);
 	}
 
 	writeFileSync(path, splicedText, 'utf8');
@@ -2557,7 +2559,7 @@ async function runPin({ args, palette }) {
 
 	process.stdout.write(
 		`${GREEN}${BOLD}Pinned:${RESET} '${slug}' now floats to the top of the hero pool.\n` +
-		`${DIM}Rebuild the site to apply.${RESET}\n`
+			`${DIM}Rebuild the site to apply.${RESET}\n`
 	);
 }
 
@@ -2689,10 +2691,12 @@ function runAuditPlain(scored, palette) {
 
 	process.stdout.write(
 		`${BOLD}drift audit${RESET} · content-depth proxy\n` +
-		`${summary.Thin} Thin · ${summary.Partial} Partial · ${summary.Full} Full · ${authored} authored\n`
+			`${summary.Thin} Thin · ${summary.Partial} Partial · ${summary.Full} Full · ${authored} authored\n`
 	);
 	if (borderlineCount > 0) {
-		process.stdout.write(`${DIM}${borderlineCount} entr${borderlineCount === 1 ? 'y' : 'ies'} flagged for manual review.${RESET}\n`);
+		process.stdout.write(
+			`${DIM}${borderlineCount} entr${borderlineCount === 1 ? 'y' : 'ies'} flagged for manual review.${RESET}\n`
+		);
 	}
 	process.stdout.write('\n');
 
@@ -2776,11 +2780,10 @@ async function runAudit({ palette, useGum, json }) {
 			}
 		}
 
-		const out = spawnSync(
-			'gum',
-			['format', '--theme', config.theme.markdownTheme],
-			{ input: md, encoding: 'utf8' }
-		);
+		const out = spawnSync('gum', ['format', '--theme', config.theme.markdownTheme], {
+			input: md,
+			encoding: 'utf8'
+		});
 		if (out.status === 0 && out.stdout) {
 			process.stdout.write('\n' + out.stdout + '\n');
 			return;
@@ -2990,7 +2993,10 @@ function runSnapshot({ result, manifest, palette, json, useGum }) {
 
 	if (useGum && process.stdout.isTTY) {
 		const md = renderSnapshotMarkdown(snapshot);
-		const out = spawnSync('gum', ['format', '--theme', config.theme.markdownTheme], { input: md, encoding: 'utf8' });
+		const out = spawnSync('gum', ['format', '--theme', config.theme.markdownTheme], {
+			input: md,
+			encoding: 'utf8'
+		});
 		if (out.status === 0 && out.stdout) {
 			process.stdout.write('\n' + out.stdout + '\n');
 			return;
@@ -3247,7 +3253,10 @@ function printHelp(verb, palette, useGum) {
 	// gum markdown rendering — falls back to plain banners on any failure.
 	if (useGum && process.stdout.isTTY) {
 		const md = helpMarkdown[verb] ?? helpMarkdown.report;
-		const out = spawnSync('gum', ['format', '--theme', config.theme.markdownTheme], { input: md, encoding: 'utf8' });
+		const out = spawnSync('gum', ['format', '--theme', config.theme.markdownTheme], {
+			input: md,
+			encoding: 'utf8'
+		});
 		if (out.status === 0 && out.stdout) {
 			process.stdout.write('\n' + out.stdout + '\n');
 			return;
@@ -3771,7 +3780,20 @@ async function main() {
 	}
 
 	// Subcommand dispatcher. The first positional is the verb; slug/field follow.
-	const KNOWN_VERBS = new Set(['report', 'snapshot', 'sync', 'keep', 'keep-all', 'hide', 'promote', 'author', 'pin', 'audit', 'init', 'help']);
+	const KNOWN_VERBS = new Set([
+		'report',
+		'snapshot',
+		'sync',
+		'keep',
+		'keep-all',
+		'hide',
+		'promote',
+		'author',
+		'pin',
+		'audit',
+		'init',
+		'help'
+	]);
 	const verb = KNOWN_VERBS.has(positionals[0]) ? positionals[0] : 'report';
 	// args[0] = slug, args[1] = field (for accept). When the verb was explicit,
 	// slice it off; when the default 'report' was inferred, positionals are not args.

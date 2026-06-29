@@ -90,11 +90,9 @@
 					<ul class="site-nav__panel-links" role="list">
 						{#each navLinks as link (link.path)}
 							<li>
-								<a
-									href="{base}{link.path}"
-									class="site-nav__panel-link"
-									onclick={closeMenu}
-								>{link.label}</a>
+								<a href="{base}{link.path}" class="site-nav__panel-link" onclick={closeMenu}
+									>{link.label}</a
+								>
 							</li>
 						{/each}
 					</ul>

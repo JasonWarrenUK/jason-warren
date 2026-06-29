@@ -12,7 +12,7 @@ export const guardrails: AuthoredProject = {
 	contribution: {
 		role: 'collaborator',
 		collaboration: { team: 'Yalla Cooperative', employer: 'Yalla Cooperative' },
-		contributionNote: 'PLACEHOLDER',
+		contributionNote: 'PLACEHOLDER'
 	},
 	status: 'wip',
 	repoUrl: 'https://github.com/yalla-coop/yalla-labs-guardrails',

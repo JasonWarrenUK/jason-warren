@@ -364,7 +364,10 @@
 					);
 					for (const n of simNodes) {
 						const t = targets.get(n.slug);
-						if (t) { n.x = t.x; n.y = t.y; }
+						if (t) {
+							n.x = t.x;
+							n.y = t.y;
+						}
 					}
 					const fl = sim.force<ReturnType<typeof d3ForceLink>>('link');
 					if (fl) fl.links(buildSimLinks(curEdges, curShared) as never);
@@ -388,7 +391,10 @@
 					);
 					for (const n of simNodes) {
 						const t = targets.get(n.slug);
-						if (t) { n.x = t.x; n.y = t.y; }
+						if (t) {
+							n.x = t.x;
+							n.y = t.y;
+						}
 					}
 
 					// Re-feed the link force with only the now-visible edges.
@@ -469,7 +475,10 @@
 					class:map__node--labelled={node.labelled}
 					class:map__node--pinned={pinnedSlug === node.slug}
 					href="{base}/projects/{node.slug}"
-					onclick={(e) => { e.preventDefault(); openModal(node); }}
+					onclick={(e) => {
+						e.preventDefault();
+						openModal(node);
+					}}
 					onpointerenter={() => (activeSlug = node.slug)}
 					onpointerleave={() => (activeSlug = null)}
 					onfocus={() => (activeSlug = node.slug)}
@@ -561,23 +570,12 @@
 
 {#if selected !== null}
 	{@const isPinned = pinnedSlug === selected.slug}
-	<SelectionModal
-		open={true}
-		title={selected.name}
-		onclose={() => (selected = null)}
-	>
+	<SelectionModal open={true} title={selected.name} onclose={() => (selected = null)}>
 		<p class="map-modal__tagline">{selected.tagline}</p>
-		<button
-			type="button"
-			class="modal-action modal-action--primary"
-			onclick={pinSelected}
-		>
+		<button type="button" class="modal-action modal-action--primary" onclick={pinSelected}>
 			{isPinned ? 'Unpin' : 'Pin this project'}
 		</button>
-		<a
-			href={projectHref(base, selected.slug)}
-			class="modal-action modal-action--secondary"
-		>
+		<a href={projectHref(base, selected.slug)} class="modal-action modal-action--secondary">
 			Go to project
 		</a>
 	</SelectionModal>

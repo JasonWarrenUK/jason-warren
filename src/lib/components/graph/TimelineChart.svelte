@@ -136,7 +136,10 @@
 					class:timeline__node--pinned={pinnedSlug === row.slug}
 					class:timeline__node--dim={effectiveSlug !== null && effectiveSlug !== row.slug}
 					href="{base}/projects/{row.slug}"
-					onclick={(e) => { e.preventDefault(); openModal(row); }}
+					onclick={(e) => {
+						e.preventDefault();
+						openModal(row);
+					}}
 					onpointerenter={() => (activeSlug = row.slug)}
 					onpointerleave={() => (activeSlug = null)}
 					onfocus={() => (activeSlug = row.slug)}
@@ -164,22 +167,11 @@
 
 {#if selected !== null}
 	{@const isPinned = pinnedSlug === selected.slug}
-	<SelectionModal
-		open={true}
-		title={selected.name}
-		onclose={() => (selected = null)}
-	>
-		<button
-			type="button"
-			class="modal-action modal-action--primary"
-			onclick={pinSelected}
-		>
+	<SelectionModal open={true} title={selected.name} onclose={() => (selected = null)}>
+		<button type="button" class="modal-action modal-action--primary" onclick={pinSelected}>
 			{isPinned ? 'Unpin' : 'Pin this project'}
 		</button>
-		<a
-			href={projectHref(base, selected.slug)}
-			class="modal-action modal-action--secondary"
-		>
+		<a href={projectHref(base, selected.slug)} class="modal-action modal-action--secondary">
 			Go to project
 		</a>
 	</SelectionModal>

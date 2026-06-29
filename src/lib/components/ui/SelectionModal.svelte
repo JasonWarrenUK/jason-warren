@@ -34,31 +34,30 @@
 </script>
 
 <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-<dialog
-	bind:this={dialogEl}
-	class="modal"
-	aria-label={title}
-	onclose={onclose}
-	onclick={handleDialogClick}
->
+<dialog bind:this={dialogEl} class="modal" aria-label={title} {onclose} onclick={handleDialogClick}>
 	<div class="modal__inner">
 		<div class="modal__header">
 			<h2 class="modal__title">{title}</h2>
-			<button
-				type="button"
-				class="modal__close"
-				aria-label="Close"
-				onclick={onclose}
-			>
-				<svg
-					width="18"
-					height="18"
-					viewBox="0 0 18 18"
-					fill="none"
-					aria-hidden="true"
-				>
-					<line x1="3" y1="3" x2="15" y2="15" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
-					<line x1="15" y1="3" x2="3" y2="15" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+			<button type="button" class="modal__close" aria-label="Close" onclick={onclose}>
+				<svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
+					<line
+						x1="3"
+						y1="3"
+						x2="15"
+						y2="15"
+						stroke="currentColor"
+						stroke-width="2"
+						stroke-linecap="round"
+					/>
+					<line
+						x1="15"
+						y1="3"
+						x2="3"
+						y2="15"
+						stroke="currentColor"
+						stroke-width="2"
+						stroke-linecap="round"
+					/>
 				</svg>
 			</button>
 		</div>
@@ -122,7 +121,9 @@
 		border-radius: var(--radius-sm);
 		color: var(--color-text-muted);
 		cursor: pointer;
-		transition: color var(--transition-fast), border-color var(--transition-fast);
+		transition:
+			color var(--transition-fast),
+			border-color var(--transition-fast);
 	}
 
 	.modal__close:hover {

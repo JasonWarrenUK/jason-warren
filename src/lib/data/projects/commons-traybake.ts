@@ -13,7 +13,7 @@ export const commonsTraybake: AuthoredProject = {
 		role: 'lead',
 		collaboration: { team: 'FAC-31 cohort', employer: 'Founders and Coders' },
 		contributionNote:
-			'Led a FAC-31 cohort RAG research project into semantic chunking. Implemented the chunking foundation (1024 and 256 token strategies, late-chunking with 70/30 context blending); built the UK Parliament Hansard API integration; established the roadmap and documentation system. +6,300 / −270 lines.',
+			'Led a FAC-31 cohort RAG research project into semantic chunking. Implemented the chunking foundation (1024 and 256 token strategies, late-chunking with 70/30 context blending); built the UK Parliament Hansard API integration; established the roadmap and documentation system. +6,300 / −270 lines.'
 	},
 	status: 'wip',
 	repoUrl: 'https://github.com/fac-31/commons-traybake',

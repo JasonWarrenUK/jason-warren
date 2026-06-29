@@ -13,7 +13,7 @@ export const thingsWeDo: AuthoredProject = {
 		role: 'collaborator',
 		collaboration: { team: 'FAC-30 cohort', employer: 'Founders and Coders' },
 		contributionNote:
-			'21 PRs on a FAC-30 cohort mental-health tracker. Built the next-actions feature end-to-end; designed the insights charts, including the 3D Plotly wellbeing visualisation; implemented ephemeral categories with modal confirmations; initialised the RxDB offline-first storage layer. +6,700 / −3,000 lines.',
+			'21 PRs on a FAC-30 cohort mental-health tracker. Built the next-actions feature end-to-end; designed the insights charts, including the 3D Plotly wellbeing visualisation; implemented ephemeral categories with modal confirmations; initialised the RxDB offline-first storage layer. +6,700 / −3,000 lines.'
 	},
 	status: 'archived',
 	repoUrl: 'https://github.com/fac30/things-we-do',

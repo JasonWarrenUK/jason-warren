@@ -85,10 +85,7 @@ export function decodeTechLabel(raw: string | null, known: Iterable<string>): st
  */
 export function encodeTagSet(tags: Set<string>): string | null {
 	if (tags.size === 0) return null;
-	return [...tags]
-		.map(encodeURIComponent)
-		.sort()
-		.join(',');
+	return [...tags].map(encodeURIComponent).sort().join(',');
 }
 
 /**

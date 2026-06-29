@@ -56,10 +56,7 @@ function makeTempDataDir(inProgressContent: object, sourcesContent?: object) {
 	const dir = mkdtempSync(join(tmpdir(), 'drift-promote-test-'));
 
 	// Minimal in-progress.json
-	writeFileSync(
-		join(dir, 'in-progress.json'),
-		JSON.stringify(inProgressContent, null, '\t')
-	);
+	writeFileSync(join(dir, 'in-progress.json'), JSON.stringify(inProgressContent, null, '\t'));
 
 	// Minimal sources.json (reproduce sentinel values; promote must not change it)
 	const sentinel = sourcesContent ?? {
@@ -90,26 +87,19 @@ function makeTempDataDir(inProgressContent: object, sourcesContent?: object) {
 /** Returns the DRIFT_CONFIG env approach: write a temp config file. */
 function makeDriftConfig(dataDir: string): string {
 	const configPath = join(dataDir, 'drift.config.mjs');
-	writeFileSync(
-		configPath,
-		`export default { dataDir: ${JSON.stringify(dataDir)} };\n`
-	);
+	writeFileSync(configPath, `export default { dataDir: ${JSON.stringify(dataDir)} };\n`);
 	return configPath;
 }
 
 /** Run promote with a config file pointing at a temp data dir. */
 function runPromoteWithConfig(dataDir: string, args: string[]) {
 	const configPath = makeDriftConfig(dataDir);
-	return spawnSync(
-		'bun',
-		['run', checkDriftPath, 'promote', ...args],
-		{
-			cwd: repoRoot,
-			env: { ...process.env, DRIFT_CONFIG: configPath },
-			encoding: 'utf8',
-			timeout: 15_000
-		}
-	);
+	return spawnSync('bun', ['run', checkDriftPath, 'promote', ...args], {
+		cwd: repoRoot,
+		env: { ...process.env, DRIFT_CONFIG: configPath },
+		encoding: 'utf8',
+		timeout: 15_000
+	});
 }
 
 // ---------------------------------------------------------------------------
@@ -240,20 +230,13 @@ function runInitInDir(dir: string) {
 	// The DRIFT_CONFIG file lives in the temp dir. runInit writes drift.config.ts
 	// alongside it (dirname of DRIFT_CONFIG).
 	const configPath = join(dir, 'drift.config.mjs');
-	writeFileSync(
-		configPath,
-		`export default { dataDir: ${JSON.stringify(dir)} };\n`
-	);
-	return spawnSync(
-		'bun',
-		['run', checkDriftPath, 'init', '--no-color'],
-		{
-			cwd: repoRoot,
-			env: { ...process.env, DRIFT_CONFIG: configPath },
-			encoding: 'utf8',
-			timeout: 15_000
-		}
-	);
+	writeFileSync(configPath, `export default { dataDir: ${JSON.stringify(dir)} };\n`);
+	return spawnSync('bun', ['run', checkDriftPath, 'init', '--no-color'], {
+		cwd: repoRoot,
+		env: { ...process.env, DRIFT_CONFIG: configPath },
+		encoding: 'utf8',
+		timeout: 15_000
+	});
 }
 
 describe('drift init', () => {
@@ -391,7 +374,7 @@ describe('drift author', () => {
 		const overlayPath = join(dir, 'projects', 'my-project.ts');
 		const source = readFileSync(overlayPath, 'utf8');
 		expect(source).toContain('AuthoredProject');
-		expect(source).toContain("export const myProject: AuthoredProject");
+		expect(source).toContain('export const myProject: AuthoredProject');
 		expect(source).toContain('my-project');
 	});
 
@@ -651,16 +634,10 @@ function writeFixture(
 		contributionNote?: string;
 	}
 ) {
-	const {
-		description = '',
-		highlights = [],
-		role = 'solo',
-		contributionNote
-	} = fields;
-	const contribution =
-		contributionNote
-			? `{ role: '${role}', contributionNote: ${JSON.stringify(contributionNote)} }`
-			: `{ role: '${role}' }`;
+	const { description = '', highlights = [], role = 'solo', contributionNote } = fields;
+	const contribution = contributionNote
+		? `{ role: '${role}', contributionNote: ${JSON.stringify(contributionNote)} }`
+		: `{ role: '${role}' }`;
 	const binding = slug.replace(/-([a-z0-9])/g, (_: string, c: string) => c.toUpperCase());
 	const source = [
 		`export const ${binding} = {`,
@@ -766,7 +743,10 @@ describe('drift audit', () => {
 		writeFixture(dir, 'thin-1', { description: 'Short.', highlights: [] });
 		const fullDesc = Array(90).fill('word').join(' ');
 		writeFixture(dir, 'full-1', { description: fullDesc, highlights: ['h1', 'h2', 'h3', 'h4'] });
-		writeFixture(dir, 'full-2', { description: fullDesc, highlights: ['h1', 'h2', 'h3', 'h4', 'h5'] });
+		writeFixture(dir, 'full-2', {
+			description: fullDesc,
+			highlights: ['h1', 'h2', 'h3', 'h4', 'h5']
+		});
 
 		const { summary, entries } = runAuditJSON();
 		expect(summary.Thin).toBe(1);

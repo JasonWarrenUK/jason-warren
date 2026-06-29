@@ -12,7 +12,7 @@ export const chirpdb: AuthoredProject = {
 	contribution: {
 		role: 'collaborator',
 		collaboration: { team: 'Tandem', employer: 'Tandem Creative Dev', client: 'Zig Zag AI' },
-		contributionNote: 'PLACEHOLDER',
+		contributionNote: 'PLACEHOLDER'
 	},
 	status: 'wip',
 	repoUrl: 'https://github.com/ZigZag-Technology/CHIRPdb',

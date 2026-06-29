@@ -690,8 +690,7 @@ describe('provisional (in-progress.json) precedence', () => {
 				const syncedValue = syncedSources[slug]?.[field];
 				if (syncedValue !== undefined) continue; // synced shadows provisional; skip
 
-				const rendered =
-					project.metrics?.[field as keyof typeof project.metrics];
+				const rendered = project.metrics?.[field as keyof typeof project.metrics];
 				expect(
 					rendered,
 					`${slug}.${field}: provisional value ${tf.value} should surface when synced data is absent`
@@ -717,8 +716,7 @@ describe('provisional (in-progress.json) precedence', () => {
 				const syncedValue = syncedSources[slug]?.[field];
 				if (syncedValue === undefined) continue; // no synced value; can't test shadowing
 
-				const rendered =
-					project.metrics?.[field as keyof typeof project.metrics];
+				const rendered = project.metrics?.[field as keyof typeof project.metrics];
 				expect(
 					rendered,
 					`${slug}.${field}: synced ${syncedValue} should shadow provisional ${tf.value}`

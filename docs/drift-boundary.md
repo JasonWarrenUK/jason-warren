@@ -15,6 +15,7 @@
 drift manifest, and provides an interactive reporting surface.
 
 The engine:
+
 - is a plain Node/Bun script with no framework dependency
 - reads and writes the four data files (`sources.json`, `overrides.json`, `excluded.json`, `.drift-cache.json`)
 - emits a structured JSON fingerprint per repo (the `SyncedSource` shape)
@@ -26,6 +27,7 @@ The engine:
 `Project` objects the Svelte app can render.
 
 The integration layer:
+
 - is Vite/SvelteKit build-time code
 - consumes the four data files as static JSON imports
 - owns `types.ts`, `defaults.ts`, `index.ts`, and the `projects/*.ts` authored overlays
@@ -35,28 +37,28 @@ The integration layer:
 
 ## Ownership table
 
-| Concern | Owner | Notes |
-|---|---|---|
-| Fingerprinting (commits, churn, language detection) | Engine | Core reason the engine exists |
-| `sources.json` — reading | Both | Engine reads for drift state; integration reads for registry |
-| `sources.json` — writing | Engine only | `drift sync` is the one sanctioned writer |
-| `overrides.json` — reading | Both | Engine reads for conflict detection; integration for metric precedence |
-| `overrides.json` — writing | Engine only | `drift keep` / `drift keep-all` only |
-| `excluded.json` — reading | Both | Engine filters scan; integration filters registry |
-| `excluded.json` — writing | Engine only | `drift hide` only |
-| `.drift-cache.json` | Engine only | Never read by the Svelte build |
-| Tag taxonomy (`tag-taxonomy.js`) | Engine (`scripts/tag-taxonomy.js`) | **Resolved (5DR.4)** — taxonomy moved to the engine; integration imports the four `*_TAGS` maps from `scripts/tag-taxonomy.js`. |
-| Output schema (`sources.schema.json`) | Engine (`scripts/sources.schema.json`) | **Resolved (5DR.5)** — schema moved to the engine; validated at write time; `FINGERPRINT_FIELDS` derived from it. |
-| `AuthoredProject` / `Project` types | Integration | TypeScript types the engine cannot import (plain JS) |
-| `projects/*.ts` authored overlays — content | Integration | **Resolved (5DR.6)** — engine no longer reads overlay content. Filename-only `readdirSync` in `buildCoverageStats` is still allowed (lists names, never opens files). `drift author` and `drift pin` (5DR.15/5DR.16) create and modify overlay files; creating and flag-setting is distinct from content-parsing. `drift audit` (5DR.11) reads overlay content via dynamic `import()` of the typed export value to score editorial depth — a sanctioned exception (imports the module's value, does NOT regex-scrape source text, unlike the retired `curatedLanguages`/`curatedStatus`). |
-| `curatedLanguages(slug)` / `curatedStatus(slug)` | ~~Engine~~ retired | **Resolved (5DR.6)** — both functions deleted. Advisory hints (`ungated`, `statusHint`) removed from the report. The correctness gate (curated tags ⊆ detected) remains as a CI test in `data.test.ts`; completeness belongs in 5DR.11 (`drift audit`). |
-| `defaultProjectFromManifest` / `mergeAuthored` | Integration | Pure build-time builders |
-| `withSyncedMetrics` | Integration | Applies override > synced > authored precedence |
-| Config (paths, scan root, author identity, brand colours) | Engine (`scripts/drift-config.js`) | **Resolved (5DR.3)** — `drift.config.ts` per-machine config; built-in defaults reproduce previous behaviour |
-| `repoNames` exclusion list | Engine (`config.excludedRepoNames`) | **Resolved (5DR.3)** — moved to `drift.config.ts`, paired with `scanRoot`; `excluded.json` now holds only `slugs` |
-| Project scoring / hero selection | Integration | `scoring.ts` — engine never touches this |
-| Graph / relationship edges | Integration | `graph.ts`, `threads.ts` |
-| Themes / visual data | Integration | `themes.ts` |
+| Concern                                                   | Owner                                  | Notes                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| --------------------------------------------------------- | -------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Fingerprinting (commits, churn, language detection)       | Engine                                 | Core reason the engine exists                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| `sources.json` — reading                                  | Both                                   | Engine reads for drift state; integration reads for registry                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| `sources.json` — writing                                  | Engine only                            | `drift sync` is the one sanctioned writer                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| `overrides.json` — reading                                | Both                                   | Engine reads for conflict detection; integration for metric precedence                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| `overrides.json` — writing                                | Engine only                            | `drift keep` / `drift keep-all` only                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| `excluded.json` — reading                                 | Both                                   | Engine filters scan; integration filters registry                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| `excluded.json` — writing                                 | Engine only                            | `drift hide` only                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| `.drift-cache.json`                                       | Engine only                            | Never read by the Svelte build                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| Tag taxonomy (`tag-taxonomy.js`)                          | Engine (`scripts/tag-taxonomy.js`)     | **Resolved (5DR.4)** — taxonomy moved to the engine; integration imports the four `*_TAGS` maps from `scripts/tag-taxonomy.js`.                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| Output schema (`sources.schema.json`)                     | Engine (`scripts/sources.schema.json`) | **Resolved (5DR.5)** — schema moved to the engine; validated at write time; `FINGERPRINT_FIELDS` derived from it.                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| `AuthoredProject` / `Project` types                       | Integration                            | TypeScript types the engine cannot import (plain JS)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| `projects/*.ts` authored overlays — content               | Integration                            | **Resolved (5DR.6)** — engine no longer reads overlay content. Filename-only `readdirSync` in `buildCoverageStats` is still allowed (lists names, never opens files). `drift author` and `drift pin` (5DR.15/5DR.16) create and modify overlay files; creating and flag-setting is distinct from content-parsing. `drift audit` (5DR.11) reads overlay content via dynamic `import()` of the typed export value to score editorial depth — a sanctioned exception (imports the module's value, does NOT regex-scrape source text, unlike the retired `curatedLanguages`/`curatedStatus`). |
+| `curatedLanguages(slug)` / `curatedStatus(slug)`          | ~~Engine~~ retired                     | **Resolved (5DR.6)** — both functions deleted. Advisory hints (`ungated`, `statusHint`) removed from the report. The correctness gate (curated tags ⊆ detected) remains as a CI test in `data.test.ts`; completeness belongs in 5DR.11 (`drift audit`).                                                                                                                                                                                                                                                                                                                                   |
+| `defaultProjectFromManifest` / `mergeAuthored`            | Integration                            | Pure build-time builders                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| `withSyncedMetrics`                                       | Integration                            | Applies override > synced > authored precedence                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| Config (paths, scan root, author identity, brand colours) | Engine (`scripts/drift-config.js`)     | **Resolved (5DR.3)** — `drift.config.ts` per-machine config; built-in defaults reproduce previous behaviour                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| `repoNames` exclusion list                                | Engine (`config.excludedRepoNames`)    | **Resolved (5DR.3)** — moved to `drift.config.ts`, paired with `scanRoot`; `excluded.json` now holds only `slugs`                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| Project scoring / hero selection                          | Integration                            | `scoring.ts` — engine never touches this                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| Graph / relationship edges                                | Integration                            | `graph.ts`, `threads.ts`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| Themes / visual data                                      | Integration                            | `themes.ts`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
 
 ---
 
@@ -105,33 +107,33 @@ The shape (for illustration — the schema is authoritative):
 
 ```typescript
 interface SyncedSource {
-  head?: string;
-  // commit grid
-  commits?: number;
-  commitsRecentAll?: number;
-  commitsMine?: number;
-  commitsRecent?: number;
-  // dates
-  lastCommit?: string;
-  firstCommit?: string;
-  // language advisory
-  languages?: string[];
-  // codebase size
-  linesOfCode?: number;
-  // churn grid (8 fields)
-  linesAdded?: number;
-  linesRemoved?: number;
-  linesAddedAll?: number;
-  linesRemovedAll?: number;
-  linesAddedRecent?: number;
-  linesRemovedRecent?: number;
-  linesAddedRecentAll?: number;
-  linesRemovedRecentAll?: number;
-  // dependency-manifest fields
-  remote?: string;
-  runtime?: string[];
-  database?: string[];
-  framework?: string[];
+	head?: string;
+	// commit grid
+	commits?: number;
+	commitsRecentAll?: number;
+	commitsMine?: number;
+	commitsRecent?: number;
+	// dates
+	lastCommit?: string;
+	firstCommit?: string;
+	// language advisory
+	languages?: string[];
+	// codebase size
+	linesOfCode?: number;
+	// churn grid (8 fields)
+	linesAdded?: number;
+	linesRemoved?: number;
+	linesAddedAll?: number;
+	linesRemovedAll?: number;
+	linesAddedRecent?: number;
+	linesRemovedRecent?: number;
+	linesAddedRecentAll?: number;
+	linesRemovedRecentAll?: number;
+	// dependency-manifest fields
+	remote?: string;
+	runtime?: string[];
+	database?: string[];
+	framework?: string[];
 }
 ```
 
@@ -171,15 +173,15 @@ completeness audit belongs in 5DR.11 (`drift audit`).
 
 The engine enforces single-file writes per verb. No verb touches more than one data file:
 
-| Verb | File written |
-|---|---|
-| `drift sync` | `sources.json` only |
-| `drift keep` / `drift keep-all` | `overrides.json` only |
-| `drift hide` | `excluded.json` only |
-| `drift author` | `projects/<slug>.ts` only (create-if-absent) |
-| `drift pin` | `projects/<slug>.ts` only (insert or flip `pin` property) |
-| `drift audit` | (no writes — read-only) |
-| (cache) | `.drift-cache.json` only |
+| Verb                            | File written                                              |
+| ------------------------------- | --------------------------------------------------------- |
+| `drift sync`                    | `sources.json` only                                       |
+| `drift keep` / `drift keep-all` | `overrides.json` only                                     |
+| `drift hide`                    | `excluded.json` only                                      |
+| `drift author`                  | `projects/<slug>.ts` only (create-if-absent)              |
+| `drift pin`                     | `projects/<slug>.ts` only (insert or flip `pin` property) |
+| `drift audit`                   | (no writes — read-only)                                   |
+| (cache)                         | `.drift-cache.json` only                                  |
 
 The integration layer never writes any of these files. Authored `projects/*.ts`
 overlays are written by the developer or by the sanctioned scaffold/flag verbs

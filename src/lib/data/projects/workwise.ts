@@ -13,7 +13,7 @@ export const workwise: AuthoredProject = {
 		role: 'lead',
 		collaboration: { team: 'Founders and Coders', employer: 'Founders and Coders', client: 'LIFT' },
 		contributionNote:
-			'24 PRs on a SvelteKit 5 workforce platform built for LIFT. Drove the response-state architecture (creation-date versioning, answers versioned not overwritten), the tile-based dashboard layout, database-driven status indicators, and a local Supabase-in-Docker dev loop with RLS-enforced data isolation. +16,600 / −9,000 lines.',
+			'24 PRs on a SvelteKit 5 workforce platform built for LIFT. Drove the response-state architecture (creation-date versioning, answers versioned not overwritten), the tile-based dashboard layout, database-driven status indicators, and a local Supabase-in-Docker dev loop with RLS-enforced data isolation. +16,600 / −9,000 lines.'
 	},
 	status: 'wip',
 	repoUrl: 'https://github.com/foundersandcoders/workwise',

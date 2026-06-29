@@ -32,9 +32,7 @@ type InProgressRaw = {
 type TrackedRaw = Record<string, { value?: unknown; baseOnMain?: unknown }>;
 
 describe('in-progress.json schema conformance', () => {
-	const entries = Object.entries(
-		inProgressManifest.inProgress as Record<string, InProgressRaw>
-	);
+	const entries = Object.entries(inProgressManifest.inProgress as Record<string, InProgressRaw>);
 
 	it('parses without error and has an inProgress key', () => {
 		expect(inProgressManifest).toHaveProperty('inProgress');
@@ -71,9 +69,7 @@ describe('in-progress.json schema conformance', () => {
 			for (const [slug, entry] of entries) {
 				const pipeline = Array.isArray(entry.pipeline) ? entry.pipeline : [];
 				if (entry.branch !== pipeline[0]) {
-					violations.push(
-						`${slug}: branch '${entry.branch}' !== pipeline[0] '${pipeline[0]}'`
-					);
+					violations.push(`${slug}: branch '${entry.branch}' !== pipeline[0] '${pipeline[0]}'`);
 				}
 			}
 			expect(violations, violations.join('\n')).toHaveLength(0);
@@ -95,9 +91,7 @@ describe('in-progress.json schema conformance', () => {
 				const tracked = (entry.tracked ?? {}) as TrackedRaw;
 				for (const field of Object.keys(tracked)) {
 					if (!validMetricFields.has(field)) {
-						violations.push(
-							`${slug}.tracked.${field}: not a recognised metric field`
-						);
+						violations.push(`${slug}.tracked.${field}: not a recognised metric field`);
 					}
 				}
 			}

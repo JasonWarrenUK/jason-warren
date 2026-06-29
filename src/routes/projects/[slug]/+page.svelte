@@ -81,8 +81,12 @@
 
 		<nav class="page__crossviews" aria-label="See this project in other views">
 			<a href={viewHref(base, 'map', data.project.slug)} class="page__view-link">View in map</a>
-			<a href={viewHref(base, 'timeline', data.project.slug)} class="page__view-link">View in timeline</a>
-			<a href={viewHref(base, 'toolkit', data.project.slug)} class="page__view-link">View in toolkit</a>
+			<a href={viewHref(base, 'timeline', data.project.slug)} class="page__view-link"
+				>View in timeline</a
+			>
+			<a href={viewHref(base, 'toolkit', data.project.slug)} class="page__view-link"
+				>View in toolkit</a
+			>
 		</nav>
 	</header>
 
