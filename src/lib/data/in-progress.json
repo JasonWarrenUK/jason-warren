@@ -1,0 +1,5 @@
+{
+	"$schema": "./in-progress.schema.json",
+	"_note": "Provisional metrics for in-flight work on unmerged branches, keyed by slug. Managed via `drift promote`. Public-visibility entries surface on the site until the branch lands and `drift sync` picks up the real numbers. See in-progress.schema.json for the full field contract.",
+	"inProgress": {}
+}

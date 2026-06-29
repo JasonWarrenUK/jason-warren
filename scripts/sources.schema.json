@@ -36,6 +36,10 @@
 					"type": "string",
 					"description": "Short SHA of HEAD at last sync."
 				},
+				"measuredRef": {
+					"type": "string",
+					"description": "Git ref the fingerprint was measured against (resolved default branch, e.g. 'main', or 'HEAD' when no default branch could be resolved). Metadata only; excluded from drift comparison via DRIFT_SKIP_FIELDS."
+				},
 				"commits": {
 					"type": "integer",
 					"minimum": 0,

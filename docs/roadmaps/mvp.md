@@ -12,7 +12,7 @@ The site is live and substantially built (full routes, graph/timeline/map/toolki
 | **Features** | 2FE.1, 2FE.2, 2FE.4, 2FE.5, 2FE.8 done; all connection views built (search, multi-select, cross-view continuity, relayout) | Polish pass (2FE.3) after 2FE.7; tech constellation (2FE.6) after M1 | 2FE.6 blocked on M1; 2FE.7 blocked on 2FE.6; 2FE.3 blocked on 2FE.7/2FE.8 |
 | **Design**   | Reasonable Colors tokens, dark mode                                                                                        | Visual direction (3DE.0) after M2                                    | All M3 tasks blocked on M2 completion                                     |
 | **Quality**  | Strict types, data-integrity tests, prerendered                                                                            | Test coverage (4QU.5) and OG coverage (4QU.4) after M3               | All M4 tasks blocked on M3; a11y (4QU.7) blocked on 4QU.1                 |
-| **Drift**    | 2.5k-line CLI, manifest registry, cache, verbs, Bun migration, boundary doc, config layer, tag taxonomy (5DR.4), engine schema (5DR.5), engine/integration split (5DR.6) | Branch awareness + staging (5DR.7) now that boundary is clean | Tests & docs (M6) blocked on M3 + M5; remaining verbs (5DR.7, 5DR.11, 5DR.13, 5DR.15-17) blocked on sequence |
+| **Drift**    | 2.5k-line CLI, manifest registry, cache, verbs, Bun migration, boundary doc, config layer, tag taxonomy (5DR.4), engine schema (5DR.5), engine/integration split (5DR.6), branch awareness + staging pipeline (5DR.7) | Audit verb (5DR.11), author/pin verbs (5DR.15/5DR.16), init scaffold (5DR.13) | Tests & docs (M6) blocked on M3 + M5; `init` (5DR.13) now unblocked (was blocked on 5DR.7); `hide` overlay (5DR.17) blocked on 5DR.16 |
 
 ---
 
@@ -168,19 +168,18 @@ _None._
 
 <a name="m5-todo"><h4>To Do (Milestone 5)</h4></a>
 
-_None._
+- [ ] 5DR.11. Drift `audit` verb: score every authored entry against the content-depth rubric (`docs/audits/content-depth.md`) and emit a per-entry tier report; the automated successor to the 1CO.1 manual audit (unblocked by 5DR.5, 5DR.6)
+- [ ] 5DR.15. `drift author <slug>` verb: create `src/lib/data/projects/<slug>.ts` from a template if absent, then open it in `$EDITOR` (unblocked by 5DR.6)
+- [ ] 5DR.16. `drift pin <slug>` verb: set `pin: true` in the slug's `.ts` overlay (creating the overlay if needed); pin/hide live only in overlays, never JSON (unblocked by 5DR.6)
 
 <a name="m5-blocked"><h4>Blocked (Milestone 5)</h4></a>
 
-- [ ] 5DR.7. Build subsumed in-repo backlog inside the decoupled design: branch awareness (Phase 5 of `drift-improvement-plan.md`) + `in-progress.json` staging pipeline (Phase 6) — **depends on 5DR.6**
-- [ ] 5DR.11. Drift `audit` verb: score every authored entry against the content-depth rubric (`docs/audits/content-depth.md`) and emit a per-entry tier report; the automated successor to the 1CO.1 manual audit — **depends on 5DR.5, 5DR.6**
-- [ ] 5DR.13. `drift init` scaffold verb: generate `src/lib/data/sources.local.json` with the correct structure but empty `paths`, replacing the manual `cp sources.local.json.example sources.local.json` step; also generate a `drift.config.ts` with the correct structure and sensible defaults if one does not already exist — **depends on 5DR.7**
-- [ ] 5DR.15. `drift author <slug>` verb: create `src/lib/data/projects/<slug>.ts` from a template if absent, then open it in `$EDITOR` — **depends on 5DR.6**
-- [ ] 5DR.16. `drift pin <slug>` verb: set `pin: true` in the slug's `.ts` overlay (creating the overlay if needed); pin/hide live only in overlays, never JSON — **depends on 5DR.6**
+- [ ] 5DR.13. `drift init` scaffold verb: generate `src/lib/data/sources.local.json` with the correct structure but empty `paths`, replacing the manual `cp sources.local.json.example sources.local.json` step; also generate a `drift.config.ts` with the correct structure and sensible defaults if one does not already exist (depends on 5DR.7, now unblocked)
 - [ ] 5DR.17. `drift hide <slug>` verb: set `hide: true` in the slug's `.ts` overlay (creating the overlay if needed) — **depends on 5DR.16** — ⚠️ name collision: 5DR.14 renamed `exclude` to `hide` (writes `excluded.json.slugs`); this verb will need a different name at build time (e.g. `overlay-hide` or integrated into 5DR.16)
 
 <a name="m5-done"><h4>Completed (Milestone 5)</h4></a>
 
+- [x] 5DR.7. Branch awareness + `in-progress.json` staging pipeline: fingerprint engine now resolves and measures against each repo's default branch (`origin/HEAD` to `main` to `master` to `HEAD` fallback); `measuredRef` recorded as metadata (excluded from drift comparison via `DRIFT_SKIP_FIELDS`); `git cat-file --batch` streaming for ref-aware LOC/language counting; `in-progress.json` committed data file (sibling to `sources.json`) with schema + `InProgressEntry`/`TrackedField` types; `drift promote` verb graduates in-progress entries; provisional values surface on the site at `override > synced > provisional > authored` precedence; graduation detection via `git merge-base --is-ancestor`; HEAD-fallback + in-progress advisory sections in the drift report; full test suite (schema, precedence, promote write-isolation, DRIFT_SKIP_FIELDS structural contract). Depends on 5DR.6; unblocks 5DR.13.
 - [x] 5DR.0. Drift CLI foundation: subcommand dispatcher, async fingerprinting + cache, manifest-driven registry, shared tag taxonomy, gum interactive UX, `snapshot` / `report` / `hide` verbs (shipped in-repo; see `docs/drift-improvement-plan.md`)
 - [x] 5DR.12. Migrate repo package manager from npm to Bun: switch lockfile (`bun install`, delete `package-lock.json`), update the four drift scripts in `package.json` from `node scripts/check-drift.js` to `bun run`, confirm Vite/Vitest/svelte-check all run under Bun — the portfolio should dogfood the preferred toolkit, and a Bun-native runtime is a prerequisite for packaging Drift as a distributable CLI
 - [x] 5DR.14. Rename Drift verbs so they signpost intent more clearly (`update`→`sync`, `accept`→`keep`, `accept-all`→`keep-all`, `exclude`→`hide`); updates `KNOWN_VERBS`, both dispatch switches, both help objects, menu rows, `package.json` scripts, data-file notes, hook example, and docs. Hard cut — no aliases. Breaking change to the CLI surface — gates the engine split (5DR.6) and all new verbs — **depends on 5DR.0**
@@ -338,16 +337,16 @@ flowchart TD
 	5DR.4["`*5DR.4*<br/>**Drift**<br/>tag taxonomy relocation`"]:::done
 	5DR.5["`*5DR.5*<br/>**Drift**<br/>engine data schema`"]:::done
 	5DR.6["`*5DR.6*<br/>**Drift**<br/>engine / integration split`"]:::done
-	5DR.7["`*5DR.7*<br/>**Drift**<br/>branch awareness + staging`"]:::blocked
+	5DR.7["`*5DR.7*<br/>**Drift**<br/>branch awareness + staging`"]:::done
 	5DR.8["`*5DR.8*<br/>**Drift**<br/>engine test suite`"]:::blocked
 	5DR.9["`*5DR.9*<br/>**Drift**<br/>Drift docs`"]:::blocked
 	5DR.10["`*5DR.10*<br/>**Drift**<br/>authoring guide`"]:::blocked
-	5DR.11["`*5DR.11*<br/>**Drift**<br/>audit verb`"]:::blocked
+	5DR.11["`*5DR.11*<br/>**Drift**<br/>audit verb`"]:::open
 	5DR.12["`*5DR.12*<br/>**Drift**<br/>npm → Bun migration`"]:::done
 	5DR.13["`*5DR.13*<br/>**Drift**<br/>init scaffold verb`"]:::blocked
 	5DR.14["`*5DR.14*<br/>**Drift**<br/>rename verbs`"]:::done
-	5DR.15["`*5DR.15*<br/>**Drift**<br/>author verb`"]:::blocked
-	5DR.16["`*5DR.16*<br/>**Drift**<br/>pin verb`"]:::blocked
+	5DR.15["`*5DR.15*<br/>**Drift**<br/>author verb`"]:::open
+	5DR.16["`*5DR.16*<br/>**Drift**<br/>pin verb`"]:::open
 	5DR.17["`*5DR.17*<br/>**Drift**<br/>hide verb`"]:::blocked
 
 	%% M5 — deps

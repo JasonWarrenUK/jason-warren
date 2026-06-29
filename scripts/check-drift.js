@@ -18,7 +18,7 @@
  *   drift --full                      # field-level diff across ALL repos (no HEAD gate)
  */
 
-import { execFile, spawnSync } from 'child_process';
+import { execFile, spawn, spawnSync } from 'child_process';
 import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from 'fs';
 import { join } from 'path';
 import { fileURLToPath } from 'url';
@@ -70,6 +70,7 @@ const overridesPath = config.paths.overrides;
 const excludedPath = config.paths.excluded;
 const cachePath = config.paths.cache;
 const projectsDir = config.paths.projects;
+const inProgressPath = config.paths.inProgress;
 
 // ---------------------------------------------------------------------------
 // File helpers
@@ -153,19 +154,128 @@ const ARRAY_FINGERPRINT_FIELDS = new Set(
 	)
 );
 
+// Fields excluded from drift comparison even though they live in the schema
+// and persist in sources.json. These are metadata / provenance fields; their
+// changes are surfaced via advisory report sections, not as field drift.
+const DRIFT_SKIP_FIELDS = new Set(['measuredRef']);
+
 // EXTENSION_LANGUAGE is imported from scripts/tag-taxonomy.js above.
 // That module is the single source of truth shared between the CLI and the app.
 
 /**
- * Fetch the tracked file listing for a repo. Called once per repo and shared
- * between detectLanguages and countLinesOfCode to avoid a double git ls-files spawn.
+ * Fetch the tracked file listing for a repo at a given ref.
+ * Called once per repo and shared between detectLanguages and countLinesOfCode
+ * to avoid a double git spawn.
+ *
+ * Uses `git ls-tree -r --name-only <ref>` so the result reflects the ref's
+ * tree rather than the checked-out working tree.
  *
  * @param {string} repoPath
- * @returns {Promise<string | null>} Raw ls-files output, or null on git failure.
+ * @param {string} [ref='HEAD']
+ * @returns {Promise<string | null>} Raw newline-separated file listing, or null on git failure.
  */
-async function listFiles(repoPath) {
-	const r = await git(['ls-files'], repoPath);
+async function listFiles(repoPath, ref = 'HEAD') {
+	const r = await git(['ls-tree', '-r', '--name-only', ref], repoPath);
 	return r.ok ? r.out : null;
+}
+
+/**
+ * Count lines across a set of source files in a repo at a given ref using
+ * `git cat-file --batch`: a single long-lived child process that streams
+ * all blob contents, avoiding a per-file spawn storm.
+ *
+ * Accepts the pre-fetched file listing (from listFiles) filtered to source
+ * files by the EXTENSION_LANGUAGE gate. Only source files (those that pass
+ * the extension gate) are measured, matching the old readFileSync behaviour.
+ *
+ * @param {string} repoPath
+ * @param {string | null} listing  Result of listFiles(), or null.
+ * @param {string} [ref='HEAD']
+ * @returns {Promise<number | null>}
+ */
+async function countLinesViaBlobs(repoPath, listing, ref = 'HEAD') {
+	if (!listing) return null;
+
+	// Build the list of <ref>:<path> specs for source files only.
+	const specs = listing
+		.split('\n')
+		.filter((file) => {
+			if (!file) return false;
+			const dot = file.lastIndexOf('.');
+			if (dot < 0) return false;
+			return !!EXTENSION_LANGUAGE[file.slice(dot + 1).toLowerCase()];
+		})
+		.map((file) => `${ref}:${file}`);
+
+	if (specs.length === 0) return 0;
+
+	return new Promise((resolve) => {
+		let total = 0;
+		let leftover = '';
+		let inBlob = false; // currently consuming blob content lines
+		let blobBytesRemaining = 0;
+		let blobLinesBuffer = '';
+
+		const child = spawn('git', ['cat-file', '--batch'], {
+			cwd: repoPath,
+			stdio: ['pipe', 'pipe', 'ignore']
+		});
+
+		child.stdout.on('data', (chunk) => {
+			// We use line-count semantics (split on '\n') rather than byte-exact
+			// framing to keep the parser simple. 'git cat-file --batch' emits:
+			//   <sha> blob <size>\n<contents>\n
+			// We accumulate output into a string buffer and process line-by-line.
+			leftover += chunk.toString('utf8');
+			const lines = leftover.split('\n');
+			leftover = lines.pop() ?? ''; // last incomplete line stays in buffer
+
+			for (const line of lines) {
+				if (!inBlob) {
+					// Header line: "<sha> blob <size>" or "<ref> missing"
+					const match = line.match(/^[0-9a-f]+ blob (\d+)/);
+					if (match) {
+						// Start counting this blob's content lines.
+						inBlob = true;
+						blobBytesRemaining = Number(match[1]);
+						blobLinesBuffer = '';
+					}
+					// else: missing, ambiguous, or empty; skip
+				} else {
+					// Content line inside a blob.
+					// Track approximate byte consumption; once we have seen at
+					// least blobBytesRemaining bytes (content + the trailing \n
+					// that git cat-file emits) we close the blob. Because we
+					// operate on decoded UTF-8 strings, we use an approximation
+					// (byte length ≈ char length for typical source code).
+					blobLinesBuffer += line + '\n';
+					blobBytesRemaining -= Buffer.byteLength(line + '\n');
+					if (blobBytesRemaining <= 0) {
+						// Blob complete: count lines.
+						if (blobLinesBuffer.length > 0) {
+							total += blobLinesBuffer.split('\n').length - 1;
+						}
+						inBlob = false;
+						blobLinesBuffer = '';
+					}
+				}
+			}
+		});
+
+		child.on('close', () => {
+			// Flush any remaining partial blob.
+			if (inBlob && blobLinesBuffer.length > 0) {
+				total += blobLinesBuffer.split('\n').length - 1;
+			}
+			resolve(total > 0 ? total : null);
+		});
+
+		child.on('error', () => resolve(null));
+
+		// Write all specs to stdin and close the stream.
+		child.stdin.write(specs.join('\n') + '\n');
+		child.stdin.end();
+	});
 }
 
 /**
@@ -190,28 +300,16 @@ function detectLanguages(listing) {
 
 /**
  * Overall codebase size: total lines across tracked source files (all authors).
- * Reuses the same extension gate as `detectLanguages`, so config, lockfiles, and
- * assets stay out of the count.
+ * Delegates to countLinesViaBlobs which uses a single `git cat-file --batch`
+ * subprocess so the count reflects the measured ref, not the working tree.
  *
  * @param {string} repoPath
  * @param {string | null} listing  Result of listFiles(), or null.
+ * @param {string} [ref='HEAD']
+ * @returns {Promise<number | null>}
  */
-function countLinesOfCode(repoPath, listing) {
-	if (!listing) return null;
-	let total = 0;
-	for (const file of listing.split('\n')) {
-		const dot = file.lastIndexOf('.');
-		if (dot < 0) continue;
-		if (!EXTENSION_LANGUAGE[file.slice(dot + 1).toLowerCase()]) continue;
-		try {
-			const content = readFileSync(join(repoPath, file), 'utf8');
-			if (content.length === 0) continue;
-			total += content.split('\n').length;
-		} catch {
-			// Unreadable or vanished between ls-files and read — skip it.
-		}
-	}
-	return total;
+async function countLinesOfCode(repoPath, listing, ref = 'HEAD') {
+	return countLinesViaBlobs(repoPath, listing, ref);
 }
 
 /**
@@ -223,11 +321,11 @@ function countLinesOfCode(repoPath, listing) {
  *   recent — restrict to the trailing RECENT_WINDOW (default: all of history)
  * @returns {number | null}
  */
-async function countCommits(repoPath, { mine = false, recent = false } = {}) {
+async function countCommits(repoPath, { mine = false, recent = false, ref = 'HEAD' } = {}) {
 	const flags = ['rev-list', '--count'];
 	if (recent) flags.push(`--since=${RECENT_WINDOW}`);
 	if (mine) flags.push('--extended-regexp', `--author=${AUTHOR_PATTERN}`);
-	flags.push('HEAD');
+	flags.push(ref);
 	const r = await git(flags, repoPath);
 	return r.ok ? Number(r.out) : null;
 }
@@ -241,11 +339,11 @@ async function countCommits(repoPath, { mine = false, recent = false } = {}) {
  *   recent — restrict to the trailing RECENT_WINDOW (default: all of history)
  * @returns {{ added: number | null; removed: number | null }}
  */
-async function countChurn(repoPath, { mine = false, recent = false } = {}) {
+async function countChurn(repoPath, { mine = false, recent = false, ref = 'HEAD' } = {}) {
 	const flags = ['log'];
 	if (recent) flags.push(`--since=${RECENT_WINDOW}`);
 	if (mine) flags.push('--extended-regexp', `--author=${AUTHOR_PATTERN}`);
-	flags.push('--pretty=tformat:', '--numstat', 'HEAD');
+	flags.push('--pretty=tformat:', '--numstat', ref);
 	const r = await git(flags, repoPath);
 	if (!r.ok) return { added: null, removed: null };
 	let added = 0;
@@ -260,13 +358,48 @@ async function countChurn(repoPath, { mine = false, recent = false } = {}) {
 	return { added, removed };
 }
 
+/**
+ * Resolve the default branch for a repo so fingerprint metrics are measured
+ * against the canonical project state rather than whatever is checked out.
+ *
+ * Resolution order:
+ *   1. `git rev-parse --abbrev-ref origin/HEAD` → strip "origin/" prefix.
+ *      This is the authoritative remote default (set by `git remote set-head`
+ *      or `git clone`). Returns `{ ref, fellBack: false }` on success.
+ *   2. Try `main`, then `master` via `git rev-parse --verify --quiet <name>`.
+ *      Returns `{ ref, fellBack: false }` on the first local branch that exists.
+ *   3. Fall back to bare `HEAD`. Returns `{ ref: 'HEAD', fellBack: true }`.
+ *      `fellBack: true` drives the advisory report section.
+ *
+ * @param {string} repoPath
+ * @returns {Promise<{ ref: string; fellBack: boolean }>}
+ */
+async function defaultBranch(repoPath) {
+	// 1. Remote default via origin/HEAD symbolic ref.
+	const originHead = await git(['rev-parse', '--abbrev-ref', 'origin/HEAD'], repoPath);
+	if (originHead.ok && originHead.out && !originHead.out.startsWith('origin/HEAD')) {
+		// Strip the "origin/" prefix to get the bare branch name.
+		const ref = originHead.out.replace(/^origin\//, '');
+		return { ref, fellBack: false };
+	}
+
+	// 2. Known default-branch names in preference order.
+	for (const candidate of ['main', 'master']) {
+		const r = await git(['rev-parse', '--verify', '--quiet', candidate], repoPath);
+		if (r.ok) return { ref: candidate, fellBack: false };
+	}
+
+	// 3. Last resort: measure whatever is checked out.
+	return { ref: 'HEAD', fellBack: true };
+}
+
 /** ISO date of the earliest root commit, the project's inception. */
-async function getFirstCommit(repoPath) {
-	const roots = await git(['log', '--max-parents=0', '--format=%cs'], repoPath);
+async function getFirstCommit(repoPath, ref = 'HEAD') {
+	const roots = await git(['log', '--max-parents=0', '--format=%cs', ref], repoPath);
 	if (roots.ok && roots.out) {
 		return roots.out.split('\n').sort()[0];
 	}
-	const reversed = await git(['log', '--reverse', '--format=%cs'], repoPath);
+	const reversed = await git(['log', '--reverse', '--format=%cs', ref], repoPath);
 	return reversed.ok && reversed.out ? reversed.out.split('\n')[0] : null;
 }
 
@@ -426,16 +559,31 @@ function normaliseRemote(rawRemote) {
  * are launched concurrently via Promise.all so the per-repo latency is the
  * slowest individual call (typically the full-history churn log), not their sum.
  *
- * Returns null if the path is not a git repo or HEAD is unresolvable.
+ * Returns null if the path is not a git repo or the resolved ref is unresolvable.
+ *
+ * @param {string} repoPath
+ * @param {{ ref?: string; fellBack?: boolean }} [resolvedRef]
+ *   Optional pre-resolved ref from defaultBranch(). When omitted, the function
+ *   resolves the ref internally. The computeDrift pool hoists the resolution so
+ *   the cache fast-path and getFingerprint share the same ref without a duplicate
+ *   defaultBranch() call.
  */
-async function getFingerprint(repoPath) {
+async function getFingerprint(repoPath, resolvedRef) {
 	if (!existsSync(join(repoPath, '.git'))) return null;
-	const headR = await git(['rev-parse', '--short', 'HEAD'], repoPath);
+
+	// Resolve the default branch once. This drives all seven previously HEAD-bound
+	// measurement sites so metrics reflect the canonical project state, not whatever
+	// branch happens to be checked out locally.
+	const { ref } = resolvedRef ?? (await defaultBranch(repoPath));
+
+	// Resolve the short SHA of the measured ref. Bails to null for empty/corrupt repos.
+	const headR = await git(['rev-parse', '--short', ref], repoPath);
 	if (!headR.ok || !headR.out) return null;
 	const head = headR.out;
 
 	// Fan out all independent git calls concurrently. Within a single repo, none
 	// of these depend on each other's results, so they can all run in parallel.
+	// Each call receives `ref` so it measures the resolved default branch.
 	const [
 		lcR,
 		commits,
@@ -450,30 +598,35 @@ async function getFingerprint(repoPath) {
 		firstCommit,
 		listing
 	] = await Promise.all([
-		git(['log', '-1', '--format=%cs'], repoPath), // lastCommit
-		countCommits(repoPath), // all, lifetime
-		countCommits(repoPath, { recent: true }), // all, recent
-		countCommits(repoPath, { mine: true }), // mine, lifetime
-		countCommits(repoPath, { mine: true, recent: true }), // mine, recent
-		countChurn(repoPath, { mine: true }), // mine, lifetime
-		countChurn(repoPath), // all, lifetime
-		countChurn(repoPath, { mine: true, recent: true }), // mine, recent
-		countChurn(repoPath, { recent: true }), // all, recent
-		git(['remote', 'get-url', 'origin'], repoPath), // remote URL
-		getFirstCommit(repoPath), // earliest commit date
-		listFiles(repoPath) // shared ls-files listing
+		git(['log', '-1', '--format=%cs', ref], repoPath), // lastCommit
+		countCommits(repoPath, { ref }), // all, lifetime
+		countCommits(repoPath, { recent: true, ref }), // all, recent
+		countCommits(repoPath, { mine: true, ref }), // mine, lifetime
+		countCommits(repoPath, { mine: true, recent: true, ref }), // mine, recent
+		countChurn(repoPath, { mine: true, ref }), // mine, lifetime
+		countChurn(repoPath, { ref }), // all, lifetime
+		countChurn(repoPath, { mine: true, recent: true, ref }), // mine, recent
+		countChurn(repoPath, { recent: true, ref }), // all, recent
+		git(['remote', 'get-url', 'origin'], repoPath), // remote URL (ref-independent)
+		getFirstCommit(repoPath, ref), // earliest commit date on default branch
+		listFiles(repoPath, ref) // ref-aware file listing (git ls-tree)
 	]);
 
 	const lastCommit = lcR.ok ? lcR.out : null;
 	const remote = normaliseRemote(remoteR.ok ? remoteR.out : null);
 	const { runtime, framework, database } = detectDependencies(repoPath);
 
-	// detectLanguages and countLinesOfCode share the single ls-files listing.
+	// detectLanguages uses the ref-aware listing; countLinesOfCode reads blobs
+	// from the ref via git cat-file --batch (no working-tree readFileSync).
 	const languages = detectLanguages(listing);
-	const linesOfCode = countLinesOfCode(repoPath, listing);
+	const linesOfCode = await countLinesOfCode(repoPath, listing, ref);
 
 	return {
 		head,
+		// Record which ref was measured. Excluded from drift comparison (DRIFT_SKIP_FIELDS)
+		// so a branch rename does not register as field drift. The HEAD-fallback advisory
+		// report section surfaces the signal when fellBack is true.
+		measuredRef: ref,
 		commits,
 		commitsRecentAll,
 		commitsMine,
@@ -603,6 +756,9 @@ function validateManifest(manifest) {
 function diffFingerprint(saved, current) {
 	const diffs = [];
 	for (const field of FINGERPRINT_FIELDS) {
+		// Metadata fields are excluded from drift comparison; changes are surfaced
+		// via dedicated advisory report sections, not as field drift entries.
+		if (DRIFT_SKIP_FIELDS.has(field)) continue;
 		const now = current[field];
 		const was = saved ? saved[field] : undefined;
 		if (ARRAY_FINGERPRINT_FIELDS.has(field)) {
@@ -715,6 +871,14 @@ function loadManifests() {
 		// No overrides file or unreadable — fine.
 	}
 
+	// Load in-progress work entries (best-effort: absence is the normal state).
+	let inProgress = {};
+	try {
+		inProgress = JSON.parse(readFileSync(inProgressPath, 'utf8')).inProgress ?? {};
+	} catch {
+		// No in-progress file or unreadable: fine.
+	}
+
 	let localPaths = {};
 	if (existsSync(localPath)) {
 		try {
@@ -731,7 +895,7 @@ function loadManifests() {
 	// Load per-machine HEAD-SHA cache (best-effort: missing/unreadable is silent).
 	const cache = loadCache();
 
-	return { manifest, overrideEntries, localPaths, cache };
+	return { manifest, overrideEntries, localPaths, cache, inProgress };
 }
 
 // ---------------------------------------------------------------------------
@@ -759,7 +923,7 @@ function loadManifests() {
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
 
 async function computeDrift(
-	{ manifest, overrideEntries, localPaths, cache },
+	{ manifest, overrideEntries, localPaths, cache, inProgress = {} },
 	{ full = false, onProgress = null, useCache = false } = {}
 ) {
 	const { excludedRepoNames } = loadExcluded();
@@ -798,15 +962,24 @@ async function computeDrift(
 				continue;
 			}
 
-			// HEAD+TTL cache check: skip full fingerprint when HEAD is unchanged and
-			// the cached entry is fresh enough. Never cache null results.
+			// Resolve the default branch once per entry. The resolved ref is shared
+			// between the cache fast-path SHA comparison and getFingerprint so we
+			// never resolve the branch twice and the cache key always matches the
+			// measured ref (not bare HEAD).
+			const resolvedRef = await defaultBranch(repoPath);
+			const { ref, fellBack } = resolvedRef;
+
+			// Ref+TTL cache check: skip full fingerprint when the measured ref's
+			// tip SHA is unchanged and the cached entry is fresh enough.
+			// Never cache null results.
 			let current = null;
 			let servedFromCache = false;
 			if (useCache) {
 				const entry = updatedCache[slug];
 				if (entry && entry.fingerprint) {
-					// Fast HEAD check via a cheap git call before the full fingerprint.
-					const liveHeadR = await git(['rev-parse', '--short', 'HEAD'], repoPath);
+					// Fast SHA check against the RESOLVED ref (not bare HEAD) so the
+					// cache key stays coherent when the default branch is not checked out.
+					const liveHeadR = await git(['rev-parse', '--short', ref], repoPath);
 					if (liveHeadR.ok && liveHeadR.out === entry.head) {
 						const age = nowMs - Date.parse(entry.syncedAt);
 						if (age < CACHE_TTL_MS) {
@@ -818,7 +991,8 @@ async function computeDrift(
 			}
 
 			if (!current) {
-				current = await getFingerprint(repoPath);
+				// Pass the pre-resolved ref to avoid a redundant defaultBranch() call.
+				current = await getFingerprint(repoPath, resolvedRef);
 				// Update cache for next run — only for valid fingerprints.
 				if (current) {
 					updatedCache[slug] = { head: current.head, fingerprint: current, syncedAt: nowISO };
@@ -836,7 +1010,10 @@ async function computeDrift(
 				continue;
 			}
 
-			results[i] = { slug, repoPath, saved, current, servedFromCache };
+			// Carry fellBack alongside the fingerprint so the report renderer can
+			// surface the HEAD-fallback advisory for this repo without threading
+			// extra state through computeDrift's return shape.
+			results[i] = { slug, repoPath, saved, current, servedFromCache, fellBack };
 			completed++;
 			onProgress?.({ index: completed, total, slug });
 		}
@@ -890,12 +1067,17 @@ async function computeDrift(
 
 		if (current.head !== saved.head) {
 			const delta = current.commits - saved.commits;
+			// Negative delta signals a history rewrite or branch switch (the measured ref
+			// changed so the baseline is ahead of the current count). Flag it so the
+			// renderer can annotate rather than displaying a misleading bare "-N".
+			const deltaUnreliable = delta < 0;
 			changed.push({
 				slug,
 				path: repoPath,
 				from: { head: saved.head, commits: saved.commits, lastCommit: saved.lastCommit },
 				to: current,
-				delta
+				delta,
+				deltaUnreliable
 			});
 		}
 
@@ -950,7 +1132,55 @@ async function computeDrift(
 		(r) => !excludedRepoNames.has(r.name) && !excludedRepoNames.has(r.normalised)
 	);
 
-	return { changed, missing, conflicts, fresh, filteredNew, fieldDrift };
+	// ---------------------------------------------------------------------------
+	// Graduation detection (Phase 6 staging pipeline).
+	//
+	// For each in-progress entry whose slug has a resolved local repo, test whether
+	// the branch has landed in the next pipeline stage via git merge-base --is-ancestor.
+	// Produces an inProgressStatus array for the report renderer.
+	// ---------------------------------------------------------------------------
+
+	const inProgressStatus = [];
+
+	for (const [slug, entry] of Object.entries(inProgress)) {
+		const repoPath = localPaths[slug];
+		if (!repoPath || !existsSync(join(repoPath, '.git'))) continue; // skip unresolvable repos
+
+		const { branch, pipeline, visibility, tracked } = entry;
+
+		// Walk the pipeline to find how far the branch has advanced.
+		// pipeline[0] is the branch tip (source); subsequent entries are merge targets.
+		// Find the furthest stage the branch tip has landed in.
+		let landedStage = 0; // 0 = still on source branch (has not landed anywhere yet)
+		for (let stageIdx = 1; stageIdx < pipeline.length; stageIdx++) {
+			const target = pipeline[stageIdx];
+			// --is-ancestor exits 0 when branchTip is an ancestor of target (i.e. already merged).
+			const r = await git(['merge-base', '--is-ancestor', branch, target], repoPath);
+			if (r.ok) {
+				landedStage = stageIdx;
+			} else {
+				break; // Not yet landed at this stage; stop walking.
+			}
+		}
+
+		const landed = landedStage >= pipeline.length - 1; // landed in the final target
+
+		for (const [field, { value, baseOnMain }] of Object.entries(tracked)) {
+			inProgressStatus.push({
+				slug,
+				field,
+				branch,
+				pipeline,
+				stage: landedStage,
+				value,
+				baseOnMain,
+				landed,
+				visibility
+			});
+		}
+	}
+
+	return { changed, missing, conflicts, fresh, filteredNew, fieldDrift, inProgressStatus };
 }
 
 // ---------------------------------------------------------------------------
@@ -963,18 +1193,25 @@ async function computeDrift(
 // ---------------------------------------------------------------------------
 
 function renderReportMarkdown(result, manifest, full) {
-	const { changed, missing, conflicts, filteredNew, fieldDrift } = result;
+	const { changed, missing, conflicts, filteredNew, fieldDrift, inProgressStatus = [] } = result;
 	const lines = [];
 
 	lines.push(`# Portfolio source drift report`);
 	lines.push(`_Last synced: ${manifest.lastSyncedAt}_`);
 	lines.push('');
 
+	// Repos where no default branch could be resolved: measured bare HEAD.
+	const headFallbacks = Object.entries(result.fresh ?? {})
+		.filter(([, fp]) => fp.measuredRef === 'HEAD')
+		.map(([slug]) => slug);
+
 	const allClear =
 		changed.length === 0 &&
 		filteredNew.length === 0 &&
 		missing.length === 0 &&
 		conflicts.length === 0 &&
+		headFallbacks.length === 0 &&
+		inProgressStatus.length === 0 &&
 		(!full || fieldDrift.length === 0);
 
 	if (allClear) {
@@ -989,10 +1226,15 @@ function renderReportMarkdown(result, manifest, full) {
 		lines.push('');
 		for (const r of changed) {
 			const dir = r.delta > 0 ? '+' : '';
+			// Annotate negative deltas (history rewrite or branch switch) instead of
+			// rendering a misleading bare "-N commits".
+			const deltaStr = r.deltaUnreliable
+				? `${r.delta} commits _(baseline ahead, history rewrite or branch change?)_`
+				: `${dir}${r.delta} commits`;
 			lines.push(`### ${r.slug}`);
 			lines.push('');
 			lines.push(
-				`\`${r.from.head}\` → \`${r.to.head}\` · ${dir}${r.delta} commits · first: ${r.to.firstCommit ?? '?'}, last: ${r.to.lastCommit}`
+				`\`${r.from.head}\` → \`${r.to.head}\` · ${deltaStr} · first: ${r.to.firstCommit ?? '?'}, last: ${r.to.lastCommit}`
 			);
 			lines.push('');
 			lines.push(`size: ${r.to.linesOfCode ?? '?'} loc`);
@@ -1073,6 +1315,35 @@ function renderReportMarkdown(result, manifest, full) {
 		lines.push('');
 		for (const r of missing) {
 			lines.push(`- ${r.slug}: ${r.reason}`);
+		}
+		lines.push('');
+	}
+
+	if (headFallbacks.length > 0) {
+		lines.push(`## Repos measured on bare HEAD (${headFallbacks.length})`);
+		lines.push('');
+		lines.push(
+			'These repos have no resolvable default branch (`origin/HEAD`, `main`, or `master`). ' +
+				'Metrics reflect the currently checked-out branch, not the canonical default. ' +
+				'Run `git remote set-head origin --auto` in the repo to fix.'
+		);
+		lines.push('');
+		for (const slug of headFallbacks) {
+			lines.push(`- \`${slug}\``);
+		}
+		lines.push('');
+	}
+
+	if (inProgressStatus.length > 0) {
+		lines.push(`## In-progress work (${inProgressStatus.length})`);
+		lines.push('');
+		for (const s of inProgressStatus) {
+			const target = s.pipeline[s.pipeline.length - 1];
+			const pipelinePos = `pipeline ${s.stage}/${s.pipeline.length - 1}`;
+			const landedNote = s.landed ? ' (landed, run `drift promote`)' : '';
+			lines.push(
+				`- \`${s.slug}.${s.field}\`: ${s.value} on \`${s.branch}\` (${s.baseOnMain} on \`${target}\`), ${pipelinePos}${landedNote}`
+			);
 		}
 		lines.push('');
 	}
@@ -1266,7 +1537,7 @@ function renderCardPlain({ slug, current, fields, firstCard = false, palette }) 
 // ---------------------------------------------------------------------------
 
 function runReport({ result, manifest, palette, json, full, useGum }) {
-	const { changed, missing, conflicts, filteredNew, fieldDrift } = result;
+	const { changed, missing, conflicts, filteredNew, fieldDrift, inProgressStatus = [] } = result;
 	const { RESET, BOLD, GREEN, YELLOW, CYAN, DIM } = palette;
 
 	// Machine-readable mode: emit JSON and suppress the human report entirely.
@@ -1274,7 +1545,7 @@ function runReport({ result, manifest, palette, json, full, useGum }) {
 	// escape sequences escape even if --json is omitted and output is piped.
 	// This branch is structurally first: --json can never reach the gum path.
 	if (json) {
-		const payload = { changed, conflicts, filteredNew, missing };
+		const payload = { changed, conflicts, filteredNew, missing, inProgressStatus };
 		if (full) payload.fieldDrift = fieldDrift;
 		process.stdout.write(JSON.stringify(payload, null, 2) + '\n');
 		return;
@@ -1296,11 +1567,18 @@ function runReport({ result, manifest, palette, json, full, useGum }) {
 		`\n${BOLD}Portfolio source drift report${RESET} ${DIM}(${manifest.lastSyncedAt})${RESET}\n`
 	);
 
+	// Repos where no default branch could be resolved: measured bare HEAD.
+	const headFallbacks = Object.entries(result.fresh ?? {})
+		.filter(([, fp]) => fp.measuredRef === 'HEAD')
+		.map(([slug]) => slug);
+
 	const allClear =
 		changed.length === 0 &&
 		filteredNew.length === 0 &&
 		missing.length === 0 &&
 		conflicts.length === 0 &&
+		headFallbacks.length === 0 &&
+		inProgressStatus.length === 0 &&
 		(!full || fieldDrift.length === 0);
 
 	if (allClear) {
@@ -1314,9 +1592,13 @@ function runReport({ result, manifest, palette, json, full, useGum }) {
 		console.log(`${YELLOW}${BOLD}Changed repos (${changed.length}):${RESET}`);
 		for (const r of changed) {
 			const dir = r.delta > 0 ? '+' : '';
+			// Annotate negative deltas (history rewrite or branch switch).
+			const deltaStr = r.deltaUnreliable
+				? `${r.delta} commits ${YELLOW}(baseline ahead, history rewrite or branch change?)${RESET}`
+				: `${dir}${r.delta} commits`;
 			console.log(`  ${CYAN}${r.slug}${RESET}`);
 			console.log(
-				`    ${r.from.head} → ${r.to.head}  (${dir}${r.delta} commits, first: ${r.to.firstCommit ?? '?'}, last: ${r.to.lastCommit})`
+				`    ${r.from.head} → ${r.to.head}  (${deltaStr}, first: ${r.to.firstCommit ?? '?'}, last: ${r.to.lastCommit})`
 			);
 			// Commits: all/mine × lifetime/recent
 			const cAll = r.to.commits ?? '?';
@@ -1389,6 +1671,40 @@ function runReport({ result, manifest, palette, json, full, useGum }) {
 		console.log(`${DIM}${BOLD}Repos without local paths (${missing.length}):${RESET}`);
 		for (const r of missing) {
 			console.log(`  ${DIM}${r.slug}: ${r.reason}${RESET}`);
+		}
+		console.log();
+	}
+
+	if (headFallbacks.length > 0) {
+		console.log(`${YELLOW}${BOLD}Repos measured on bare HEAD (${headFallbacks.length}):${RESET}`);
+		console.log(
+			`  ${YELLOW}No resolvable default branch (origin/HEAD, main, master). Metrics reflect${RESET}`
+		);
+		console.log(
+			`  ${YELLOW}the checked-out branch. Run \`git remote set-head origin --auto\` to fix.${RESET}`
+		);
+		for (const slug of headFallbacks) {
+			console.log(`  ${YELLOW}${slug}${RESET}`);
+		}
+		console.log();
+	}
+
+	if (inProgressStatus.length > 0) {
+		console.log(`${BOLD}In-progress work (${inProgressStatus.length}):${RESET}`);
+		for (const s of inProgressStatus) {
+			const target = s.pipeline[s.pipeline.length - 1];
+			const pipelinePos = `pipeline ${s.stage}/${s.pipeline.length - 1}`;
+			if (s.landed) {
+				// Green: ready to promote.
+				console.log(
+					`  ${GREEN}${s.slug}.${s.field}: ${s.value} on \`${s.branch}\` (${s.baseOnMain} on \`${target}\`), ${pipelinePos}, landed. Run \`drift promote ${s.slug} ${s.field}\`${RESET}`
+				);
+			} else {
+				// Dim/cyan: still in flight.
+				console.log(
+					`  ${CYAN}${s.slug}.${s.field}${RESET}${DIM}: ${s.value} on \`${s.branch}\` (${s.baseOnMain} on \`${target}\`), ${pipelinePos}${RESET}`
+				);
+			}
 		}
 		console.log();
 	}
@@ -1666,6 +1982,87 @@ function runExclude({ args, manifest, palette }) {
 	process.stdout.write(
 		`${GREEN}${BOLD}Hidden:${RESET} '${slug}' added to excluded.json.slugs.\n` +
 			`Rebuild the site to remove it from the public portfolio.\n`
+	);
+}
+
+// ---------------------------------------------------------------------------
+// promote verb
+// ---------------------------------------------------------------------------
+
+/**
+ * Graduates an in-progress entry out of in-progress.json once its branch has
+ * landed. Writes ONLY in-progress.json (write-isolation contract).
+ *
+ * The tracked value graduates into sources.json on the next `drift sync` run
+ * automatically: now that the branch has merged into the default branch,
+ * getFingerprint (measuring the default branch) will pick up the higher counts
+ * without any manual write to sources.json.
+ *
+ * @param {{ args: string[], result: object, palette: object }} options
+ */
+function runPromote({ args, palette }) {
+	const { GREEN, YELLOW, BOLD, RED, RESET, DIM } = palette;
+	const slug = args[0]?.trim();
+	const fieldArg = args[1]?.trim();
+
+	if (!slug) {
+		process.stderr.write(`${RED}Usage: drift promote <slug> [field]${RESET}\n`);
+		process.exit(1);
+	}
+
+	// Load the current in-progress manifest.
+	let ipManifest;
+	try {
+		ipManifest = JSON.parse(readFileSync(inProgressPath, 'utf8'));
+	} catch {
+		process.stderr.write(
+			`${RED}Error: could not read in-progress.json at ${inProgressPath}${RESET}\n`
+		);
+		process.exit(1);
+	}
+
+	const entry = ipManifest.inProgress?.[slug];
+	if (!entry) {
+		process.stdout.write(
+			`${YELLOW}Warning: '${slug}' is not in in-progress.json, nothing to promote.${RESET}\n`
+		);
+		return;
+	}
+
+	if (fieldArg) {
+		// Promote a single tracked field.
+		if (!entry.tracked?.[fieldArg]) {
+			process.stderr.write(
+				`${RED}Error: field '${fieldArg}' is not tracked for '${slug}' in in-progress.json${RESET}\n`
+			);
+			process.exit(1);
+		}
+		const removedValue = entry.tracked[fieldArg].value;
+		delete entry.tracked[fieldArg];
+
+		// If no tracked fields remain, remove the whole entry.
+		if (Object.keys(entry.tracked).length === 0) {
+			delete ipManifest.inProgress[slug];
+			process.stdout.write(
+				`${GREEN}${BOLD}Promoted:${RESET} ${DIM}removed ${slug}.${fieldArg} (value: ${removedValue}); all tracked fields done, entry retired.${RESET}\n`
+			);
+		} else {
+			process.stdout.write(
+				`${GREEN}${BOLD}Promoted:${RESET} ${DIM}removed ${slug}.${fieldArg} (value: ${removedValue}) from in-progress.${RESET}\n`
+			);
+		}
+	} else {
+		// Promote the whole slug entry.
+		const fields = Object.keys(entry.tracked ?? {});
+		delete ipManifest.inProgress[slug];
+		process.stdout.write(
+			`${GREEN}${BOLD}Promoted:${RESET} ${DIM}retired in-progress entry for '${slug}' (${fields.length} field${fields.length === 1 ? '' : 's'}: ${fields.join(', ')}).${RESET}\n`
+		);
+	}
+
+	writeJson(inProgressPath, ipManifest);
+	process.stdout.write(
+		`${DIM}Run \`drift sync\` to pick up the graduated values from the default branch.${RESET}\n`
 	);
 }
 
@@ -2411,7 +2808,7 @@ async function main() {
 	}
 
 	// Subcommand dispatcher. The first positional is the verb; slug/field follow.
-	const KNOWN_VERBS = new Set(['report', 'snapshot', 'sync', 'keep', 'keep-all', 'hide', 'help']);
+	const KNOWN_VERBS = new Set(['report', 'snapshot', 'sync', 'keep', 'keep-all', 'hide', 'promote', 'help']);
 	const verb = KNOWN_VERBS.has(positionals[0]) ? positionals[0] : 'report';
 	// args[0] = slug, args[1] = field (for accept). When the verb was explicit,
 	// slice it off; when the default 'report' was inferred, positionals are not args.
@@ -2459,9 +2856,13 @@ async function main() {
 		return;
 	}
 
-	// hide does not need a drift scan — run it immediately and return.
+	// hide/promote do not need a drift scan; run them immediately and return.
 	if (verb === 'hide') {
 		runExclude({ args, manifest: manifests.manifest, palette });
+		return;
+	}
+	if (verb === 'promote') {
+		runPromote({ args, palette });
 		return;
 	}
 

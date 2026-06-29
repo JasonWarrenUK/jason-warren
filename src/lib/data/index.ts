@@ -24,8 +24,9 @@
 import sourcesManifest from './sources.json';
 import overridesManifest from './overrides.json';
 import excludedManifest from './excluded.json';
+import inProgressManifest from './in-progress.json';
 import { defaultProjectFromManifest, mergeAuthored } from './defaults.js';
-import type { Project, AuthoredProject, ProjectMetrics } from './types.js';
+import type { Project, AuthoredProject, ProjectMetrics, InProgressEntry } from './types.js';
 
 export type { Project };
 export * from './types.js';
@@ -44,6 +45,9 @@ export * from './types.js';
  */
 export interface SyncedSource {
 	head?: string;
+	// Ref the fingerprint was measured against (resolved default branch, or 'HEAD' fallback).
+	// Metadata only; excluded from drift comparison and used for the HEAD-fallback advisory.
+	measuredRef?: string;
 	// Commit grid
 	commits?: number;
 	commitsRecentAll?: number;
@@ -97,6 +101,21 @@ type SlugOverrides = Partial<Record<keyof ProjectMetrics, FieldOverride>> & {
 };
 
 const overrides = overridesManifest.overrides as Record<string, SlugOverrides>;
+
+// ---------------------------------------------------------------------------
+// Provisional lookup: public-only in-progress values
+//
+// Entries with visibility: 'local' are CLI-only and never surface on the site.
+// The precedence contract in withSyncedMetrics: override > synced > provisional > authored.
+// Once a branch lands and `drift sync` picks up the real numbers, synced naturally
+// shadows the provisional value, making promotion self-healing (no stale value leaks).
+// ---------------------------------------------------------------------------
+
+const provisionalBySlug: Record<string, InProgressEntry> = Object.fromEntries(
+	Object.entries(inProgressManifest.inProgress as Record<string, InProgressEntry>).filter(
+		([, entry]) => entry.visibility === 'public'
+	)
+);
 
 // ---------------------------------------------------------------------------
 // Authored overlay discovery via import.meta.glob
@@ -182,9 +201,10 @@ const excludedSlugs = new Set<string>(excludedManifest.slugs);
 function withSyncedMetrics(project: Project): Project {
 	const synced = sources[project.slug];
 	const ov = overrides[project.slug];
+	const provisional = provisionalBySlug[project.slug];
 
-	// Return unchanged only when BOTH synced data and manual overrides are absent.
-	if (!synced && !ov) return project;
+	// Return unchanged only when synced data, manual overrides, and provisional values are all absent.
+	if (!synced && !ov && !provisional) return project;
 
 	// The base project's metrics come from the authored overlay (or are absent for
 	// manifest-only projects). withSyncedMetrics adds the synced numbers on top.
@@ -197,31 +217,38 @@ function withSyncedMetrics(project: Project): Project {
 		: (synced?.commitsMine ?? authored?.commits);
 	const contextCommits = isSolo ? undefined : (synced?.commits ?? undefined);
 
+	// Provisional field accessor: returns the in-progress tracked value for a metric
+	// field, or undefined when no provisional entry exists. Precedence: override > synced > provisional > authored.
+	const prov = (field: keyof ProjectMetrics): number | undefined =>
+		provisional?.tracked?.[field]?.value;
+
 	const merged: ProjectMetrics = {
 		...authored,
 		commits: ov?.commits?.value ?? headlineCommits,
 		commitsAll: ov?.commitsAll?.value ?? contextCommits,
 		commitsRecentAll:
-			ov?.commitsRecentAll?.value ?? synced?.commitsRecentAll ?? authored?.commitsRecentAll,
-		commitsMine: ov?.commitsMine?.value ?? synced?.commitsMine ?? authored?.commitsMine,
-		commitsRecent: ov?.commitsRecent?.value ?? synced?.commitsRecent ?? authored?.commitsRecent,
-		linesOfCode: ov?.linesOfCode?.value ?? synced?.linesOfCode ?? authored?.linesOfCode,
-		linesAdded: ov?.linesAdded?.value ?? synced?.linesAdded ?? authored?.linesAdded,
-		linesRemoved: ov?.linesRemoved?.value ?? synced?.linesRemoved ?? authored?.linesRemoved,
-		linesAddedAll: ov?.linesAddedAll?.value ?? synced?.linesAddedAll ?? authored?.linesAddedAll,
+			ov?.commitsRecentAll?.value ?? synced?.commitsRecentAll ?? prov('commitsRecentAll') ?? authored?.commitsRecentAll,
+		commitsMine: ov?.commitsMine?.value ?? synced?.commitsMine ?? prov('commitsMine') ?? authored?.commitsMine,
+		commitsRecent: ov?.commitsRecent?.value ?? synced?.commitsRecent ?? prov('commitsRecent') ?? authored?.commitsRecent,
+		linesOfCode: ov?.linesOfCode?.value ?? synced?.linesOfCode ?? prov('linesOfCode') ?? authored?.linesOfCode,
+		linesAdded: ov?.linesAdded?.value ?? synced?.linesAdded ?? prov('linesAdded') ?? authored?.linesAdded,
+		linesRemoved: ov?.linesRemoved?.value ?? synced?.linesRemoved ?? prov('linesRemoved') ?? authored?.linesRemoved,
+		linesAddedAll: ov?.linesAddedAll?.value ?? synced?.linesAddedAll ?? prov('linesAddedAll') ?? authored?.linesAddedAll,
 		linesRemovedAll:
-			ov?.linesRemovedAll?.value ?? synced?.linesRemovedAll ?? authored?.linesRemovedAll,
+			ov?.linesRemovedAll?.value ?? synced?.linesRemovedAll ?? prov('linesRemovedAll') ?? authored?.linesRemovedAll,
 		linesAddedRecent:
-			ov?.linesAddedRecent?.value ?? synced?.linesAddedRecent ?? authored?.linesAddedRecent,
+			ov?.linesAddedRecent?.value ?? synced?.linesAddedRecent ?? prov('linesAddedRecent') ?? authored?.linesAddedRecent,
 		linesRemovedRecent:
-			ov?.linesRemovedRecent?.value ?? synced?.linesRemovedRecent ?? authored?.linesRemovedRecent,
+			ov?.linesRemovedRecent?.value ?? synced?.linesRemovedRecent ?? prov('linesRemovedRecent') ?? authored?.linesRemovedRecent,
 		linesAddedRecentAll:
 			ov?.linesAddedRecentAll?.value ??
 			synced?.linesAddedRecentAll ??
+			prov('linesAddedRecentAll') ??
 			authored?.linesAddedRecentAll,
 		linesRemovedRecentAll:
 			ov?.linesRemovedRecentAll?.value ??
 			synced?.linesRemovedRecentAll ??
+			prov('linesRemovedRecentAll') ??
 			authored?.linesRemovedRecentAll,
 		testCoverage: ov?.testCoverage?.value ?? authored?.testCoverage,
 		mergedPrs: ov?.mergedPrs?.value ?? authored?.mergedPrs
