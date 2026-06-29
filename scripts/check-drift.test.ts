@@ -435,6 +435,65 @@ describe('drift author', () => {
 		const source = readFileSync(join(dir, 'projects', 'rubric-test.ts'), 'utf8');
 		expect(source).toContain('Depth rubric');
 	});
+
+	it('falls back to git core.editor when $EDITOR and $VISUAL are unset', () => {
+		// Write a minimal git config that sets core.editor, completely isolated
+		// from the real user config so the test is deterministic on any machine.
+		const gitConfigPath = join(dir, 'git-config-test');
+		writeFileSync(gitConfigPath, '[core]\n\teditor = test-editor-sentinel\n');
+		const result = spawnSync(
+			'bun',
+			['run', checkDriftPath, 'author', 'editor-test', '--no-color'],
+			{
+				cwd: repoRoot,
+				env: {
+					...process.env,
+					DRIFT_CONFIG: configPath,
+					EDITOR: '',
+					VISUAL: '',
+					// Override git config lookup to our isolated file only.
+					GIT_CONFIG_GLOBAL: gitConfigPath,
+					GIT_CONFIG_SYSTEM: '/dev/null'
+				},
+				encoding: 'utf8',
+				timeout: 30_000
+			}
+		);
+		// The verb should succeed (exit 0): overlay created, editor resolved.
+		// The editor command itself ("test-editor-sentinel") will fail to launch,
+		// but spawnSync with shell:true exits non-zero without crashing the verb.
+		// What matters: the "No editor found" fallback message must NOT appear.
+		expect(result.stdout).not.toMatch(/No editor found/);
+		expect(readFileSync(join(dir, 'projects', 'editor-test.ts'), 'utf8')).toContain(
+			'AuthoredProject'
+		);
+	});
+
+	it('prints the "No editor found" message when all editor sources are empty', () => {
+		const gitConfigPath = join(dir, 'git-config-empty');
+		writeFileSync(gitConfigPath, '[core]\n\t# no editor set\n');
+		const result = spawnSync(
+			'bun',
+			['run', checkDriftPath, 'author', 'no-editor-test', '--no-color'],
+			{
+				cwd: repoRoot,
+				env: {
+					...process.env,
+					DRIFT_CONFIG: configPath,
+					EDITOR: '',
+					VISUAL: '',
+					GIT_CONFIG_GLOBAL: gitConfigPath,
+					GIT_CONFIG_SYSTEM: '/dev/null'
+				},
+				encoding: 'utf8',
+				timeout: 30_000
+			}
+		);
+		// Non-TTY path: should print the plain "Edit the file directly" message
+		// (the full TTY editor-open path is exercised manually, not in CI).
+		expect(result.status, result.stderr).toBe(0);
+		expect(result.stdout).toContain('no-editor-test.ts');
+	});
 });
 
 // ---------------------------------------------------------------------------

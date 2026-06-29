@@ -82,6 +82,28 @@ function writeJson(filePath, data) {
 }
 
 /**
+ * Resolves the user's preferred editor command. Resolution order (first
+ * non-empty value wins):
+ *
+ *   1. $VISUAL environment variable
+ *   2. $EDITOR environment variable
+ *   3. git config core.editor (covers the common case where a user
+ *      configures their editor at the git level but never sets $EDITOR)
+ *
+ * @returns {string | null}
+ */
+function resolveEditor() {
+	if (process.env.VISUAL) return process.env.VISUAL;
+	if (process.env.EDITOR) return process.env.EDITOR;
+	const result = spawnSync('git', ['config', '--get', 'core.editor'], { encoding: 'utf8' });
+	if (result.status === 0) {
+		const value = result.stdout.trim();
+		if (value) return value;
+	}
+	return null;
+}
+
+/**
  * Converts a kebab-case project slug to a camelCase binding name for the
  * overlay's named export. The registry keys by `.slug` so the binding name is
  * functionally irrelevant, but it must be a valid identifier and should follow
@@ -2299,7 +2321,8 @@ function runInit({ palette, useGum }) {
 // author verb
 //
 // Scaffolds src/lib/data/projects/<slug>.ts from a full commented template if
-// the file is absent, then opens it in $EDITOR (when available and in a TTY).
+// the file is absent, then opens it in the user's editor (when in a TTY).
+// Editor resolution: $VISUAL → $EDITOR → git config core.editor.
 // Never overwrites an existing overlay.
 //
 // Write-isolation: writes ONLY projects/<slug>.ts (create-if-absent).
@@ -2375,8 +2398,10 @@ function createOverlayIfAbsent(slug) {
 }
 
 /**
- * Scaffolds a project overlay and opens it in $EDITOR.
+ * Scaffolds a project overlay and opens it in the user's editor.
  * Writes ONLY projects/<slug>.ts (create-if-absent contract).
+ *
+ * Editor resolution: $VISUAL → $EDITOR → git config core.editor.
  *
  * @param {{ args: string[], palette: object, useGum: boolean }} options
  */
@@ -2405,15 +2430,19 @@ function runAuthor({ args, palette }) {
 		process.stdout.write(`${YELLOW}already exists, skipping create:${RESET} ${relPath}\n`);
 	}
 
-	// Open the file in $EDITOR when in an interactive TTY. Guarded on stdin.isTTY
-	// so CI and subprocess tests return cleanly without hanging.
+	// Open the file in the user's editor when in an interactive TTY.
+	// Guarded on stdin.isTTY so CI and subprocess tests return cleanly.
+	// Resolution order: $VISUAL → $EDITOR → git config core.editor.
 	if (process.stdin.isTTY) {
-		const editor = process.env.VISUAL || process.env.EDITOR;
+		const editor = resolveEditor();
 		if (editor) {
-			// shell: true lets multi-word $EDITOR values (e.g. "code --wait") work.
+			// shell: true lets multi-word values (e.g. "zed --wait", "code --wait") work.
 			spawnSync(editor, [path], { stdio: 'inherit', shell: true });
 		} else {
-			process.stdout.write(`${DIM}\$EDITOR not set. Edit the file directly: ${relPath}${RESET}\n`);
+			process.stdout.write(
+				`${DIM}No editor found. Set $EDITOR or run: git config --global core.editor <cmd>\n` +
+				`Edit the file directly: ${relPath}${RESET}\n`
+			);
 		}
 	} else {
 		process.stdout.write(`${DIM}Edit the file directly: ${relPath}${RESET}\n`);
