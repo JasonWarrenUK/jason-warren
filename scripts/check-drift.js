@@ -919,7 +919,7 @@ function loadManifests() {
 		}
 	} else {
 		process.stderr.write(
-			'No sources.local.json found. Copy sources.local.json.example and fill in paths for this machine.\n'
+			'No sources.local.json found. Run `bun run drift init` to scaffold it (or copy src/lib/data/sources.local.json.example), then fill in paths for this machine.\n'
 		);
 	}
 
@@ -2135,6 +2135,9 @@ function gumInput(prompt, def) {
  * @returns {string}
  */
 function buildDriftConfigSource(v) {
+	// Manual tab fix-up aligns the multi-line JSON array under the `excludedRepoNames:` key.
+	// The indentation is cosmetic: `prettier --write` (called in runInit) is the authoritative
+	// formatter. A prettier failure degrades to valid-but-ugly TS, not broken output.
 	const excludes = JSON.stringify(v.excludedRepoNames, null, '\t').replace(/\n/g, '\n\t');
 	return `/**
  * drift.config.ts — per-machine Drift engine config.
@@ -2607,6 +2610,8 @@ async function loadOverlays() {
 		const abs = join(projectsDir, f);
 		try {
 			const mod = await import(pathToFileURL(abs).href);
+			// A well-formed overlay has exactly one slug-bearing export. Taking the first match is
+			// safe; a file with no slug-bearing export falls through to the _loadError path below.
 			const exp = Object.values(mod).find((v) => v && typeof v === 'object' && 'slug' in v);
 			if (exp) {
 				overlays.push(exp);
