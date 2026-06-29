@@ -12,7 +12,7 @@ The site is live and substantially built (full routes, graph/timeline/map/toolki
 | **Features** | 2FE.1, 2FE.2, 2FE.4, 2FE.5, 2FE.8 done; all connection views built (search, multi-select, cross-view continuity, relayout) | Polish pass (2FE.3) after 2FE.7; tech constellation (2FE.6) after M1 | 2FE.6 blocked on M1; 2FE.7 blocked on 2FE.6; 2FE.3 blocked on 2FE.7/2FE.8 |
 | **Design**   | Reasonable Colors tokens, dark mode                                                                                        | Visual direction (3DE.0) after M2                                    | All M3 tasks blocked on M2 completion                                     |
 | **Quality**  | Strict types, data-integrity tests, prerendered                                                                            | Test coverage (4QU.5) and OG coverage (4QU.4) after M3               | All M4 tasks blocked on M3; a11y (4QU.7) blocked on 4QU.1                 |
-| **Drift**    | 2.5k-line CLI, manifest registry, cache, verbs, Bun migration, boundary doc, config layer, tag taxonomy (5DR.4), engine schema (5DR.5), engine/integration split (5DR.6), branch awareness + staging pipeline (5DR.7) | Audit verb (5DR.11), author/pin verbs (5DR.15/5DR.16), init scaffold (5DR.13) | Tests & docs (M6) blocked on M3 + M5; `init` (5DR.13) now unblocked (was blocked on 5DR.7); `hide` overlay (5DR.17) blocked on 5DR.16 |
+| **Drift**    | 2.5k-line CLI, manifest registry, cache, verbs, Bun migration, boundary doc, config layer, tag taxonomy (5DR.4), engine schema (5DR.5), engine/integration split (5DR.6), branch awareness + staging pipeline (5DR.7) | Audit verb (5DR.11), author/pin verbs (5DR.15/5DR.16), init scaffold (5DR.13) | Tests & docs (M6) blocked on M3 + M5; `hide` overlay (5DR.17) blocked on 5DR.16 |
 
 ---
 
@@ -171,10 +171,10 @@ _None._
 - [ ] 5DR.11. Drift `audit` verb: score every authored entry against the content-depth rubric (`docs/audits/content-depth.md`) and emit a per-entry tier report; the automated successor to the 1CO.1 manual audit (unblocked by 5DR.5, 5DR.6)
 - [ ] 5DR.15. `drift author <slug>` verb: create `src/lib/data/projects/<slug>.ts` from a template if absent, then open it in `$EDITOR` (unblocked by 5DR.6)
 - [ ] 5DR.16. `drift pin <slug>` verb: set `pin: true` in the slug's `.ts` overlay (creating the overlay if needed); pin/hide live only in overlays, never JSON (unblocked by 5DR.6)
+- [ ] 5DR.13. `drift init` scaffold verb: generate `src/lib/data/sources.local.json` with the correct structure but empty `paths`, replacing the manual `cp sources.local.json.example sources.local.json` step; also generate a `drift.config.ts` with the correct structure and sensible defaults if one does not already exist (unblocked by 5DR.7)
 
 <a name="m5-blocked"><h4>Blocked (Milestone 5)</h4></a>
 
-- [ ] 5DR.13. `drift init` scaffold verb: generate `src/lib/data/sources.local.json` with the correct structure but empty `paths`, replacing the manual `cp sources.local.json.example sources.local.json` step; also generate a `drift.config.ts` with the correct structure and sensible defaults if one does not already exist (depends on 5DR.7, now unblocked)
 - [ ] 5DR.17. `drift hide <slug>` verb: set `hide: true` in the slug's `.ts` overlay (creating the overlay if needed) — **depends on 5DR.16** — ⚠️ name collision: 5DR.14 renamed `exclude` to `hide` (writes `excluded.json.slugs`); this verb will need a different name at build time (e.g. `overlay-hide` or integrated into 5DR.16)
 
 <a name="m5-done"><h4>Completed (Milestone 5)</h4></a>
@@ -343,7 +343,7 @@ flowchart TD
 	5DR.10["`*5DR.10*<br/>**Drift**<br/>authoring guide`"]:::blocked
 	5DR.11["`*5DR.11*<br/>**Drift**<br/>audit verb`"]:::open
 	5DR.12["`*5DR.12*<br/>**Drift**<br/>npm → Bun migration`"]:::done
-	5DR.13["`*5DR.13*<br/>**Drift**<br/>init scaffold verb`"]:::blocked
+	5DR.13["`*5DR.13*<br/>**Drift**<br/>init scaffold verb`"]:::open
 	5DR.14["`*5DR.14*<br/>**Drift**<br/>rename verbs`"]:::done
 	5DR.15["`*5DR.15*<br/>**Drift**<br/>author verb`"]:::open
 	5DR.16["`*5DR.16*<br/>**Drift**<br/>pin verb`"]:::open
@@ -359,11 +359,9 @@ flowchart TD
 	5DR.3 --> 5DR.4
 	5DR.4 --> 5DR.6
 	5DR.5 --> 5DR.11
-	5DR.6 --> 5DR.7
 	5DR.6 --> 5DR.11
 	5DR.6 --> 5DR.15
 	5DR.6 --> 5DR.16
-	5DR.7 --> 5DR.13
 	5DR.16 --> 5DR.17
 	5DR.14 --> 5DR.6
 
