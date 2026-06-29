@@ -10,10 +10,7 @@
  * current view. A stale or absent value returns `null` so a dead pin can
  * never dim the whole view with nothing highlighted.
  */
-export function validatePin(
-	raw: string | null,
-	isKnown: (slug: string) => boolean
-): string | null {
+export function validatePin(raw: string | null, isKnown: (slug: string) => boolean): string | null {
 	if (raw === null) return null;
 	return isKnown(raw) ? raw : null;
 }
@@ -40,10 +37,6 @@ export function projectHref(base: string, slug: string): string {
  * Every view (`ProjectMap`, `TimelineChart`, `ThemeTerritories`) already
  * honours an incoming `?project=` param and highlights it immediately.
  */
-export function viewHref(
-	base: string,
-	view: 'map' | 'timeline' | 'toolkit',
-	slug: string
-): string {
+export function viewHref(base: string, view: 'map' | 'timeline' | 'toolkit', slug: string): string {
 	return `${base}/${view}?project=${encodeURIComponent(slug)}`;
 }

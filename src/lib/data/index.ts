@@ -131,7 +131,7 @@ const provisionalBySlug: Record<string, InProgressEntry> = Object.fromEntries(
 //   - two modules claiming the same slug
 // ---------------------------------------------------------------------------
 
-const authoredModules = import.meta.glob('./projects/*.ts', { eager: true });
+const authoredModules = import.meta.glob(['./projects/*.ts', '!./projects/*-test.ts', '!./projects/*.test.ts'], { eager: true });
 
 const authoredBySlug: Record<string, AuthoredProject> = {};
 
@@ -227,19 +227,46 @@ function withSyncedMetrics(project: Project): Project {
 		commits: ov?.commits?.value ?? headlineCommits,
 		commitsAll: ov?.commitsAll?.value ?? contextCommits,
 		commitsRecentAll:
-			ov?.commitsRecentAll?.value ?? synced?.commitsRecentAll ?? prov('commitsRecentAll') ?? authored?.commitsRecentAll,
-		commitsMine: ov?.commitsMine?.value ?? synced?.commitsMine ?? prov('commitsMine') ?? authored?.commitsMine,
-		commitsRecent: ov?.commitsRecent?.value ?? synced?.commitsRecent ?? prov('commitsRecent') ?? authored?.commitsRecent,
-		linesOfCode: ov?.linesOfCode?.value ?? synced?.linesOfCode ?? prov('linesOfCode') ?? authored?.linesOfCode,
-		linesAdded: ov?.linesAdded?.value ?? synced?.linesAdded ?? prov('linesAdded') ?? authored?.linesAdded,
-		linesRemoved: ov?.linesRemoved?.value ?? synced?.linesRemoved ?? prov('linesRemoved') ?? authored?.linesRemoved,
-		linesAddedAll: ov?.linesAddedAll?.value ?? synced?.linesAddedAll ?? prov('linesAddedAll') ?? authored?.linesAddedAll,
+			ov?.commitsRecentAll?.value ??
+			synced?.commitsRecentAll ??
+			prov('commitsRecentAll') ??
+			authored?.commitsRecentAll,
+		commitsMine:
+			ov?.commitsMine?.value ?? synced?.commitsMine ?? prov('commitsMine') ?? authored?.commitsMine,
+		commitsRecent:
+			ov?.commitsRecent?.value ??
+			synced?.commitsRecent ??
+			prov('commitsRecent') ??
+			authored?.commitsRecent,
+		linesOfCode:
+			ov?.linesOfCode?.value ?? synced?.linesOfCode ?? prov('linesOfCode') ?? authored?.linesOfCode,
+		linesAdded:
+			ov?.linesAdded?.value ?? synced?.linesAdded ?? prov('linesAdded') ?? authored?.linesAdded,
+		linesRemoved:
+			ov?.linesRemoved?.value ??
+			synced?.linesRemoved ??
+			prov('linesRemoved') ??
+			authored?.linesRemoved,
+		linesAddedAll:
+			ov?.linesAddedAll?.value ??
+			synced?.linesAddedAll ??
+			prov('linesAddedAll') ??
+			authored?.linesAddedAll,
 		linesRemovedAll:
-			ov?.linesRemovedAll?.value ?? synced?.linesRemovedAll ?? prov('linesRemovedAll') ?? authored?.linesRemovedAll,
+			ov?.linesRemovedAll?.value ??
+			synced?.linesRemovedAll ??
+			prov('linesRemovedAll') ??
+			authored?.linesRemovedAll,
 		linesAddedRecent:
-			ov?.linesAddedRecent?.value ?? synced?.linesAddedRecent ?? prov('linesAddedRecent') ?? authored?.linesAddedRecent,
+			ov?.linesAddedRecent?.value ??
+			synced?.linesAddedRecent ??
+			prov('linesAddedRecent') ??
+			authored?.linesAddedRecent,
 		linesRemovedRecent:
-			ov?.linesRemovedRecent?.value ?? synced?.linesRemovedRecent ?? prov('linesRemovedRecent') ?? authored?.linesRemovedRecent,
+			ov?.linesRemovedRecent?.value ??
+			synced?.linesRemovedRecent ??
+			prov('linesRemovedRecent') ??
+			authored?.linesRemovedRecent,
 		linesAddedRecentAll:
 			ov?.linesAddedRecentAll?.value ??
 			synced?.linesAddedRecentAll ??

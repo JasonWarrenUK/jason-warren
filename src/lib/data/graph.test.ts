@@ -327,8 +327,16 @@ describe('computeRelayoutTargets', () => {
 	const nodes = makeNodes(slugs);
 
 	it('is deterministic: identical input yields identical positions', () => {
-		const a = computeRelayoutTargets({ nodes, visibleEdges: edges, visibleSharedEdges: sharedEdges });
-		const b = computeRelayoutTargets({ nodes, visibleEdges: edges, visibleSharedEdges: sharedEdges });
+		const a = computeRelayoutTargets({
+			nodes,
+			visibleEdges: edges,
+			visibleSharedEdges: sharedEdges
+		});
+		const b = computeRelayoutTargets({
+			nodes,
+			visibleEdges: edges,
+			visibleSharedEdges: sharedEdges
+		});
 		expect(a.size).toBe(b.size);
 		for (const [slug, point] of a) {
 			expect(b.get(slug)).toEqual(point);
@@ -336,14 +344,22 @@ describe('computeRelayoutTargets', () => {
 	});
 
 	it('covers all input node slugs', () => {
-		const result = computeRelayoutTargets({ nodes, visibleEdges: edges, visibleSharedEdges: sharedEdges });
+		const result = computeRelayoutTargets({
+			nodes,
+			visibleEdges: edges,
+			visibleSharedEdges: sharedEdges
+		});
 		for (const node of nodes) {
 			expect(result.has(node.slug), `${node.slug} missing from result`).toBe(true);
 		}
 	});
 
 	it('returns positions that are all finite', () => {
-		const result = computeRelayoutTargets({ nodes, visibleEdges: edges, visibleSharedEdges: sharedEdges });
+		const result = computeRelayoutTargets({
+			nodes,
+			visibleEdges: edges,
+			visibleSharedEdges: sharedEdges
+		});
 		for (const [slug, point] of result) {
 			expect(Number.isFinite(point.x), `${slug}.x not finite`).toBe(true);
 			expect(Number.isFinite(point.y), `${slug}.y not finite`).toBe(true);

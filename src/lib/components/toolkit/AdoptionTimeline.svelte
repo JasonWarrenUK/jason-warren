@@ -127,7 +127,12 @@
 	const pinnedParam = $derived(browser ? $page.url.searchParams.get('tech') : null);
 	// Validate the decoded label against items actually present — a stale link
 	// must never dim the whole chart with nothing highlighted.
-	const pinnedLabel = $derived(decodeTechLabel(pinnedParam, items.map((i) => i.label)));
+	const pinnedLabel = $derived(
+		decodeTechLabel(
+			pinnedParam,
+			items.map((i) => i.label)
+		)
+	);
 	// Hover overrides the pin; releasing the pointer/focus falls back to it.
 	const effectiveLabel = $derived(activeLabel ?? pinnedLabel);
 
@@ -226,9 +231,16 @@
 					role="button"
 					tabindex="0"
 					aria-pressed={pinnedLabel === item.label}
-					aria-label="{describe(item)}. {pinnedLabel === item.label ? 'Pinned. Activate to unpin' : 'Activate to pin'}"
+					aria-label="{describe(item)}. {pinnedLabel === item.label
+						? 'Pinned. Activate to unpin'
+						: 'Activate to pin'}"
 					onclick={() => openModal(item)}
-					onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openModal(item); } }}
+					onkeydown={(e) => {
+						if (e.key === 'Enter' || e.key === ' ') {
+							e.preventDefault();
+							openModal(item);
+						}
+					}}
 					onpointerenter={() => (activeLabel = item.label)}
 					onpointerleave={() => (activeLabel = null)}
 					onfocus={() => (activeLabel = item.label)}
@@ -288,22 +300,14 @@
 
 {#if selected !== null}
 	{@const isPinned = pinnedLabel === selected.label}
-	<SelectionModal
-		open={true}
-		title={selected.label}
-		onclose={() => (selected = null)}
-	>
+	<SelectionModal open={true} title={selected.label} onclose={() => (selected = null)}>
 		<p class="adoption-modal__desc">
 			First used in {selected.firstYear}{selected.dateSource === 'derived'
 				? ` (estimated from ${selected.firstProjectName})`
 				: ''}, across {selected.projectCount}
 			{selected.projectCount === 1 ? 'project' : 'projects'}.
 		</p>
-		<button
-			type="button"
-			class="modal-action modal-action--primary"
-			onclick={pinSelected}
-		>
+		<button type="button" class="modal-action modal-action--primary" onclick={pinSelected}>
 			{isPinned ? 'Unpin' : 'Pin this technology'}
 		</button>
 		<a

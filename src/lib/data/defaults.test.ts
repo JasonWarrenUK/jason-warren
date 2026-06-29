@@ -144,17 +144,26 @@ describe('inferTags', () => {
 describe('inferContribution', () => {
 	it('returns solo when commits and commitsMine are equal (sole author)', () => {
 		const manifest: SyncedSource = { commits: 50, commitsMine: 50 };
-		expect(inferContribution(manifest)).toEqual({ role: 'solo', collaboration: { team: 'Solo (Jason)' } });
+		expect(inferContribution(manifest)).toEqual({
+			role: 'solo',
+			collaboration: { team: 'Solo (Jason)' }
+		});
 	});
 
 	it('returns solo when commitsMine is undefined (no collaborator data)', () => {
 		const manifest: SyncedSource = { commits: 10 };
-		expect(inferContribution(manifest)).toEqual({ role: 'solo', collaboration: { team: 'Solo (Jason)' } });
+		expect(inferContribution(manifest)).toEqual({
+			role: 'solo',
+			collaboration: { team: 'Solo (Jason)' }
+		});
 	});
 
 	it('returns solo when commits is 0 (guards divide-by-zero)', () => {
 		const manifest: SyncedSource = { commits: 0, commitsMine: 0 };
-		expect(inferContribution(manifest)).toEqual({ role: 'solo', collaboration: { team: 'Solo (Jason)' } });
+		expect(inferContribution(manifest)).toEqual({
+			role: 'solo',
+			collaboration: { team: 'Solo (Jason)' }
+		});
 	});
 
 	it('returns lead when Jason authored the majority of commits', () => {

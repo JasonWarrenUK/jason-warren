@@ -16,9 +16,21 @@
  *   git data is needed.
  */
 
-import type { Project, AuthoredProject, AuthoredContribution, Collaboration, Contribution, TechTag } from './types.js';
+import type {
+	Project,
+	AuthoredProject,
+	AuthoredContribution,
+	Collaboration,
+	Contribution,
+	TechTag
+} from './types.js';
 import type { SyncedSource } from './index.js';
-import { LANGUAGE_TAGS, RUNTIME_TAGS, FRAMEWORK_TAGS, DATABASE_TAGS } from '../../../scripts/tag-taxonomy.js';
+import {
+	LANGUAGE_TAGS,
+	RUNTIME_TAGS,
+	FRAMEWORK_TAGS,
+	DATABASE_TAGS
+} from '../../../scripts/tag-taxonomy.js';
 
 // ---------------------------------------------------------------------------
 // Name humanisation
@@ -197,7 +209,10 @@ export function defaultProjectFromManifest(slug: string, manifest: SyncedSource)
  * - `contributionNote` falls back to the base's note when the overlay omits it
  *   (rare, but safe).
  */
-function mergeContribution(base: Contribution, authored: AuthoredContribution | undefined): Contribution {
+function mergeContribution(
+	base: Contribution,
+	authored: AuthoredContribution | undefined
+): Contribution {
 	if (authored === undefined) return base;
 
 	// Collaboration: prefer authored; fall back to the inferred default so an

@@ -40,9 +40,7 @@
 	);
 	// Validate the pin via the shared helper: stale / absent / compact variant → null
 	// so a dead link never dims the whole view with nothing highlighted.
-	const pinnedSlug = $derived(
-		validatePin(pinnedParam, (slug) => themeCountBySlug.has(slug))
-	);
+	const pinnedSlug = $derived(validatePin(pinnedParam, (slug) => themeCountBySlug.has(slug)));
 	// Hover overrides the pin; releasing the pointer/focus falls back to it.
 	const effectiveSlug = $derived(activeSlug ?? pinnedSlug);
 
@@ -102,7 +100,10 @@
 									class:themes__chip--spanning={spans}
 									class:themes__chip--dimmed={effectiveSlug !== null &&
 										effectiveSlug !== project.slug}
-									onclick={(e) => { e.preventDefault(); openModal(project.slug, project.name); }}
+									onclick={(e) => {
+										e.preventDefault();
+										openModal(project.slug, project.name);
+									}}
 									onpointerenter={() => (activeSlug = project.slug)}
 									onpointerleave={() => (activeSlug = null)}
 									onfocus={() => (activeSlug = project.slug)}
@@ -128,22 +129,11 @@
 
 	{#if selected !== null}
 		{@const isPinned = pinnedSlug === selected.slug}
-		<SelectionModal
-			open={true}
-			title={selected.name}
-			onclose={() => (selected = null)}
-		>
-			<button
-				type="button"
-				class="modal-action modal-action--primary"
-				onclick={pinSelected}
-			>
+		<SelectionModal open={true} title={selected.name} onclose={() => (selected = null)}>
+			<button type="button" class="modal-action modal-action--primary" onclick={pinSelected}>
 				{isPinned ? 'Unpin' : 'Pin this project'}
 			</button>
-			<a
-				href={projectHref(base, selected.slug)}
-				class="modal-action modal-action--secondary"
-			>
+			<a href={projectHref(base, selected.slug)} class="modal-action modal-action--secondary">
 				Go to project
 			</a>
 		</SelectionModal>

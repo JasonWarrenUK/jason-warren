@@ -20,14 +20,10 @@
 		browser ? decodeTagSet($page.url.searchParams.get('tags')) : new Set<string>()
 	);
 	const activeRoles = $derived(
-		browser
-			? parseSet<ProjectRole>($page.url.searchParams.get('roles'))
-			: new Set<ProjectRole>()
+		browser ? parseSet<ProjectRole>($page.url.searchParams.get('roles')) : new Set<ProjectRole>()
 	);
 	const activeKinds = $derived(
-		browser
-			? parseSet<ProjectKind>($page.url.searchParams.get('types'))
-			: new Set<ProjectKind>()
+		browser ? parseSet<ProjectKind>($page.url.searchParams.get('types')) : new Set<ProjectKind>()
 	);
 	const activeStatuses = $derived(
 		browser
@@ -96,14 +92,14 @@
 		<SearchInput value={activeQuery} onchange={(q) => writeParam('q', q)} />
 		<FilterBar
 			kinds={data.kinds}
-			activeKinds={activeKinds}
+			{activeKinds}
 			onkind={(kind) => toggleParam(activeKinds, kind, 'types')}
 			statuses={data.statuses}
-			activeStatuses={activeStatuses}
+			{activeStatuses}
 			onstatus={(s) => toggleParam(activeStatuses, s, 'statuses')}
 			tagsByKind={data.tagsByKind}
-			activeTags={activeTags}
-			activeRoles={activeRoles}
+			{activeTags}
+			{activeRoles}
 			ontag={(tag) => toggleParam(activeTags, tag, 'tags', encodeTagSet)}
 			onrole={(role) => toggleParam(activeRoles, role, 'roles')}
 		/>

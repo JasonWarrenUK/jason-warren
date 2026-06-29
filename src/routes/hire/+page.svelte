@@ -1,12 +1,7 @@
 <script lang="ts">
 	import { base } from '$app/paths';
 	import Seo from '$lib/components/seo/Seo.svelte';
-	import {
-		EMAIL,
-		GITHUB_PROFILE_URL,
-		BLUESKY_URL,
-		BLUESKY_HANDLE
-	} from '$lib/config.js';
+	import { EMAIL, GITHUB_PROFILE_URL, BLUESKY_URL, BLUESKY_HANDLE } from '$lib/config.js';
 </script>
 
 <Seo
@@ -18,8 +13,8 @@
 	<header class="page__header">
 		<h1>Hire</h1>
 		<p class="page__intro">
-			Currently a developer at Founders and Coders. Open to interesting conversations about the right
-			work — permanent roles, scoped engagements, and open-source collaboration.
+			Currently a developer at Founders and Coders. Open to interesting conversations about the
+			right work — permanent roles, scoped engagements, and open-source collaboration.
 		</p>
 	</header>
 
@@ -40,8 +35,8 @@
 		</p>
 		<p class="prose">
 			The spread is wider than is strictly conventional. The reason is that most of the hard
-			problems in this list live at the boundary between layers, and understanding both sides is what
-			makes the boundary tractable.
+			problems in this list live at the boundary between layers, and understanding both sides is
+			what makes the boundary tractable.
 		</p>
 	</section>
 
@@ -76,7 +71,8 @@
 				Several of the projects on this site are tools extracted from larger applications: Drift (a
 				git-metrics CLI), Schema Forge (an XSD validation library). I am interested in building or
 				contributing to tooling and libraries — particularly where the interesting problem is the
-				data model or the abstraction, not just the surface. Open to conversations about shared work.
+				data model or the abstraction, not just the surface. Open to conversations about shared
+				work.
 			</p>
 		</div>
 	</section>

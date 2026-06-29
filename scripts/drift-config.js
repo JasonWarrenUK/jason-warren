@@ -148,9 +148,7 @@ function buildConfig(user) {
 		files: { ...DEFAULTS.files, ...(user?.files ?? {}) }
 	};
 
-	const dataDirAbs = isAbsolute(merged.dataDir)
-		? merged.dataDir
-		: join(repoRoot, merged.dataDir);
+	const dataDirAbs = isAbsolute(merged.dataDir) ? merged.dataDir : join(repoRoot, merged.dataDir);
 
 	const paths = {
 		sources: resolveDataPath(dataDirAbs, merged.files, 'sources', 'sources.json'),

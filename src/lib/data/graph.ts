@@ -370,10 +370,14 @@ export function getHubSlugs(projectList: Project[] = projects): Set<ProjectSlug>
  * Uses the CCW orientation test (cross-product sign).
  */
 function segmentsIntersect(
-	ax: number, ay: number,
-	bx: number, by: number,
-	cx: number, cy: number,
-	dx: number, dy: number
+	ax: number,
+	ay: number,
+	bx: number,
+	by: number,
+	cx: number,
+	cy: number,
+	dx: number,
+	dy: number
 ): boolean {
 	// Shared endpoint → not a crossing.
 	if ((ax === cx && ay === cy) || (ax === dx && ay === dy)) return false;
@@ -387,8 +391,8 @@ function segmentsIntersect(
 	const d3 = cross(ax, ay, bx, by, cx, cy);
 	const d4 = cross(ax, ay, bx, by, dx, dy);
 
-	if (((d1 > 0 && d2 < 0) || (d1 < 0 && d2 > 0)) &&
-		((d3 > 0 && d4 < 0) || (d3 < 0 && d4 > 0))) return true;
+	if (((d1 > 0 && d2 < 0) || (d1 < 0 && d2 > 0)) && ((d3 > 0 && d4 < 0) || (d3 < 0 && d4 > 0)))
+		return true;
 
 	// Collinear cases: treat as non-crossing to avoid false positives on
 	// T-junctions formed by shared-tech edges meeting at a hub.
@@ -416,12 +420,14 @@ function scoreLayout(
 	const resolved: Array<{ ax: number; ay: number; bx: number; by: number }> = [];
 	let totalLength = 0;
 	for (const link of links) {
-		const src = typeof link.source === 'object'
-			? (link.source as { slug: string }).slug
-			: (link.source as string);
-		const tgt = typeof link.target === 'object'
-			? (link.target as { slug: string }).slug
-			: (link.target as string);
+		const src =
+			typeof link.source === 'object'
+				? (link.source as { slug: string }).slug
+				: (link.source as string);
+		const tgt =
+			typeof link.target === 'object'
+				? (link.target as { slug: string }).slug
+				: (link.target as string);
 		const a = pos.get(src);
 		const b = pos.get(tgt);
 		if (!a || !b) continue;
@@ -547,8 +553,7 @@ export function computeRelayoutTargets(
 	const candidateResults = Array.from({ length: candidates }, (_, seed) => {
 		const angleOffset = seed * GOLDEN_ANGLE;
 		const simNodes: SimNode[] = nodes.map((n, index) => {
-			const angle =
-				(2 * Math.PI * index) / nodes.length - Math.PI / 2 + angleOffset;
+			const angle = (2 * Math.PI * index) / nodes.length - Math.PI / 2 + angleOffset;
 			return {
 				slug: n.slug,
 				radius: n.radius,

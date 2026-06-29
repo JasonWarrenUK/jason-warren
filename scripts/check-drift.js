@@ -21,14 +21,14 @@
 import { execFile, spawn, spawnSync } from 'child_process';
 import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from 'fs';
 import { join } from 'path';
-import { fileURLToPath } from 'url';
+import { fileURLToPath, pathToFileURL } from 'url';
 import { cpus } from 'os';
 import { parseArgs, promisify } from 'node:util';
 
 const execFileAsync = promisify(execFile);
 // COUPLING [5DR.4]: resolved — tag taxonomy relocated to scripts/tag-taxonomy.js.
 import { EXTENSION_LANGUAGE } from './tag-taxonomy.js';
-import { loadConfig } from './drift-config.js';
+import { loadConfig, DEFAULTS } from './drift-config.js';
 
 // ---------------------------------------------------------------------------
 // Config — load once at module init; every coupling below derives from this.
@@ -49,13 +49,11 @@ const config = await loadConfig();
 
 let SCHEMA;
 try {
-	SCHEMA = JSON.parse(
-		readFileSync(new URL('./sources.schema.json', import.meta.url), 'utf8')
-	);
+	SCHEMA = JSON.parse(readFileSync(new URL('./sources.schema.json', import.meta.url), 'utf8'));
 } catch (err) {
 	process.stderr.write(
 		`drift: could not load sources.schema.json — ${err.message}\n` +
-		`  Expected: scripts/sources.schema.json (engine output contract)\n`
+			`  Expected: scripts/sources.schema.json (engine output contract)\n`
 	);
 	process.exit(1);
 }
@@ -79,6 +77,41 @@ const inProgressPath = config.paths.inProgress;
 function writeJson(filePath, data) {
 	writeFileSync(filePath, JSON.stringify(data, null, '\t') + '\n', 'utf8');
 	spawnSync('npx', ['prettier', '--write', filePath], { stdio: 'ignore' });
+}
+
+/**
+ * Resolves the user's preferred editor command. Resolution order (first
+ * non-empty value wins):
+ *
+ *   1. $VISUAL environment variable
+ *   2. $EDITOR environment variable
+ *   3. git config core.editor (covers the common case where a user
+ *      configures their editor at the git level but never sets $EDITOR)
+ *
+ * @returns {string | null}
+ */
+function resolveEditor() {
+	if (process.env.VISUAL) return process.env.VISUAL;
+	if (process.env.EDITOR) return process.env.EDITOR;
+	const result = spawnSync('git', ['config', '--get', 'core.editor'], { encoding: 'utf8' });
+	if (result.status === 0) {
+		const value = result.stdout.trim();
+		if (value) return value;
+	}
+	return null;
+}
+
+/**
+ * Converts a kebab-case project slug to a camelCase binding name for the
+ * overlay's named export. The registry keys by `.slug` so the binding name is
+ * functionally irrelevant, but it must be a valid identifier and should follow
+ * the established convention (baby-names → babyNames, wyrd-tui → wyrdTui).
+ *
+ * @param {string} slug
+ * @returns {string}
+ */
+function slugToBinding(slug) {
+	return slug.replace(/-([a-z0-9])/g, (_, c) => c.toUpperCase());
 }
 
 /** Load the per-machine HEAD-SHA cache. Returns {} on any read/parse failure (silent). */
@@ -149,9 +182,7 @@ const FINGERPRINT_FIELDS = Object.keys(SCHEMA.$defs.SyncedSource.properties);
 // property whose type is 'array'. Compared by sorted join so element-order
 // differences in detection do not produce spurious drift.
 const ARRAY_FINGERPRINT_FIELDS = new Set(
-	FINGERPRINT_FIELDS.filter(
-		(f) => SCHEMA.$defs.SyncedSource.properties[f].type === 'array'
-	)
+	FINGERPRINT_FIELDS.filter((f) => SCHEMA.$defs.SyncedSource.properties[f].type === 'array')
 );
 
 // Fields excluded from drift comparison even though they live in the schema
@@ -888,7 +919,7 @@ function loadManifests() {
 		}
 	} else {
 		process.stderr.write(
-			'No sources.local.json found. Copy sources.local.json.example and fill in paths for this machine.\n'
+			'No sources.local.json found. Run `bun run drift init` to scaffold it (or copy src/lib/data/sources.local.json.example), then fill in paths for this machine.\n'
 		);
 	}
 
@@ -1555,7 +1586,10 @@ function runReport({ result, manifest, palette, json, full, useGum }) {
 	// Falls back to the plain console.log path on any failure.
 	if (useGum && process.stdout.isTTY) {
 		const md = renderReportMarkdown(result, manifest, full);
-		const out = spawnSync('gum', ['format', '--theme', config.theme.markdownTheme], { input: md, encoding: 'utf8' });
+		const out = spawnSync('gum', ['format', '--theme', config.theme.markdownTheme], {
+			input: md,
+			encoding: 'utf8'
+		});
 		if (out.status === 0 && out.stdout) {
 			process.stdout.write('\n' + out.stdout + '\n');
 			return;
@@ -2067,6 +2101,705 @@ function runPromote({ args, palette }) {
 }
 
 // ---------------------------------------------------------------------------
+// init verb
+//
+// Scaffolds the two per-machine, gitignored config files that a fresh checkout
+// needs: drift.config.ts (repo root) and sources.local.json (data dir).
+// When an interactive TTY with gum is available, elicits values via gum input
+// prompts pre-filled with the built-in defaults. In non-interactive mode (no
+// gum, piped output, CI) writes the real built-in default values silently.
+// Never overwrites an existing file.
+// ---------------------------------------------------------------------------
+
+/**
+ * Prompts the user for a single value via gum input, pre-filled with the
+ * default. Returns the typed value on success, or the default on cancel/error.
+ *
+ * @param {string} prompt   Label shown to the left of the input cursor.
+ * @param {string} def      Default value (pre-filled and returned on cancel).
+ * @returns {string}
+ */
+function gumInput(prompt, def) {
+	const res = spawnSync(
+		'gum',
+		['input', `--prompt=${prompt}: `, `--prompt.foreground=${BRAND_PRIMARY}`, `--value=${def}`],
+		{ stdio: ['inherit', 'pipe', 'inherit'], encoding: 'utf8' }
+	);
+	return res.status === 0 && res.stdout.trim() ? res.stdout.trim() : def;
+}
+
+/**
+ * Generates the text content of drift.config.ts from the given values.
+ *
+ * @param {{ scanRoot: string, scanDepth: number, authorPattern: string, recentWindow: string, excludedRepoNames: string[], primary: string, accent: string, markdownTheme: string }} v
+ * @returns {string}
+ */
+function buildDriftConfigSource(v) {
+	// Manual tab fix-up aligns the multi-line JSON array under the `excludedRepoNames:` key.
+	// The indentation is cosmetic: `prettier --write` (called in runInit) is the authoritative
+	// formatter. A prettier failure degrades to valid-but-ugly TS, not broken output.
+	const excludes = JSON.stringify(v.excludedRepoNames, null, '\t').replace(/\n/g, '\n\t');
+	return `/**
+ * drift.config.ts — per-machine Drift engine config.
+ *
+ * Generated by \`drift init\`. Every key is optional; omitted keys fall back to
+ * Drift's built-in defaults. Run \`bun run drift --help\` to confirm the config loads.
+ *
+ * Set the DRIFT_CONFIG env variable to an alternative path if you want to keep
+ * the config somewhere other than the repository root.
+ */
+
+/** @type {import('./scripts/drift-config.js').DriftUserConfig} */
+export default {
+\t/**
+\t * Where the four data files live, relative to the repo root (or absolute).
+\t * Default: 'src/lib/data'
+\t */
+\tdataDir: 'src/lib/data',
+
+\t/**
+\t * Root directory scanned for git repos not yet in the manifest.
+\t * Paired to \`excludedRepoNames\` — update both when configuring a new machine.
+\t * Default: ~/Code
+\t */
+\tscanRoot: ${JSON.stringify(v.scanRoot)},
+
+\t/**
+\t * Maximum directory depth for the git-repo scan.
+\t * Default: 3
+\t */
+\tscanDepth: ${v.scanDepth},
+
+\tauthor: {
+\t\t/**
+\t\t * Extended-regexp alternation over your git identities across repos.
+\t\t * Used as the --author flag in commit/churn queries so "by me" metrics
+\t\t * count your work and not collaborators'. A miss degrades to 0, never an error.
+\t\t */
+\t\tpattern: ${JSON.stringify(v.authorPattern)},
+
+\t\t/**
+\t\t * Trailing window for "recent" metrics. Accepts git --since values.
+\t\t * Default: '4 weeks ago'
+\t\t */
+\t\trecentWindow: ${JSON.stringify(v.recentWindow)}
+\t},
+
+\t/**
+\t * Repository folder names excluded from the directory scan.
+\t * Paired to \`scanRoot\` — these are the folder names that should never appear
+\t * in the portfolio (the portfolio repo itself, sub-repos, non-project tooling).
+\t */
+\texcludedRepoNames: ${excludes},
+
+\t/** gum UI theme. */
+\ttheme: {
+\t\t/** Cursor, selection, and border foreground colour (hex). Default: '#3E7F96' (teal). */
+\t\tprimary: ${JSON.stringify(v.primary)},
+\t\t/** Item and wordmark foreground colour (hex). Default: '#B34480' (magenta). */
+\t\taccent: ${JSON.stringify(v.accent)},
+\t\t/** Theme name passed to \`gum format --theme\`. Default: 'pink'. */
+\t\tmarkdownTheme: ${JSON.stringify(v.markdownTheme)}
+\t}
+};
+`;
+}
+
+/**
+ * Scaffolds drift.config.ts and sources.local.json for this machine.
+ * Interactive when useGum is true (gum input prompts pre-filled with defaults);
+ * non-interactive otherwise (writes real built-in default values silently).
+ * Never overwrites an existing file.
+ *
+ * The drift.config.ts write target is derived from localPath's directory
+ * (when DRIFT_CONFIG is set, that file's parent is also the config write root)
+ * so that test subprocess invocations remain fully sandboxed.
+ *
+ * @param {{ palette: object, useGum: boolean }} options
+ */
+function runInit({ palette, useGum }) {
+	const { GREEN, YELLOW, BOLD, DIM, RESET } = palette;
+
+	// Resolve the two target paths.
+	// sources.local.json: always at localPath (derived from config.paths.local).
+	// drift.config.ts: sits alongside the DRIFT_CONFIG file when one is set
+	// (test-safe, keeps test subprocess writes sandboxed), otherwise at config.repoRoot.
+	const configFileEnv = process.env.DRIFT_CONFIG;
+	const configDir = configFileEnv
+		? configFileEnv.replace(/\/[^/]+$/, '') // dirname without importing extra
+		: config.repoRoot;
+	const configPath = join(configDir, 'drift.config.ts');
+
+	// Relative paths for display.
+	const relLocal = localPath.replace(config.repoRoot + '/', '');
+	const relConfig = configPath.replace(config.repoRoot + '/', '');
+
+	// Collect default values from DEFAULTS.
+	const defScanRoot = DEFAULTS.scanRoot;
+	const defScanDepth = DEFAULTS.scanDepth;
+	const defAuthorPattern = DEFAULTS.author.pattern;
+	const defRecentWindow = DEFAULTS.author.recentWindow;
+	const defExcludes = DEFAULTS.excludedRepoNames;
+	const defPrimary = DEFAULTS.theme.primary;
+	const defAccent = DEFAULTS.theme.accent;
+	const defMarkdownTheme = DEFAULTS.theme.markdownTheme;
+
+	// Gather values — interactive via gum or use defaults.
+	let scanRoot = defScanRoot;
+	let scanDepth = defScanDepth;
+	let authorPattern = defAuthorPattern;
+	let recentWindow = defRecentWindow;
+	let excludedRepoNames = defExcludes;
+	let primary = defPrimary;
+	let accent = defAccent;
+	let markdownTheme = defMarkdownTheme;
+
+	if (useGum) {
+		process.stdout.write(`\n${BOLD}drift init${RESET} — scaffold per-machine config files\n\n`);
+		process.stdout.write(
+			`${DIM}Press Enter to accept the default for each prompt. Ctrl-C to cancel a prompt and keep its default.${RESET}\n\n`
+		);
+
+		scanRoot = gumInput('Scan root (directory to scan for repos)', defScanRoot);
+		scanDepth =
+			parseInt(gumInput('Scan depth (max directory depth)', String(defScanDepth)), 10) ||
+			defScanDepth;
+		authorPattern = gumInput(
+			'Author pattern (git --author alternation, pipe-separated)',
+			defAuthorPattern
+		);
+		recentWindow = gumInput('Recent window (git --since value)', defRecentWindow);
+		excludedRepoNames = gumInput('Excluded repo names (comma-separated)', defExcludes.join(','))
+			.split(',')
+			.map((s) => s.trim())
+			.filter(Boolean);
+		primary = gumInput('Theme primary colour (hex)', defPrimary);
+		accent = gumInput('Theme accent colour (hex)', defAccent);
+		markdownTheme = gumInput('Theme markdown theme (gum format --theme value)', defMarkdownTheme);
+
+		process.stdout.write('\n');
+	}
+
+	let anyCreated = false;
+
+	// sources.local.json
+	if (existsSync(localPath)) {
+		process.stdout.write(`${YELLOW}already exists, skipping:${RESET} ${relLocal}\n`);
+	} else {
+		writeJson(localPath, {
+			_note:
+				'Per-machine local paths for each source repo. Gitignored. Run `drift sync` after filling in paths.',
+			paths: {}
+		});
+		process.stdout.write(`${GREEN}${BOLD}created${RESET} ${relLocal}\n`);
+		anyCreated = true;
+	}
+
+	// drift.config.ts
+	if (existsSync(configPath)) {
+		process.stdout.write(`${YELLOW}already exists, skipping:${RESET} ${relConfig}\n`);
+	} else {
+		const source = buildDriftConfigSource({
+			scanRoot,
+			scanDepth,
+			authorPattern,
+			recentWindow,
+			excludedRepoNames,
+			primary,
+			accent,
+			markdownTheme
+		});
+		writeFileSync(configPath, source, 'utf8');
+		spawnSync('npx', ['prettier', '--write', configPath], { stdio: 'ignore' });
+		process.stdout.write(`${GREEN}${BOLD}created${RESET} ${relConfig}\n`);
+		anyCreated = true;
+	}
+
+	if (anyCreated) {
+		process.stdout.write(
+			`\n${DIM}Fill in paths in ${relLocal}, then run \`bun run drift\` to see your portfolio state.${RESET}\n`
+		);
+	}
+}
+
+// ---------------------------------------------------------------------------
+// author verb
+//
+// Scaffolds src/lib/data/projects/<slug>.ts from a full commented template if
+// the file is absent, then opens it in the user's editor (when in a TTY).
+// Editor resolution: $VISUAL → $EDITOR → git config core.editor.
+// Never overwrites an existing overlay.
+//
+// Write-isolation: writes ONLY projects/<slug>.ts (create-if-absent).
+// ---------------------------------------------------------------------------
+
+/**
+ * Generates the text content of a new project overlay file for the given slug.
+ *
+ * @param {string} slug
+ * @returns {string}
+ */
+function buildOverlayTemplate(slug) {
+	const binding = slugToBinding(slug);
+	return `import type { AuthoredProject } from '../types.js';
+
+// Authored overlay for "${slug}". Every field except \`slug\` is optional and
+// overlays the Drift-derived manifest default. Delete any field you do not author.
+// Depth rubric (\`drift audit\`): description >= 80 words AND >= 4 highlights
+// (AND a contributionNote for team projects) earns a Full tier.
+export const ${binding}: AuthoredProject = {
+	slug: '${slug}',
+
+	// Display name. Defaults to a title-cased slug if omitted.
+	name: '',
+
+	// One-sentence summary (meta tags, detail header, map tooltip). High visibility.
+	tagline: '',
+
+	// Short card face, roughly 1/3 of the tagline. Shown on collapsed cards.
+	blurb: '',
+
+	// Longer case-study body. Name the problem, the architecture or approach, and
+	// a verification or outcome signal. Aim for >= 80 words for a Full tier.
+	description: '',
+
+	// One of: 'app' | 'game' | 'website' | 'toy' | 'library' | 'tool' | 'tui' | 'repo'
+	kind: 'app',
+
+	// For 'solo', no note is needed. For 'lead' | 'collaborator', add a specific
+	// contributionNote (PRs, stats, named features) to reach Full tier.
+	contribution: { role: 'solo' },
+
+	// One of: 'live' | 'wip' | 'finished' | 'prototype' | 'archived' | 'uncategorised'
+	status: 'wip',
+
+	repoUrl: '',
+
+	// 3-5 technically interesting things. Feature or technical detail, not tooling config.
+	highlights: [],
+
+	// e.g. { kind: 'extracted-from', target: 'other-slug', note: '...' }
+	relationships: [],
+
+	// e.g. { label: 'TypeScript', kind: 'language' }
+	tags: []
+};
+`;
+}
+
+/**
+ * Creates src/lib/data/projects/<slug>.ts from the template if it does not
+ * already exist. Never overwrites. Shared by `runAuthor` and `runPin`.
+ *
+ * @param {string} slug
+ * @returns {{ path: string, created: boolean }}
+ */
+function createOverlayIfAbsent(slug) {
+	const overlayPath = join(projectsDir, `${slug}.ts`);
+	if (existsSync(overlayPath)) return { path: overlayPath, created: false };
+	writeFileSync(overlayPath, buildOverlayTemplate(slug), 'utf8');
+	spawnSync('npx', ['prettier', '--write', overlayPath], { stdio: 'ignore' });
+	return { path: overlayPath, created: true };
+}
+
+/**
+ * Scaffolds a project overlay and opens it in the user's editor.
+ * Writes ONLY projects/<slug>.ts (create-if-absent contract).
+ *
+ * Editor resolution: $VISUAL → $EDITOR → git config core.editor.
+ *
+ * @param {{ args: string[], palette: object, useGum: boolean }} options
+ */
+function runAuthor({ args, palette }) {
+	const { GREEN, RED, YELLOW, BOLD, DIM, RESET } = palette;
+	const slug = args[0]?.trim();
+
+	if (!slug) {
+		process.stderr.write(`${RED}Usage: drift author <slug>${RESET}\n`);
+		process.exit(1);
+	}
+
+	if (!/^[a-z0-9]+(-[a-z0-9]+)*$/.test(slug)) {
+		process.stderr.write(
+			`${RED}Error: invalid slug '${slug}'. Use lowercase kebab-case (e.g. my-project).${RESET}\n`
+		);
+		process.exit(1);
+	}
+
+	const { path, created } = createOverlayIfAbsent(slug);
+	const relPath = path.replace(config.repoRoot + '/', '');
+
+	if (created) {
+		process.stdout.write(`${GREEN}${BOLD}created${RESET} ${relPath}\n`);
+	} else {
+		process.stdout.write(`${YELLOW}already exists, skipping create:${RESET} ${relPath}\n`);
+	}
+
+	// Open the file in the user's editor when in an interactive TTY.
+	// Guarded on stdin.isTTY so CI and subprocess tests return cleanly.
+	// Resolution order: $VISUAL → $EDITOR → git config core.editor.
+	if (process.stdin.isTTY) {
+		const editor = resolveEditor();
+		if (editor) {
+			// shell: true lets multi-word values (e.g. "zed --wait", "code --wait") work.
+			spawnSync(editor, [path], { stdio: 'inherit', shell: true });
+		} else {
+			process.stdout.write(
+				`${DIM}No editor found. Set $EDITOR or run: git config --global core.editor <cmd>\n` +
+					`Edit the file directly: ${relPath}${RESET}\n`
+			);
+		}
+	} else {
+		process.stdout.write(`${DIM}Edit the file directly: ${relPath}${RESET}\n`);
+	}
+}
+
+// ---------------------------------------------------------------------------
+// pin verb
+//
+// Sets pin: true in the slug's .ts overlay, creating it from the template if
+// absent. Uses the TypeScript compiler API for a targeted text-splice so no
+// existing field or comment is disturbed. pin lives only in overlays, never
+// in any of the four JSON data files.
+//
+// Write-isolation: writes ONLY projects/<slug>.ts.
+//
+// NOTE: runPin is the natural home to generalise into setOverlayFlag(slug,
+// 'pin'|'hide') when 5DR.17 (drift hide <slug> overlay) lands. At that point
+// replace the hard-coded 'pin' property name with a parameter.
+// ---------------------------------------------------------------------------
+
+/**
+ * Sets pin: true in the slug's .ts overlay. Creates the overlay from the
+ * template first when absent. Idempotent: no-op when already pinned.
+ * Writes ONLY projects/<slug>.ts (write-isolation contract).
+ *
+ * @param {{ args: string[], palette: object, useGum: boolean }} options
+ */
+async function runPin({ args, palette }) {
+	const { GREEN, RED, YELLOW, BOLD, DIM, RESET } = palette;
+	const slug = args[0]?.trim();
+
+	if (!slug) {
+		process.stderr.write(`${RED}Usage: drift pin <slug>${RESET}\n`);
+		process.exit(1);
+	}
+
+	if (!/^[a-z0-9]+(-[a-z0-9]+)*$/.test(slug)) {
+		process.stderr.write(
+			`${RED}Error: invalid slug '${slug}'. Use lowercase kebab-case (e.g. my-project).${RESET}\n`
+		);
+		process.exit(1);
+	}
+
+	const { path, created } = createOverlayIfAbsent(slug);
+	const relPath = path.replace(config.repoRoot + '/', '');
+
+	if (created) {
+		process.stdout.write(`${GREEN}${BOLD}created${RESET} ${relPath}\n`);
+	}
+
+	// Lazy-import the TypeScript compiler API. This avoids loading it on every
+	// verb invocation; only pin (and future overlay-flag verbs) pay the cost.
+	const ts = (await import('typescript')).default;
+
+	const text = readFileSync(path, 'utf8');
+	const sf = ts.createSourceFile(
+		path,
+		text,
+		ts.ScriptTarget.Latest,
+		/* setParentNodes */ true,
+		ts.ScriptKind.TS
+	);
+
+	// Find the single exported VariableStatement whose initializer is an
+	// ObjectLiteralExpression. Every well-formed overlay has exactly one such export.
+	let objLit = null;
+	for (const stmt of sf.statements) {
+		if (!ts.isVariableStatement(stmt)) continue;
+		if (!stmt.modifiers?.some((m) => m.kind === ts.SyntaxKind.ExportKeyword)) continue;
+		for (const decl of stmt.declarationList.declarations) {
+			if (decl.initializer && ts.isObjectLiteralExpression(decl.initializer)) {
+				objLit = decl.initializer;
+				break;
+			}
+		}
+		if (objLit) break;
+	}
+
+	if (!objLit) {
+		process.stderr.write(
+			`${RED}Error: could not locate the exported object literal in ${relPath}.\n` +
+				`Expected one named export with an object literal initializer.${RESET}\n`
+		);
+		process.exit(1);
+	}
+
+	// Look for an existing `pin` property assignment.
+	const pinProp = objLit.properties.find(
+		(p) => ts.isPropertyAssignment(p) && p.name.getText(sf) === 'pin'
+	);
+
+	let splicedText;
+
+	if (pinProp) {
+		const initNode = pinProp.initializer;
+		if (initNode.kind === ts.SyntaxKind.TrueKeyword) {
+			// Already pinned — idempotent no-op.
+			process.stdout.write(`${YELLOW}'${slug}' is already pinned — nothing to do.${RESET}\n`);
+			return;
+		}
+		// Present but not true (e.g. false, variable reference) — splice to true.
+		splicedText = text.slice(0, initNode.getStart(sf)) + 'true' + text.slice(initNode.getEnd());
+	} else {
+		// Absent — insert `pin: true,` immediately after the opening brace.
+		const insertPos = objLit.getStart(sf) + 1; // position just past '{'
+		splicedText = text.slice(0, insertPos) + '\n\tpin: true,' + text.slice(insertPos);
+	}
+
+	writeFileSync(path, splicedText, 'utf8');
+	spawnSync('npx', ['prettier', '--write', path], { stdio: 'ignore' });
+
+	process.stdout.write(
+		`${GREEN}${BOLD}Pinned:${RESET} '${slug}' now floats to the top of the hero pool.\n` +
+			`${DIM}Rebuild the site to apply.${RESET}\n`
+	);
+}
+
+// ---------------------------------------------------------------------------
+// audit verb
+//
+// Scores every authored overlay against the content-depth rubric and emits a
+// per-entry tier report (Full / Partial / Thin). Mechanical-proxy-only: no LLM
+// judgement, no boilerplate keyword detection. Computes tiers from live files;
+// never consults the stale committed scorecard in docs/audits/content-depth.md.
+//
+// Data access: enumerates projects/ via filename-only readdirSync (already
+// sanctioned by buildCoverageStats), then await-imports each overlay via Bun's
+// native ESM. This is a sanctioned read of overlay content (see the boundary
+// doc, Audit overlay read [5DR.11]): it imports the typed export value, does
+// NOT regex-scrape source text, and writes nothing.
+//
+// Tier thresholds (from content-depth.md):
+//   description: >= 80 words = Full, 40-79 = Partial, < 40 = Thin
+//   highlights:  >= 4        = Full,  3    = Partial,  <= 2 = Thin
+//   teamNote:    contributionNote present (team projects only)
+//   Final tier = WORST axis. Full requires all axes Full.
+//
+// Write-isolation: writes nothing.
+// ---------------------------------------------------------------------------
+
+/** Splits a string on whitespace and counts the non-empty tokens. */
+function wordCount(s) {
+	return (s ?? '').trim().split(/\s+/).filter(Boolean).length;
+}
+
+const TIER_RANK = { Thin: 0, Partial: 1, Full: 2 };
+const RANK_TIER = ['Thin', 'Partial', 'Full'];
+
+/**
+ * Dynamically imports every .ts overlay in projectsDir and returns the
+ * exported project objects sorted by slug.
+ *
+ * @returns {Promise<Array<object>>}
+ */
+async function loadOverlays() {
+	const files = readdirSync(projectsDir).filter((f) => f.endsWith('.ts'));
+	const overlays = [];
+	for (const f of files) {
+		const abs = join(projectsDir, f);
+		try {
+			const mod = await import(pathToFileURL(abs).href);
+			// A well-formed overlay has exactly one slug-bearing export. Taking the first match is
+			// safe; a file with no slug-bearing export falls through to the _loadError path below.
+			const exp = Object.values(mod).find((v) => v && typeof v === 'object' && 'slug' in v);
+			if (exp) {
+				overlays.push(exp);
+			} else {
+				overlays.push({ slug: f.slice(0, -3), _loadError: 'no slug export found' });
+			}
+		} catch (err) {
+			overlays.push({ slug: f.slice(0, -3), _loadError: err.message ?? String(err) });
+		}
+	}
+	return overlays.sort((a, b) => a.slug.localeCompare(b.slug));
+}
+
+/**
+ * Scores a single overlay object against the mechanical proxy rubric.
+ *
+ * @param {object} o  A loaded overlay object (may have `_loadError`).
+ * @returns {{ slug: string, tier: string, axes: object, borderline: boolean, metrics: object, loadError?: string }}
+ */
+function scoreOverlay(o) {
+	if (o._loadError) {
+		return {
+			slug: o.slug,
+			tier: 'Thin',
+			axes: {},
+			borderline: true,
+			metrics: {},
+			loadError: o._loadError
+		};
+	}
+
+	const words = wordCount(o.description);
+	const hl = Array.isArray(o.highlights) ? o.highlights.length : 0;
+	const role = o.contribution?.role;
+	const isTeam = role && role !== 'solo';
+	const noteText = o.contribution?.contributionNote ?? '';
+	const hasNote = noteText.trim().length > 0;
+
+	// Per-axis proxy tiers.
+	const descTier = words >= 80 ? 'Full' : words >= 40 ? 'Partial' : 'Thin';
+	const hlTier = hl >= 4 ? 'Full' : hl === 3 ? 'Partial' : 'Thin';
+	// Team-note axis only constrains team projects; solo projects treat it as Full.
+	const noteTier = !isTeam ? 'Full' : hasNote ? 'Full' : 'Thin';
+
+	const axes = { description: descTier, highlights: hlTier, contributionNote: noteTier };
+
+	// Final tier = worst axis (lowest rank). Full requires ALL axes Full.
+	const tier = RANK_TIER[Math.min(TIER_RANK[descTier], TIER_RANK[hlTier], TIER_RANK[noteTier])];
+
+	// Borderline flag: any axis near a threshold, or a short team note.
+	// Surfaces entries for manual editorial review without automating the verdict.
+	const borderline =
+		(words >= 35 && words <= 45) ||
+		(words >= 75 && words <= 85) ||
+		hl === 3 ||
+		hl === 4 ||
+		(isTeam && hasNote && wordCount(noteText) < 12);
+
+	return {
+		slug: o.slug,
+		tier,
+		axes,
+		borderline,
+		metrics: { words, highlights: hl, isTeam: !!isTeam, hasNote }
+	};
+}
+
+/**
+ * Emits a plain-ANSI tier report (fallback when gum is unavailable).
+ *
+ * @param {Array<object>} scored
+ * @param {object} palette
+ */
+function runAuditPlain(scored, palette) {
+	const { GREEN, YELLOW, RED, BOLD, DIM, RESET } = palette;
+	const tierColour = { Full: GREEN, Partial: YELLOW, Thin: RED };
+
+	const summary = { Full: 0, Partial: 0, Thin: 0 };
+	for (const s of scored) summary[s.tier]++;
+	const borderlineCount = scored.filter((s) => s.borderline || s.loadError).length;
+	const authored = scored.length;
+
+	process.stdout.write(
+		`${BOLD}drift audit${RESET} · content-depth proxy\n` +
+			`${summary.Thin} Thin · ${summary.Partial} Partial · ${summary.Full} Full · ${authored} authored\n`
+	);
+	if (borderlineCount > 0) {
+		process.stdout.write(
+			`${DIM}${borderlineCount} entr${borderlineCount === 1 ? 'y' : 'ies'} flagged for manual review.${RESET}\n`
+		);
+	}
+	process.stdout.write('\n');
+
+	for (const tierName of ['Thin', 'Partial', 'Full']) {
+		const entries = scored.filter((s) => s.tier === tierName);
+		if (entries.length === 0) continue;
+		const col = tierColour[tierName];
+		process.stdout.write(`${col}${BOLD}${tierName} (${entries.length})${RESET}\n`);
+		for (const s of entries) {
+			const marker = s.borderline || s.loadError ? ' ⚠' : '';
+			if (s.loadError) {
+				process.stdout.write(`  ${s.slug}${marker}  ${DIM}load error: ${s.loadError}${RESET}\n`);
+				continue;
+			}
+			const axisDetail = [
+				`desc ${s.metrics.words}w (${s.axes.description})`,
+				`${s.metrics.highlights} highlight${s.metrics.highlights === 1 ? '' : 's'} (${s.axes.highlights})`,
+				s.metrics.isTeam
+					? `team note ${s.metrics.hasNote ? 'present' : 'missing'} (${s.axes.contributionNote})`
+					: null
+			]
+				.filter(Boolean)
+				.join(' · ');
+			process.stdout.write(`  ${BOLD}${s.slug}${RESET}${marker}  ${DIM}${axisDetail}${RESET}\n`);
+		}
+		process.stdout.write('\n');
+	}
+}
+
+/**
+ * Scores every authored overlay against the content-depth rubric and reports
+ * per-entry tiers. Writes nothing.
+ *
+ * @param {{ palette: object, useGum: boolean, json: boolean }} options
+ */
+async function runAudit({ palette, useGum, json }) {
+	const overlays = await loadOverlays();
+	const scored = overlays.map(scoreOverlay);
+
+	const summary = { Full: 0, Partial: 0, Thin: 0 };
+	for (const s of scored) summary[s.tier]++;
+	const borderlineCount = scored.filter((s) => s.borderline || s.loadError).length;
+
+	// Machine-readable mode: emit structured JSON and return.
+	if (json) {
+		process.stdout.write(JSON.stringify({ summary, entries: scored }, null, 2) + '\n');
+		return;
+	}
+
+	// gum markdown rendering path.
+	if (useGum && process.stdout.isTTY) {
+		const authored = scored.length;
+		const borderlineNote =
+			borderlineCount > 0
+				? `\n_${borderlineCount} entr${borderlineCount === 1 ? 'y' : 'ies'} flagged for manual review (⚠)._`
+				: '';
+
+		let md = `# drift audit · content-depth proxy\n\n`;
+		md += `${summary.Thin} Thin · ${summary.Partial} Partial · ${summary.Full} Full · ${authored} authored${borderlineNote}\n`;
+
+		for (const tierName of ['Thin', 'Partial', 'Full']) {
+			const entries = scored.filter((s) => s.tier === tierName);
+			if (entries.length === 0) continue;
+			md += `\n## ${tierName} (${entries.length})\n\n`;
+			for (const s of entries) {
+				const marker = s.borderline || s.loadError ? ' ⚠' : '';
+				if (s.loadError) {
+					md += `- \`${s.slug}\`${marker} — load error: ${s.loadError}\n`;
+					continue;
+				}
+				const axisDetail = [
+					`desc ${s.metrics.words}w (${s.axes.description})`,
+					`${s.metrics.highlights} highlight${s.metrics.highlights === 1 ? '' : 's'} (${s.axes.highlights})`,
+					s.metrics.isTeam
+						? `team note ${s.metrics.hasNote ? 'present' : 'missing'} (${s.axes.contributionNote})`
+						: null
+				]
+					.filter(Boolean)
+					.join(' · ');
+				md += `- \`${s.slug}\`${marker} — ${axisDetail}\n`;
+			}
+		}
+
+		const out = spawnSync('gum', ['format', '--theme', config.theme.markdownTheme], {
+			input: md,
+			encoding: 'utf8'
+		});
+		if (out.status === 0 && out.stdout) {
+			process.stdout.write('\n' + out.stdout + '\n');
+			return;
+		}
+	}
+
+	// Plain-ANSI fallback.
+	runAuditPlain(scored, palette);
+}
+
+// ---------------------------------------------------------------------------
 // snapshot verb
 //
 // Shows every current metric for every resolvable project, colourised so
@@ -2265,7 +2998,10 @@ function runSnapshot({ result, manifest, palette, json, useGum }) {
 
 	if (useGum && process.stdout.isTTY) {
 		const md = renderSnapshotMarkdown(snapshot);
-		const out = spawnSync('gum', ['format', '--theme', config.theme.markdownTheme], { input: md, encoding: 'utf8' });
+		const out = spawnSync('gum', ['format', '--theme', config.theme.markdownTheme], {
+			input: md,
+			encoding: 'utf8'
+		});
 		if (out.status === 0 && out.stdout) {
 			process.stdout.write('\n' + out.stdout + '\n');
 			return;
@@ -2293,6 +3029,10 @@ Compare synced fingerprints against current git state and surface new repos.
 - \`drift keep --all-projects <field>\`
 - \`drift keep-all\`
 - \`drift hide <slug>\`
+- \`drift author <slug>\`
+- \`drift pin <slug>\`
+- \`drift audit [--json]\`
+- \`drift init\`
 
 ## Verbs
 
@@ -2302,6 +3042,10 @@ Compare synced fingerprints against current git state and surface new repos.
 - \`keep\` · keep your manual override value, refreshing its synced baseline to dismiss the flag
 - \`keep-all\` · refresh every flagged override baseline at once
 - \`hide\` · append a slug to excluded.json, removing it from the public site
+- \`author\` · scaffold src/lib/data/projects/\<slug\>.ts from a template, then open in \$EDITOR
+- \`pin\` · set pin: true in the slug's overlay (creating it if absent) to float it above the hero score
+- \`audit\` · score every authored overlay against the content-depth rubric and report per-entry tiers
+- \`init\` · scaffold drift.config.ts and sources.local.json for this machine
 
 ## Flags
 
@@ -2408,6 +3152,105 @@ all fields regardless. Does not write anything.
 
 \`\`\`
 drift snapshot [--json] [--no-color]
+\`\`\``,
+
+	init: `# drift init · scaffold per-machine config files
+
+Generates two gitignored files that a fresh checkout needs:
+
+- \`drift.config.ts\` — per-machine config (scan root, author pattern, theme colours)
+- \`src/lib/data/sources.local.json\` — local absolute paths for each project slug
+
+In an interactive terminal with gum, prompts for each value pre-filled with the
+built-in default. In non-interactive mode (piped, CI, no gum), writes the real
+built-in defaults silently. Never overwrites an existing file.
+
+Run \`drift init\` once per machine after cloning. Fill in the local paths in
+\`sources.local.json\`, then run \`drift\` to see your portfolio state.
+
+## Usage
+
+\`\`\`
+drift init
+\`\`\``,
+
+	author: `# drift author · scaffold a project overlay
+
+Creates \`src/lib/data/projects/<slug>.ts\` from a full commented template and
+opens it in \`\$EDITOR\` (when available and in an interactive terminal). Never
+overwrites an existing overlay.
+
+The template includes all editorial fields (name, tagline, blurb, description,
+kind, contribution, status, repoUrl, highlights, relationships, tags) with
+inline comments explaining the depth rubric and enum options. Delete any field
+you do not need; the registry falls back to Drift-derived defaults for fields
+left unset.
+
+The \`pin\` field is not included in the scaffold — use \`drift pin <slug>\` to
+float a project above the hero score.
+
+## Usage
+
+\`\`\`
+drift author <slug>
+\`\`\`
+
+## Examples
+
+\`\`\`
+drift author my-new-project
+drift author schema-forge
+\`\`\``,
+
+	pin: `# drift pin · float a project to the top of the hero pool
+
+Sets \`pin: true\` in \`src/lib/data/projects/<slug>.ts\`. If the overlay does
+not exist, creates it from the standard template first. Idempotent: no-op
+when the overlay already has \`pin: true\`.
+
+A pinned project appears above all score-ranked entries in the home-page hero
+pool regardless of its drift metrics. Pin lives only in the authored overlay,
+never in any of the four JSON data files.
+
+## Usage
+
+\`\`\`
+drift pin <slug>
+\`\`\`
+
+## Examples
+
+\`\`\`
+drift pin iris
+drift pin lyra-rose
+\`\`\``,
+
+	audit: `# drift audit · score every authored overlay against the depth rubric
+
+Reads every \`src/lib/data/projects/*.ts\` overlay and computes a mechanical-
+proxy tier (Full / Partial / Thin) for each. Tier thresholds from the
+content-depth rubric (\`docs/audits/content-depth.md\`):
+
+| Tier    | description | highlights | team contributionNote |
+|---------|-------------|------------|-----------------------|
+| Full    | ≥ 80 words  | ≥ 4        | present               |
+| Partial | 40-79 words | 3          | present (generic ok)  |
+| Thin    | < 40 words  | ≤ 2        | missing               |
+
+Final tier is the **worst axis**. Full requires all axes Full. The team-note
+axis only applies to lead / collaborator projects; solo projects are never
+penalised for the absence of a note.
+
+Entries within ±5 words of a threshold, or with exactly 3 or 4 highlights,
+are flagged (⚠) for manual editorial review.
+
+Writes nothing. Recomputes from live files every run.
+
+## Usage
+
+\`\`\`
+drift audit
+drift audit --json
 \`\`\``
 };
 
@@ -2415,7 +3258,10 @@ function printHelp(verb, palette, useGum) {
 	// gum markdown rendering — falls back to plain banners on any failure.
 	if (useGum && process.stdout.isTTY) {
 		const md = helpMarkdown[verb] ?? helpMarkdown.report;
-		const out = spawnSync('gum', ['format', '--theme', config.theme.markdownTheme], { input: md, encoding: 'utf8' });
+		const out = spawnSync('gum', ['format', '--theme', config.theme.markdownTheme], {
+			input: md,
+			encoding: 'utf8'
+		});
 		if (out.status === 0 && out.stdout) {
 			process.stdout.write('\n' + out.stdout + '\n');
 			return;
@@ -2435,6 +3281,10 @@ ${BOLD}Usage:${RESET}
   drift keep --all-projects <field>
   drift keep-all
   drift hide <slug>
+  drift author <slug>
+  drift pin <slug>
+  drift audit [--json]
+  drift init
 
 ${BOLD}Verbs:${RESET}
   report      Compare synced fingerprints to current git state (default). Shows only deltas.
@@ -2443,6 +3293,10 @@ ${BOLD}Verbs:${RESET}
   keep        Keep your manual override value, refreshing its baseline to dismiss the flag.
   keep-all    Refresh every flagged override baseline at once.
   hide        Append a slug to excluded.json, removing it from the public site.
+  author      Scaffold projects/<slug>.ts from a template, then open in $EDITOR.
+  pin         Set pin: true in the slug's overlay (creating it if absent).
+  audit       Score every authored overlay against the content-depth rubric.
+  init        Scaffold drift.config.ts and sources.local.json for this machine.
 
 ${BOLD}Flags:${RESET}
   --full        Field-level diff across ALL resolvable repos (surfaces windowed decay
@@ -2511,7 +3365,58 @@ dependency fields.
 ${DIM}--full is accepted for symmetry but is a no-op: snapshot always covers
 all fields. Does not write anything.${RESET}
 
-  Usage: drift snapshot [--json] [--no-color]`
+  Usage: drift snapshot [--json] [--no-color]`,
+
+		init: `${BOLD}drift init${RESET} - scaffold per-machine config files
+
+Generates two gitignored files that a fresh checkout needs:
+  drift.config.ts              per-machine config (scan root, author pattern, theme colours)
+  src/lib/data/sources.local.json  local absolute paths for each project slug
+
+In an interactive terminal with gum, prompts for each value pre-filled with the
+built-in default. In non-interactive mode, writes built-in defaults silently.
+Never overwrites an existing file.
+
+${DIM}Run once per machine after cloning. Fill in sources.local.json paths, then run \`drift\`.${RESET}
+
+  Usage: drift init`,
+
+		author: `${BOLD}drift author <slug>${RESET} - scaffold a project overlay
+
+Creates src/lib/data/projects/<slug>.ts from a full commented template and
+opens it in $EDITOR. Never overwrites an existing overlay.
+
+${DIM}The template includes all editorial fields with inline comments explaining
+the depth rubric and enum options. Use \`drift audit\` to check tiers.${RESET}
+
+  Usage:   drift author <slug>
+  Example: drift author my-new-project`,
+
+		pin: `${BOLD}drift pin <slug>${RESET} - float a project to the top of the hero pool
+
+Sets pin: true in projects/<slug>.ts. Creates the overlay from the standard
+template if it does not exist. Idempotent when already pinned.
+
+${DIM}Pin lives only in the authored overlay, never in any JSON data file.
+Rebuild the site to apply.${RESET}
+
+  Usage:   drift pin <slug>
+  Example: drift pin iris`,
+
+		audit: `${BOLD}drift audit${RESET} - score every authored overlay against the depth rubric
+
+Reads every projects/*.ts overlay and reports a mechanical-proxy tier:
+  Full    description >= 80w, >= 4 highlights, team note present
+  Partial description 40-79w or 3 highlights (or team note present but generic)
+  Thin    description < 40w or <= 2 highlights or team note missing
+
+Final tier is the worst axis. Full requires all axes Full.
+Entries near a threshold are flagged for manual review.
+
+${DIM}Writes nothing. Recomputes from live files every run.${RESET}
+
+  Usage: drift audit
+         drift audit --json`
 	};
 	process.stdout.write((banners[verb] ?? banners.report) + '\n');
 }
@@ -2594,6 +3499,9 @@ async function runInteractiveMenu({ manifests, palette, useGum, onProgress, clea
 		],
 		['Keep all', 'Keep every pinned value, dismiss all drift flags at once', 'keep-all'],
 		['Hide', 'Append a slug to excluded.json, removing it from the site', 'hide'],
+		['Author', 'Scaffold a project overlay and open it in your editor', 'author'],
+		['Pin', 'Float a project to the top of the hero pool', 'pin'],
+		['Audit', 'Score every authored overlay against the depth rubric', 'audit'],
 		['Help', 'Show the command reference', 'help']
 	];
 
@@ -2775,6 +3683,75 @@ async function runInteractiveMenu({ manifests, palette, useGum, onProgress, clea
 			runExclude({ args: [chosenSlug], manifest, palette });
 			break;
 		}
+		case 'author': {
+			// Prompt for a slug to author — offer manifest keys as candidates.
+			const candidateSlugs = Object.keys(manifests.manifest.sources).sort();
+			let chosenSlug;
+			if (candidateSlugs.length > 0) {
+				const slugItems = candidateSlugs.map((s) => `${s}:${s}`);
+				const pick = spawnSync(
+					'gum',
+					[
+						'choose',
+						'--label-delimiter=:',
+						'--header=Choose a slug to author:',
+						'--cursor=> ',
+						`--cursor.foreground=${BRAND_PRIMARY}`,
+						`--selected.foreground=${BRAND_PRIMARY}`,
+						`--item.foreground=${BRAND_ACCENT}`,
+						...slugItems
+					],
+					{ stdio: ['inherit', 'pipe', 'inherit'], encoding: 'utf8' }
+				);
+				if (pick.status !== 0 || !pick.stdout.trim()) return;
+				chosenSlug = pick.stdout.trim();
+			} else {
+				const input = spawnSync('gum', ['input', '--placeholder', 'project slug'], {
+					stdio: ['inherit', 'pipe', 'inherit'],
+					encoding: 'utf8'
+				});
+				if (input.status !== 0 || !input.stdout.trim()) return;
+				chosenSlug = input.stdout.trim();
+			}
+			runAuthor({ args: [chosenSlug], palette, useGum });
+			break;
+		}
+		case 'pin': {
+			// Prompt for a slug to pin — offer manifest keys as candidates.
+			const candidateSlugs = Object.keys(manifests.manifest.sources).sort();
+			let chosenSlug;
+			if (candidateSlugs.length > 0) {
+				const slugItems = candidateSlugs.map((s) => `${s}:${s}`);
+				const pick = spawnSync(
+					'gum',
+					[
+						'choose',
+						'--label-delimiter=:',
+						'--header=Choose a slug to pin:',
+						'--cursor=> ',
+						`--cursor.foreground=${BRAND_PRIMARY}`,
+						`--selected.foreground=${BRAND_PRIMARY}`,
+						`--item.foreground=${BRAND_ACCENT}`,
+						...slugItems
+					],
+					{ stdio: ['inherit', 'pipe', 'inherit'], encoding: 'utf8' }
+				);
+				if (pick.status !== 0 || !pick.stdout.trim()) return;
+				chosenSlug = pick.stdout.trim();
+			} else {
+				const input = spawnSync('gum', ['input', '--placeholder', 'project slug'], {
+					stdio: ['inherit', 'pipe', 'inherit'],
+					encoding: 'utf8'
+				});
+				if (input.status !== 0 || !input.stdout.trim()) return;
+				chosenSlug = input.stdout.trim();
+			}
+			await runPin({ args: [chosenSlug], palette, useGum });
+			break;
+		}
+		case 'audit':
+			await runAudit({ palette, useGum, json: false });
+			break;
 	}
 }
 
@@ -2808,7 +3785,20 @@ async function main() {
 	}
 
 	// Subcommand dispatcher. The first positional is the verb; slug/field follow.
-	const KNOWN_VERBS = new Set(['report', 'snapshot', 'sync', 'keep', 'keep-all', 'hide', 'promote', 'help']);
+	const KNOWN_VERBS = new Set([
+		'report',
+		'snapshot',
+		'sync',
+		'keep',
+		'keep-all',
+		'hide',
+		'promote',
+		'author',
+		'pin',
+		'audit',
+		'init',
+		'help'
+	]);
 	const verb = KNOWN_VERBS.has(positionals[0]) ? positionals[0] : 'report';
 	// args[0] = slug, args[1] = field (for accept). When the verb was explicit,
 	// slice it off; when the default 'report' was inferred, positionals are not args.
@@ -2825,6 +3815,26 @@ async function main() {
 		// When `drift help update` is used, the target verb is in args[0].
 		const helpTarget = verb === 'help' ? (args[0] ?? 'report') : verb;
 		printHelp(helpTarget, palette, useGum);
+		return;
+	}
+
+	// init / author / pin / audit do not need a manifest or drift scan; run them
+	// immediately and return. Must come before loadManifests() so they work on a
+	// bare checkout with no sources.json yet.
+	if (verb === 'init') {
+		runInit({ palette, useGum });
+		return;
+	}
+	if (verb === 'author') {
+		runAuthor({ args, palette, useGum });
+		return;
+	}
+	if (verb === 'pin') {
+		await runPin({ args, palette, useGum });
+		return;
+	}
+	if (verb === 'audit') {
+		await runAudit({ palette, useGum, json: values.json });
 		return;
 	}
 

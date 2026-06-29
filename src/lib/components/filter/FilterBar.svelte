@@ -163,11 +163,7 @@
 					<summary class="filter-group__summary">{tagKindLabels[kind]}</summary>
 					<div class="filter-group__chips">
 						{#each tags as tag (tag)}
-							<FilterChip
-								label={tag}
-								active={activeTags.has(tag)}
-								onclick={() => ontag(tag)}
-							/>
+							<FilterChip label={tag} active={activeTags.has(tag)} onclick={() => ontag(tag)} />
 						{/each}
 					</div>
 				</details>

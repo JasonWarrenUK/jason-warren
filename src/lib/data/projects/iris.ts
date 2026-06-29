@@ -11,7 +11,7 @@ export const iris: AuthoredProject = {
 	kind: 'tui',
 	contribution: {
 		role: 'solo',
-		collaboration: { team: 'Solo (Jason)', employer: 'Founders and Coders' },
+		collaboration: { team: 'Solo (Jason)', employer: 'Founders and Coders' }
 	},
 	status: 'finished',
 	repoUrl: 'https://github.com/JasonWarrenUK/iris',
