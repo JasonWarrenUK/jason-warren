@@ -1,5 +1,6 @@
 <script lang="ts">
 	import Seo from '$lib/components/seo/Seo.svelte';
+	import FlipCard from '$lib/components/ui/FlipCard.svelte';
 	import { GITHUB_REPO_URL } from '$lib/config.js';
 	import type { PageData } from './$types.js';
 
@@ -122,6 +123,7 @@
 />
 
 <div class="page">
+	<!-- ── Page header ──────────────────────────────────────────────────── -->
 	<header class="page__header">
 		<h1>Colophon</h1>
 		<p class="page__intro">
@@ -131,12 +133,13 @@
 		</p>
 	</header>
 
-	<!-- The stack: skimmable overview — stays open ————————————————————— -->
-	<section class="page__section" aria-labelledby="stack-heading">
-		<header class="page__section-header">
+	<!-- ── Hero stat strip: the stack at a glance ───────────────────────── -->
+	<section class="colophon-hero" aria-labelledby="stack-heading">
+		<div class="colophon-hero__head">
+			<span class="colophon-hero__eyebrow">the build, in depth</span>
 			<h2 id="stack-heading">The stack, briefly</h2>
-			<p>For anyone who wants the headline before the internals.</p>
-		</header>
+			<p class="colophon-hero__lede">For anyone who wants the headline before the internals.</p>
+		</div>
 		<dl class="spec">
 			<div class="spec__row">
 				<dt>Framework</dt>
@@ -167,70 +170,89 @@
 		</dl>
 	</section>
 
-	<!-- Content is code ——————————————————————————————————————————————— -->
-	<details class="page__section page__section--collapsible" aria-labelledby="content-heading">
-		<summary class="page__summary">
-			<h2 id="content-heading">The content is code, not a database</h2>
-			<p class="page__summary-lede">
-				Every project is a typed object. The type system refuses to let me describe the work
-				incorrectly.
-			</p>
-			<span class="page__chevron" aria-hidden="true"></span>
-		</summary>
+	<!-- ── Gallery wall: masonry of flip cards + flow tile ──────────────── -->
+	<section class="gallery" aria-label="How this portfolio is built">
 
-		<div class="page__section-body">
-			<p class="prose">
-				A team project that does not say what I actually did is not a missing field I might notice
-				in review — it is a build that fails. The <code>Contribution</code> type discriminates on
-				role, so any team-project entry must carry either <code>'lead'</code> or
-				<code>'collaborator'</code> before it will compile. The <code>contributionNote</code> field is
-				optional by design: manifest-derived projects are auto-listed first, then an editorial note is
-				authored later. The shape is enforced at the type level; the content is authored at the human
-				level.
-			</p>
-			<figure class="code">
-				{@html data.snippets.contribution}
-				<figcaption>src/lib/data/types.ts</figcaption>
-			</figure>
-			<p class="prose">
-				Cross-links between projects are checked the same way. <code>ProjectSlug</code> is now a
-				plain <code>string</code> — slugs are discovered dynamically at build time from the manifest,
-				so a hand-maintained closed union is not sustainable. Type safety is preserved through two other
-				mechanisms: the prerender throws when a relationship target is missing from the project registry,
-				and the test suite asserts every target resolves before the build ever runs. What is lost is editor
-				autocomplete on literal strings. What is kept is a build that fails on real typos.
-			</p>
-			<figure class="code">
-				{@html data.snippets.slug}
-				<figcaption>src/lib/data/types.ts</figcaption>
-			</figure>
-		</div>
-	</details>
+		<!-- Flip card 1: the content is code ─────────────────────────────── -->
+		<FlipCard label="The content is code">
+			{#snippet front()}
+				<div class="flip-front">
+					<h3 class="flip-front__title">The content is code, not a database</h3>
+					<p class="flip-front__lede">
+						Every project is a typed object. The type system refuses to let me describe the work
+						incorrectly.
+					</p>
+					<p class="flip-front__body">
+						A team project that does not say what I actually did is not a missing field I might notice
+						in review — it is a build that fails. The <code>Contribution</code> type discriminates on
+						role, so any team-project entry must carry either <code>'lead'</code> or
+						<code>'collaborator'</code> before it will compile.
+					</p>
+					<span class="flip-front__hint" aria-hidden="true">Flip for the code →</span>
+				</div>
+			{/snippet}
+			{#snippet back()}
+				<div class="flip-back">
+					<p class="flip-back__intro">
+						The shape is enforced at the type level; the content is authored at the human level.
+						Cross-links are checked at build time — the prerender throws on dangling slugs, and the
+						test suite asserts every target resolves before the build runs.
+					</p>
+					<figure class="code">
+						{@html data.snippets.contribution}
+						<figcaption>src/lib/data/types.ts — Contribution discriminated union</figcaption>
+					</figure>
+					<figure class="code">
+						{@html data.snippets.slug}
+						<figcaption>src/lib/data/types.ts — ProjectSlug and cross-link safety</figcaption>
+					</figure>
+				</div>
+			{/snippet}
+		</FlipCard>
 
-	<!-- Everything else is derived ————————————————————————————————————— -->
-	<details class="page__section page__section--collapsible" aria-labelledby="derived-heading">
-		<summary class="page__summary">
-			<h2 id="derived-heading">Almost everything else is derived</h2>
-			<p class="page__summary-lede">
-				The map, the timeline, the engine threads and the adoption chart are not separate datasets —
-				they are all computed from one registry at build time.
-			</p>
-			<span class="page__chevron" aria-hidden="true"></span>
-		</summary>
+		<!-- Flip card 2: everything is derived ───────────────────────────── -->
+		<FlipCard label="Everything is derived">
+			{#snippet front()}
+				<div class="flip-front">
+					<h3 class="flip-front__title">Almost everything else is derived</h3>
+					<p class="flip-front__lede">
+						The map, the timeline, the engine threads and the adoption chart are not separate
+						datasets — they are all computed from one registry at build time.
+					</p>
+					<p class="flip-front__body">
+						The "libraries from the inside out" thread on the home page is a clear example. Nothing
+						declares those pairings by hand. A library says it <code>powers</code> an application;
+						the derivation walks the graph and finds every such pair, so the story stays true to the
+						data rather than to my memory of it.
+					</p>
+					<span class="flip-front__hint" aria-hidden="true">Flip for the code →</span>
+				</div>
+			{/snippet}
+			{#snippet back()}
+				<div class="flip-back">
+					<p class="flip-back__intro">
+						One dataset in, every page out. The whole derivation runs at build time, so there is
+						nothing to hydrate and no runtime to fall over.
+					</p>
+					<figure class="code">
+						{@html data.snippets.threads}
+						<figcaption>src/lib/data/threads.ts — engine-thread derivation</figcaption>
+					</figure>
+				</div>
+			{/snippet}
+		</FlipCard>
 
-		<div class="page__section-body">
-			<p class="prose">
-				The "libraries from the inside out" thread on the home page is a clear example. Nothing
-				declares those pairings by hand. A library says it <code>powers</code> an application; the derivation
-				walks the graph and finds every such pair, so the story stays true to the data rather than to
-				my memory of it.
-			</p>
-			<figure class="code">
-				{@html data.snippets.threads}
-				<figcaption>src/lib/data/threads.ts</figcaption>
-			</figure>
+		<!-- Pipeline flow tile ───────────────────────────────────────────── -->
+		<details class="tile tile--flow page__section--collapsible" aria-labelledby="flow-heading">
+			<summary class="page__summary">
+				<h3 id="flow-heading" class="tile--flow__title">One dataset in, every page out</h3>
+				<p class="page__summary-lede">
+					The whole build pipeline, from real git history to prerendered HTML.
+				</p>
+				<span class="page__chevron" aria-hidden="true"></span>
+			</summary>
 
-			<figure class="flow" aria-labelledby="flow-caption">
+			<figure class="flow">
 				<ol class="flow__steps" role="list">
 					{#each pipeline as step, i (step.label)}
 						<li class="flow__step">
@@ -244,17 +266,30 @@
 						</li>
 					{/each}
 				</ol>
-				<figcaption id="flow-caption">
-					One dataset in, every page out. The whole pipeline runs at build time.
-				</figcaption>
+				<figcaption>One dataset in, every page out. The whole pipeline runs at build time.</figcaption>
 			</figure>
-		</div>
-	</details>
+		</details>
 
-	<!-- ═══════════════════════════════════════════════════════════════════
+		<!-- Fact callout tile: static + deterministic ────────────────────── -->
+		<article class="tile tile--callout-accent" aria-label="Build characteristics">
+			<h3 class="tile--callout__title">Static, deterministic, dependency-light</h3>
+			<p class="tile--callout__body">
+				The project map is laid out with a force simulation, but a deterministic one: identical
+				input gives identical output, so the prerendered SVG never drifts between builds. The social
+				cards are generated from each project's own metadata with Satori and resvg, then cached
+				forever. The syntax highlighting on this page is baked in at build time by Shiki — the
+				browser receives finished HTML and no highlighter ever runs in the client. There is no
+				client-side rendering of content to wait for and no runtime server to fall over. A page
+				either built correctly or it did not.
+			</p>
+		</article>
+
+	</section>
+
+	<!-- ══════════════════════════════════════════════════════════════════════
 	     Drift — centrepiece feature
-	     ═══════════════════════════════════════════════════════════════════ -->
-	<section class="page__section drift" aria-labelledby="drift-heading">
+	     ══════════════════════════════════════════════════════════════════════ -->
+	<section class="drift" aria-labelledby="drift-heading">
 		<header class="drift__header">
 			<div class="drift__title-row">
 				<h2 id="drift-heading">Drift</h2>
@@ -267,248 +302,264 @@
 			</p>
 		</header>
 
-		<!-- ── The split ──────────────────────────────────────────────── -->
-		<div class="drift__section" id="drift-split">
-			<h3 class="drift__section-heading">The split</h3>
+		<!-- ── The split ──────────────────────────────────────────────────── -->
+		<details class="page__section--collapsible drift__toggle" aria-labelledby="drift-split-heading">
+			<summary class="page__summary">
+				<h3 id="drift-split-heading" class="drift__toggle-title">The split</h3>
+				<p class="page__summary-lede">
+					Two things with a contract between them. The engine measures; the integration layer presents.
+				</p>
+				<span class="page__chevron" aria-hidden="true"></span>
+			</summary>
 
-			<p class="prose">
-				Drift started as a single script that did everything: walked the repos, measured them,
-				wrote the manifest, and understood how the site would render every figure. That last part
-				was the problem. Measurement was tangled with presentation, so neither could move without
-				the other.
-			</p>
-			<p class="prose">
-				It is now two things with a contract between them. The engine
-				(<code>scripts/check-drift.js</code>) is a framework-agnostic Bun script: it fingerprints
-				repos, owns the four data files, and knows nothing about Svelte. The integration layer
-				(<code>src/lib/data/</code>) is build-time SvelteKit code: it reads those files as static
-				JSON imports and assembles the typed <code>Project</code> objects the site is built from.
-				The engine could be lifted out as a standalone package and nothing on the site would
-				notice.
-			</p>
+			<div class="drift__toggle-body">
+				<p class="prose">
+					Drift started as a single script that did everything: walked the repos, measured them,
+					wrote the manifest, and understood how the site would render every figure. That last part
+					was the problem. Measurement was tangled with presentation, so neither could move without
+					the other.
+				</p>
+				<p class="prose">
+					It is now two things with a contract between them. The engine
+					(<code>scripts/check-drift.js</code>) is a framework-agnostic Bun script: it fingerprints
+					repos, owns the four data files, and knows nothing about Svelte. The integration layer
+					(<code>src/lib/data/</code>) is build-time SvelteKit code: it reads those files as static
+					JSON imports and assembles the typed <code>Project</code> objects the site is built from.
+					The engine could be lifted out as a standalone package and nothing on the site would
+					notice.
+				</p>
 
-			<!-- Architecture diagram -->
-			<figure class="drift__arch" aria-label="Architecture: engine, schema contract, integration layer">
-				<div class="arch__layers">
-					{#each driftLayers as layer, i (layer.id)}
-						<div class="arch__layer arch__layer--{layer.id}">
-							<span class="arch__layer-label">{layer.label}</span>
-							<code class="arch__layer-path">{layer.path}</code>
-							<span class="arch__layer-detail">{layer.detail}</span>
-						</div>
-						{#if i < driftLayers.length - 1}
-							<div class="arch__connector" aria-hidden="true">
-								<span class="arch__arrow">→</span>
+				<figure class="drift__arch" aria-label="Architecture: engine, schema contract, integration layer">
+					<div class="arch__layers">
+						{#each driftLayers as layer, i (layer.id)}
+							<div class="arch__layer arch__layer--{layer.id}">
+								<span class="arch__layer-label">{layer.label}</span>
+								<code class="arch__layer-path">{layer.path}</code>
+								<span class="arch__layer-detail">{layer.detail}</span>
 							</div>
-						{/if}
-					{/each}
-				</div>
-				<figcaption>The engine owns measurement; the integration layer owns presentation. The schema is the seam.</figcaption>
-			</figure>
-
-			<!-- Monolith → split -->
-			<figure class="drift__split-visual" aria-label="Before and after the decoupling">
-				<div class="split__before">
-					<span class="split__label">Before</span>
-					<div class="split__box split__box--mono">
-						<span class="split__box-title">check-drift.js</span>
-						<ul class="split__box-items" role="list">
-							<li>fingerprint repos</li>
-							<li>write manifest</li>
-							<li>render output</li>
-							<li>know the site's data shape</li>
-						</ul>
+							{#if i < driftLayers.length - 1}
+								<div class="arch__connector" aria-hidden="true">
+									<span class="arch__arrow">→</span>
+								</div>
+							{/if}
+						{/each}
 					</div>
-				</div>
-				<div class="split__arrow" aria-hidden="true">→</div>
-				<div class="split__after">
-					<span class="split__label">After</span>
-					<div class="split__boxes">
-						<div class="split__box split__box--engine">
-							<span class="split__box-title">engine</span>
+					<figcaption>The engine owns measurement; the integration layer owns presentation. The schema is the seam.</figcaption>
+				</figure>
+
+				<figure class="drift__split-visual" aria-label="Before and after the decoupling">
+					<div class="split__before">
+						<span class="split__label">Before</span>
+						<div class="split__box split__box--mono">
+							<span class="split__box-title">check-drift.js</span>
 							<ul class="split__box-items" role="list">
 								<li>fingerprint repos</li>
 								<li>write manifest</li>
-							</ul>
-						</div>
-						<div class="split__schema" aria-hidden="true">
-							<span class="split__schema-label">schema</span>
-						</div>
-						<div class="split__box split__box--integration">
-							<span class="split__box-title">integration</span>
-							<ul class="split__box-items" role="list">
-								<li>assemble Projects</li>
 								<li>render output</li>
+								<li>know the site's data shape</li>
 							</ul>
 						</div>
 					</div>
-				</div>
-			</figure>
-		</div>
-
-		<!-- ── The contract ───────────────────────────────────────────── -->
-		<div class="drift__section" id="drift-contract">
-			<h3 class="drift__section-heading">The contract</h3>
-
-			<p class="prose">
-				Between the engine and the integration layer sits <code>sources.schema.json</code>: a JSON
-				Schema draft-07 definition with <code>additionalProperties: false</code>. The engine
-				validates every assembled record against it before writing anything. A violation is a
-				programming error in the engine, not a user-data problem, so the response is blunt: throw,
-				write nothing. A half-correct manifest never reaches disk.
-			</p>
-			<p class="prose">
-				This makes adding a new metric a deliberate three-step act. Declare the property in the
-				schema. Add it to the <code>SyncedSource</code> interface in <code>index.ts</code>. Return it
-				from <code>getFingerprint</code> in the engine. Miss one and the build tells you, either
-				at <code>bun run check</code> or when the engine throws on its next sync. The boundary is not
-				a convention I am trusting myself to respect; it is enforced.
-			</p>
-
-			<figure class="code">
-				{@html data.snippets.drift}
-				<figcaption>scripts/check-drift.js — the validation gate</figcaption>
-			</figure>
-
-			<aside class="callout">
-				<strong>Fail-closed invariant:</strong> the engine throws and writes nothing on a schema
-				violation. The Svelte integration layer never sees a partial or off-contract manifest.
-			</aside>
-		</div>
-
-		<!-- ── Measurement ────────────────────────────────────────────── -->
-		<div class="drift__section" id="drift-measurement">
-			<h3 class="drift__section-heading">Measurement</h3>
-
-			<p class="prose">
-				For each repo, <code>getFingerprint</code> fans a set of independent git calls out via
-				<code>Promise.all</code> against the resolved default branch, not whatever happens to be
-				checked out locally. <code>defaultBranch</code> resolves <code>origin/HEAD</code>, then
-				<code>main</code>, then <code>master</code>, falling back to bare <code>HEAD</code> only
-				when none of those exist. The resolved ref is recorded as <code>measuredRef</code> in the
-				manifest, excluded from drift comparisons via <code>DRIFT_SKIP_FIELDS</code>, so a branch
-				rename never registers as drift.
-			</p>
-			<p class="prose">
-				Lines of code and languages are read straight from git blobs via
-				<code>git cat-file --batch</code>, not the working tree, so the measurement is always
-				against the canonical commit. Repos run concurrently across a bounded worker pool
-				(<code>cpus().length</code> slots). A HEAD-plus-TTL cache, keyed on the measured commit's
-				SHA and gitignored, means an unchanged repo is not re-scanned. <code>drift sync</code>
-				and <code>--no-cache</code> bypass it.
-			</p>
-			<p class="prose">
-				Per repo, the fingerprint covers: commit counts on two axes (mine versus all authors,
-				lifetime versus trailing four weeks); line churn on the same axes; lines of code; languages
-				by file count; first and last commit dates; and the runtime, framework and database
-				inferred from manifest files.
-			</p>
-
-			<figure class="code">
-				{@html data.snippets.sources}
-				<figcaption>src/lib/data/sources.json — one entry, every field a measurement</figcaption>
-			</figure>
-		</div>
-
-		<!-- ── The staging pipeline ───────────────────────────────────── -->
-		<div class="drift__section" id="drift-pipeline">
-			<h3 class="drift__section-heading">The staging pipeline</h3>
-
-			<p class="prose">
-				Work that is still on an unmerged branch has no entry in <code>sources.json</code> yet,
-				but it can still surface on the site. A committed <code>in-progress.json</code> holds
-				provisional metrics for in-flight projects: the branch name, a promotion pipeline
-				(ordered merge targets), a visibility flag (<code>'public'</code> surfaces on the site;
-				<code>'local'</code> stays in the CLI), and per-field tracked values with their
-				<code>baseOnMain</code> counterpart for context.
-			</p>
-			<p class="prose">
-				The integration layer's <code>withSyncedMetrics</code> applies a four-tier precedence
-				across every metric field. Manual overrides win; real synced figures come next; provisional
-				values from <code>in-progress.json</code> fill in below that; authored defaults are the
-				floor. Once a branch lands and <code>drift sync</code> picks up real numbers, the synced
-				value naturally shadows the provisional one. Promotion is self-healing: no stale figures
-				leak through.
-			</p>
-
-			<figure class="code">
-				{@html data.snippets.precedence}
-				<figcaption>src/lib/data/index.ts — the metric precedence chain</figcaption>
-			</figure>
-		</div>
-
-		<!-- ── The verbs ──────────────────────────────────────────────── -->
-		<div class="drift__section" id="drift-verbs">
-			<h3 class="drift__section-heading">The verbs</h3>
-
-			<p class="prose">
-				The CLI is a set of verbs. Each write verb touches exactly one file. Read-only verbs touch
-				nothing at all.
-			</p>
-
-			<div class="drift__table-wrap">
-				<table class="verb-table">
-					<thead>
-						<tr>
-							<th scope="col">Verb</th>
-							<th scope="col">Does</th>
-							<th scope="col">Writes</th>
-						</tr>
-					</thead>
-					<tbody>
-						{#each driftVerbs as row (row.verb)}
-							<tr>
-								<td><code>{row.verb}</code></td>
-								<td>{row.does}</td>
-								<td>
-									{#if row.write}
-										<code class="verb-table__write">{row.write}</code>
-									{:else}
-										<span class="verb-table__none">nothing</span>
-									{/if}
-								</td>
-							</tr>
-						{/each}
-					</tbody>
-				</table>
+					<div class="split__arrow" aria-hidden="true">→</div>
+					<div class="split__after">
+						<span class="split__label">After</span>
+						<div class="split__boxes">
+							<div class="split__box split__box--engine">
+								<span class="split__box-title">engine</span>
+								<ul class="split__box-items" role="list">
+									<li>fingerprint repos</li>
+									<li>write manifest</li>
+								</ul>
+							</div>
+							<div class="split__schema" aria-hidden="true">
+								<span class="split__schema-label">schema</span>
+							</div>
+							<div class="split__box split__box--integration">
+								<span class="split__box-title">integration</span>
+								<ul class="split__box-items" role="list">
+									<li>assemble Projects</li>
+									<li>render output</li>
+								</ul>
+							</div>
+						</div>
+					</div>
+				</figure>
 			</div>
-		</div>
+		</details>
 
-		<!-- ── Closing ────────────────────────────────────────────────── -->
+		<!-- ── The contract ───────────────────────────────────────────────── -->
+		<details class="page__section--collapsible drift__toggle" aria-labelledby="drift-contract-heading">
+			<summary class="page__summary">
+				<h3 id="drift-contract-heading" class="drift__toggle-title">The contract</h3>
+				<p class="page__summary-lede">
+					JSON Schema draft-07 with <code>additionalProperties: false</code>. A violation throws and
+					writes nothing.
+				</p>
+				<span class="page__chevron" aria-hidden="true"></span>
+			</summary>
+
+			<div class="drift__toggle-body">
+				<p class="prose">
+					Between the engine and the integration layer sits <code>sources.schema.json</code>: a JSON
+					Schema draft-07 definition with <code>additionalProperties: false</code>. The engine
+					validates every assembled record against it before writing anything. A violation is a
+					programming error in the engine, not a user-data problem, so the response is blunt: throw,
+					write nothing. A half-correct manifest never reaches disk.
+				</p>
+				<p class="prose">
+					This makes adding a new metric a deliberate three-step act. Declare the property in the
+					schema. Add it to the <code>SyncedSource</code> interface in <code>index.ts</code>. Return it
+					from <code>getFingerprint</code> in the engine. Miss one and the build tells you, either
+					at <code>bun run check</code> or when the engine throws on its next sync. The boundary is not
+					a convention I am trusting myself to respect; it is enforced.
+				</p>
+
+				<figure class="code">
+					{@html data.snippets.drift}
+					<figcaption>scripts/check-drift.js — the validation gate</figcaption>
+				</figure>
+
+				<aside class="callout">
+					<strong>Fail-closed invariant:</strong> the engine throws and writes nothing on a schema
+					violation. The Svelte integration layer never sees a partial or off-contract manifest.
+				</aside>
+			</div>
+		</details>
+
+		<!-- ── Measurement ────────────────────────────────────────────────── -->
+		<details class="page__section--collapsible drift__toggle" aria-labelledby="drift-measurement-heading">
+			<summary class="page__summary">
+				<h3 id="drift-measurement-heading" class="drift__toggle-title">Measurement</h3>
+				<p class="page__summary-lede">
+					Every figure is measured against the canonical commit, not the working tree, via a
+					bounded concurrent worker pool.
+				</p>
+				<span class="page__chevron" aria-hidden="true"></span>
+			</summary>
+
+			<div class="drift__toggle-body">
+				<p class="prose">
+					For each repo, <code>getFingerprint</code> fans a set of independent git calls out via
+					<code>Promise.all</code> against the resolved default branch, not whatever happens to be
+					checked out locally. <code>defaultBranch</code> resolves <code>origin/HEAD</code>, then
+					<code>main</code>, then <code>master</code>, falling back to bare <code>HEAD</code> only
+					when none of those exist. The resolved ref is recorded as <code>measuredRef</code> in the
+					manifest, excluded from drift comparisons via <code>DRIFT_SKIP_FIELDS</code>, so a branch
+					rename never registers as drift.
+				</p>
+				<p class="prose">
+					Lines of code and languages are read straight from git blobs via
+					<code>git cat-file --batch</code>, not the working tree, so the measurement is always
+					against the canonical commit. Repos run concurrently across a bounded worker pool
+					(<code>cpus().length</code> slots). A HEAD-plus-TTL cache, keyed on the measured commit's
+					SHA and gitignored, means an unchanged repo is not re-scanned. <code>drift sync</code>
+					and <code>--no-cache</code> bypass it.
+				</p>
+				<p class="prose">
+					Per repo, the fingerprint covers: commit counts on two axes (mine versus all authors,
+					lifetime versus trailing four weeks); line churn on the same axes; lines of code; languages
+					by file count; first and last commit dates; and the runtime, framework and database
+					inferred from manifest files.
+				</p>
+
+				<figure class="code">
+					{@html data.snippets.sources}
+					<figcaption>src/lib/data/sources.json — one entry, every field a measurement</figcaption>
+				</figure>
+			</div>
+		</details>
+
+		<!-- ── The staging pipeline ───────────────────────────────────────── -->
+		<details class="page__section--collapsible drift__toggle" aria-labelledby="drift-staging-heading">
+			<summary class="page__summary">
+				<h3 id="drift-staging-heading" class="drift__toggle-title">The staging pipeline</h3>
+				<p class="page__summary-lede">
+					In-flight work surfaces on the site before it merges, via a self-healing four-tier
+					precedence chain.
+				</p>
+				<span class="page__chevron" aria-hidden="true"></span>
+			</summary>
+
+			<div class="drift__toggle-body">
+				<p class="prose">
+					Work that is still on an unmerged branch has no entry in <code>sources.json</code> yet,
+					but it can still surface on the site. A committed <code>in-progress.json</code> holds
+					provisional metrics for in-flight projects: the branch name, a promotion pipeline
+					(ordered merge targets), a visibility flag (<code>'public'</code> surfaces on the site;
+					<code>'local'</code> stays in the CLI), and per-field tracked values with their
+					<code>baseOnMain</code> counterpart for context.
+				</p>
+				<p class="prose">
+					The integration layer's <code>withSyncedMetrics</code> applies a four-tier precedence
+					across every metric field. Manual overrides win; real synced figures come next; provisional
+					values from <code>in-progress.json</code> fill in below that; authored defaults are the
+					floor. Once a branch lands and <code>drift sync</code> picks up real numbers, the synced
+					value naturally shadows the provisional one. Promotion is self-healing: no stale figures
+					leak through.
+				</p>
+
+				<figure class="code">
+					{@html data.snippets.precedence}
+					<figcaption>src/lib/data/index.ts — the metric precedence chain</figcaption>
+				</figure>
+			</div>
+		</details>
+
+		<!-- ── The verbs ──────────────────────────────────────────────────── -->
+		<details class="page__section--collapsible drift__toggle" aria-labelledby="drift-verbs-heading">
+			<summary class="page__summary">
+				<h3 id="drift-verbs-heading" class="drift__toggle-title">The verbs</h3>
+				<p class="page__summary-lede">
+					Each write verb touches exactly one file. Read-only verbs touch nothing at all.
+				</p>
+				<span class="page__chevron" aria-hidden="true"></span>
+			</summary>
+
+			<div class="drift__toggle-body">
+				<p class="prose">
+					The CLI is a set of verbs. Each write verb touches exactly one file. Read-only verbs touch
+					nothing at all.
+				</p>
+
+				<div class="drift__table-wrap">
+					<table class="verb-table">
+						<thead>
+							<tr>
+								<th scope="col">Verb</th>
+								<th scope="col">Does</th>
+								<th scope="col">Writes</th>
+							</tr>
+						</thead>
+						<tbody>
+							{#each driftVerbs as row (row.verb)}
+								<tr>
+									<td><code>{row.verb}</code></td>
+									<td>{row.does}</td>
+									<td>
+										{#if row.write}
+											<code class="verb-table__write">{row.write}</code>
+										{:else}
+											<span class="verb-table__none">nothing</span>
+										{/if}
+									</td>
+								</tr>
+							{/each}
+						</tbody>
+					</table>
+				</div>
+			</div>
+		</details>
+
+		<!-- ── Closing ────────────────────────────────────────────────────── -->
 		<p class="drift__closing">
 			Every figure you see on this site is a measurement from that manifest, validated against a
 			schema, not a claim I typed. That is the line the whole honesty thesis rests on.
 		</p>
 	</section>
 
-	<!-- Static and deterministic ——————————————————————————————————————— -->
-	<details class="page__section page__section--collapsible" aria-labelledby="static-heading">
-		<summary class="page__summary">
-			<h2 id="static-heading">Static, deterministic, dependency-light</h2>
-			<p class="page__summary-lede">
-				The output is plain HTML, and it is the same plain HTML every time.
-			</p>
-			<span class="page__chevron" aria-hidden="true"></span>
-		</summary>
-
-		<div class="page__section-body">
-			<p class="prose">
-				The project map is laid out with a force simulation, but a deterministic one: identical
-				input gives identical output, so the prerendered SVG never drifts between builds. The social
-				cards are generated from each project's own metadata with Satori and resvg, then cached
-				forever. The syntax highlighting on this page is baked in at build time by Shiki — the
-				browser receives finished HTML and no highlighter ever runs in the client. There is no
-				client-side rendering of content to wait for and no runtime server to fall over. A page
-				either built correctly or it did not.
-			</p>
-		</div>
-	</details>
-
-	<!-- Credits — stays open (short) ——————————————————————————————————— -->
-	<section class="page__section" aria-labelledby="credits-heading">
-		<header class="page__section-header">
-			<h2 id="credits-heading">Credits</h2>
-		</header>
+	<!-- ── Outro ────────────────────────────────────────────────────────── -->
+	<section class="colophon-outro" aria-labelledby="credits-heading">
+		<h2 id="credits-heading" class="sr-only">Credits</h2>
 		<dl class="spec">
 			<div class="spec__row">
 				<dt>Type</dt>
@@ -542,6 +593,8 @@
 </div>
 
 <style>
+	/* ── Page shell ──────────────────────────────────────────────────────── */
+
 	.page {
 		max-width: var(--layout-max-width);
 		margin: 0 auto;
@@ -571,38 +624,150 @@
 		margin: 0;
 	}
 
-	/* Sections ——————————————————————————————————————————————————————————— */
+	/* ── Hero stat strip ────────────────────────────────────────────────── */
 
-	.page__section {
+	.colophon-hero {
 		display: flex;
 		flex-direction: column;
 		gap: var(--space-6);
+		padding: var(--space-8);
+		background-color: var(--color-primary-bg);
+		border: 1px solid var(--color-primary);
+		border-radius: var(--radius-xl);
 	}
 
-	.page__section-header {
+	.colophon-hero__head {
 		display: flex;
 		flex-direction: column;
 		gap: var(--space-2);
 	}
 
-	.page__section-header h2 {
+	.colophon-hero__eyebrow {
+		font-size: var(--text-xs);
+		font-weight: 700;
+		text-transform: uppercase;
+		letter-spacing: 0.1em;
+		color: var(--color-primary-text);
+	}
+
+	.colophon-hero__head h2 {
 		font-size: var(--text-2xl);
 		font-weight: 700;
 		color: var(--color-text);
-	}
-
-	.page__section-header p {
-		font-size: var(--text-base);
-		color: var(--color-text-subtle);
-		line-height: 1.6;
-		max-width: 52rem;
 		margin: 0;
 	}
 
-	/* Collapsible sections (<details>) —————————————————————————————————— */
+	.colophon-hero__lede {
+		font-size: var(--text-base);
+		color: var(--color-text-subtle);
+		line-height: 1.6;
+		margin: 0;
+	}
+
+	/* ── Gallery masonry wall ───────────────────────────────────────────── */
+
+	.gallery {
+		columns: 24rem;
+		column-gap: var(--layout-gap);
+	}
+
+	.gallery > :global(*) {
+		break-inside: avoid;
+		margin-bottom: var(--layout-gap);
+		width: 100%;
+	}
+
+	/* ── Flip card inner content ────────────────────────────────────────── */
+
+	.flip-front,
+	.flip-back {
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-4);
+		padding-top: var(--space-2); /* breathing room below the flip toggle */
+	}
+
+	.flip-front__title {
+		font-size: var(--text-xl);
+		font-weight: 700;
+		color: var(--color-text);
+		line-height: 1.2;
+		margin: 0;
+		padding-right: var(--space-16); /* avoid overlap with toggle button */
+	}
+
+	.flip-front__lede {
+		font-size: var(--text-base);
+		font-weight: 600;
+		color: var(--color-text-subtle);
+		line-height: 1.5;
+		margin: 0;
+	}
+
+	.flip-front__body {
+		font-size: var(--text-sm);
+		color: var(--color-text-subtle);
+		line-height: 1.7;
+		margin: 0;
+	}
+
+	.flip-front__hint {
+		font-size: var(--text-xs);
+		font-weight: 700;
+		text-transform: uppercase;
+		letter-spacing: 0.06em;
+		color: var(--color-primary-text);
+		margin-top: auto;
+	}
+
+	.flip-back__intro {
+		font-size: var(--text-sm);
+		color: var(--color-text-subtle);
+		line-height: 1.7;
+		margin: 0;
+		padding-right: var(--space-16); /* avoid overlap with toggle button */
+	}
+
+	/* ── Flow tile (pipeline diagram inside a toggle) ───────────────────── */
+
+	.tile--flow {
+		gap: 0;
+	}
+
+	.tile--flow__title {
+		font-size: var(--text-xl);
+		font-weight: 700;
+		color: var(--color-text);
+		line-height: 1.2;
+		margin: 0;
+	}
+
+	/* ── Accent callout tile ────────────────────────────────────────────── */
+
+	.tile--callout-accent {
+		padding: var(--space-6);
+		border-left: 3px solid var(--color-accent);
+		background-color: var(--color-accent-bg);
+		border-radius: 0 var(--radius-lg) var(--radius-lg) 0;
+	}
+
+	.tile--callout__title {
+		font-size: var(--text-base);
+		font-weight: 700;
+		color: var(--color-accent-text);
+		margin: 0 0 var(--space-3);
+	}
+
+	.tile--callout__body {
+		font-size: var(--text-sm);
+		color: var(--color-text-subtle);
+		line-height: 1.7;
+		margin: 0;
+	}
+
+	/* ── Collapsible sections (<details>) ───────────────────────────────── */
 
 	.page__section--collapsible {
-		/* <details> is a block element; match the flex column layout of .page__section */
 		gap: 0;
 	}
 
@@ -619,7 +784,6 @@
 		user-select: none;
 	}
 
-	/* Remove the native disclosure triangle in all browsers. */
 	.page__summary::-webkit-details-marker {
 		display: none;
 	}
@@ -628,8 +792,8 @@
 		content: '';
 	}
 
-	.page__summary h2 {
-		font-size: var(--text-2xl);
+	.page__summary h3 {
+		font-size: var(--text-xl);
 		font-weight: 700;
 		color: var(--color-text);
 		line-height: 1.2;
@@ -639,7 +803,7 @@
 	}
 
 	.page__summary-lede {
-		font-size: var(--text-base);
+		font-size: var(--text-sm);
 		color: var(--color-text-subtle);
 		line-height: 1.6;
 		max-width: 52rem;
@@ -685,7 +849,7 @@
 		}
 	}
 
-	.page__summary:hover h2 {
+	.page__summary:hover h3 {
 		color: var(--color-primary-text);
 	}
 
@@ -699,14 +863,7 @@
 		border-radius: var(--radius-sm);
 	}
 
-	.page__section-body {
-		display: flex;
-		flex-direction: column;
-		gap: var(--space-6);
-		padding-bottom: var(--space-4);
-	}
-
-	/* Prose ——————————————————————————————————————————————————————————————— */
+	/* ── Prose ──────────────────────────────────────────────────────────── */
 
 	.prose {
 		font-size: var(--text-base);
@@ -716,7 +873,9 @@
 		margin: 0;
 	}
 
-	.prose code {
+	.prose code,
+	.flip-front__body code,
+	.flip-back__intro code {
 		font-family: var(--font-mono);
 		font-size: 0.9em;
 		padding: 0.1em 0.35em;
@@ -725,7 +884,7 @@
 		color: var(--color-text);
 	}
 
-	/* Specification lists —————————————————————————————————————————————— */
+	/* ── Specification lists ─────────────────────────────────────────────── */
 
 	.spec {
 		display: flex;
@@ -778,11 +937,7 @@
 		color: var(--color-text);
 	}
 
-	/* Code excerpts —————————————————————————————————————————————————————
-	 * .shiki is the <pre> element Shiki emits. Background comes from the
-	 * site's own surface token; foreground tokens are driven by the
-	 * dual-theme rules in tokens.css via --shiki / --shiki-dark vars.
-	 */
+	/* ── Code excerpts ───────────────────────────────────────────────────── */
 
 	.code {
 		display: flex;
@@ -816,13 +971,14 @@
 		padding-left: var(--space-1);
 	}
 
-	/* Data-flow diagram —————————————————————————————————————————————————— */
+	/* ── Data-flow diagram ───────────────────────────────────────────────── */
 
 	.flow {
 		margin: 0;
 		display: flex;
 		flex-direction: column;
 		gap: var(--space-4);
+		padding: var(--space-4) 0 var(--space-2);
 	}
 
 	.flow__steps {
@@ -839,7 +995,7 @@
 		display: flex;
 		align-items: stretch;
 		gap: var(--space-3);
-		flex: 1 1 14rem;
+		flex: 1 1 10rem;
 	}
 
 	.flow__card {
@@ -879,7 +1035,7 @@
 		line-height: 1.6;
 	}
 
-	/* Links ——————————————————————————————————————————————————————————————— */
+	/* ── Links ──────────────────────────────────────────────────────────── */
 
 	.link {
 		color: var(--color-primary-text);
@@ -892,17 +1048,19 @@
 		color: var(--color-primary);
 	}
 
-	/* ═══════════════════════════════════════════════════════════════════════
+	/* ══════════════════════════════════════════════════════════════════════
 	   Drift centrepiece
-	   ═══════════════════════════════════════════════════════════════════════ */
+	   ══════════════════════════════════════════════════════════════════════ */
 
 	.drift {
+		display: flex;
+		flex-direction: column;
 		gap: 0;
 		border-top: 2px solid var(--color-primary);
 	}
 
 	.drift__header {
-		padding: var(--space-8) 0 var(--space-8);
+		padding: var(--space-8) 0;
 		display: flex;
 		flex-direction: column;
 		gap: var(--space-4);
@@ -944,24 +1102,27 @@
 		margin: 0;
 	}
 
-	/* Drift sub-sections */
+	/* Toggle sections inside Drift */
 
-	.drift__section {
-		display: flex;
-		flex-direction: column;
-		gap: var(--space-6);
-		padding: var(--space-8) 0;
+	.drift__toggle {
 		border-top: 1px solid var(--color-border);
 	}
 
-	.drift__section-heading {
+	.drift__toggle-title {
 		font-size: var(--text-xl);
 		font-weight: 700;
 		color: var(--color-text);
 		margin: 0;
 	}
 
-	/* Architecture diagram ———————————————————————————————————————————— */
+	.drift__toggle-body {
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-6);
+		padding: var(--space-4) 0 var(--space-6);
+	}
+
+	/* Architecture diagram */
 
 	.drift__arch {
 		margin: 0;
@@ -1035,7 +1196,7 @@
 		line-height: 1.6;
 	}
 
-	/* Monolith → split visual ——————————————————————————————————————————— */
+	/* Monolith split visual */
 
 	.drift__split-visual {
 		margin: 0;
@@ -1079,14 +1240,6 @@
 	.split__box--mono {
 		border-color: var(--color-text-muted);
 		opacity: 0.7;
-	}
-
-	.split__box--engine {
-		border-color: var(--color-border);
-	}
-
-	.split__box--integration {
-		border-color: var(--color-border);
 	}
 
 	.split__box-title {
@@ -1156,7 +1309,7 @@
 		border-radius: 0 0 var(--radius-md) var(--radius-md);
 	}
 
-	/* Callout ——————————————————————————————————————————————————————————— */
+	/* Callout */
 
 	.callout {
 		padding: var(--space-4) var(--space-5);
@@ -1174,7 +1327,7 @@
 		font-weight: 600;
 	}
 
-	/* Verb table ——————————————————————————————————————————————————————— */
+	/* Verb table */
 
 	.drift__table-wrap {
 		overflow-x: auto;
@@ -1243,7 +1396,7 @@
 		font-style: italic;
 	}
 
-	/* Drift closing line ————————————————————————————————————————————————— */
+	/* Drift closing line */
 
 	.drift__closing {
 		font-size: var(--text-base);
@@ -1254,5 +1407,27 @@
 		padding: var(--space-8) 0 var(--space-4);
 		border-top: 1px solid var(--color-border);
 		font-style: italic;
+	}
+
+	/* ── Outro ──────────────────────────────────────────────────────────── */
+
+	.colophon-outro {
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-4);
+	}
+
+	/* ── Screen-reader only ──────────────────────────────────────────────── */
+
+	.sr-only {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		padding: 0;
+		margin: -1px;
+		overflow: hidden;
+		clip: rect(0, 0, 0, 0);
+		white-space: nowrap;
+		border-width: 0;
 	}
 </style>
