@@ -13,7 +13,7 @@
 		},
 		{
 			label: 'sources.json',
-			detail: 'Commit counts, churn and dates, synced by check-drift.js.'
+			detail: 'Commit counts, churn and dates, synced by the Drift engine.'
 		},
 		{
 			label: 'projects/*.ts',
@@ -32,20 +32,102 @@
 			detail: 'Static routes, OG cards and the sitemap. No server at runtime.'
 		}
 	];
+
+	// The Drift architecture layers, as data. Mirrors the pipeline pattern so
+	// the diagram and the prose describing each layer cannot drift apart.
+	const driftLayers = [
+		{
+			id: 'engine',
+			label: 'Core engine',
+			path: 'scripts/check-drift.js',
+			detail: 'Framework-agnostic. Fingerprints repos, owns the data files, knows nothing about Svelte.'
+		},
+		{
+			id: 'contract',
+			label: 'Schema contract',
+			path: 'scripts/sources.schema.json',
+			detail: 'JSON Schema draft-07, additionalProperties: false. The engine validates every record before writing.'
+		},
+		{
+			id: 'integration',
+			label: 'Integration layer',
+			path: 'src/lib/data/',
+			detail: 'Build-time registry. Reads files as static JSON, assembles typed Project objects for the site.'
+		}
+	];
+
+	// Verb table, as data. write: null = read-only verb.
+	const driftVerbs: { verb: string; does: string; write: string | null }[] = [
+		{
+			verb: 'report',
+			does: 'Field-level drift for repos whose HEAD moved. --full diffs all; --check exits non-zero; --json for scripts.',
+			write: null
+		},
+		{
+			verb: 'snapshot',
+			does: 'Every current metric for every repo, one card per project.',
+			write: null
+		},
+		{
+			verb: 'sync',
+			does: 'The one sanctioned write to the manifest. Backfills all resolvable repos, bypasses the cache, schema-gated.',
+			write: 'sources.json'
+		},
+		{
+			verb: 'keep / keep-all',
+			does: 'Refresh the baseline behind a manual override without discarding the override value.',
+			write: 'overrides.json'
+		},
+		{
+			verb: 'hide',
+			does: 'Drop a repo from the public site.',
+			write: 'excluded.json'
+		},
+		{
+			verb: 'promote',
+			does: 'Graduate in-flight work off an unmerged branch into the staging pipeline.',
+			write: 'in-progress.json'
+		},
+		{
+			verb: 'author',
+			does: 'Scaffold projects/<slug>.ts from a commented template if absent, then open in $EDITOR.',
+			write: 'projects/<slug>.ts'
+		},
+		{
+			verb: 'flag',
+			does: 'flag <slug> --pin | --hide. Set a curation flag in the overlay via TypeScript compiler-API splice.',
+			write: 'projects/<slug>.ts'
+		},
+		{
+			verb: 'audit',
+			does: 'Editorial-depth scoring (Full / Partial / Thin) across all overlays. Recomputes from live files.',
+			write: null
+		},
+		{
+			verb: 'init',
+			does: 'Scaffold the per-machine config files. Interactive prompts when a TTY is present.',
+			write: 'config files'
+		},
+		{
+			verb: 'help',
+			does: 'Per-verb help, rendered in gum-formatted markdown.',
+			write: null
+		}
+	];
 </script>
 
 <Seo
 	title="Colophon | Jason Warren"
-	description="How this portfolio is built: SvelteKit 2, Svelte 5 runes, a hand-authored TypeScript dataset, Drift (a bespoke git-metrics CLI), derived visualisations, and a fully prerendered output."
+	description="How this portfolio is built: SvelteKit 2, Svelte 5 runes, a hand-authored TypeScript dataset, Drift (a decoupled git-metrics engine with a JSON Schema contract), derived visualisations, and a fully prerendered output."
 />
 
 <div class="page">
 	<header class="page__header">
 		<h1>Colophon</h1>
 		<p class="page__intro">
-			A portfolio that keeps insisting the code is the evidence should be willing to show its own
-			seams. Here they are. This is how the site you are reading actually works, from the data model
-			to the bespoke tooling that keeps the numbers honest.
+			A portfolio that insists the code is the evidence should be willing to show its own seams.
+			Here they are: every architectural decision, every data contract, every piece of bespoke
+			tooling that keeps this thing honest. This is the build, in depth.
 		</p>
 	</header>
 
@@ -75,7 +157,7 @@
 			<div class="spec__row">
 				<dt>Metrics</dt>
 				<dd>
-					Drift — a bespoke git-metrics CLI that makes the numbers a measurement, not a claim.
+					Drift — a decoupled git-metrics engine with a JSON Schema output contract, running on Bun.
 				</dd>
 			</div>
 			<div class="spec__row">
@@ -169,54 +251,235 @@
 		</div>
 	</details>
 
-	<!-- Drift ——————————————————————————————————————————————————————————— -->
-	<details class="page__section page__section--collapsible" aria-labelledby="drift-heading">
-		<summary class="page__summary">
-			<h2 id="drift-heading">Drift: the numbers stay honest</h2>
-			<p class="page__summary-lede">
-				Commit counts and churn figures are the easiest things on a portfolio to quietly inflate. So
-				I do not write them. A bespoke CLI does.
+	<!-- ═══════════════════════════════════════════════════════════════════
+	     Drift — centrepiece feature
+	     ═══════════════════════════════════════════════════════════════════ -->
+	<section class="page__section drift" aria-labelledby="drift-heading">
+		<header class="drift__header">
+			<div class="drift__title-row">
+				<h2 id="drift-heading">Drift</h2>
+				<span class="drift__tag">bespoke tooling</span>
+			</div>
+			<p class="drift__lede">
+				Commit counts and churn figures are the easiest things on a portfolio to quietly inflate.
+				So I do not write them. A bespoke CLI measures them against a schema that decides what it
+				is allowed to say.
 			</p>
-			<span class="page__chevron" aria-hidden="true"></span>
-		</summary>
+		</header>
 
-		<div class="page__section-body">
+		<!-- ── The split ──────────────────────────────────────────────── -->
+		<div class="drift__section" id="drift-split">
+			<h3 class="drift__section-heading">The split</h3>
+
 			<p class="prose">
-				<code>check-drift.js</code> is a ~2.5k-line Node CLI that compares the last-synced
-				fingerprints in <code>sources.json</code> against the live git state of every source repo on
-				this machine. It also scans <code>~/Code</code> for git repos not yet in the portfolio, so new
-				work surfaces automatically rather than waiting to be remembered.
+				Drift started as a single script that did everything: walked the repos, measured them,
+				wrote the manifest, and understood how the site would render every figure. That last part
+				was the problem. Measurement was tangled with presentation, so neither could move without
+				the other.
 			</p>
 			<p class="prose">
-				Each repo produces a fingerprint: commit counts broken down by all-authors versus mine, and
-				by lifetime versus the trailing four weeks; line churn on the same axes; lines of code;
-				languages by file count; first and last commit dates; and runtime, framework and database
-				inferred from manifest files. The fingerprint calls all run concurrently in a bounded worker
-				pool, with a HEAD-plus-TTL cache so unchanged repos do not re-scan on every run.
+				It is now two things with a contract between them. The engine
+				(<code>scripts/check-drift.js</code>) is a framework-agnostic Bun script: it fingerprints
+				repos, owns the four data files, and knows nothing about Svelte. The integration layer
+				(<code>src/lib/data/</code>) is build-time SvelteKit code: it reads those files as static
+				JSON imports and assembles the typed <code>Project</code> objects the site is built from.
+				The engine could be lifted out as a standalone package and nothing on the site would
+				notice.
 			</p>
+
+			<!-- Architecture diagram -->
+			<figure class="drift__arch" aria-label="Architecture: engine, schema contract, integration layer">
+				<div class="arch__layers">
+					{#each driftLayers as layer, i (layer.id)}
+						<div class="arch__layer arch__layer--{layer.id}">
+							<span class="arch__layer-label">{layer.label}</span>
+							<code class="arch__layer-path">{layer.path}</code>
+							<span class="arch__layer-detail">{layer.detail}</span>
+						</div>
+						{#if i < driftLayers.length - 1}
+							<div class="arch__connector" aria-hidden="true">
+								<span class="arch__arrow">→</span>
+							</div>
+						{/if}
+					{/each}
+				</div>
+				<figcaption>The engine owns measurement; the integration layer owns presentation. The schema is the seam.</figcaption>
+			</figure>
+
+			<!-- Monolith → split -->
+			<figure class="drift__split-visual" aria-label="Before and after the decoupling">
+				<div class="split__before">
+					<span class="split__label">Before</span>
+					<div class="split__box split__box--mono">
+						<span class="split__box-title">check-drift.js</span>
+						<ul class="split__box-items" role="list">
+							<li>fingerprint repos</li>
+							<li>write manifest</li>
+							<li>render output</li>
+							<li>know the site's data shape</li>
+						</ul>
+					</div>
+				</div>
+				<div class="split__arrow" aria-hidden="true">→</div>
+				<div class="split__after">
+					<span class="split__label">After</span>
+					<div class="split__boxes">
+						<div class="split__box split__box--engine">
+							<span class="split__box-title">engine</span>
+							<ul class="split__box-items" role="list">
+								<li>fingerprint repos</li>
+								<li>write manifest</li>
+							</ul>
+						</div>
+						<div class="split__schema" aria-hidden="true">
+							<span class="split__schema-label">schema</span>
+						</div>
+						<div class="split__box split__box--integration">
+							<span class="split__box-title">integration</span>
+							<ul class="split__box-items" role="list">
+								<li>assemble Projects</li>
+								<li>render output</li>
+							</ul>
+						</div>
+					</div>
+				</div>
+			</figure>
+		</div>
+
+		<!-- ── The contract ───────────────────────────────────────────── -->
+		<div class="drift__section" id="drift-contract">
+			<h3 class="drift__section-heading">The contract</h3>
+
+			<p class="prose">
+				Between the engine and the integration layer sits <code>sources.schema.json</code>: a JSON
+				Schema draft-07 definition with <code>additionalProperties: false</code>. The engine
+				validates every assembled record against it before writing anything. A violation is a
+				programming error in the engine, not a user-data problem, so the response is blunt: throw,
+				write nothing. A half-correct manifest never reaches disk.
+			</p>
+			<p class="prose">
+				This makes adding a new metric a deliberate three-step act. Declare the property in the
+				schema. Add it to the <code>SyncedSource</code> interface in <code>index.ts</code>. Return it
+				from <code>getFingerprint</code> in the engine. Miss one and the build tells you, either
+				at <code>bun run check</code> or when the engine throws on its next sync. The boundary is not
+				a convention I am trusting myself to respect; it is enforced.
+			</p>
+
 			<figure class="code">
 				{@html data.snippets.drift}
-				<figcaption>scripts/check-drift.js (condensed)</figcaption>
+				<figcaption>scripts/check-drift.js — the validation gate</figcaption>
 			</figure>
+
+			<aside class="callout">
+				<strong>Fail-closed invariant:</strong> the engine throws and writes nothing on a schema
+				violation. The Svelte integration layer never sees a partial or off-contract manifest.
+			</aside>
+		</div>
+
+		<!-- ── Measurement ────────────────────────────────────────────── -->
+		<div class="drift__section" id="drift-measurement">
+			<h3 class="drift__section-heading">Measurement</h3>
+
 			<p class="prose">
-				The CLI exposes several verbs. <code>report</code> (the default) shows only the repos whose
-				HEAD has moved since the last sync. <code>snapshot</code> shows every current metric for
-				every project. <code>update</code> is the one sanctioned write to <code>sources.json</code>;
-				it backfills all resolvable repos, not just those that changed.
-				<code>accept</code> and <code>accept-all</code> refresh the baseline for manual overrides
-				without discarding them. <code>--check</code> exits non-zero when drift is detected, so CI can
-				gate on a clean portfolio state.
+				For each repo, <code>getFingerprint</code> fans a set of independent git calls out via
+				<code>Promise.all</code> against the resolved default branch, not whatever happens to be
+				checked out locally. <code>defaultBranch</code> resolves <code>origin/HEAD</code>, then
+				<code>main</code>, then <code>master</code>, falling back to bare <code>HEAD</code> only
+				when none of those exist. The resolved ref is recorded as <code>measuredRef</code> in the
+				manifest, excluded from drift comparisons via <code>DRIFT_SKIP_FIELDS</code>, so a branch
+				rename never registers as drift.
 			</p>
+			<p class="prose">
+				Lines of code and languages are read straight from git blobs via
+				<code>git cat-file --batch</code>, not the working tree, so the measurement is always
+				against the canonical commit. Repos run concurrently across a bounded worker pool
+				(<code>cpus().length</code> slots). A HEAD-plus-TTL cache, keyed on the measured commit's
+				SHA and gitignored, means an unchanged repo is not re-scanned. <code>drift sync</code>
+				and <code>--no-cache</code> bypass it.
+			</p>
+			<p class="prose">
+				Per repo, the fingerprint covers: commit counts on two axes (mine versus all authors,
+				lifetime versus trailing four weeks); line churn on the same axes; lines of code; languages
+				by file count; first and last commit dates; and the runtime, framework and database
+				inferred from manifest files.
+			</p>
+
 			<figure class="code">
 				{@html data.snippets.sources}
-				<figcaption>src/lib/data/sources.json (one entry)</figcaption>
+				<figcaption>src/lib/data/sources.json — one entry, every field a measurement</figcaption>
 			</figure>
-			<p class="prose">
-				Every figure you see on this site is a measurement from that manifest, not a claim I typed.
-				That is the line the whole honesty thesis rests on.
-			</p>
 		</div>
-	</details>
+
+		<!-- ── The staging pipeline ───────────────────────────────────── -->
+		<div class="drift__section" id="drift-pipeline">
+			<h3 class="drift__section-heading">The staging pipeline</h3>
+
+			<p class="prose">
+				Work that is still on an unmerged branch has no entry in <code>sources.json</code> yet,
+				but it can still surface on the site. A committed <code>in-progress.json</code> holds
+				provisional metrics for in-flight projects: the branch name, a promotion pipeline
+				(ordered merge targets), a visibility flag (<code>'public'</code> surfaces on the site;
+				<code>'local'</code> stays in the CLI), and per-field tracked values with their
+				<code>baseOnMain</code> counterpart for context.
+			</p>
+			<p class="prose">
+				The integration layer's <code>withSyncedMetrics</code> applies a four-tier precedence
+				across every metric field. Manual overrides win; real synced figures come next; provisional
+				values from <code>in-progress.json</code> fill in below that; authored defaults are the
+				floor. Once a branch lands and <code>drift sync</code> picks up real numbers, the synced
+				value naturally shadows the provisional one. Promotion is self-healing: no stale figures
+				leak through.
+			</p>
+
+			<figure class="code">
+				{@html data.snippets.precedence}
+				<figcaption>src/lib/data/index.ts — the metric precedence chain</figcaption>
+			</figure>
+		</div>
+
+		<!-- ── The verbs ──────────────────────────────────────────────── -->
+		<div class="drift__section" id="drift-verbs">
+			<h3 class="drift__section-heading">The verbs</h3>
+
+			<p class="prose">
+				The CLI is a set of verbs. Each write verb touches exactly one file. Read-only verbs touch
+				nothing at all.
+			</p>
+
+			<div class="drift__table-wrap">
+				<table class="verb-table">
+					<thead>
+						<tr>
+							<th scope="col">Verb</th>
+							<th scope="col">Does</th>
+							<th scope="col">Writes</th>
+						</tr>
+					</thead>
+					<tbody>
+						{#each driftVerbs as row (row.verb)}
+							<tr>
+								<td><code>{row.verb}</code></td>
+								<td>{row.does}</td>
+								<td>
+									{#if row.write}
+										<code class="verb-table__write">{row.write}</code>
+									{:else}
+										<span class="verb-table__none">nothing</span>
+									{/if}
+								</td>
+							</tr>
+						{/each}
+					</tbody>
+				</table>
+			</div>
+		</div>
+
+		<!-- ── Closing ────────────────────────────────────────────────── -->
+		<p class="drift__closing">
+			Every figure you see on this site is a measurement from that manifest, validated against a
+			schema, not a claim I typed. That is the line the whole honesty thesis rests on.
+		</p>
+	</section>
 
 	<!-- Static and deterministic ——————————————————————————————————————— -->
 	<details class="page__section page__section--collapsible" aria-labelledby="static-heading">
@@ -627,5 +890,369 @@
 
 	.link:hover {
 		color: var(--color-primary);
+	}
+
+	/* ═══════════════════════════════════════════════════════════════════════
+	   Drift centrepiece
+	   ═══════════════════════════════════════════════════════════════════════ */
+
+	.drift {
+		gap: 0;
+		border-top: 2px solid var(--color-primary);
+	}
+
+	.drift__header {
+		padding: var(--space-8) 0 var(--space-8);
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-4);
+	}
+
+	.drift__title-row {
+		display: flex;
+		align-items: baseline;
+		gap: var(--space-4);
+	}
+
+	.drift__title-row h2 {
+		font-size: var(--text-4xl);
+		font-weight: 700;
+		color: var(--color-text);
+		line-height: 1.1;
+		margin: 0;
+		letter-spacing: -0.02em;
+	}
+
+	.drift__tag {
+		font-size: var(--text-xs);
+		font-weight: 600;
+		text-transform: uppercase;
+		letter-spacing: 0.1em;
+		color: var(--color-primary-text);
+		background-color: var(--color-primary-bg);
+		padding: 0.2em 0.6em;
+		border-radius: var(--radius-sm);
+		border: 1px solid var(--color-primary);
+		white-space: nowrap;
+	}
+
+	.drift__lede {
+		font-size: var(--text-xl);
+		line-height: 1.6;
+		color: var(--color-text-subtle);
+		max-width: 60ch;
+		margin: 0;
+	}
+
+	/* Drift sub-sections */
+
+	.drift__section {
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-6);
+		padding: var(--space-8) 0;
+		border-top: 1px solid var(--color-border);
+	}
+
+	.drift__section-heading {
+		font-size: var(--text-xl);
+		font-weight: 700;
+		color: var(--color-text);
+		margin: 0;
+	}
+
+	/* Architecture diagram ———————————————————————————————————————————— */
+
+	.drift__arch {
+		margin: 0;
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-4);
+	}
+
+	.arch__layers {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: stretch;
+		gap: var(--space-3);
+	}
+
+	.arch__layer {
+		flex: 1 1 14rem;
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-2);
+		padding: var(--space-5);
+		border: 1px solid var(--color-border);
+		border-radius: var(--radius-lg);
+		background-color: var(--color-surface-raised);
+	}
+
+	.arch__layer--contract {
+		background-color: var(--color-primary-bg);
+		border-color: var(--color-primary);
+	}
+
+	.arch__layer-label {
+		font-size: var(--text-sm);
+		font-weight: 700;
+		color: var(--color-text);
+	}
+
+	.arch__layer--contract .arch__layer-label {
+		color: var(--color-primary-text);
+	}
+
+	.arch__layer-path {
+		font-family: var(--font-mono);
+		font-size: var(--text-xs);
+		color: var(--color-text-muted);
+		background: none;
+	}
+
+	.arch__layer-detail {
+		font-size: var(--text-xs);
+		line-height: 1.5;
+		color: var(--color-text-subtle);
+	}
+
+	.arch__connector {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		flex-shrink: 0;
+		align-self: center;
+	}
+
+	.arch__arrow {
+		color: var(--color-text-muted);
+		font-size: var(--text-xl);
+	}
+
+	.drift__arch figcaption {
+		font-size: var(--text-sm);
+		color: var(--color-text-muted);
+		line-height: 1.6;
+	}
+
+	/* Monolith → split visual ——————————————————————————————————————————— */
+
+	.drift__split-visual {
+		margin: 0;
+		display: flex;
+		flex-wrap: wrap;
+		align-items: flex-start;
+		gap: var(--space-6);
+	}
+
+	.split__before,
+	.split__after {
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-3);
+		flex: 1 1 14rem;
+	}
+
+	.split__label {
+		font-size: var(--text-xs);
+		font-weight: 700;
+		text-transform: uppercase;
+		letter-spacing: 0.08em;
+		color: var(--color-text-muted);
+	}
+
+	.split__arrow {
+		align-self: center;
+		color: var(--color-text-muted);
+		font-size: var(--text-2xl);
+		flex-shrink: 0;
+		padding-top: var(--space-6);
+	}
+
+	.split__box {
+		padding: var(--space-4) var(--space-5);
+		border: 1px solid var(--color-border);
+		border-radius: var(--radius-md);
+		background-color: var(--color-surface-raised);
+	}
+
+	.split__box--mono {
+		border-color: var(--color-text-muted);
+		opacity: 0.7;
+	}
+
+	.split__box--engine {
+		border-color: var(--color-border);
+	}
+
+	.split__box--integration {
+		border-color: var(--color-border);
+	}
+
+	.split__box-title {
+		display: block;
+		font-family: var(--font-mono);
+		font-size: var(--text-xs);
+		font-weight: 700;
+		color: var(--color-primary-text);
+		margin-bottom: var(--space-3);
+	}
+
+	.split__box-items {
+		list-style: none;
+		padding: 0;
+		margin: 0;
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-1);
+	}
+
+	.split__box-items li {
+		font-size: var(--text-xs);
+		color: var(--color-text-subtle);
+		line-height: 1.4;
+		padding-left: var(--space-3);
+		position: relative;
+	}
+
+	.split__box-items li::before {
+		content: '·';
+		position: absolute;
+		left: 0;
+		color: var(--color-text-muted);
+	}
+
+	.split__boxes {
+		display: flex;
+		flex-direction: column;
+		gap: 0;
+	}
+
+	.split__schema {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		padding: var(--space-2) var(--space-4);
+		background-color: var(--color-primary-bg);
+		border-left: 1px solid var(--color-primary);
+		border-right: 1px solid var(--color-primary);
+	}
+
+	.split__schema-label {
+		font-family: var(--font-mono);
+		font-size: var(--text-xs);
+		font-weight: 600;
+		color: var(--color-primary-text);
+		letter-spacing: 0.05em;
+	}
+
+	.split__box--engine {
+		border-bottom: none;
+		border-radius: var(--radius-md) var(--radius-md) 0 0;
+	}
+
+	.split__box--integration {
+		border-top: none;
+		border-radius: 0 0 var(--radius-md) var(--radius-md);
+	}
+
+	/* Callout ——————————————————————————————————————————————————————————— */
+
+	.callout {
+		padding: var(--space-4) var(--space-5);
+		border-left: 3px solid var(--color-primary);
+		background-color: var(--color-primary-bg);
+		border-radius: 0 var(--radius-md) var(--radius-md) 0;
+		font-size: var(--text-sm);
+		line-height: 1.6;
+		color: var(--color-text-subtle);
+		max-width: 64ch;
+	}
+
+	.callout strong {
+		color: var(--color-primary-text);
+		font-weight: 600;
+	}
+
+	/* Verb table ——————————————————————————————————————————————————————— */
+
+	.drift__table-wrap {
+		overflow-x: auto;
+		border: 1px solid var(--color-border);
+		border-radius: var(--radius-lg);
+	}
+
+	.verb-table {
+		width: 100%;
+		border-collapse: collapse;
+		font-size: var(--text-sm);
+	}
+
+	.verb-table thead {
+		background-color: var(--color-surface-raised);
+	}
+
+	.verb-table th {
+		text-align: left;
+		font-size: var(--text-xs);
+		font-weight: 700;
+		text-transform: uppercase;
+		letter-spacing: 0.08em;
+		color: var(--color-text-muted);
+		padding: var(--space-3) var(--space-4);
+		border-bottom: 1px solid var(--color-border);
+		white-space: nowrap;
+	}
+
+	.verb-table td {
+		padding: var(--space-3) var(--space-4);
+		color: var(--color-text-subtle);
+		line-height: 1.5;
+		vertical-align: top;
+	}
+
+	.verb-table td:first-child {
+		white-space: nowrap;
+	}
+
+	.verb-table td code {
+		font-family: var(--font-mono);
+		font-size: 0.9em;
+		padding: 0.1em 0.35em;
+		border-radius: var(--radius-sm);
+		background-color: var(--color-surface-sunken);
+		color: var(--color-text);
+	}
+
+	.verb-table tr + tr td {
+		border-top: 1px solid var(--color-border);
+	}
+
+	.verb-table__write {
+		font-family: var(--font-mono);
+		font-size: 0.9em;
+		padding: 0.1em 0.35em;
+		border-radius: var(--radius-sm);
+		background-color: var(--color-surface-sunken);
+		color: var(--color-text);
+	}
+
+	.verb-table__none {
+		font-size: var(--text-xs);
+		color: var(--color-text-muted);
+		font-style: italic;
+	}
+
+	/* Drift closing line ————————————————————————————————————————————————— */
+
+	.drift__closing {
+		font-size: var(--text-base);
+		line-height: 1.7;
+		color: var(--color-text-subtle);
+		max-width: 64ch;
+		margin: 0;
+		padding: var(--space-8) 0 var(--space-4);
+		border-top: 1px solid var(--color-border);
+		font-style: italic;
 	}
 </style>

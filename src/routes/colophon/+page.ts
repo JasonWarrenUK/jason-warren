@@ -84,50 +84,76 @@ const threadsSnippet = `export function getEngineThreads(): EngineThread[] {
 	return threads;
 }`;
 
+// — scripts/check-drift.js ———————————————————————————————————————————————
+// The validation gate: the engine assembles a full SyncedSource record,
+// validates it against sources.schema.json (draft-07, additionalProperties:
+// false) and only then writes. A violation is a programming error in the
+// engine — so it throws and writes nothing (fail-closed). The Svelte
+// integration layer never sees a partial or off-contract manifest.
+const driftSnippet = `// Validate the fully-assembled manifest against the engine's public schema
+// before the single sanctioned write. A violation is a programming error:
+// throw and write nothing (fail-closed).
+const violations = validateManifest(manifest);
+if (violations.length > 0) {
+	for (const v of violations) {
+		process.stderr.write(\`drift: schema violation: \${v}\\n\`);
+	}
+	throw new Error(
+		\`sources.json failed validation (\${violations.length}); nothing written.\`
+	);
+}
+
+writeJson(sourcesPath, manifest); // the only write to sources.json`;
+
+// — src/lib/data/index.ts ————————————————————————————————————————————————
+// The metric precedence chain in withSyncedMetrics. Every field follows the
+// same pattern: override > synced > provisional > authored. Once a branch
+// lands and drift sync runs, the synced value naturally shadows any
+// provisional figure — promotion is self-healing, no stale leak.
+const precedenceSnippet = `// Precedence: override > synced > provisional > authored.
+// prov(field) returns the in-progress tracked value, or undefined.
+const prov = (field: keyof ProjectMetrics) =>
+	provisional?.tracked?.[field]?.value;
+
+commitsMine:
+	ov?.commitsMine?.value ?? synced?.commitsMine ?? prov('commitsMine') ?? authored?.commitsMine,
+linesOfCode:
+	ov?.linesOfCode?.value ?? synced?.linesOfCode ?? prov('linesOfCode') ?? authored?.linesOfCode,
+// ...every metric field follows the same four-tier chain`;
+
 // — src/lib/data/sources.json ————————————————————————————————————————————
-// One entry from the drift manifest. Every field is a measurement from git,
-// never a number typed by hand.
+// One entry from the drift manifest. Written only by drift sync, and only
+// after passing schema validation. measuredRef records the branch the
+// fingerprint was taken against so a rename never reads as drift.
 const sourcesSnippet = `"chirpdb": {
 	"head": "dc05eaf",
+	"measuredRef": "main",
 	"commits": 354,
+	"commitsRecentAll": 73,
 	"commitsMine": 53,
+	"commitsRecent": 53,
 	"lastCommit": "2026-06-18",
 	"firstCommit": "2026-02-23",
 	"languages": ["Python", "SQL", "Shell"],
-	"linesOfCode": 15694
-}`;
-
-// — scripts/check-drift.js ———————————————————————————————————————————————
-// The fingerprint diff: field-level comparison of a saved entry against
-// the live git state. Called per-repo in the bounded worker pool.
-const driftSnippet = `async function getFingerprint(repoPath) {
-	const [commits, commitsMine, lastCommit, firstCommit, listing] =
-		await Promise.all([
-			countCommits(repoPath),
-			countCommits(repoPath, { mine: true }),
-			git(['log', '-1', '--format=%cs'], repoPath),
-			getFirstCommit(repoPath),
-			listFiles(repoPath)
-		]);
-
-	return {
-		head, commits, commitsMine, lastCommit, firstCommit,
-		languages: detectLanguages(listing),
-		linesOfCode: countLinesOfCode(repoPath, listing),
-		// ...churn grid, remote, runtime, framework, database
-	};
+	"linesOfCode": 15694,
+	"linesAdded": 48786,
+	"linesRemoved": 40720,
+	"remote": "https://github.com/ZigZag-Technology/CHIRPdb",
+	"runtime": ["python"],
+	"framework": ["fastapi"]
 }`;
 
 export async function load() {
-	const [contribution, slug, threads, sources, drift] = await Promise.all([
+	const [contribution, slug, threads, drift, precedence, sources] = await Promise.all([
 		highlight(contributionSnippet, 'typescript'),
 		highlight(slugSnippet, 'typescript'),
 		highlight(threadsSnippet, 'typescript'),
-		highlight(sourcesSnippet, 'json'),
-		highlight(driftSnippet, 'typescript')
+		highlight(driftSnippet, 'typescript'),
+		highlight(precedenceSnippet, 'typescript'),
+		highlight(sourcesSnippet, 'json')
 	]);
 
 	return {
-		snippets: { contribution, slug, threads, sources, drift }
+		snippets: { contribution, slug, threads, drift, precedence, sources }
 	};
 }
