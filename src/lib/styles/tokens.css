@@ -318,12 +318,14 @@
  * flip in lockstep with the rest of the page and the no-flash app.html script.
  */
 
-/* Default (light): apply the light-theme token colours. */
+/* Default (light): apply the light-theme token colours.
+ * Shiki emits --shiki-light / --shiki-dark (keyed by the themes object),
+ * NOT bare --shiki. Reading --shiki-light here ensures light mode is coloured. */
 .shiki span {
-	color: var(--shiki);
-	font-style: var(--shiki-font-style);
-	font-weight: var(--shiki-font-weight);
-	text-decoration: var(--shiki-text-decoration);
+	color: var(--shiki-light);
+	font-style: var(--shiki-light-font-style);
+	font-weight: var(--shiki-light-font-weight);
+	text-decoration: var(--shiki-light-text-decoration);
 }
 
 /* Dark trigger 1: explicit override via ThemeToggle. */
