@@ -1,5 +1,5 @@
 /**
- * Build-time data load for the Colophon page.
+ * Build-time data load for the Drift Engine page.
  *
  * Because the route inherits prerender:true from +layout.ts, this load
  * runs exactly once — at build time — during prerendering. The Shiki

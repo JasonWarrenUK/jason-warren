@@ -118,27 +118,27 @@
 </script>
 
 <Seo
-	title="Colophon | Jason Warren"
-	description="How this portfolio is built: SvelteKit 2, Svelte 5 runes, a hand-authored TypeScript dataset, Drift (a decoupled git-metrics engine with a JSON Schema contract), derived visualisations, and a fully prerendered output."
+	title="Drift Engine | Jason Warren"
+	description="The bespoke CLI that keeps this portfolio honest: how Drift measures real git history, validates every figure against a JSON Schema contract, and feeds the site without a database or a server."
 />
 
 <div class="page">
 	<!-- ── Page header ──────────────────────────────────────────────────── -->
 	<header class="page__header">
-		<h1>Colophon</h1>
+		<h1>Drift Engine</h1>
 		<p class="page__intro">
-			A portfolio that insists the code is the evidence should be willing to show its own seams.
-			Here they are: every architectural decision, every data contract, every piece of bespoke
-			tooling that keeps this thing honest. This is the build, in depth.
+			Every commit count, churn figure, and timeline date on this site is measured by a bespoke
+			CLI, validated against a schema, and written to a manifest the build reads. None of it is
+			typed by hand. This is how that works.
 		</p>
 	</header>
 
 	<!-- ── Hero stat strip: the stack at a glance ───────────────────────── -->
-	<section class="colophon-hero" aria-labelledby="stack-heading">
-		<div class="colophon-hero__head">
-			<span class="colophon-hero__eyebrow">the build, in depth</span>
+	<section class="hero" aria-labelledby="stack-heading">
+		<div class="hero__head">
+			<span class="hero__eyebrow">the build, in depth</span>
 			<h2 id="stack-heading">The stack, briefly</h2>
-			<p class="colophon-hero__lede">For anyone who wants the headline before the internals.</p>
+			<p class="hero__lede">For anyone who wants the headline before the internals.</p>
 		</div>
 		<dl class="spec">
 			<div class="spec__row">
@@ -558,7 +558,7 @@
 	</section>
 
 	<!-- ── Outro ────────────────────────────────────────────────────────── -->
-	<section class="colophon-outro" aria-labelledby="credits-heading">
+	<section class="outro" aria-labelledby="credits-heading">
 		<h2 id="credits-heading" class="sr-only">Credits</h2>
 		<dl class="spec">
 			<div class="spec__row">
@@ -626,7 +626,7 @@
 
 	/* ── Hero stat strip ────────────────────────────────────────────────── */
 
-	.colophon-hero {
+	.hero {
 		display: flex;
 		flex-direction: column;
 		gap: var(--space-6);
@@ -636,13 +636,13 @@
 		border-radius: var(--radius-xl);
 	}
 
-	.colophon-hero__head {
+	.hero__head {
 		display: flex;
 		flex-direction: column;
 		gap: var(--space-2);
 	}
 
-	.colophon-hero__eyebrow {
+	.hero__eyebrow {
 		font-size: var(--text-xs);
 		font-weight: 700;
 		text-transform: uppercase;
@@ -650,14 +650,14 @@
 		color: var(--color-primary-text);
 	}
 
-	.colophon-hero__head h2 {
+	.hero__head h2 {
 		font-size: var(--text-2xl);
 		font-weight: 700;
 		color: var(--color-text);
 		margin: 0;
 	}
 
-	.colophon-hero__lede {
+	.hero__lede {
 		font-size: var(--text-base);
 		color: var(--color-text-subtle);
 		line-height: 1.6;
@@ -1411,7 +1411,7 @@
 
 	/* ── Outro ──────────────────────────────────────────────────────────── */
 
-	.colophon-outro {
+	.outro {
 		display: flex;
 		flex-direction: column;
 		gap: var(--space-4);
