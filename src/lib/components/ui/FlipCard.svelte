@@ -2,10 +2,10 @@
 	import type { Snippet } from 'svelte';
 
 	interface Props {
-		/** The face shown by default — keep this the essential prose. */
+		/** The face shown by default. Keep this the essential prose. */
 		front: Snippet;
 		/**
-		 * The detail face — supplementary content (code figures etc.).
+		 * The detail face: supplementary content (code figures etc.).
 		 * With JS disabled the flip toggle cannot operate, so the front face
 		 * remains visible and the back stays hidden behind it. This mirrors the
 		 * site's existing posture: interactivity is enhancement, not a gate.
@@ -61,7 +61,7 @@
 </div>
 
 <style>
-	/* Scene container — sets the perspective for the 3D viewport. */
+	/* Scene container: sets the perspective for the 3D viewport. */
 	.flip {
 		position: relative;
 		perspective: 1200px;
@@ -103,7 +103,7 @@
 		overflow-y: auto;
 	}
 
-	/* Flip toggle — sits above both faces in z-order; stays on the rotating
+	/* Flip toggle: sits above both faces in z-order; stays on the rotating
 	   stage so it flips with the scene (avoids the button appearing
 	   mirrored on the back face by being outside the scene). */
 	.flip__toggle {
@@ -141,7 +141,7 @@
 	/* ── Reduced-motion fallback ───────────────────────────────────────────
 	 * No 3D rotation. Both faces sit in the same place; the hidden face
 	 * fades out via opacity so content is always reachable once visible.
-	 * The @media block is the authoritative fallback — it applies before
+	 * The @media block is the authoritative fallback: it applies before
 	 * JS hydrates and regardless of the reducedMotion() helper above.
 	 */
 	@media (prefers-reduced-motion: reduce) {

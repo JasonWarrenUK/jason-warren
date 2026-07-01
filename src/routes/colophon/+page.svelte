@@ -195,7 +195,7 @@
 				<div class="flip-back">
 					<p class="flip-back__intro">
 						The shape is enforced at the type level; the content is authored at the human level.
-						Cross-links are checked at build time — the prerender throws on dangling slugs, and the
+						Cross-links are checked at build time: the prerender throws on dangling slugs, and the
 						test suite asserts every target resolves before the build runs.
 					</p>
 					<figure class="code">
