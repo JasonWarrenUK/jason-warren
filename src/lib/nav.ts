@@ -18,5 +18,5 @@ export const navLinks: NavLink[] = [
 	{ path: '/toolkit', label: 'Toolkit' },
 	{ path: '/about', label: 'About' },
 	{ path: '/hire', label: 'Hire' },
-	{ path: '/colophon', label: 'Colophon' }
+	{ path: '/drift-engine', label: 'Drift Engine' }
 ];
