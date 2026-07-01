@@ -1,6 +1,7 @@
 <script lang="ts">
 	import Seo from '$lib/components/seo/Seo.svelte';
 	import FlipCard from '$lib/components/ui/FlipCard.svelte';
+	import ScrollStage from '$lib/components/ui/ScrollStage.svelte';
 	import { GITHUB_REPO_URL } from '$lib/config.js';
 	import type { PageData } from './$types.js';
 
@@ -115,6 +116,7 @@
 			write: null
 		}
 	];
+
 </script>
 
 <Seo
@@ -302,253 +304,323 @@
 			</p>
 		</header>
 
-		<!-- ── The split ──────────────────────────────────────────────────── -->
-		<details class="page__section--collapsible drift__toggle" aria-labelledby="drift-split-heading">
-			<summary class="page__summary">
-				<h3 id="drift-split-heading" class="drift__toggle-title">The split</h3>
-				<p class="page__summary-lede">
-					Two things with a contract between them. The engine measures; the integration layer presents.
-				</p>
-				<span class="page__chevron" aria-hidden="true"></span>
-			</summary>
+		<!-- ══ Scrollytelling: five stations replace five accordions ══════════
+		     SSR truth: all prose + figures always in-flow (readable with no JS).
+		     JS enhancement: sticky stage-col cross-fades schematics as you scroll.
+		     ══════════════════════════════════════════════════════════════════ -->
 
-			<div class="drift__toggle-body">
-				<p class="prose">
-					Drift started as a single script that did everything: walked the repos, measured them,
-					wrote the manifest, and understood how the site would render every figure. That last part
-					was the problem. Measurement was tangled with presentation, so neither could move without
-					the other.
-				</p>
-				<p class="prose">
-					It is now two things with a contract between them. The engine
-					(<code>scripts/check-drift.js</code>) is a framework-agnostic Bun script: it fingerprints
-					repos, owns the four data files, and knows nothing about Svelte. The integration layer
-					(<code>src/lib/data/</code>) is build-time SvelteKit code: it reads those files as static
-					JSON imports and assembles the typed <code>Project</code> objects the site is built from.
-					The engine could be lifted out as a standalone package and nothing on the site would
-					notice.
-				</p>
-
-				<figure class="drift__arch" aria-label="Architecture: engine, schema contract, integration layer">
-					<div class="arch__layers">
-						{#each driftLayers as layer, i (layer.id)}
-							<div class="arch__layer arch__layer--{layer.id}">
-								<span class="arch__layer-label">{layer.label}</span>
-								<code class="arch__layer-path">{layer.path}</code>
-								<span class="arch__layer-detail">{layer.detail}</span>
+		<!--
+			Station snippets — the SSR truth. Each contains the station's real
+			heading, prose, and figure(s). These are always rendered in-flow.
+		-->
+		{#snippet stationSplit()}
+			<h3 id="drift-split-heading">The split</h3>
+			<p class="drift__station-lede">
+				Two things with a contract between them. The engine measures; the integration layer presents.
+			</p>
+			<p class="prose">
+				Drift started as a single script that did everything: walked the repos, measured them,
+				wrote the manifest, and understood how the site would render every figure. That last part
+				was the problem. Measurement was tangled with presentation, so neither could move without
+				the other.
+			</p>
+			<p class="prose">
+				It is now two things with a contract between them. The engine
+				(<code>scripts/check-drift.js</code>) is a framework-agnostic Bun script: it fingerprints
+				repos, owns the four data files, and knows nothing about Svelte. The integration layer
+				(<code>src/lib/data/</code>) is build-time SvelteKit code: it reads those files as static
+				JSON imports and assembles the typed <code>Project</code> objects the site is built from.
+				The engine could be lifted out as a standalone package and nothing on the site would
+				notice.
+			</p>
+			<figure class="drift__arch" aria-label="Architecture: engine, schema contract, integration layer">
+				<div class="arch__layers">
+					{#each driftLayers as layer, i (layer.id)}
+						<div class="arch__layer arch__layer--{layer.id}">
+							<span class="arch__layer-label">{layer.label}</span>
+							<code class="arch__layer-path">{layer.path}</code>
+							<span class="arch__layer-detail">{layer.detail}</span>
+						</div>
+						{#if i < driftLayers.length - 1}
+							<div class="arch__connector" aria-hidden="true">
+								<span class="arch__arrow">→</span>
 							</div>
-							{#if i < driftLayers.length - 1}
-								<div class="arch__connector" aria-hidden="true">
-									<span class="arch__arrow">→</span>
-								</div>
-							{/if}
-						{/each}
+						{/if}
+					{/each}
+				</div>
+				<figcaption>The engine owns measurement; the integration layer owns presentation. The schema is the seam.</figcaption>
+			</figure>
+			<figure class="drift__split-visual" aria-label="Before and after the decoupling">
+				<div class="split__before">
+					<span class="split__label">Before</span>
+					<div class="split__box split__box--mono">
+						<span class="split__box-title">check-drift.js</span>
+						<ul class="split__box-items" role="list">
+							<li>fingerprint repos</li>
+							<li>write manifest</li>
+							<li>render output</li>
+							<li>know the site's data shape</li>
+						</ul>
 					</div>
-					<figcaption>The engine owns measurement; the integration layer owns presentation. The schema is the seam.</figcaption>
-				</figure>
-
-				<figure class="drift__split-visual" aria-label="Before and after the decoupling">
-					<div class="split__before">
-						<span class="split__label">Before</span>
-						<div class="split__box split__box--mono">
-							<span class="split__box-title">check-drift.js</span>
+				</div>
+				<div class="split__arrow" aria-hidden="true">→</div>
+				<div class="split__after">
+					<span class="split__label">After</span>
+					<div class="split__boxes">
+						<div class="split__box split__box--engine">
+							<span class="split__box-title">engine</span>
 							<ul class="split__box-items" role="list">
 								<li>fingerprint repos</li>
 								<li>write manifest</li>
+							</ul>
+						</div>
+						<div class="split__schema" aria-hidden="true">
+							<span class="split__schema-label">schema</span>
+						</div>
+						<div class="split__box split__box--integration">
+							<span class="split__box-title">integration</span>
+							<ul class="split__box-items" role="list">
+								<li>assemble Projects</li>
 								<li>render output</li>
-								<li>know the site's data shape</li>
 							</ul>
 						</div>
 					</div>
-					<div class="split__arrow" aria-hidden="true">→</div>
-					<div class="split__after">
-						<span class="split__label">After</span>
-						<div class="split__boxes">
-							<div class="split__box split__box--engine">
-								<span class="split__box-title">engine</span>
-								<ul class="split__box-items" role="list">
-									<li>fingerprint repos</li>
-									<li>write manifest</li>
-								</ul>
-							</div>
-							<div class="split__schema" aria-hidden="true">
-								<span class="split__schema-label">schema</span>
-							</div>
-							<div class="split__box split__box--integration">
-								<span class="split__box-title">integration</span>
-								<ul class="split__box-items" role="list">
-									<li>assemble Projects</li>
-									<li>render output</li>
-								</ul>
-							</div>
-						</div>
-					</div>
-				</figure>
-			</div>
-		</details>
+				</div>
+			</figure>
+		{/snippet}
 
-		<!-- ── The contract ───────────────────────────────────────────────── -->
-		<details class="page__section--collapsible drift__toggle" aria-labelledby="drift-contract-heading">
-			<summary class="page__summary">
-				<h3 id="drift-contract-heading" class="drift__toggle-title">The contract</h3>
-				<p class="page__summary-lede">
-					JSON Schema draft-07 with <code>additionalProperties: false</code>. A violation throws and
-					writes nothing.
-				</p>
-				<span class="page__chevron" aria-hidden="true"></span>
-			</summary>
+		{#snippet stationContract()}
+			<h3 id="drift-contract-heading">The contract</h3>
+			<p class="drift__station-lede">
+				JSON Schema draft-07 with <code>additionalProperties: false</code>. A violation throws and
+				writes nothing.
+			</p>
+			<p class="prose">
+				Between the engine and the integration layer sits <code>sources.schema.json</code>: a JSON
+				Schema draft-07 definition with <code>additionalProperties: false</code>. The engine
+				validates every assembled record against it before writing anything. A violation is a
+				programming error in the engine, not a user-data problem, so the response is blunt: throw,
+				write nothing. A half-correct manifest never reaches disk.
+			</p>
+			<p class="prose">
+				This makes adding a new metric a deliberate three-step act. Declare the property in the
+				schema. Add it to the <code>SyncedSource</code> interface in <code>index.ts</code>. Return it
+				from <code>getFingerprint</code> in the engine. Miss one and the build tells you, either
+				at <code>bun run check</code> or when the engine throws on its next sync. The boundary is not
+				a convention I am trusting myself to respect; it is enforced.
+			</p>
+			<figure class="code">
+				{@html data.snippets.drift}
+				<figcaption>scripts/check-drift.js — the validation gate</figcaption>
+			</figure>
+			<aside class="callout">
+				<strong>Fail-closed invariant:</strong> the engine throws and writes nothing on a schema
+				violation. The Svelte integration layer never sees a partial or off-contract manifest.
+			</aside>
+		{/snippet}
 
-			<div class="drift__toggle-body">
-				<p class="prose">
-					Between the engine and the integration layer sits <code>sources.schema.json</code>: a JSON
-					Schema draft-07 definition with <code>additionalProperties: false</code>. The engine
-					validates every assembled record against it before writing anything. A violation is a
-					programming error in the engine, not a user-data problem, so the response is blunt: throw,
-					write nothing. A half-correct manifest never reaches disk.
-				</p>
-				<p class="prose">
-					This makes adding a new metric a deliberate three-step act. Declare the property in the
-					schema. Add it to the <code>SyncedSource</code> interface in <code>index.ts</code>. Return it
-					from <code>getFingerprint</code> in the engine. Miss one and the build tells you, either
-					at <code>bun run check</code> or when the engine throws on its next sync. The boundary is not
-					a convention I am trusting myself to respect; it is enforced.
-				</p>
+		{#snippet stationMeasure()}
+			<h3 id="drift-measurement-heading">Measurement</h3>
+			<p class="drift__station-lede">
+				Every figure is measured against the canonical commit, not the working tree, via a
+				bounded concurrent worker pool.
+			</p>
+			<p class="prose">
+				For each repo, <code>getFingerprint</code> fans a set of independent git calls out via
+				<code>Promise.all</code> against the resolved default branch, not whatever happens to be
+				checked out locally. <code>defaultBranch</code> resolves <code>origin/HEAD</code>, then
+				<code>main</code>, then <code>master</code>, falling back to bare <code>HEAD</code> only
+				when none of those exist. The resolved ref is recorded as <code>measuredRef</code> in the
+				manifest, excluded from drift comparisons via <code>DRIFT_SKIP_FIELDS</code>, so a branch
+				rename never registers as drift.
+			</p>
+			<p class="prose">
+				Lines of code and languages are read straight from git blobs via
+				<code>git cat-file --batch</code>, not the working tree, so the measurement is always
+				against the canonical commit. Repos run concurrently across a bounded worker pool
+				(<code>cpus().length</code> slots). A HEAD-plus-TTL cache, keyed on the measured commit's
+				SHA and gitignored, means an unchanged repo is not re-scanned. <code>drift sync</code>
+				and <code>--no-cache</code> bypass it.
+			</p>
+			<p class="prose">
+				Per repo, the fingerprint covers: commit counts on two axes (mine versus all authors,
+				lifetime versus trailing four weeks); line churn on the same axes; lines of code; languages
+				by file count; first and last commit dates; and the runtime, framework and database
+				inferred from manifest files.
+			</p>
+			<figure class="code">
+				{@html data.snippets.sources}
+				<figcaption>src/lib/data/sources.json — one entry, every field a measurement</figcaption>
+			</figure>
+		{/snippet}
 
-				<figure class="code">
-					{@html data.snippets.drift}
-					<figcaption>scripts/check-drift.js — the validation gate</figcaption>
-				</figure>
+		{#snippet stationStaging()}
+			<h3 id="drift-staging-heading">The staging pipeline</h3>
+			<p class="drift__station-lede">
+				In-flight work surfaces on the site before it merges, via a self-healing four-tier
+				precedence chain.
+			</p>
+			<p class="prose">
+				Work that is still on an unmerged branch has no entry in <code>sources.json</code> yet,
+				but it can still surface on the site. A committed <code>in-progress.json</code> holds
+				provisional metrics for in-flight projects: the branch name, a promotion pipeline
+				(ordered merge targets), a visibility flag (<code>'public'</code> surfaces on the site;
+				<code>'local'</code> stays in the CLI), and per-field tracked values with their
+				<code>baseOnMain</code> counterpart for context.
+			</p>
+			<p class="prose">
+				The integration layer's <code>withSyncedMetrics</code> applies a four-tier precedence
+				across every metric field. Manual overrides win; real synced figures come next; provisional
+				values from <code>in-progress.json</code> fill in below that; authored defaults are the
+				floor. Once a branch lands and <code>drift sync</code> picks up real numbers, the synced
+				value naturally shadows the provisional one. Promotion is self-healing: no stale figures
+				leak through.
+			</p>
+			<figure class="code">
+				{@html data.snippets.precedence}
+				<figcaption>src/lib/data/index.ts — the metric precedence chain</figcaption>
+			</figure>
+		{/snippet}
 
-				<aside class="callout">
-					<strong>Fail-closed invariant:</strong> the engine throws and writes nothing on a schema
-					violation. The Svelte integration layer never sees a partial or off-contract manifest.
-				</aside>
-			</div>
-		</details>
-
-		<!-- ── Measurement ────────────────────────────────────────────────── -->
-		<details class="page__section--collapsible drift__toggle" aria-labelledby="drift-measurement-heading">
-			<summary class="page__summary">
-				<h3 id="drift-measurement-heading" class="drift__toggle-title">Measurement</h3>
-				<p class="page__summary-lede">
-					Every figure is measured against the canonical commit, not the working tree, via a
-					bounded concurrent worker pool.
-				</p>
-				<span class="page__chevron" aria-hidden="true"></span>
-			</summary>
-
-			<div class="drift__toggle-body">
-				<p class="prose">
-					For each repo, <code>getFingerprint</code> fans a set of independent git calls out via
-					<code>Promise.all</code> against the resolved default branch, not whatever happens to be
-					checked out locally. <code>defaultBranch</code> resolves <code>origin/HEAD</code>, then
-					<code>main</code>, then <code>master</code>, falling back to bare <code>HEAD</code> only
-					when none of those exist. The resolved ref is recorded as <code>measuredRef</code> in the
-					manifest, excluded from drift comparisons via <code>DRIFT_SKIP_FIELDS</code>, so a branch
-					rename never registers as drift.
-				</p>
-				<p class="prose">
-					Lines of code and languages are read straight from git blobs via
-					<code>git cat-file --batch</code>, not the working tree, so the measurement is always
-					against the canonical commit. Repos run concurrently across a bounded worker pool
-					(<code>cpus().length</code> slots). A HEAD-plus-TTL cache, keyed on the measured commit's
-					SHA and gitignored, means an unchanged repo is not re-scanned. <code>drift sync</code>
-					and <code>--no-cache</code> bypass it.
-				</p>
-				<p class="prose">
-					Per repo, the fingerprint covers: commit counts on two axes (mine versus all authors,
-					lifetime versus trailing four weeks); line churn on the same axes; lines of code; languages
-					by file count; first and last commit dates; and the runtime, framework and database
-					inferred from manifest files.
-				</p>
-
-				<figure class="code">
-					{@html data.snippets.sources}
-					<figcaption>src/lib/data/sources.json — one entry, every field a measurement</figcaption>
-				</figure>
-			</div>
-		</details>
-
-		<!-- ── The staging pipeline ───────────────────────────────────────── -->
-		<details class="page__section--collapsible drift__toggle" aria-labelledby="drift-staging-heading">
-			<summary class="page__summary">
-				<h3 id="drift-staging-heading" class="drift__toggle-title">The staging pipeline</h3>
-				<p class="page__summary-lede">
-					In-flight work surfaces on the site before it merges, via a self-healing four-tier
-					precedence chain.
-				</p>
-				<span class="page__chevron" aria-hidden="true"></span>
-			</summary>
-
-			<div class="drift__toggle-body">
-				<p class="prose">
-					Work that is still on an unmerged branch has no entry in <code>sources.json</code> yet,
-					but it can still surface on the site. A committed <code>in-progress.json</code> holds
-					provisional metrics for in-flight projects: the branch name, a promotion pipeline
-					(ordered merge targets), a visibility flag (<code>'public'</code> surfaces on the site;
-					<code>'local'</code> stays in the CLI), and per-field tracked values with their
-					<code>baseOnMain</code> counterpart for context.
-				</p>
-				<p class="prose">
-					The integration layer's <code>withSyncedMetrics</code> applies a four-tier precedence
-					across every metric field. Manual overrides win; real synced figures come next; provisional
-					values from <code>in-progress.json</code> fill in below that; authored defaults are the
-					floor. Once a branch lands and <code>drift sync</code> picks up real numbers, the synced
-					value naturally shadows the provisional one. Promotion is self-healing: no stale figures
-					leak through.
-				</p>
-
-				<figure class="code">
-					{@html data.snippets.precedence}
-					<figcaption>src/lib/data/index.ts — the metric precedence chain</figcaption>
-				</figure>
-			</div>
-		</details>
-
-		<!-- ── The verbs ──────────────────────────────────────────────────── -->
-		<details class="page__section--collapsible drift__toggle" aria-labelledby="drift-verbs-heading">
-			<summary class="page__summary">
-				<h3 id="drift-verbs-heading" class="drift__toggle-title">The verbs</h3>
-				<p class="page__summary-lede">
-					Each write verb touches exactly one file. Read-only verbs touch nothing at all.
-				</p>
-				<span class="page__chevron" aria-hidden="true"></span>
-			</summary>
-
-			<div class="drift__toggle-body">
-				<p class="prose">
-					The CLI is a set of verbs. Each write verb touches exactly one file. Read-only verbs touch
-					nothing at all.
-				</p>
-
-				<div class="drift__table-wrap">
-					<table class="verb-table">
-						<thead>
+		{#snippet stationVerbs()}
+			<h3 id="drift-verbs-heading">The verbs</h3>
+			<p class="drift__station-lede">
+				Each write verb touches exactly one file. Read-only verbs touch nothing at all.
+			</p>
+			<p class="prose">
+				The CLI is a set of verbs. Each write verb touches exactly one file. Read-only verbs touch
+				nothing at all.
+			</p>
+			<div class="drift__table-wrap">
+				<table class="verb-table">
+					<thead>
+						<tr>
+							<th scope="col">Verb</th>
+							<th scope="col">Does</th>
+							<th scope="col">Writes</th>
+						</tr>
+					</thead>
+					<tbody>
+						{#each driftVerbs as row (row.verb)}
 							<tr>
-								<th scope="col">Verb</th>
-								<th scope="col">Does</th>
-								<th scope="col">Writes</th>
+								<td><code>{row.verb}</code></td>
+								<td>{row.does}</td>
+								<td>
+									{#if row.write}
+										<code class="verb-table__write">{row.write}</code>
+									{:else}
+										<span class="verb-table__none">nothing</span>
+									{/if}
+								</td>
 							</tr>
-						</thead>
-						<tbody>
-							{#each driftVerbs as row (row.verb)}
-								<tr>
-									<td><code>{row.verb}</code></td>
-									<td>{row.does}</td>
-									<td>
-										{#if row.write}
-											<code class="verb-table__write">{row.write}</code>
-										{:else}
-											<span class="verb-table__none">nothing</span>
-										{/if}
-									</td>
-								</tr>
-							{/each}
-						</tbody>
-					</table>
+						{/each}
+					</tbody>
+				</table>
+			</div>
+		{/snippet}
+
+		<!--
+			Stage panel snippets — JS-only decorative schematics shown in the
+			sticky column. Each receives the station index (unused; kept for
+			the Snippet<[number]> interface). These are aria-hidden companions,
+			never the content truth.
+		-->
+		{#snippet stageSplit(_i: number)}
+			<div class="stage-arch">
+				<p class="drift__stage-caption">Architecture</p>
+				<div class="stage-arch__layers">
+					{#each driftLayers as layer, i (layer.id)}
+						<div class="stage-arch__layer stage-arch__layer--{layer.id}">
+							<span class="stage-arch__label">{layer.label}</span>
+							<code class="stage-arch__path">{layer.path}</code>
+							<span class="stage-arch__detail">{layer.detail}</span>
+						</div>
+						{#if i < driftLayers.length - 1}
+							<div class="stage-arch__arrow" aria-hidden="true">↓</div>
+						{/if}
+					{/each}
 				</div>
 			</div>
-		</details>
+		{/snippet}
+
+		{#snippet stageContract(_i: number)}
+			<div class="stage-gate">
+				<p class="drift__stage-caption">Fail-closed gate</p>
+				<div class="stage-gate__node stage-gate__node--schema">
+					<span class="stage-gate__label">sources.schema.json</span>
+					<span class="stage-gate__detail">JSON Schema draft-07, additionalProperties: false</span>
+				</div>
+				<div class="stage-gate__arrow" aria-hidden="true">↓ validate</div>
+				<div class="stage-gate__node stage-gate__node--pass">
+					<span class="stage-gate__label">✓ write manifest</span>
+					<span class="stage-gate__detail">All records valid — single sanctioned write</span>
+				</div>
+				<div class="stage-gate__arrow" aria-hidden="true">↓ or</div>
+				<div class="stage-gate__node stage-gate__node--fail">
+					<span class="stage-gate__label">✕ throw, write nothing</span>
+					<span class="stage-gate__detail">Any violation — manifest stays untouched</span>
+				</div>
+			</div>
+		{/snippet}
+
+		{#snippet stageMeasure(_i: number)}
+			<div class="stage-pool">
+				<p class="drift__stage-caption">Worker pool</p>
+				<div class="stage-pool__source">origin/HEAD → canonical commit</div>
+				<div class="stage-pool__arrow" aria-hidden="true">↓ Promise.all</div>
+				<div class="stage-pool__workers">
+					<span class="stage-pool__worker">commits</span>
+					<span class="stage-pool__worker">churn</span>
+					<span class="stage-pool__worker">languages</span>
+					<span class="stage-pool__worker">linesOfCode</span>
+					<span class="stage-pool__worker">dates</span>
+					<span class="stage-pool__worker">runtime</span>
+				</div>
+				<div class="stage-pool__arrow" aria-hidden="true">↓ fingerprint</div>
+				<div class="stage-pool__result">SyncedSource record</div>
+			</div>
+		{/snippet}
+
+		{#snippet stageStaging(_i: number)}
+			<div class="stage-tiers">
+				<p class="drift__stage-caption">Metric precedence</p>
+				<div class="stage-tiers__tier stage-tiers__tier--active">
+					<span class="stage-tiers__name">override</span>
+					<span class="stage-tiers__note">manual, always wins</span>
+				</div>
+				<div class="stage-tiers__tier">
+					<span class="stage-tiers__name">synced</span>
+					<span class="stage-tiers__note">real git figure</span>
+				</div>
+				<div class="stage-tiers__tier">
+					<span class="stage-tiers__name">provisional</span>
+					<span class="stage-tiers__note">in-progress.json</span>
+				</div>
+				<div class="stage-tiers__tier">
+					<span class="stage-tiers__name">authored</span>
+					<span class="stage-tiers__note">floor / default</span>
+				</div>
+			</div>
+		{/snippet}
+
+		{#snippet stageVerbs(_i: number)}
+			<div class="stage-verbs">
+				<p class="drift__stage-caption">CLI verbs</p>
+				<div class="stage-verbs__chips">
+					{#each driftVerbs as row (row.verb)}
+						<span class="stage-verbs__chip" class:stage-verbs__chip--write={!!row.write}>
+							{row.verb.split(' ')[0]}
+						</span>
+					{/each}
+				</div>
+			</div>
+		{/snippet}
+
+		<ScrollStage
+			label="How Drift is built, in five stages"
+			stations={[stationSplit, stationContract, stationMeasure, stationStaging, stationVerbs]}
+			stagePanels={[stageSplit, stageContract, stageMeasure, stageStaging, stageVerbs]}
+		/>
 
 		<!-- ── Closing ────────────────────────────────────────────────────── -->
 		<p class="drift__closing">
@@ -1102,24 +1174,24 @@
 		margin: 0;
 	}
 
-	/* Toggle sections inside Drift */
+	/* Station heading + lede (in-flow, always visible) */
 
-	.drift__toggle {
-		border-top: 1px solid var(--color-border);
-	}
-
-	.drift__toggle-title {
-		font-size: var(--text-xl);
-		font-weight: 700;
-		color: var(--color-text);
+	.drift__station-lede {
+		font-size: var(--text-sm);
+		color: var(--color-text-subtle);
+		line-height: 1.6;
 		margin: 0;
 	}
 
-	.drift__toggle-body {
-		display: flex;
-		flex-direction: column;
-		gap: var(--space-6);
-		padding: var(--space-4) 0 var(--space-6);
+	/* Stage caption (sticky panel label, aria-hidden) */
+
+	.drift__stage-caption {
+		font-size: var(--text-xs);
+		font-weight: 700;
+		text-transform: uppercase;
+		letter-spacing: 0.08em;
+		color: var(--color-text-muted);
+		margin: 0 0 var(--space-3);
 	}
 
 	/* Architecture diagram */
