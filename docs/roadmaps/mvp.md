@@ -8,11 +8,11 @@ The site is live and substantially built (full routes, graph/timeline/map/toolki
 
 |              | Status                                                                                                                                                                                                                                                                                                                                       | Next Up                                                                                 | Blocked |
 |--------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------|---------|
-| **Content**  |                                                                                                                          30+ entries, themes, threads, About, CV/hire; depth audit complete; 8 of 10 M1 tasks done                                                                                                                           | Colophon (1CO.5) unblocked by M5 — ready to start; style-guide pass (1CO.8) after 1CO.5 | 1CO.8 blocked on 1CO.5 |
+| **Content**  |                                                                                                                          30+ entries, themes, threads, About, CV/hire; depth audit complete; Colophon/drift-engine rebuilt post-M5 (1CO.5); 9 of 10 M1 tasks done                                                                                                                           | Style-guide pass (1CO.8) now unblocked: last M1 task | _None._ |
 | **Features** |                                                                                                          2FE.1, 2FE.2, 2FE.4, 2FE.5, 2FE.8 done; all connection views built (search, multi-select, cross-view continuity, relayout)                                                                                                          |          Polish pass (2FE.3) after 2FE.7; tech constellation (2FE.6) after M1           | 2FE.6 blocked on M1; 2FE.7 blocked on 2FE.6; 2FE.3 blocked on 2FE.7/2FE.8 |
 |  **Design**  |                                                                                                                                                     Reasonable Colors tokens, dark mode                                                                                                                                                      |                            Visual direction (3DE.0) after M2                            | All M3 tasks blocked on M2 completion |
 | **Quality**  |                                                                                                                                               Strict types, data-integrity tests, prerendered                                                                                                                                                |                 Test coverage (4QU.5) and OG coverage (4QU.4) after M3                  | All M4 tasks blocked on M3; a11y (4QU.7) blocked on 4QU.1 |
-|  **Drift**   | 2.5k-line CLI, manifest registry, cache, verbs, Bun migration, boundary doc, config layer, tag taxonomy (5DR.4), engine schema (5DR.5), engine/integration split (5DR.6), branch awareness + staging pipeline (5DR.7), init scaffold (5DR.13), audit verb (5DR.11), author/pin verbs (5DR.15/5DR.16), `flag` verb (5DR.17) — **M5 complete** |                         Colophon Drift story (1CO.5) unblocked                          | Tests & docs (M6) blocked on M3 + M5 |
+|  **Drift**   | 2.5k-line CLI, manifest registry, cache, verbs, Bun migration, boundary doc, config layer, tag taxonomy (5DR.4), engine schema (5DR.5), engine/integration split (5DR.6), branch awareness + staging pipeline (5DR.7), init scaffold (5DR.13), audit verb (5DR.11), author/pin verbs (5DR.15/5DR.16), `flag` verb (5DR.17) — **M5 complete** |                         Colophon/drift-engine Drift story (1CO.5) delivered                          | Tests & docs (M6) blocked on M3 + M5 |
 
 ---
 
@@ -44,12 +44,11 @@ _None._
 
 <a name="m1-todo"><h4>To Do (Milestone 1)</h4></a>
 
-_None._
+- [ ] 1CO.8. Pass all copy through the writing-style guide (British spelling, no em-dashes, voice) — **depends on 1CO.2, 1CO.3, 1CO.5, 1CO.7, 1CO.9** (all complete; now unblocked)
 
 <a name="m1-blocked"><h4>Blocked (Milestone 1)</h4></a>
 
-- [ ] 1CO.5. Expand Colophon: explain the build, the data model, and headline the Drift tooling story — **re-do after M5**: the Drift decoupling changes the engine architecture described here, so the Colophon's Drift section must be rewritten once the design is settled — **depends on m5**. _Previously completed: full editorial rewrite; corrected `ProjectSlug` and `contributionNote` snippets; new headlined Drift section; build-time Shiki syntax highlighting (Vitesse light/dark, zero client JS); collapsed-by-default `<details>` sections._
-- [ ] 1CO.8. Pass all copy through the writing-style guide (British spelling, no em-dashes, voice) — **depends on 1CO.2, 1CO.3, 1CO.5, 1CO.7, 1CO.9**
+_None._
 
 <a name="m1-done"><h4>Completed (Milestone 1)</h4></a>
 
@@ -61,6 +60,7 @@ _None._
 - [x] 1CO.7. Review engine-extraction thread narratives for clarity — rewrote all six relationship notes (3 `powers` + 3 `extracted-from`) to carry the extraction insight rather than restate card labels; standardised `extracted-from` notes to consistent "lifted out of … into the standalone … library" shape; light strapline tightening in `EngineThread.svelte`.
 - [x] 1CO.9. CV / hire-me positioning copy — new `/hire` route with capabilities, three engagement shapes, and contact CTA; hamburger nav on narrow screens; `EMAIL` lifted into config.
 - [x] 1CO.10. Surfaced-project rotation / curation mechanism — fully derived: home hero scores by active-substance (recency × log-substance, 30-day half-life); no manual flagship flags; deal-another control cycles the full eligible pool; map hub set derived from p85 substance percentile (node size AND label visibility).
+- [x] 1CO.5. Expand Colophon: explain the build, the data model, and headline the Drift tooling story — re-done after M5 as required: route renamed `colophon` → `drift-engine`; full editorial rewrite as an engineer-facing builder deep-dive; new headlined Drift section reflecting the decoupled engine/integration architecture; accordion replaced with a scrollytelling layout; app/gallery page redesign; build-time Shiki syntax highlighting (Vitesse light/dark, zero client JS); corrected `ProjectSlug` and `contributionNote` snippets.
 
 ---
 
@@ -236,10 +236,9 @@ flowchart TD
 	1CO.2["`*1CO.2*<br/>**Content**<br/>all entries flagship-ready`"]:::done
 	1CO.3["`*1CO.3*<br/>**Content**<br/>contribution notes`"]:::done
 	1CO.4["`*1CO.4*<br/>**Content**<br/>About narrative`"]:::done
-	1CO.5["`*1CO.5*<br/>**Content**<br/>Colophon + Drift story`"]:::blocked
 	1CO.6["`*1CO.6*<br/>**Content**<br/>theme coherence`"]:::done
 	1CO.7["`*1CO.7*<br/>**Content**<br/>thread narratives`"]:::done
-	1CO.8["`*1CO.8*<br/>**Content**<br/>style-guide pass`"]:::blocked
+	1CO.8["`*1CO.8*<br/>**Content**<br/>style-guide pass`"]:::open
 	1CO.9["`*1CO.9*<br/>**Content**<br/>CV / hire-me copy`"]:::done
 	1CO.10["`*1CO.10*<br/>**Content**<br/>rotation mechanism`"]:::done
 
@@ -251,7 +250,6 @@ flowchart TD
 	1CO.4 --> 1CO.9
 	1CO.2 --> 1CO.8
 	1CO.3 --> 1CO.8
-	1CO.5 --> 1CO.8
 	1CO.7 --> 1CO.8
 	1CO.9 --> 1CO.8
 
@@ -391,7 +389,6 @@ flowchart TD
 	m2 --> 3DE.0
 	m3 --> 4QU.4
 	m3 --> 4QU.5
-	m5 --> 1CO.5
 
 	%% ── Convergence ──────────────────────────────────────────────────
 	SHIP(["`**Portfolio v-next**<br/>shipped`"]):::ship
