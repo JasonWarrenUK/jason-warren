@@ -903,3 +903,164 @@ describe('drift audit', () => {
 		expect(summary.Full).toBe(0);
 	});
 });
+
+// ---------------------------------------------------------------------------
+// drift sync tests
+//
+// sync requires a real git repo mapped via sources.local.json, so the fixture
+// creates a temp git repo with one commit. computeDrift only populates
+// result.fresh[slug] when localPaths[slug] resolves to a real working tree.
+//
+// Gap not covered: the null-preservation path (preservedFields) requires a
+// getFingerprint call that returns null for a specific field, which needs a
+// failing git sub-command — too brittle to fake in a subprocess test. The
+// preservation logic is guarded by the mergeFingerprint unit contract and the
+// write-path behaviour visible in the companion real-sync test.
+// ---------------------------------------------------------------------------
+
+/** Isolated git env so the temp repo ignores host signing/config. */
+function makeGitEnv() {
+	return {
+		...process.env,
+		GIT_CONFIG_GLOBAL: '/dev/null',
+		GIT_CONFIG_SYSTEM: '/dev/null',
+		GIT_AUTHOR_DATE: '2000-01-01T00:00:00+00:00',
+		GIT_COMMITTER_DATE: '2000-01-01T00:00:00+00:00',
+		GIT_AUTHOR_NAME: 'Test',
+		GIT_AUTHOR_EMAIL: 'test@example.com',
+		GIT_COMMITTER_NAME: 'Test',
+		GIT_COMMITTER_EMAIL: 'test@example.com'
+	};
+}
+
+/**
+ * Creates a minimal dataDir with a real git repo mapped via sources.local.json.
+ * Returns the dataDir path and the slug used.
+ */
+function makeSyncSandbox(slug = 'sync-test-repo'): { dir: string; slug: string } {
+	const dir = mkdtempSync(join(tmpdir(), 'drift-sync-test-'));
+
+	// Real git repo — computeDrift needs a resolvable working tree.
+	const repoPath = join(dir, 'repo');
+	mkdirSync(repoPath);
+	const gitEnv = makeGitEnv();
+	const git = (args: string[]) =>
+		spawnSync('git', args, { cwd: repoPath, env: gitEnv, encoding: 'utf8' });
+
+	git(['init', '-b', 'main']);
+	git(['config', 'user.email', 'test@example.com']);
+	git(['config', 'user.name', 'Test']);
+	writeFileSync(join(repoPath, 'readme.md'), '# test\n');
+	git(['add', '-A']);
+	git(['commit', '-m', 'init', '--no-gpg-sign']);
+
+	// sources.json: a saved entry that will differ from the fresh fingerprint
+	// (head set to a fake SHA so the first sync visibly updates it).
+	writeFileSync(
+		join(dir, 'sources.json'),
+		JSON.stringify(
+			{
+				$schema: '../../scripts/sources.schema.json',
+				sources: { [slug]: { head: 'deadbeef00000000000000000000000000000000', commits: 0 } }
+			},
+			null,
+			'\t'
+		)
+	);
+
+	// sources.local.json: maps the slug to the temp repo path.
+	writeFileSync(
+		join(dir, 'sources.local.json'),
+		JSON.stringify({ paths: { [slug]: repoPath } }, null, '\t')
+	);
+
+	// Minimal sibling files that loadManifests reads.
+	writeFileSync(join(dir, 'overrides.json'), JSON.stringify({ overrides: {} }, null, '\t'));
+	writeFileSync(
+		join(dir, 'excluded.json'),
+		JSON.stringify({ slugs: [], repoNames: [] }, null, '\t')
+	);
+	writeFileSync(join(dir, '.drift-cache.json'), JSON.stringify({}, null, '\t'));
+	writeFileSync(
+		join(dir, 'in-progress.json'),
+		JSON.stringify({ inProgress: {} }, null, '\t')
+	);
+
+	// in-progress.schema.json must exist (loadManifests does not validate but
+	// some paths reference it). Copy the real one.
+	const realSchema = join(repoRoot, 'src/lib/data/in-progress.schema.json');
+	cpSync(realSchema, join(dir, 'in-progress.schema.json'));
+
+	return { dir, slug };
+}
+
+/** Run `drift sync` (plus any extra args) with a DRIFT_CONFIG pointing at dir. */
+function runSyncWithConfig(dir: string, extraArgs: string[]) {
+	const configPath = makeDriftConfig(dir);
+	return spawnSync(
+		'bun',
+		['run', checkDriftPath, 'sync', ...extraArgs, '--no-color', '--no-cache'],
+		{
+			cwd: repoRoot,
+			env: { ...process.env, DRIFT_CONFIG: configPath },
+			encoding: 'utf8',
+			timeout: 30_000
+		}
+	);
+}
+
+describe('drift sync', () => {
+	let dir: string;
+	let slug: string;
+
+	beforeEach(() => {
+		({ dir, slug } = makeSyncSandbox());
+	});
+
+	afterEach(() => {
+		rmSync(dir, { recursive: true, force: true });
+	});
+
+	it('--dry-run writes nothing (sources.json byte-identical)', () => {
+		const before = readFileSync(join(dir, 'sources.json'), 'utf8');
+
+		const result = runSyncWithConfig(dir, ['--dry-run']);
+
+		expect(result.status, result.stderr).toBe(0);
+		expect(result.stdout).toMatch(/dry run/i);
+		expect(result.stdout).toContain(slug);
+
+		const after = readFileSync(join(dir, 'sources.json'), 'utf8');
+		expect(after).toBe(before);
+	});
+
+	it('plain sync updates sources.json with fresh fingerprint', () => {
+		const result = runSyncWithConfig(dir, []);
+
+		expect(result.status, result.stderr).toBe(0);
+		expect(result.stdout).toContain('sources.json synced.');
+
+		const parsed = JSON.parse(readFileSync(join(dir, 'sources.json'), 'utf8'));
+		const entry = parsed.sources[slug];
+
+		// The test repo has one commit; the sentinel value was 0.
+		expect(entry.commits).toBe(1);
+		// head must have been updated from the dummy SHA.
+		expect(entry.head).not.toBe('deadbeef00000000000000000000000000000000');
+		// lastSyncedAt is set on the manifest root (not per-entry).
+		expect(parsed.lastSyncedAt).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+	});
+
+	it('dry-run stdout mentions the fields that a real sync would write', () => {
+		const dryResult = runSyncWithConfig(dir, ['--dry-run']);
+		expect(dryResult.status, dryResult.stderr).toBe(0);
+
+		// head and commits are both stale in the fixture — both should appear in
+		// the preview. This asserts that the preview reports actual sync changes,
+		// not a vacuous "nothing changed" output.
+		expect(dryResult.stdout).toMatch(/commits|head/);
+
+		// Dry-run must never claim to have written.
+		expect(dryResult.stdout).not.toContain('sources.json synced.');
+	});
+});
