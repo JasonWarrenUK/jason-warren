@@ -806,6 +806,56 @@ function diffFingerprint(saved, current) {
 	return diffs;
 }
 
+/**
+ * Pure preview of the sync field-merge. Mirrors the real write loop exactly so
+ * the dry-run preview and the actual write cannot produce different results.
+ *
+ * Unlike diffFingerprint (which skips DRIFT_SKIP_FIELDS and only shows
+ * differing fields for the *report* view), mergeFingerprint iterates every
+ * key of `current` — the same set the write loop touches — so measuredRef
+ * and other metadata fields are included when they change.
+ *
+ * @param {Record<string, unknown>} saved   stored fingerprint (may be {})
+ * @param {Record<string, unknown>} current live fingerprint from getFingerprint
+ * @returns {{
+ *   merged: Record<string, unknown>,
+ *   changedFields: {field: string, was: unknown, now: unknown}[],
+ *   preservedFields: string[]
+ * }}
+ */
+function mergeFingerprint(saved, current) {
+	const merged = { ...saved };
+	const preservedFields = [];
+
+	for (const [field, value] of Object.entries(current)) {
+		if (value === null && saved[field] != null) {
+			// Null-preservation: keep the previously good value rather than
+			// clobbering it with a null from a transient git failure.
+			preservedFields.push(field);
+		} else {
+			merged[field] = value;
+		}
+	}
+
+	// Compute which fields actually changed after applying null-preservation,
+	// using the same array-aware equality as diffFingerprint.
+	const changedFields = [];
+	for (const field of Object.keys(current)) {
+		const was = saved[field];
+		const now = merged[field];
+		if (ARRAY_FINGERPRINT_FIELDS.has(field)) {
+			const sortFn = field === 'languages' ? (a) => a : (a) => [...a].sort();
+			const a = Array.isArray(was) ? sortFn(was).join(',') : '';
+			const b = Array.isArray(now) ? sortFn(now).join(',') : '';
+			if (a !== b) changedFields.push({ field, was: was ?? null, now: now ?? null });
+		} else {
+			if (was !== now) changedFields.push({ field, was: was ?? null, now: now ?? null });
+		}
+	}
+
+	return { merged, changedFields, preservedFields };
+}
+
 // ---------------------------------------------------------------------------
 // Exclusion list — two axes:
 //   repoNames — gates the directory scan by folder name (before a slug exists)
@@ -1487,7 +1537,7 @@ function buildIdentityLine(fp, { marker = (_f, v) => v } = {}) {
  * @param {boolean} [opts.firstCard=false]  suppress the leading `---` on first card
  * @returns {string[]}
  */
-function renderCardMarkdown({ slug, current, fields, firstCard = false }) {
+function renderCardMarkdown({ slug, current, fields, firstCard = false, preservedFields = [] }) {
 	const lines = [];
 
 	if (!firstCard) lines.push('---');
@@ -1516,6 +1566,11 @@ function renderCardMarkdown({ slug, current, fields, firstCard = false }) {
 		lines.push('');
 	}
 
+	if (preservedFields.length > 0) {
+		lines.push(`_preserved (git returned no value): ${preservedFields.join(', ')}_`);
+		lines.push('');
+	}
+
 	return lines;
 }
 
@@ -1530,7 +1585,7 @@ function renderCardMarkdown({ slug, current, fields, firstCard = false }) {
  * @param {boolean}  opts.firstCard   suppress leading rule on first card
  * @param {object}   opts.palette     ANSI colour codes
  */
-function renderCardPlain({ slug, current, fields, firstCard = false, palette }) {
+function renderCardPlain({ slug, current, fields, firstCard = false, palette, preservedFields = [] }) {
 	const { RESET, BOLD, CYAN, DIM, YELLOW } = palette;
 
 	if (!firstCard) {
@@ -1560,7 +1615,33 @@ function renderCardPlain({ slug, current, fields, firstCard = false, palette }) 
 			);
 		}
 	}
+
+	if (preservedFields.length > 0) {
+		console.log(
+			`  ${YELLOW}preserved (git returned no value): ${preservedFields.join(', ')}${RESET}`
+		);
+	}
+
 	console.log('');
+}
+
+/**
+ * Renders one dry-run preview card. Uses the gum markdown path when available
+ * (mirroring the report path), falling back to renderCardPlain.
+ */
+function renderDryRunCard({ slug, current, fields, preservedFields, firstCard, palette, useGum }) {
+	if (useGum && process.stdout.isTTY) {
+		const md = renderCardMarkdown({ slug, current, fields, preservedFields, firstCard }).join('\n');
+		const out = spawnSync('gum', ['format', '--theme', config.theme.markdownTheme], {
+			input: md,
+			encoding: 'utf8'
+		});
+		if (out.status === 0 && out.stdout) {
+			process.stdout.write(out.stdout + '\n');
+			return;
+		}
+	}
+	renderCardPlain({ slug, current, fields, preservedFields, firstCard, palette });
 }
 
 // ---------------------------------------------------------------------------
@@ -1778,7 +1859,8 @@ function runUpdate({ result, manifest, palette, useGum, args = [], dryRun = fals
 		}
 	}
 
-	// Dry-run: show a field-level diff for each scoped repo and return without writing.
+	// Dry-run: show a faithful field-level preview for each scoped repo using the
+	// same merge logic as the real write, then return without writing.
 	if (dryRun) {
 		const slugs = Object.keys(scopedFresh);
 		console.log(
@@ -1787,8 +1869,8 @@ function runUpdate({ result, manifest, palette, useGum, args = [], dryRun = fals
 		let firstCard = true;
 		for (const [slug, current] of Object.entries(scopedFresh)) {
 			const saved = manifest.sources[slug] ?? {};
-			const fields = diffFingerprint(saved, current);
-			renderCardPlain({ slug, current, fields, firstCard, palette });
+			const { changedFields, preservedFields } = mergeFingerprint(saved, current);
+			renderDryRunCard({ slug, current, fields: changedFields, preservedFields, firstCard, palette, useGum });
 			firstCard = false;
 		}
 		return;
@@ -1809,24 +1891,16 @@ function runUpdate({ result, manifest, palette, useGum, args = [], dryRun = fals
 
 	// Backfill every resolvable repo (or the scoped subset), not just those whose
 	// head moved, so new fields (firstCommit, languages) populate across the manifest.
-	// Field-merge: only overwrite when the fresh value is non-null, so a transient
-	// git failure cannot clobber previously-good data with a null.
+	// mergeFingerprint applies the same null-preservation logic as before: a transient
+	// git failure returning null cannot clobber previously-good data.
 	console.log('Updating sources.json with current fingerprints...');
 	for (const [slug, current] of Object.entries(scopedFresh)) {
 		const saved = manifest.sources[slug] ?? {};
-		const merged = { ...saved };
-		const preserved = [];
-		for (const [field, value] of Object.entries(current)) {
-			if (value === null && saved[field] != null) {
-				preserved.push(field);
-			} else {
-				merged[field] = value;
-			}
-		}
+		const { merged, preservedFields } = mergeFingerprint(saved, current);
 		manifest.sources[slug] = merged;
-		if (preserved.length > 0) {
+		if (preservedFields.length > 0) {
 			console.log(
-				`${YELLOW}${slug}: preserved ${preserved.join(', ')} from saved entry (git returned no value)${RESET}`
+				`${YELLOW}${slug}: preserved ${preservedFields.join(', ')} from saved entry (git returned no value)${RESET}`
 			);
 		}
 	}
@@ -3063,7 +3137,7 @@ Compare synced fingerprints against current git state and surface new repos.
 
 - \`drift [report] [--json] [--full] [--check] [--no-color]\`
 - \`drift snapshot [--json] [--no-color]\`
-- \`drift sync\`
+- \`drift sync [<slug>...] [--dry-run]\`
 - \`drift keep <slug> <field>\`
 - \`drift keep --all-projects <field>\`
 - \`drift keep-all\`
@@ -3102,6 +3176,12 @@ Backfills every resolvable repo (not only those whose HEAD moved) so new
 fields populate across the whole manifest. Writes sources.json only; never
 touches overrides.json.
 
+Pass one or more slugs to restrict the update to those repos only.
+
+\`--dry-run\` previews the exact field-level changes for each resolvable repo
+(including which fields would be preserved because git returned no value)
+and writes nothing. Use it to check what a sync would do before committing.
+
 \`--full\` is accepted for symmetry but is a no-op: sync already covers all
 resolvable repos regardless of HEAD movement.
 
@@ -3112,7 +3192,10 @@ before writing.
 
 \`\`\`
 drift sync
-drift sync --full  # accepted; no-op
+drift sync <slug>              # scope to one repo
+drift sync <slug> <slug2>      # scope to several repos
+drift sync --dry-run           # preview only, writes nothing
+drift sync --full              # accepted; no-op
 \`\`\``,
 
 	keep: `# drift keep · dismiss override-drift flags
@@ -3323,7 +3406,7 @@ function printHelp(verb, palette, useGum) {
 ${BOLD}Usage:${RESET}
   drift [report] [--json] [--full] [--check] [--no-color]
   drift snapshot [--json] [--no-color]
-  drift sync
+  drift sync [<slug>...] [--dry-run]
   drift keep <slug> <field>
   drift keep --all-projects <field>
   drift keep-all
@@ -3362,11 +3445,13 @@ Backfills every resolvable repo (not only those whose HEAD moved), so new
 fields populate across the whole manifest. Writes sources.json only; never
 touches overrides.json.
 
-${DIM}--full is accepted for symmetry but is a no-op: sync already covers all
+${DIM}Pass one or more slugs to restrict the update to those repos only.
+Pass --dry-run to preview field changes without writing.
+--full is accepted for symmetry but is a no-op: sync already covers all
 resolvable repos. In an interactive terminal with gum, drift asks for
 confirmation before writing.${RESET}
 
-  Usage: drift sync`,
+  Usage: drift sync [<slug>...] [--dry-run]`,
 
 		keep: `${BOLD}drift keep <slug> <field>${RESET} - dismiss one override-drift flag
 
