@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { base } from '$app/paths';
 	import Seo from '$lib/components/seo/Seo.svelte';
 	import {
 		AUTHOR,
@@ -7,7 +6,6 @@
 		EMAIL,
 		GITHUB_PROFILE_URL,
 		BLUESKY_URL,
-		BLUESKY_HANDLE,
 		DEFAULT_DESCRIPTION
 	} from '$lib/config.js';
 
@@ -32,137 +30,77 @@
 	<header class="page__header">
 		<h1 class="page__title">About</h1>
 		<p class="page__intro">
-			Full-stack developer. Optimising for problems that are awkward, tools that are sharp, and code
-			that survives contact with reality.
+			I build systems so I can build tools. I can't build a good tool without first understanding
+			the problem it models.
 		</p>
 	</header>
 
-	<div class="page__body">
-		<main class="page__main">
-			<section class="section">
-				<h2 class="section__heading">What I build</h2>
-				<div class="section__prose">
-					<p>
-						I build things that run: a Go TUI for productivity, a Tauri 2 desktop app for
-						apprenticeship data compliance, an AI curriculum generator, a Neo4j-backed relational
-						fiction engine. The spread is wider than is strictly sensible, and I have made peace
-						with that. A genuinely new sort of problem is the best excuse I know to learn a
-						genuinely new sort of tool.
-					</p>
-					<p>
-						What the projects share is an intolerance for half-measures. The Lead Pool segmentation
-						work in fac-cra turns a blunt approval queue into a set of configurable segments; the
-						response-state architecture in Workwise replaces a tangle of loading booleans with a
-						discriminated-union state machine. The difference in both cases is a system that can be
-						reasoned about when things go wrong.
-					</p>
-				</div>
-			</section>
-
-			<section class="section">
-				<h2 class="section__heading">How I work</h2>
-				<div class="section__prose">
-					<p>
-						I came into development sideways, through curiosity and apprenticeship rather than a
-						computer science degree, and that route still shapes how I work. I am suspicious of
-						anything that has never actually run. I write code on the assumption that someone
-						(usually a baffled future me) will have to read it later.
-					</p>
-					<p>
-						Left to my own devices, I push the craft further than is strictly justified. Iris
-						reached v5.0.0 over 666 commits with close to one test for every source file. Wyrd sits
-						at 68.5% statement coverage across 150 Go files, not because anyone asked, but because I
-						wanted to find out what real rigour feels like from the inside.
-					</p>
-					<p>
-						On team projects I tend to land between architecture and delivery: building the feature
-						in front of me while caring about the shape of the system it has to live in.
-					</p>
-				</div>
-			</section>
-
-			<section class="section">
-				<h2 class="section__heading">The toolkit</h2>
-				<div class="section__prose">
-					<p>
-						TypeScript is my default for anything touching the browser or Node. Go is what I reach
-						for when something needs to live in the terminal or ship as a single binary. I have
-						written enough Rust to wrestle a Tauri desktop app to completion, which is enough to
-						respect the ownership model rather than fear it.
-					</p>
-					<p>
-						On the frontend, Svelte 5 with runes is a strong preference. For data: PostgreSQL with
-						row-level security, Neo4j when the relationships are the actual model, Supabase when I
-						want both in a hurry. I test with Vitest, and I have written Playwright end-to-end
-						suites for software that real people depend on.
-					</p>
-				</div>
-			</section>
-
-			<section class="section">
-				<h2 class="section__heading">Get in touch</h2>
-				<div class="section__prose">
-					<p>
-						The best way to reach me is by email:
-						<a href={`mailto:${EMAIL}`} class="link">{EMAIL}</a>
-					</p>
-					<p>
-						You can also find me on
-						<a href={GITHUB_PROFILE_URL} class="link" target="_blank" rel="noopener noreferrer">
-							GitHub
-						</a>
-						where most of this work lives, and on
-						<a href={BLUESKY_URL} class="link" target="_blank" rel="noopener noreferrer me">
-							Bluesky
-						</a>
-						at {BLUESKY_HANDLE}.
-					</p>
-				</div>
-			</section>
-		</main>
-
-		<aside class="page__aside">
-			<div class="aside-card">
-				<h2 class="aside-card__heading">Currently</h2>
-				<ul class="aside-card__list">
-					<li>Developer at Founders and Coders</li>
-					<li>Building Wyrd (Go productivity TUI)</li>
-					<li>Building Rhea (AI curriculum generator)</li>
-				</ul>
+	<main class="page__main">
+		<section class="section">
+			<h2 class="section__heading">What I build</h2>
+			<div class="section__prose">
+				<p>
+					I have an intolerance for half-measures. A Go TUI for a productivity system I actually
+					use; a Tauri desktop app where the real problem was making XSD validation semantically
+					aware rather than structural; a Neo4j-backed fiction engine where the relationships
+					between characters are the data model.
+				</p>
+				<p>
+					In fac-cra, I turned a blunt approval queue into a set of configurable segments with
+					their own independent logic. In Workwise, I replaced a tangle of loading booleans with a
+					discriminated-union state machine.
+				</p>
 			</div>
+		</section>
 
-			<div class="aside-card">
-				<h2 class="aside-card__heading">Elsewhere</h2>
-				<ul class="aside-card__list">
-					<li>
-						<a href={GITHUB_PROFILE_URL} class="link" target="_blank" rel="noopener noreferrer">
-							GitHub
-						</a>
-					</li>
-					<li>
-						<a href={BLUESKY_URL} class="link" target="_blank" rel="noopener noreferrer me">
-							Bluesky
-						</a>
-					</li>
-				</ul>
+		<section class="section">
+			<h2 class="section__heading">How I work</h2>
+			<div class="section__prose">
+				<p>
+					I was a theatre director. I wrote a book on interactive theatre ("Creating Worlds", Nick
+					Hern Books, 2017), and ran courses at drama schools. During lockdown I started learning
+					ink, Inkle's scripting language for interactive narrative, and kept going from there.
+				</p>
+				<p>
+					Left to my own devices, I take things further than anyone asked. Iris is built on a
+					single TypeScript core driving three completely different interfaces: an OpenTUI terminal
+					UI, direct CLI commands, and a Tauri desktop app in Rust. Wyrd has its own Cypher-subset
+					parser and a binary merge driver for conflict resolution, because I wanted a proper graph
+					query language over JSON files rather than a workaround. This portfolio tracks itself
+					through a bespoke git-metrics CLI with a typed JSON Schema contract, because I have ADHD
+					and it is genuinely easier for me to build the infrastructure to automate the maintenance
+					than to do the maintenance.
+				</p>
+				<p>On team projects I tend to land between architecture and delivery.</p>
 			</div>
+		</section>
 
-			<div class="aside-card">
-				<h2 class="aside-card__heading">On this site</h2>
-				<ul class="aside-card__list">
-					<li>
-						<a href="{base}/projects" class="link">All projects</a>
-					</li>
-					<li>
-						<a href="{base}/map" class="link">Project map</a>
-					</li>
-					<li>
-						<a href="{base}/timeline" class="link">Timeline</a>
-					</li>
-				</ul>
+		<section class="section">
+			<h2 class="section__heading">The toolkit</h2>
+			<div class="section__prose">
+				<p>
+					TypeScript for anything where state needs to be modelled explicitly: discriminated unions,
+					exhaustive type narrowing, no runtime surprises from a function that lies about what it
+					returns. Go when the output should be a binary. Svelte 5 with runes on the frontend;
+					PostgreSQL when the relationships are incidental, Neo4j when they are the model. I have
+					written enough Rust to ship a Tauri desktop app and know when to stop.
+				</p>
 			</div>
-		</aside>
-	</div>
+		</section>
+
+		<section class="section">
+			<h2 class="section__heading">Get in touch</h2>
+			<p class="contact-links">
+				<a href={`mailto:${EMAIL}`} class="link">{EMAIL}</a>
+				&bull;
+				<a href={GITHUB_PROFILE_URL} class="link" target="_blank" rel="noopener noreferrer"
+					>GitHub</a
+				>
+				&bull;
+				<a href={BLUESKY_URL} class="link" target="_blank" rel="noopener noreferrer me">Bluesky</a>
+			</p>
+		</section>
+	</main>
 </div>
 
 <style>
@@ -197,19 +135,6 @@
 		margin: 0;
 	}
 
-	.page__body {
-		display: grid;
-		grid-template-columns: 1fr;
-		gap: var(--space-10);
-	}
-
-	@media (min-width: 56rem) {
-		.page__body {
-			grid-template-columns: 1fr 18rem;
-			align-items: start;
-		}
-	}
-
 	.page__main {
 		display: flex;
 		flex-direction: column;
@@ -242,41 +167,12 @@
 		margin: 0;
 	}
 
-	.page__aside {
-		display: flex;
-		flex-direction: column;
-		gap: var(--space-5);
-	}
-
-	.aside-card {
-		display: flex;
-		flex-direction: column;
-		gap: var(--space-3);
-		padding: var(--space-5);
-		background-color: var(--color-surface-raised);
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-md);
-	}
-
-	.aside-card__heading {
-		font-size: var(--text-xs);
-		font-weight: 700;
-		text-transform: uppercase;
-		letter-spacing: 0.08em;
-		color: var(--color-text-muted);
-	}
-
-	.aside-card__list {
-		display: flex;
-		flex-direction: column;
-		gap: var(--space-2);
-		padding: 0;
-		list-style: none;
-	}
-
-	.aside-card__list li {
-		font-size: var(--text-sm);
+	.contact-links {
+		font-size: var(--text-base);
 		color: var(--color-text-subtle);
+		display: flex;
+		align-items: center;
+		gap: var(--space-3);
 	}
 
 	.link {
