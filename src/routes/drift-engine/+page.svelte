@@ -121,7 +121,7 @@
 
 <Seo
 	title="Drift Engine | Jason Warren"
-	description="The bespoke CLI that keeps this portfolio honest: how Drift measures real git history, validates every figure against a JSON Schema contract, and feeds the site without a database or a server."
+	description="The bespoke CLI that keeps this portfolio honest: how Drift measures real git history, validates every figure against a JSON Schema contract and feeds the site without a database or a server."
 />
 
 <div class="page">
@@ -129,9 +129,9 @@
 	<header class="page__header">
 		<h1>Drift Engine</h1>
 		<p class="page__intro">
-			Every commit count, churn figure, and timeline date on this site is measured by a bespoke
-			CLI, validated against a schema, and written to a manifest the build reads. None of it is
-			typed by hand. This is how that works.
+			Every commit count, churn figure and timeline date on this site is measured by a bespoke
+			CLI, validated against a schema and written to a manifest the build reads. None of it is
+			typed by hand.
 		</p>
 	</header>
 
@@ -162,7 +162,7 @@
 			<div class="spec__row">
 				<dt>Metrics</dt>
 				<dd>
-					Drift — a decoupled git-metrics engine with a JSON Schema output contract, running on Bun.
+					Drift: a decoupled git-metrics engine with a JSON Schema output contract, running on Bun.
 				</dd>
 			</div>
 			<div class="spec__row">
@@ -185,10 +185,9 @@
 						incorrectly.
 					</p>
 					<p class="flip-front__body">
-						A team project that does not say what I actually did is not a missing field I might notice
-						in review — it is a build that fails. The <code>Contribution</code> type discriminates on
-						role, so any team-project entry must carry either <code>'lead'</code> or
-						<code>'collaborator'</code> before it will compile.
+						A team project that does not say what I actually did fails the build. The
+						<code>Contribution</code> type discriminates on role, so any team-project entry must carry
+						either <code>'lead'</code> or <code>'collaborator'</code> before it will compile.
 					</p>
 					<span class="flip-front__hint" aria-hidden="true">Flip for the code →</span>
 				</div>
@@ -196,17 +195,17 @@
 			{#snippet back()}
 				<div class="flip-back">
 					<p class="flip-back__intro">
-						The shape is enforced at the type level; the content is authored at the human level.
-						Cross-links are checked at build time: the prerender throws on dangling slugs, and the
+						Once the shape is enforced at the type level, I write the editorial content myself.
+						Cross-links are checked at build time: the prerender throws on dangling slugs and the
 						test suite asserts every target resolves before the build runs.
 					</p>
 					<figure class="code">
 						{@html data.snippets.contribution}
-						<figcaption>src/lib/data/types.ts — Contribution discriminated union</figcaption>
+						<figcaption>src/lib/data/types.ts: Contribution discriminated union</figcaption>
 					</figure>
 					<figure class="code">
 						{@html data.snippets.slug}
-						<figcaption>src/lib/data/types.ts — ProjectSlug and cross-link safety</figcaption>
+						<figcaption>src/lib/data/types.ts: ProjectSlug and cross-link safety</figcaption>
 					</figure>
 				</div>
 			{/snippet}
@@ -218,8 +217,8 @@
 				<div class="flip-front">
 					<h3 class="flip-front__title">Almost everything else is derived</h3>
 					<p class="flip-front__lede">
-						The map, the timeline, the engine threads and the adoption chart are not separate
-						datasets — they are all computed from one registry at build time.
+						The map, the timeline, the engine threads and the adoption chart are all computed from
+						one registry at build time.
 					</p>
 					<p class="flip-front__body">
 						The "libraries from the inside out" thread on the home page is a clear example. Nothing
@@ -238,7 +237,7 @@
 					</p>
 					<figure class="code">
 						{@html data.snippets.threads}
-						<figcaption>src/lib/data/threads.ts — engine-thread derivation</figcaption>
+						<figcaption>src/lib/data/threads.ts: engine-thread derivation</figcaption>
 					</figure>
 				</div>
 			{/snippet}
@@ -277,12 +276,14 @@
 			<h3 class="tile--callout__title">Static, deterministic, dependency-light</h3>
 			<p class="tile--callout__body">
 				The project map is laid out with a force simulation, but a deterministic one: identical
-				input gives identical output, so the prerendered SVG never drifts between builds. The social
-				cards are generated from each project's own metadata with Satori and resvg, then cached
-				forever. The syntax highlighting on this page is baked in at build time by Shiki — the
-				browser receives finished HTML and no highlighter ever runs in the client. There is no
-				client-side rendering of content to wait for and no runtime server to fall over. A page
-				either built correctly or it did not.
+				input gives identical output, so the prerendered SVG never drifts between builds. Each
+				social card is procedurally generated from four project dimensions: the kind sets the colour
+				scheme, the curated language tags drive a row of branded glyphs, the runtime selects a
+				background geometry tiled across the canvas, and the data model picks the typeface for the
+				project name. Satori lays it out as SVG; resvg rasterises it to PNG at build time.
+				Identical inputs produce an identical card, so the prerendered result never drifts between
+				builds. The syntax highlighting is baked in at build time by Shiki; the browser receives
+				finished HTML. A page either built correctly or it did not.
 			</p>
 		</article>
 
@@ -320,9 +321,8 @@
 			</p>
 			<p class="prose">
 				Drift started as a single script that did everything: walked the repos, measured them,
-				wrote the manifest, and understood how the site would render every figure. That last part
-				was the problem. Measurement was tangled with presentation, so neither could move without
-				the other.
+				wrote the manifest and understood how the site would render every figure. Measurement was
+				tangled with presentation, so neither could move without the other.
 			</p>
 			<p class="prose">
 				It is now two things with a contract between them. The engine
@@ -411,7 +411,7 @@
 			</p>
 			<figure class="code">
 				{@html data.snippets.drift}
-				<figcaption>scripts/check-drift.js — the validation gate</figcaption>
+				<figcaption>scripts/check-drift.js: validation gate</figcaption>
 			</figure>
 			<aside class="callout">
 				<strong>Fail-closed invariant:</strong> the engine throws and writes nothing on a schema
@@ -450,7 +450,7 @@
 			</p>
 			<figure class="code">
 				{@html data.snippets.sources}
-				<figcaption>src/lib/data/sources.json — one entry, every field a measurement</figcaption>
+				<figcaption>src/lib/data/sources.json: one entry, every field a measurement</figcaption>
 			</figure>
 		{/snippet}
 
@@ -478,7 +478,7 @@
 			</p>
 			<figure class="code">
 				{@html data.snippets.precedence}
-				<figcaption>src/lib/data/index.ts — the metric precedence chain</figcaption>
+				<figcaption>src/lib/data/index.ts: metric precedence chain</figcaption>
 			</figure>
 		{/snippet}
 
@@ -486,10 +486,6 @@
 			<h3 id="drift-verbs-heading">The verbs</h3>
 			<p class="drift__station-lede">
 				Each write verb touches exactly one file. Read-only verbs touch nothing at all.
-			</p>
-			<p class="prose">
-				The CLI is a set of verbs. Each write verb touches exactly one file. Read-only verbs touch
-				nothing at all.
 			</p>
 			<div class="drift__table-wrap">
 				<table class="verb-table">
@@ -553,12 +549,12 @@
 				<div class="stage-gate__arrow" aria-hidden="true">↓ validate</div>
 				<div class="stage-gate__node stage-gate__node--pass">
 					<span class="stage-gate__label">✓ write manifest</span>
-					<span class="stage-gate__detail">All records valid — single sanctioned write</span>
+					<span class="stage-gate__detail">All records valid: single sanctioned write</span>
 				</div>
 				<div class="stage-gate__arrow" aria-hidden="true">↓ or</div>
 				<div class="stage-gate__node stage-gate__node--fail">
 					<span class="stage-gate__label">✕ throw, write nothing</span>
-					<span class="stage-gate__detail">Any violation — manifest stays untouched</span>
+					<span class="stage-gate__detail">Any violation: manifest stays untouched</span>
 				</div>
 			</div>
 		{/snippet}
@@ -625,7 +621,7 @@
 		<!-- ── Closing ────────────────────────────────────────────────────── -->
 		<p class="drift__closing">
 			Every figure you see on this site is a measurement from that manifest, validated against a
-			schema, not a claim I typed. That is the line the whole honesty thesis rests on.
+			schema.
 		</p>
 	</section>
 
