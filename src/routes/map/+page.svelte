@@ -7,15 +7,15 @@
 
 <Seo
 	title="Project map | Jason Warren"
-	description="A map of every project and the connections between them: which libraries were extracted from which applications, and what relates to what."
+	description="A map of every project and the connections between them: which libraries were extracted from which applications and how the technology stacks overlap."
 />
 
 <div class="page">
 	<header class="page__header">
 		<h1>Project map</h1>
 		<p class="page__intro">
-			Every project, grouped by what it is, with the connections drawn between them. The solid lines
-			trace the engine-extraction story: a library pulled out of an application and then reused. The
+			Every project, grouped by kind: app, tool, library, TUI, game, website or toy. The solid
+			lines trace engine extraction: a library pulled out of an application and then reused. The
 			faint lines link projects that share a technology stack. Hover or focus a project to isolate
 			its neighbourhood, or filter by type.
 		</p>
