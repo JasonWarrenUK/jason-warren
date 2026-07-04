@@ -6,39 +6,17 @@
 
 <Seo
 	title="Hire | Jason Warren"
-	description="Full-stack developer with a deliberately wide toolkit: TypeScript, Go, Rust, SvelteKit 2, Postgres, Neo4j. Currently at Founders and Coders; open to interesting work."
+	description="Developer at Tandem Creative Dev. Open to the right work: permanent roles, scoped projects and open-source collaboration."
 />
 
 <div class="page">
 	<header class="page__header">
 		<h1>Hire</h1>
 		<p class="page__intro">
-			Currently a developer at Founders and Coders. Open to interesting conversations about the
-			right work — permanent roles, scoped engagements, and open-source collaboration.
+			Currently working with Tandem Creative Dev. Open to the right work: permanent roles, scoped
+			engagements and open-source collaboration.
 		</p>
 	</header>
-
-	<section class="page__section" aria-labelledby="capabilities-heading">
-		<header class="page__section-header">
-			<h2 id="capabilities-heading">What you can hire me to do</h2>
-		</header>
-		<p class="prose">
-			TypeScript is the default for anything touching the browser or Node; Go when something needs
-			to live in the terminal or ship as a single binary. I have written enough Rust to take a Tauri
-			2 desktop app from concept to production — enough to know where the ownership model pays off.
-		</p>
-		<p class="prose">
-			On the frontend, Svelte 5 with runes is a strong preference. For data: PostgreSQL with
-			row-level security for multi-tenant work, Neo4j when the relationships are the actual model,
-			Supabase when the deadline is real. Testing with Vitest for the data layer and Playwright for
-			the paths real users depend on.
-		</p>
-		<p class="prose">
-			The spread is wider than is strictly conventional. The reason is that most of the hard
-			problems in this list live at the boundary between layers, and understanding both sides is
-			what makes the boundary tractable.
-		</p>
-	</section>
 
 	<section class="page__section" aria-labelledby="engagements-heading">
 		<header class="page__section-header">
@@ -48,31 +26,27 @@
 		<div class="engagement">
 			<h3 class="engagement__heading">Permanent or employed roles</h3>
 			<p class="prose">
-				I work best in a team that cares about the shape of what it is building, not only the
-				shipping of it. The role I tend to land in sits between architecture and delivery: building
-				the feature in front of me while keeping the system it has to live in as a whole in view. I
-				am interested in teams doing technically serious work on problems that matter.
+				I work best in a team that cares about what it is building. The role I tend to land in sits
+				between architecture and delivery. I am interested in teams doing technically serious work
+				on problems that matter.
 			</p>
 		</div>
 
 		<div class="engagement">
 			<h3 class="engagement__heading">Freelance or contract</h3>
 			<p class="prose">
-				Scoped project work is a good fit when the brief is precise and the deliverable is
-				well-defined. The portfolio includes contract engagements via Tandem and Yalla Cooperative;
-				that work shaped how I think about delivery timelines and handoff quality. Available for web
-				applications, tooling, data-layer architecture, and bespoke TypeScript or Go projects.
+				I take on scoped project work when the brief is precise and the deliverable is
+				well-defined; a well-scoped problem with no prescribed solution qualifies. Contract
+				engagements via Tandem Creative Dev and Yalla Cooperative. Web applications, TUIs, CLIs,
+				data-layer architecture and bespoke TypeScript or Go projects.
 			</p>
 		</div>
 
 		<div class="engagement">
 			<h3 class="engagement__heading">Open-source and collaboration</h3>
 			<p class="prose">
-				Several of the projects on this site are tools extracted from larger applications: Drift (a
-				git-metrics CLI), Schema Forge (an XSD validation library). I am interested in building or
-				contributing to tooling and libraries — particularly where the interesting problem is the
-				data model or the abstraction, not just the surface. Open to conversations about shared
-				work.
+				I am interested in building or contributing to tooling and libraries where the interesting
+				problem is the data model or the abstraction. Open to conversations about shared work.
 			</p>
 		</div>
 	</section>
