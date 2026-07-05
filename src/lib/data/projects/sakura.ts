@@ -7,13 +7,13 @@ export const sakura: AuthoredProject = {
 		'A colour-palette manager with a hex-to-name matching engine, built on ASP.NET Core and Entity Framework.',
 	blurb: 'A colour-palette manager with a hex-to-name matching engine.',
 	description:
-		'A colour-palette manager where users collect and organise palettes with per-collection privacy controls, built on an ASP.NET Core 8 and Entity Framework Core API backed by PostgreSQL, paired with a React frontend in a companion repo. Jason led the API, designing the Entity Framework Core data model (including a ColourCollection join table with explicit ordering and a full migrations history) and the privacy-filtered collections-by-user endpoints scoped to the authenticated user. The centrepiece is the colour-matching engine in ColourSearch.cs, which converts between hex, RGB, and HSL with validation to resolve arbitrary hex codes to the nearest named colour. The REST API is documented with Swagger and secured with ASP.NET Identity authentication.',
+		'A colour-palette manager where users collect and organise palettes with per-collection privacy controls, built on an ASP.NET Core 8 and Entity Framework Core API backed by PostgreSQL, paired with a React frontend in a companion repo. I led the API, designing the Entity Framework Core data model (including a ColourCollection join table with explicit ordering and a full migrations history) and the privacy-filtered collections-by-user endpoints scoped to the authenticated user. ColourSearch.cs is the part I am most proud of: type "bright light reddish orange" and it returns the correct hex. It converts between hex, RGB and HSL, then traverses the named-colour space by perceptual distance to resolve any description to its nearest match. The REST API is documented with Swagger and secured with ASP.NET Identity authentication.',
 	kind: 'app',
 	contribution: {
 		role: 'lead',
 		collaboration: { team: 'FAC-30 cohort', employer: 'Founders and Coders' },
 		contributionNote:
-			'Led the ASP.NET Core API on a FAC-30 cohort project: a colour-matching engine (hex/RGB/HSL conversion, nearest-colour name resolution), Entity Framework Core data model with a ColourCollection join table, privacy-filtered collections endpoints scoped to the authenticated user, and Swagger-documented REST with ASP.NET Identity auth.'
+			'Led the ASP.NET Core API on a FAC-30 cohort project: a colour-matching engine (hex/RGB/HSL conversion, nearest-colour name resolution), Entity Framework Core data model with a ColourCollection join table, privacy-filtered collections endpoints scoped to the authenticated user and Swagger-documented REST with ASP.NET Identity auth.'
 	},
 	status: 'finished',
 	repoUrl: 'https://github.com/fac30/sakura-api',
