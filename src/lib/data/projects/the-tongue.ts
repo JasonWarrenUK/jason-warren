@@ -7,7 +7,7 @@ export const theTongue: AuthoredProject = {
 		'A language-evolution simulator: generate a proto-language from a seed, steer its sound changes, and watch it fracture into a family of daughter languages as geography divides it.',
 	blurb: 'A simulator that evolves a proto-language into a family of tongues.',
 	description:
-		'Pick a numeric seed and the game procedurally generates a proto-language: a phoneme inventory, syllable templates, a 32-word core lexicon, and a 4x3 terrain map. From there you steer its evolution, applying sound changes and holding off weighted autonomous drift in which cross-linguistically common rules are weighted higher. As geography divides the territory, communities split by impassable terrain diverge into independent daughter languages, and a mutual intelligibility matrix tracks how far apart the family has grown using normalised edit distance across the shared concept list. Built with Svelte 5 runes and Tailwind CSS v4, it is deployed live at the-tongue.vercel.app.',
+		'Pick a numeric seed and the game procedurally generates a proto-language: a phoneme inventory, syllable templates, a 32-word core lexicon, and a 4x3 terrain map. From there you steer its evolution, applying sound changes and holding off weighted autonomous drift in which cross-linguistically common rules are weighted higher. As geography divides the territory, communities split by impassable terrain diverge into independent daughter languages, and a mutual intelligibility matrix tracks how far apart the family has grown using normalised edit distance across the shared concept list. Deployed live at the-tongue.vercel.app.',
 	kind: 'game',
 	contribution: { role: 'solo' },
 	status: 'live',
