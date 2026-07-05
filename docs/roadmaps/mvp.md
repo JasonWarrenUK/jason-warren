@@ -8,7 +8,7 @@ The site is live and substantially built (full routes, graph/timeline/map/toolki
 
 |              | Status                                                                                                                                                                                                                                                                                                                                       | Next Up                                                                                 | Blocked |
 |--------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------|---------|
-| **Content**  |                                                                                                                          30+ entries, themes, threads, About, CV/hire; depth audit complete; Colophon/drift-engine rebuilt post-M5 (1CO.5); 9 of 10 M1 tasks done                                                                                                                           | Style-guide pass (1CO.8) now unblocked: last M1 task | _None._ |
+| **Content**  |                                                                                                                          30+ entries, themes, threads, About, CV/hire; depth audit complete; Colophon/drift-engine rebuilt post-M5 (1CO.5); style-guide pass complete (1CO.8) — **Milestone 1 done**                                                                                                                           | Tech constellation (2FE.6) now unblocked | _None._ |
 | **Features** |                                                                                                          2FE.1, 2FE.2, 2FE.4, 2FE.5, 2FE.8 done; all connection views built (search, multi-select, cross-view continuity, relayout)                                                                                                          |          Polish pass (2FE.3) after 2FE.7; tech constellation (2FE.6) after M1           | 2FE.6 blocked on M1; 2FE.7 blocked on 2FE.6; 2FE.3 blocked on 2FE.7/2FE.8 |
 |  **Design**  |                                                                                                                                                     Reasonable Colors tokens, dark mode                                                                                                                                                      |                            Visual direction (3DE.0) after M2                            | All M3 tasks blocked on M2 completion |
 | **Quality**  |                                                                                                                                               Strict types, data-integrity tests, prerendered                                                                                                                                                |                 Test coverage (4QU.5) and OG coverage (4QU.4) after M3                  | All M4 tasks blocked on M3; a11y (4QU.7) blocked on 4QU.1 |
@@ -44,7 +44,7 @@ _None._
 
 <a name="m1-todo"><h4>To Do (Milestone 1)</h4></a>
 
-- [ ] 1CO.8. Pass all copy through the writing-style guide (British spelling, no em-dashes, voice) — **depends on 1CO.2, 1CO.3, 1CO.5, 1CO.7, 1CO.9** (all complete; now unblocked)
+_None._
 
 <a name="m1-blocked"><h4>Blocked (Milestone 1)</h4></a>
 
@@ -60,6 +60,7 @@ _None._
 - [x] 1CO.7. Review engine-extraction thread narratives for clarity — rewrote all six relationship notes (3 `powers` + 3 `extracted-from`) to carry the extraction insight rather than restate card labels; standardised `extracted-from` notes to consistent "lifted out of … into the standalone … library" shape; light strapline tightening in `EngineThread.svelte`.
 - [x] 1CO.9. CV / hire-me positioning copy — new `/hire` route with capabilities, three engagement shapes, and contact CTA; hamburger nav on narrow screens; `EMAIL` lifted into config.
 - [x] 1CO.10. Surfaced-project rotation / curation mechanism — fully derived: home hero scores by active-substance (recency × log-substance, 30-day half-life); no manual flagship flags; deal-another control cycles the full eligible pool; map hub set derived from p85 substance percentile (node size AND label visibility).
+- [x] 1CO.8. Pass all copy through the writing-style guide (British spelling, no em-dashes, voice) — full voice pass across About, hire, drift-engine, 33 project overlays, theme blurbs, contribution notes, page intros, SEO descriptions and root bio; calibration log documented in skill file; kamino excluded via `drift flag --hide`.
 - [x] 1CO.5. Expand Colophon: explain the build, the data model, and headline the Drift tooling story — re-done after M5 as required: route renamed `colophon` → `drift-engine`; full editorial rewrite as an engineer-facing builder deep-dive; new headlined Drift section reflecting the decoupled engine/integration architecture; accordion replaced with a scrollytelling layout; app/gallery page redesign; build-time Shiki syntax highlighting (Vitesse light/dark, zero client JS); corrected `ProjectSlug` and `contributionNote` snippets.
 
 ---
@@ -238,7 +239,7 @@ flowchart TD
 	1CO.4["`*1CO.4*<br/>**Content**<br/>About narrative`"]:::done
 	1CO.6["`*1CO.6*<br/>**Content**<br/>theme coherence`"]:::done
 	1CO.7["`*1CO.7*<br/>**Content**<br/>thread narratives`"]:::done
-	1CO.8["`*1CO.8*<br/>**Content**<br/>style-guide pass`"]:::open
+	1CO.8["`*1CO.8*<br/>**Content**<br/>style-guide pass`"]:::done
 	1CO.9["`*1CO.9*<br/>**Content**<br/>CV / hire-me copy`"]:::done
 	1CO.10["`*1CO.10*<br/>**Content**<br/>rotation mechanism`"]:::done
 

@@ -13,7 +13,7 @@ export const beacons: AuthoredProject = {
 		role: 'lead',
 		collaboration: { team: 'Founders and Coders', employer: 'Founders and Coders', client: 'LIFT' },
 		contributionNote:
-			'Owned the Beacons backend end-to-end: a Neo4j grammar engine where statements decompose into subject/verb nodes, a compromise.js NLP pipeline that extracts verbs from the graph for semantic search, passwordless magic-link auth, and a Deno Cron job keeping the database warm.'
+			'Owned the Beacons backend end-to-end: a Neo4j grammar engine where statements decompose into subject/verb nodes, a compromise.js NLP pipeline that extracts verbs from the graph for semantic search, passwordless magic-link auth and a Deno Cron job keeping the database warm.'
 	},
 	status: 'archived',
 	repoUrl: 'https://github.com/foundersandcoders/beacons-backend',

@@ -42,49 +42,49 @@ export const themes: Theme[] = [
 		id: 'interactive-fiction',
 		name: 'Interactive Fiction & Narrative Systems',
 		blurb:
-			'Branching stories and the engines that run them: a Norse flyting duel, an overnight thesis game, a reactive card-engine, and the minimal Ink runtime extracted out of them.',
+			'Branching stories and the engines that run them: a Norse flyting duel, an overnight thesis game, a reactive card-engine and the minimal Ink runtime extracted out of them.',
 		slugs: ['the-work', 'flyt', 'riffle', 'nib', 'epoch', 'those-who-came-before', 'psyche']
 	},
 	{
 		id: 'procedural-generation',
 		name: 'Procedural & Generative Systems',
 		blurb:
-			'Systems that generate rather than store: an evolving proto-language, procedurally surfaced archaeology, a life-timeline assembled from real history, and generative visual art.',
+			'Systems that generate rather than store: an evolving proto-language, procedurally surfaced archaeology, a life-timeline assembled from real history and generative visual art.',
 		slugs: ['the-tongue', 'those-who-came-before', 'epoch', 'lyra-rose']
 	},
 	{
 		id: 'human-history',
 		name: 'History & the Past Made Navigable',
 		blurb:
-			'Projects that work with real human history as their material: an animated atlas of early-medieval kingdoms, a fictional life mapped against Wikipedia-sourced events, and a procedural archaeology of invented artefacts.',
+			'Projects that work with real human history as their material: an animated atlas of early-medieval kingdoms, a fictional life mapped against Wikipedia-sourced events and a procedural archaeology of invented artefacts.',
 		slugs: ['historia', 'epoch', 'those-who-came-before']
 	},
 	{
 		id: 'graph-native',
 		name: 'Graph-Native Data',
 		blurb:
-			'Problems modelled as graphs first: Neo4j-backed apps, a flat-file property graph with a custom Cypher engine, and content mapped as navigable edge networks.',
+			'Problems modelled as graphs first: Neo4j-backed apps, a flat-file property graph with a custom Cypher engine and content mapped as navigable edge networks.',
 		slugs: ['wyrd-tui', 'beacons', 'sparker', 'code-arcana', 'rimewarden']
 	},
 	{
 		id: 'ai-language-tooling',
 		name: 'AI & Language Tooling',
 		blurb:
-			'Tools that treat language and meaning as something computable: curriculum generation, automated documentation, retrieval experiments, PII redaction, semantic search, colour-name resolution, and free-text parsed into a queryable grammar.',
+			'Tools that treat language and meaning as something computable: curriculum generation, automated documentation, retrieval experiments, PII redaction, semantic search, colour-name resolution and free-text parsed into a queryable grammar.',
 		slugs: ['rhea', 'redot', 'commons-traybake', 'guardrails', 'chirpdb', 'sakura', 'beacons']
 	},
 	{
 		id: 'terminal-native',
 		name: 'Terminal & Native Interfaces',
 		blurb:
-			'Software that lives in the terminal and on the desktop: a Go productivity TUI with a custom graph engine, a TypeScript core driving CLI, TUI and Tauri native builds, and the XSD schema library extracted from it.',
+			'Software that lives in the terminal and on the desktop: a Go productivity TUI with a custom graph engine, a TypeScript core driving CLI, TUI and Tauri native builds and the XSD schema library extracted from it.',
 		slugs: ['iris', 'wyrd-tui', 'schema-forge']
 	},
 	{
 		id: 'human-centred',
 		name: 'Accessibility & Human-Centred Tools',
 		blurb:
-			'Tools built around how people actually think and feel: a neurodivergent workplace passport, a mood-and-coping PWA, an SEN behaviour tracker, and a developer-cognition compass.',
+			'Tools built around how people actually think and feel: a neurodivergent workplace passport, a mood-and-coping PWA, an SEN behaviour tracker and a developer-cognition compass.',
 		slugs: ['workwise', 'things-we-do', 'sparker', 'cogni', 'beacons']
 	}
 ];

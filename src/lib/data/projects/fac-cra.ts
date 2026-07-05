@@ -7,13 +7,13 @@ export const facCra: AuthoredProject = {
 		'The Founders and Coders apprenticeship platform: a large, mature TypeScript monorepo with a GraphQL API, a distribution pipeline, and a learner dashboard.',
 	blurb: 'The Founders and Coders apprenticeship platform: a mature TypeScript monorepo.',
 	description:
-		'Maintained by the wider Founders and Coders team, this is a large, mature TypeScript monorepo behind the apprenticeship platform: a GraphQL API, a distribution pipeline, and a learner dashboard. Jason contributed 320 commits of self-contained features and well-scoped fixes into the established codebase. The headliners are the Lead Pool multi-axis candidate segmentation (six axes, composable signal groups, a hydration orchestrator, and pattern-based strength classification), distribution pipeline extensions (saved-query folders, workshop runsheets, batch lead-scoring, a markdown email composer), a learner dashboard restructure with collapsible tiles and health metrics, and the first automated browser tests on the project via a full Playwright E2E suite. A non-invasive audit pass added security hardening and accessibility fixes and removed 17 unused packages.',
+		'Maintained by the wider Founders and Coders team, this is a large, mature TypeScript monorepo behind the apprenticeship platform: a GraphQL API, a distribution pipeline, and a learner dashboard. I contributed self-contained features and well-scoped fixes into the established codebase. The headliners are the Lead Pool multi-axis candidate segmentation (six axes, composable signal groups, a hydration orchestrator, and pattern-based strength classification), distribution pipeline extensions (saved-query folders, workshop runsheets, batch lead-scoring, a markdown email composer), a learner dashboard restructure with collapsible tiles and health metrics, and the first automated browser tests on the project via a full Playwright E2E suite. A non-invasive audit pass added security hardening and accessibility fixes and removed 17 unused packages.',
 	kind: 'app',
 	contribution: {
 		role: 'collaborator',
 		collaboration: { team: 'Founders and Coders', employer: 'Founders and Coders' },
 		contributionNote:
-			"320 commits into Founders and Coders' core platform over several months. Key features: Lead Pool candidate segmentation (6 axes, composable signal groups, hydration orchestrator); learner dashboard restructure (collapsible tiles, health metrics, Article Stats tab); full Playwright E2E suite (first automated browser tests on the project); distribution pipeline extensions; security and a11y audit pass removing 17 unused packages. +31,500 / −28,600 lines."
+			'Lead Pool candidate segmentation (6 axes, composable signal groups, hydration orchestrator); learner dashboard restructure (collapsible tiles, health metrics, Article Stats tab); the first automated browser tests on the project via a full Playwright E2E suite; distribution pipeline extensions; security and a11y audit pass removing 17 unused packages.'
 	},
 	status: 'wip',
 	repoUrl: 'https://github.com/izaakrogan/fac-cra',

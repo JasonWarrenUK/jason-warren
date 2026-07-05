@@ -8,7 +8,7 @@
 
 <Seo
 	title="Toolkit | Jason Warren"
-	description="How the toolkit grew and the themes the work returns to: a timeline of when each language, framework, and runtime first entered the work, and the territories the projects cluster into."
+	description="How the toolkit grew and the themes the work returns to: a timeline of when each language, framework and runtime first entered the work, and the territories the projects cluster into."
 />
 
 <div class="page">
@@ -25,7 +25,7 @@
 		<header class="page__section-header">
 			<h2 id="adoption-heading">When each tool arrived</h2>
 			<p>
-				Every language, framework, and runtime, placed at the moment it first appeared in a project.
+				Every language, framework and runtime, placed at the moment it first appeared in a project.
 				Earliest on the left.
 			</p>
 		</header>

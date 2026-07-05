@@ -7,13 +7,13 @@ export const craftAndGraft: AuthoredProject = {
 		'A team-built e-commerce storefront with session-based authentication and a PostgreSQL product catalogue.',
 	blurb: 'A team-built e-commerce storefront on PostgreSQL.',
 	description:
-		"A team-built e-commerce storefront pairing an Express and PostgreSQL API with a React and Tailwind frontend. Session-based authentication uses bcrypt-hashed passwords and PostgreSQL-backed sessions via connect-pg-simple, with login, signup, and logout controllers in the API and a storefront whose navigation and views adapt to login status, fetching products live from the companion API repo. Jason led the React storefront, building the authentication flow, the database-driven product views, and the Netlify continuous-deployment pipeline wired up from pull requests, and set up the team's GitHub Actions automation including a stale-issue bot and a first-contributor greeter.",
+		"A team-built e-commerce storefront pairing an Express and PostgreSQL API with a React and Tailwind frontend. Session-based authentication uses bcrypt-hashed passwords and PostgreSQL-backed sessions via connect-pg-simple, with login, signup, and logout controllers in the API and a storefront whose navigation and views adapt to login status, fetching products live from the companion API repo. I led the React storefront, building the authentication flow, the database-driven product views and the Netlify continuous-deployment pipeline wired up from pull requests, and set up the team's GitHub Actions automation including a stale-issue bot and a first-contributor greeter.",
 	kind: 'app',
 	contribution: {
 		role: 'lead',
 		collaboration: { team: 'FAC-30 cohort', employer: 'Founders and Coders' },
 		contributionNote:
-			'Led the React storefront on a FAC-30 cohort e-commerce project: session-based auth with bcrypt and connect-pg-simple, product views fetched live from an Express/PostgreSQL API, Netlify CD pipeline, and two GitHub Actions bots covering CI ergonomics from the first sprint.'
+			'Led the React storefront on a FAC-30 cohort e-commerce project: session-based auth with bcrypt and connect-pg-simple, product views fetched live from an Express/PostgreSQL API, Netlify CD pipeline and two GitHub Actions bots covering CI ergonomics from the first sprint.'
 	},
 	status: 'finished',
 	repoUrl: 'https://github.com/fac30/craft-and-graft-front',

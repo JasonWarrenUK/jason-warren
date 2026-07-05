@@ -7,7 +7,7 @@
 
 <Seo
 	title="Timeline | Jason Warren"
-	description="Every project ordered by when it started, most recently begun at the top. Extraction lineages are drawn between them: which libraries came out of which applications, and when."
+	description="Every project ordered by when it started, most recently begun at the top. Extraction lineages are drawn between them: which libraries came out of which applications and when."
 />
 
 <div class="page">

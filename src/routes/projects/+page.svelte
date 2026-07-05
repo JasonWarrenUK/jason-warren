@@ -76,7 +76,7 @@
 
 <Seo
 	title="Projects | Jason Warren"
-	description="All projects by Jason Warren: solo builds, team contributions, and the libraries extracted from both."
+	description="Every project with its real git metrics: commit counts, churn and first-to-last dates, measured by Drift and validated against a schema."
 />
 
 <div class="page">

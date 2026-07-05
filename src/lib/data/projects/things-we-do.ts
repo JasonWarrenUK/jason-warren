@@ -7,13 +7,13 @@ export const thingsWeDo: AuthoredProject = {
 		'An installable PWA for managing tasks and emotional wellbeing through mood tracking and personalised coping-strategy toolkits.',
 	blurb: 'A PWA for managing tasks and wellbeing through mood tracking.',
 	description:
-		'An installable, offline-first PWA for managing tasks and emotional wellbeing through mood tracking and personalised coping-strategy toolkits, built by the FAC-30 cohort. Offline support comes from a Serwist service worker over RxDB local storage, which Jason initialised including the schema design. Across 21 merged PRs he built the next-actions feature end-to-end (creation, immediate selection, view, and deletion), designed the insights charts including a 3D mood visualisation in Plotly.js, and implemented ephemeral categories with modal confirmations. The project is now archived.',
+		'An installable, offline-first PWA for managing tasks and emotional wellbeing through mood tracking and personalised coping-strategy toolkits, built by the FAC-30 cohort. Offline support comes from a Serwist service worker over RxDB local storage, which I initialised including the schema design. I built the next-actions feature end-to-end (creation, immediate selection, view, and deletion), designed the insights charts including a 3D mood visualisation in Plotly.js, and implemented ephemeral categories with modal confirmations. The project is now archived.',
 	kind: 'app',
 	contribution: {
 		role: 'collaborator',
 		collaboration: { team: 'FAC-30 cohort', employer: 'Founders and Coders' },
 		contributionNote:
-			'21 PRs on a FAC-30 cohort mental-health tracker. Built the next-actions feature end-to-end; designed the insights charts, including the 3D Plotly wellbeing visualisation; implemented ephemeral categories with modal confirmations; initialised the RxDB offline-first storage layer. +6,700 / −3,000 lines.'
+			'Built the next-actions feature end-to-end on a FAC-30 cohort mental-health tracker; designed the insights charts including the 3D Plotly wellbeing visualisation; implemented ephemeral categories with modal confirmations; initialised the RxDB offline-first storage layer.'
 	},
 	status: 'archived',
 	repoUrl: 'https://github.com/fac30/things-we-do',

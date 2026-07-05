@@ -1,6 +1,7 @@
 import type { AuthoredProject } from '../types.js';
 
 export const kamino: AuthoredProject = {
+	hide: true,
 	slug: 'kamino',
 	name: 'Kamino',
 	tagline:

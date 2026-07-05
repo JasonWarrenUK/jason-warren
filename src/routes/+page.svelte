@@ -19,7 +19,7 @@
 		'@type': 'Person',
 		name: AUTHOR,
 		url: SITE_URL,
-		jobTitle: 'Full-stack developer',
+		jobTitle: 'Developer',
 		sameAs: [GITHUB_PROFILE_URL, BLUESKY_URL]
 	});
 </script>
@@ -33,12 +33,9 @@
 <div class="page">
 	<header class="page__intro">
 		<h1 class="page__name">Jason Warren</h1>
-		<p class="page__role">Full-stack developer</p>
 		<p class="page__bio">
-			I build across the stack, and the spread is wider than is strictly sensible: Go terminal
-			tools, a Tauri desktop app, graph data models in Neo4j, an interactive-fiction engine in
-			TypeScript. I could claim a grand unifying strategy. The honest version is that a genuinely
-			new sort of problem is the best excuse I know to learn a genuinely new sort of tool.
+			I build data models that make complex things easy to use. The hard part is finding the
+			representation that's faithful to the world and tractable for the application on top of it.
 		</p>
 	</header>
 
@@ -75,13 +72,6 @@
 		line-height: 1.05;
 		color: var(--color-text);
 		letter-spacing: -0.02em;
-	}
-
-	.page__role {
-		font-size: var(--text-xl);
-		color: var(--color-primary-text);
-		font-weight: 600;
-		margin: 0;
 	}
 
 	.page__bio {
