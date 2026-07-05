@@ -13,7 +13,7 @@ export const facCra: AuthoredProject = {
 		role: 'collaborator',
 		collaboration: { team: 'Founders and Coders', employer: 'Founders and Coders' },
 		contributionNote:
-			"320 commits into Founders and Coders' core platform over several months. Key features: Lead Pool candidate segmentation (6 axes, composable signal groups, hydration orchestrator); learner dashboard restructure (collapsible tiles, health metrics, Article Stats tab); full Playwright E2E suite (first automated browser tests on the project); distribution pipeline extensions; security and a11y audit pass removing 17 unused packages. +31,500 / −28,600 lines."
+			'Lead Pool candidate segmentation (6 axes, composable signal groups, hydration orchestrator); learner dashboard restructure (collapsible tiles, health metrics, Article Stats tab); the first automated browser tests on the project via a full Playwright E2E suite; distribution pipeline extensions; security and a11y audit pass removing 17 unused packages.'
 	},
 	status: 'wip',
 	repoUrl: 'https://github.com/izaakrogan/fac-cra',
