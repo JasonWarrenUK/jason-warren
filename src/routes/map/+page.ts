@@ -1,40 +1,73 @@
 import {
 	getProjectGraph,
 	getSharedTechEdges,
+	getThemeEdges,
 	computeForceLayout,
+	computeStackLayout,
 	selectLabelledSlugs,
 	getHubSlugs
 } from '$lib/data/graph.js';
+import { getTechNodes, getTechCoEdges, computeTechLayout } from '$lib/data/tech-graph.js';
 
 export function load() {
 	const graph = getProjectGraph();
 	const sharedEdges = getSharedTechEdges();
-	const layout = computeForceLayout(graph, sharedEdges);
+	const themeEdges = getThemeEdges();
 	const labelled = selectLabelledSlugs();
 	const hubSlugs = getHubSlugs();
 
-	const nodes = graph.nodes.map((node) => {
-		const point = layout.positions.get(node.slug);
-		return {
-			slug: node.slug,
-			name: node.project.name,
-			tagline: node.project.tagline,
-			status: node.project.status,
-			kind: node.project.kind,
-			hub: hubSlugs.has(node.slug),
-			labelled: labelled.has(node.slug),
-			lastCommit: node.project.lastCommit ?? null,
-			commits: node.project.metrics?.commits ?? null,
-			linesOfCode: node.project.metrics?.linesOfCode ?? null,
-			x: point?.x ?? layout.width / 2,
-			y: point?.y ?? layout.height / 2
-		};
-	});
+	// Build tech-graph data for the Technologies mode.
+	const techNodes = getTechNodes();
+	const techCoEdges = getTechCoEdges();
+
+	// Relationships mode: curated + theme edges drive the layout.
+	const relationshipsLayout = computeForceLayout(graph, themeEdges);
+	// Stack mode: shared-tech edges are the primary clustering signal.
+	const stackLayout = computeStackLayout(graph, sharedEdges);
+	// Technologies mode: tech nodes, co-occurrence edges.
+	const techLayout = computeTechLayout(techNodes, techCoEdges);
+
+	// Flatten each graph node into the MapNode shape, once per project mode.
+	const toNodes = (layout: typeof relationshipsLayout) =>
+		graph.nodes.map((node) => {
+			const point = layout.positions.get(node.slug);
+			return {
+				slug: node.slug,
+				name: node.project.name,
+				tagline: node.project.tagline,
+				status: node.project.status,
+				kind: node.project.kind,
+				hub: hubSlugs.has(node.slug),
+				labelled: labelled.has(node.slug),
+				lastCommit: node.project.lastCommit ?? null,
+				commits: node.project.metrics?.commits ?? null,
+				linesOfCode: node.project.metrics?.linesOfCode ?? null,
+				x: point?.x ?? layout.width / 2,
+				y: point?.y ?? layout.height / 2
+			};
+		});
+
+	// Flatten tech nodes with their baked layout positions.
+	const toTechNodes = (layout: typeof techLayout) =>
+		techNodes.map((node) => {
+			const point = layout.positions.get(node.label);
+			return {
+				label: node.label,
+				kind: node.kind,
+				projectCount: node.projectCount,
+				x: point?.x ?? layout.width / 2,
+				y: point?.y ?? layout.height / 2
+			};
+		});
 
 	return {
-		nodes,
+		relationshipsNodes: toNodes(relationshipsLayout),
+		stackNodes: toNodes(stackLayout),
+		techNodes: toTechNodes(techLayout),
 		edges: graph.edges,
 		sharedEdges,
-		size: layout.width
+		themeEdges,
+		techCoEdges,
+		size: relationshipsLayout.width
 	};
 }

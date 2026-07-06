@@ -4,7 +4,7 @@
 	import { page } from '$app/stores';
 	import type { TagKind } from '$lib/data/types.js';
 	import type { TechAdoption } from '$lib/data/adoption.js';
-	import { categoryColour } from '$lib/components/graph/graph-style.js';
+	import { techKindColour } from '$lib/components/graph/graph-style.js';
 	import { encodeTechLabel, decodeTechLabel } from '$lib/url-state.js';
 	import { writeParam } from '$lib/url-write.js';
 	import SelectionModal from '$lib/components/ui/SelectionModal.svelte';
@@ -17,14 +17,7 @@
 
 	let { items, provisional = false }: Props = $props();
 
-	// Colour by tag kind. The shared-tech categories already own distinct hues;
-	// languages read as the spine of the toolkit, so they take the primary colour.
-	function kindColour(kind: TagKind): string {
-		if (kind === 'language') return 'var(--color-primary)';
-		if (kind === 'concept') return 'var(--color-edge-concept)';
-		// runtime, framework, data, ai, tool are all EdgeCategory members.
-		return categoryColour(kind as Exclude<TagKind, 'language'>);
-	}
+	// Colour by tag kind — single-sourced in graph-style.ts via techKindColour.
 
 	// --- Geometry -----------------------------------------------------------
 	// A horizontal time axis with greedy lane-packing: each technology sits at
@@ -227,7 +220,7 @@
 					class:adoption__item--active={effectiveLabel === item.label}
 					class:adoption__item--dim={effectiveLabel !== null && effectiveLabel !== item.label}
 					class:adoption__item--pinned={pinnedLabel === item.label}
-					style="--reveal-delay: {Math.min(index * 28, 700)}ms; color: {kindColour(item.kind)}"
+					style="--reveal-delay: {Math.min(index * 28, 700)}ms; color: {techKindColour(item.kind)}"
 					role="button"
 					tabindex="0"
 					aria-pressed={pinnedLabel === item.label}
@@ -277,7 +270,7 @@
 	<figcaption class="adoption__legend">
 		{#each presentKinds as entry (entry.kind)}
 			<span class="adoption__legend-item">
-				<span class="adoption__swatch" style="background: {kindColour(entry.kind)}"></span>
+				<span class="adoption__swatch" style="background: {techKindColour(entry.kind)}"></span>
 				{entry.label}
 			</span>
 		{/each}
