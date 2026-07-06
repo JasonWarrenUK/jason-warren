@@ -14,17 +14,21 @@
 	<header class="page__header">
 		<h1>Project map</h1>
 		<p class="page__intro">
-			Every project, grouped by kind: app, tool, library, TUI, game, website or toy. The solid
-			lines trace engine extraction: a library pulled out of an application and then reused. The
-			faint lines link projects that share a technology stack. Hover or focus a project to isolate
-			its neighbourhood, or filter by type.
+			Every project, arranged as a force-directed graph. Three views: Relationships traces
+			extraction paths and theme links; By stack clusters projects around shared technology;
+			Technologies maps the tools themselves, sized by usage and linked by co-occurrence.
+			Hover or tap a node to highlight its neighbourhood, or use the legend to filter by type.
 		</p>
 	</header>
 
 	<ProjectMap
-		nodes={data.nodes}
+		relationshipsNodes={data.relationshipsNodes}
+		stackNodes={data.stackNodes}
+		techNodes={data.techNodes}
 		edges={data.edges}
 		sharedEdges={data.sharedEdges}
+		themeEdges={data.themeEdges}
+		techCoEdges={data.techCoEdges}
 		size={data.size}
 	/>
 </div>
