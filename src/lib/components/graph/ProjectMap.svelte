@@ -4,14 +4,26 @@
 	import { goto } from '$app/navigation';
 	import { base } from '$app/paths';
 	import { page } from '$app/stores';
-	import { EDGE_CATEGORIES, type ProjectKind, type ProjectStatus } from '$lib/data/types.js';
-	import { parseSet, serialiseSet } from '$lib/url-state.js';
+	import { EDGE_CATEGORIES, type ProjectKind, type ProjectStatus, type TagKind } from '$lib/data/types.js';
+	import { parseSet, serialiseSet, encodeTechLabel, decodeTechLabel } from '$lib/url-state.js';
 	import { writeParam } from '$lib/url-write.js';
 	import SelectionModal from '$lib/components/ui/SelectionModal.svelte';
-	import type { GraphEdge, LiveSimNode, SharedTechEdge } from '$lib/data/graph.js';
-	import { buildSimLinks, createForceSimulation, computeRelayoutTargets } from '$lib/data/graph.js';
+	import type {
+		GraphEdge,
+		LiveSimNode,
+		MapMode,
+		SharedTechEdge,
+		SharedThemeEdge,
+		SimLink
+	} from '$lib/data/graph.js';
+	import {
+		createForceSimulation,
+		createForceSimulationFromLinks,
+		computeRelayoutTargets
+	} from '$lib/data/graph.js';
+	import type { TechCoEdge } from '$lib/data/tech-graph.js';
+	import { techNodeRadius } from '$lib/data/tech-graph.js';
 	import { validatePin, nextPinValue, projectHref } from '$lib/selection.js';
-	import { forceLink as d3ForceLink } from 'd3-force';
 	import {
 		statusColour,
 		statusLabel,
@@ -19,8 +31,17 @@
 		categoryColour,
 		edgeTypeColour,
 		edgeTypeLabel,
+		techKindColour,
+		themeColour,
+		themeEdgeType,
+		isThemeEdgeType,
+		themeIds,
 		type EdgeType
 	} from './graph-style.js';
+
+	// ---------------------------------------------------------------------------
+	// Types
+	// ---------------------------------------------------------------------------
 
 	interface MapNode {
 		slug: string;
@@ -28,7 +49,6 @@
 		tagline: string;
 		status: ProjectStatus;
 		kind: ProjectKind;
-		/** Derived: substance score ≥ p85 across all projects. */
 		hub: boolean;
 		labelled: boolean;
 		lastCommit: string | null;
@@ -38,62 +58,122 @@
 		y: number;
 	}
 
+	interface TechMapNode {
+		label: string;
+		kind: TagKind;
+		projectCount: number;
+		x: number;
+		y: number;
+	}
+
 	interface Props {
-		nodes: MapNode[];
+		relationshipsNodes: MapNode[];
+		stackNodes: MapNode[];
+		techNodes: TechMapNode[];
 		edges: GraphEdge[];
 		sharedEdges: SharedTechEdge[];
+		themeEdges: SharedThemeEdge[];
+		techCoEdges: TechCoEdge[];
 		size: number;
 	}
 
-	let { nodes, edges, sharedEdges, size }: Props = $props();
+	let {
+		relationshipsNodes,
+		stackNodes,
+		techNodes,
+		edges,
+		sharedEdges,
+		themeEdges,
+		techCoEdges,
+		size
+	}: Props = $props();
 
-	const positions = $derived(new Map(nodes.map((n) => [n.slug, n])));
+	// ---------------------------------------------------------------------------
+	// Mode state
+	// ---------------------------------------------------------------------------
 
-	// Adjacency for neighbourhood highlighting (progressive enhancement only).
-	// Includes shared-tech links so highlighting a node also lifts its stack kin.
+	const activeMode = $derived<MapMode>(
+		browser
+			? ($page.url.searchParams.get('mode') === 'stack'
+				? 'stack'
+				: $page.url.searchParams.get('mode') === 'technologies'
+					? 'technologies'
+					: 'relationships')
+			: 'relationships'
+	);
+
+	function setMode(mode: MapMode): void {
+		writeParam('mode', mode === 'relationships' ? null : mode);
+	}
+
+	// ---------------------------------------------------------------------------
+	// Derived state
+	// ---------------------------------------------------------------------------
+
+	const projectNodes = $derived(activeMode === 'stack' ? stackNodes : relationshipsNodes);
+	const projectPositions = $derived(new Map(projectNodes.map((n) => [n.slug, n])));
+	const techPositions = $derived(new Map(techNodes.map((n) => [n.label, n])));
+
 	const adjacency = $derived.by(() => {
 		const map = new Map<string, Set<string>>();
-		for (const node of nodes) map.set(node.slug, new Set());
-		for (const edge of [...edges, ...sharedEdges]) {
-			map.get(edge.source)?.add(edge.target);
-			map.get(edge.target)?.add(edge.source);
+		if (activeMode === 'technologies') {
+			for (const node of techNodes) map.set(node.label, new Set());
+			for (const edge of techCoEdges) {
+				map.get(edge.source)?.add(edge.target);
+				map.get(edge.target)?.add(edge.source);
+			}
+		} else {
+			for (const node of projectNodes) map.set(node.slug, new Set());
+			const activeEdges =
+				activeMode === 'stack' ? [...edges, ...sharedEdges] : [...edges, ...themeEdges];
+			for (const edge of activeEdges) {
+				map.get(edge.source)?.add(edge.target);
+				map.get(edge.target)?.add(edge.source);
+			}
 		}
 		return map;
 	});
 
-	// Node kinds present, for the type toggles.
-	const kinds = $derived([...new Set(nodes.map((n) => n.kind))].sort());
+	const projectKinds = $derived([...new Set(projectNodes.map((n) => n.kind))].sort());
+	const techKinds = $derived([...new Set(techNodes.map((n) => n.kind))].sort() as TagKind[]);
 
-	// Edge types present, curated first then categories in canonical order, so
-	// the connection legend lists exactly what the graph actually draws.
-	const edgeTypes = $derived.by(() => {
+	const edgeTypes = $derived.by((): EdgeType[] => {
 		const present: EdgeType[] = [];
-		for (const kind of ['extraction', 'related'] as const) {
-			if (edges.some((e) => e.kind === kind)) present.push(kind);
-		}
-		for (const category of EDGE_CATEGORIES) {
-			if (sharedEdges.some((e) => e.category === category)) present.push(category);
+		if (activeMode === 'relationships') {
+			for (const kind of ['extraction', 'related'] as const) {
+				if (edges.some((e) => e.kind === kind)) present.push(kind);
+			}
+			// One toggle per theme, in registry order, for themes that have edges.
+			const themeEdgeIds = new Set(themeEdges.map((e) => e.theme));
+			for (const id of themeIds) {
+				if (themeEdgeIds.has(id)) present.push(themeEdgeType(id));
+			}
+		} else if (activeMode === 'stack') {
+			for (const category of EDGE_CATEGORIES) {
+				if (sharedEdges.some((e) => e.category === category)) present.push(category);
+			}
 		}
 		return present;
 	});
 
-	// Node radius scales with reach (commits, falling back to lines of code),
-	// normalised across the registry; hubs (p85 substance) keep a floor so they
-	// read as network anchors regardless of activity.
+	// ---------------------------------------------------------------------------
+	// Visual scale helpers
+	// ---------------------------------------------------------------------------
+
 	const radiusScale = $derived.by(() => {
-		const weights = nodes.map((n) => n.commits ?? (n.linesOfCode ? n.linesOfCode / 50 : 0));
+		const weights = projectNodes.map(
+			(n) => n.commits ?? (n.linesOfCode ? n.linesOfCode / 50 : 0)
+		);
 		const max = Math.max(1, ...weights);
 		return (node: MapNode): number => {
-			const weight = node.commits ?? (node.linesOfCode ? node.linesOfCode / 50 : 0);
-			const base = 8 + 17.5 * Math.sqrt(weight / max);
+			const w = node.commits ?? (node.linesOfCode ? node.linesOfCode / 50 : 0);
+			const base = 8 + 17.5 * Math.sqrt(w / max);
 			return node.hub ? Math.max(19, base) : base;
 		};
 	});
 
-	// Recency shading: the freshest commit is full strength, the oldest (and any
-	// project with no commit date) fades back, so the map reads as a timeline too.
 	const opacityScale = $derived.by(() => {
-		const times = nodes
+		const times = projectNodes
 			.map((n) => (n.lastCommit ? Date.parse(n.lastCommit) : NaN))
 			.filter((t) => !Number.isNaN(t));
 		const min = Math.min(...times);
@@ -107,55 +187,86 @@
 		};
 	});
 
-	// Interaction state, only meaningful once JavaScript runs.
-	// URL search params are only readable in the browser; during prerender we
-	// show the full graph so the prerendered HTML is always complete.
+	const techMaxCount = $derived(Math.max(1, ...techNodes.map((n) => n.projectCount)));
+	const techRadiusScale = $derived(
+		(node: TechMapNode): number => techNodeRadius(node.projectCount, techMaxCount)
+	);
+
+	const TECH_LABEL_COUNT = 12;
+	const standingTechLabels = $derived(
+		new Set(
+			[...techNodes]
+				.sort((a, b) => b.projectCount - a.projectCount)
+				.slice(0, TECH_LABEL_COUNT)
+				.map((n) => n.label)
+		)
+	);
+
+	// ---------------------------------------------------------------------------
+	// Filter / visibility state
+	// ---------------------------------------------------------------------------
+
 	let activeSlug = $state<string | null>(null);
 	const isolateMode = $derived(browser ? $page.url.searchParams.get('isolate') === '1' : false);
+
 	const hiddenKinds = $derived(
-		browser
-			? parseSet<ProjectKind>($page.url.searchParams.get('hide-kinds'))
-			: new Set<ProjectKind>()
+		browser ? parseSet<ProjectKind>($page.url.searchParams.get('hide-kinds')) : new Set<ProjectKind>()
 	);
 	const hiddenEdgeTypes = $derived(
 		browser ? parseSet<EdgeType>($page.url.searchParams.get('hide-edges')) : new Set<EdgeType>()
 	);
-	// Isolate mode uses an additive *shown* set: click types one at a time to
-	// build up what you want to see. An empty set means "show everything".
+	const hiddenTechKinds = $derived(
+		browser ? parseSet<TagKind>($page.url.searchParams.get('hide-tech-kinds')) : new Set<TagKind>()
+	);
 	const isolatedKinds = $derived(
-		browser
-			? parseSet<ProjectKind>($page.url.searchParams.get('show-kinds'))
-			: new Set<ProjectKind>()
+		browser ? parseSet<ProjectKind>($page.url.searchParams.get('show-kinds')) : new Set<ProjectKind>()
 	);
 	const isolatedEdgeTypes = $derived(
 		browser ? parseSet<EdgeType>($page.url.searchParams.get('show-edges')) : new Set<EdgeType>()
 	);
 
-	// --- Pinned selection state (deep-link) ---
-	// The pin is separate from the transient hover activeSlug. A pinned node
-	// stays highlighted after the pointer leaves, making the selection shareable.
+	// ---------------------------------------------------------------------------
+	// Pin state
+	// ---------------------------------------------------------------------------
+
 	const pinnedParam = $derived(browser ? $page.url.searchParams.get('project') : null);
-	// Validate the pin via the shared helper: stale / absent → null so a dead
-	// link never dims the whole graph with nothing highlighted.
-	const pinnedSlug = $derived(validatePin(pinnedParam, (slug) => positions.has(slug)));
-	// Hover overrides the pin; releasing the pointer/focus falls back to it.
+	const pinnedSlug = $derived(validatePin(pinnedParam, (slug) => projectPositions.has(slug)));
+
+	const pinnedTechParam = $derived(browser ? $page.url.searchParams.get('tech') : null);
+	const pinnedTechLabel = $derived(
+		browser ? decodeTechLabel(pinnedTechParam, techNodes.map((n) => n.label)) : null
+	);
+
 	const effectivePinnedSlug = $derived(activeSlug ?? pinnedSlug);
+	const effectivePinnedTech = $derived(activeSlug ?? pinnedTechLabel);
 
-	// Modal state: the node the user clicked, waiting for a Pin or Navigate action.
-	let selected = $state<{ slug: string; name: string; tagline: string } | null>(null);
+	let selectedProject = $state<{ slug: string; name: string; tagline: string } | null>(null);
+	let selectedTech = $state<{ label: string; kind: TagKind; projectCount: number } | null>(null);
 
-	function openModal(node: MapNode): void {
-		selected = { slug: node.slug, name: node.name, tagline: node.tagline };
+	function openProjectModal(node: MapNode): void {
+		selectedProject = { slug: node.slug, name: node.name, tagline: node.tagline };
 	}
 
-	function pinSelected(): void {
-		if (!selected) return;
-		writeParam('project', nextPinValue(pinnedSlug, selected.slug));
-		selected = null;
+	function openTechModal(node: TechMapNode): void {
+		selectedTech = { label: node.label, kind: node.kind, projectCount: node.projectCount };
 	}
 
-	// --- Visibility: default mode hides one type per click (multi-select);
-	// isolate mode builds up a set of types to show additively. ---
+	function pinSelectedProject(): void {
+		if (!selectedProject) return;
+		writeParam('project', nextPinValue(pinnedSlug, selectedProject.slug));
+		selectedProject = null;
+	}
+
+	function pinSelectedTech(): void {
+		if (!selectedTech) return;
+		const encoded = encodeTechLabel(selectedTech.label);
+		writeParam('tech', pinnedTechLabel === selectedTech.label ? null : encoded);
+		selectedTech = null;
+	}
+
+	// ---------------------------------------------------------------------------
+	// Toggle helpers
+	// ---------------------------------------------------------------------------
 
 	function toggleKind(kind: ProjectKind): void {
 		if (isolateMode) {
@@ -185,17 +296,23 @@
 		}
 	}
 
+	function toggleTechKind(kind: TagKind): void {
+		const next = new Set(hiddenTechKinds);
+		if (next.has(kind)) next.delete(kind);
+		else next.add(kind);
+		writeParam('hide-tech-kinds', serialiseSet(next));
+	}
+
 	function resetFilters(): void {
 		const url = new URL($page.url);
 		url.searchParams.delete('hide-kinds');
 		url.searchParams.delete('hide-edges');
 		url.searchParams.delete('show-kinds');
 		url.searchParams.delete('show-edges');
+		url.searchParams.delete('hide-tech-kinds');
 		goto(url.toString(), { replaceState: true, keepFocus: true, noScroll: true });
 	}
 
-	// Toggle isolate mode and atomically clear the now-irrelevant filter family
-	// so the two models never bleed into each other.
 	function toggleIsolate(): void {
 		const url = new URL($page.url);
 		if (isolateMode) {
@@ -210,12 +327,17 @@
 		goto(url.toString(), { replaceState: true, keepFocus: true, noScroll: true });
 	}
 
+	// ---------------------------------------------------------------------------
+	// Visibility predicates
+	// ---------------------------------------------------------------------------
+
 	function nodeHidden(node: MapNode): boolean {
-		if (isolateMode) {
-			// If nothing is isolated yet, all nodes are visible.
-			return isolatedKinds.size > 0 && !isolatedKinds.has(node.kind);
-		}
+		if (isolateMode) return isolatedKinds.size > 0 && !isolatedKinds.has(node.kind);
 		return hiddenKinds.has(node.kind);
+	}
+
+	function techNodeHidden(node: TechMapNode): boolean {
+		return hiddenTechKinds.has(node.kind);
 	}
 
 	function edgeHidden(source: string, target: string, type: EdgeType): boolean {
@@ -223,13 +345,11 @@
 			? isolatedEdgeTypes.size > 0 && !isolatedEdgeTypes.has(type)
 			: hiddenEdgeTypes.has(type);
 		if (typeHidden) return true;
-		// An edge incident on a hidden node has nothing to connect, so it drops too.
-		const s = positions.get(source);
-		const t = positions.get(target);
+		const s = projectPositions.get(source);
+		const t = projectPositions.get(target);
 		return (!!s && nodeHidden(s)) || (!!t && nodeHidden(t));
 	}
 
-	// Whether a toggle chip should appear as "off" (dimmed/struck-through).
 	function kindChipOff(kind: ProjectKind): boolean {
 		if (isolateMode) return isolatedKinds.size > 0 && !isolatedKinds.has(kind);
 		return hiddenKinds.has(kind);
@@ -240,25 +360,29 @@
 		return hiddenEdgeTypes.has(type);
 	}
 
-	// Show the reset button if anything is actively hidden or isolated.
 	const filtersActive = $derived(
 		hiddenKinds.size > 0 ||
 			hiddenEdgeTypes.size > 0 ||
 			isolatedKinds.size > 0 ||
-			isolatedEdgeTypes.size > 0
+			isolatedEdgeTypes.size > 0 ||
+			hiddenTechKinds.size > 0
 	);
 
-	// --- Dimming: hover/focus (or pin) lifts a node and its neighbourhood. ---
-	// Uses effectivePinnedSlug (hover overrides pin) so a pinned node keeps its
-	// neighbourhood lit after the pointer leaves.
-	//
-	// Stale-pin-hidden guard: if the pinned/hovered node is currently filtered
-	// out, treat it as null so an invisible anchor can't dim the whole graph.
+	// ---------------------------------------------------------------------------
+	// Dimming predicates
+	// ---------------------------------------------------------------------------
 
 	function effectiveHighlight(): string | null {
+		if (activeMode === 'technologies') {
+			const tech = effectivePinnedTech;
+			if (tech === null) return null;
+			const node = techPositions.get(tech);
+			if (node && techNodeHidden(node)) return null;
+			return tech;
+		}
 		const slug = effectivePinnedSlug;
 		if (slug === null) return null;
-		const node = positions.get(slug);
+		const node = projectPositions.get(slug);
 		if (node && nodeHidden(node)) return null;
 		return slug;
 	}
@@ -269,60 +393,116 @@
 		return !adjacency.get(highlight)?.has(node.slug);
 	}
 
+	function techNodeDimmed(node: TechMapNode): boolean {
+		const highlight = effectiveHighlight();
+		if (highlight === null || node.label === highlight) return false;
+		return !adjacency.get(highlight)?.has(node.label);
+	}
+
 	function edgeDimmed(source: string, target: string): boolean {
 		const highlight = effectiveHighlight();
 		return highlight !== null && source !== highlight && target !== highlight;
 	}
 
-	// --- Live force simulation (progressive enhancement) ---
-	//
-	// The baked node.x/node.y positions from the SSR layout are used as the
-	// initial render and as the no-JS fallback. Once the component mounts,
-	// a d3-force simulation takes over and updates livePositions on each tick.
-	// When filters change, only the visible edges exert force, so the graph
-	// physically reorganises around whatever is shown.
+	// ---------------------------------------------------------------------------
+	// Live simulation
+	// ---------------------------------------------------------------------------
 
-	// Live positions populated by the simulation once mounted; empty map = use baked coords.
 	let livePositions = $state(new Map<string, { x: number; y: number }>());
 
-	// Returns the effective position for a node: live if the sim has run, baked otherwise.
-	function pos(slug: string): { x: number; y: number } {
-		return livePositions.get(slug) ?? (positions.get(slug) as { x: number; y: number });
+	function projectPos(slug: string): { x: number; y: number } {
+		return livePositions.get(slug) ?? (projectPositions.get(slug) as { x: number; y: number });
 	}
 
-	// The current set of visible edges, used to reheat the simulation.
+	function techPos(label: string): { x: number; y: number } {
+		return livePositions.get(label) ?? (techPositions.get(label) as { x: number; y: number });
+	}
+
 	const visibleEdges = $derived(edges.filter((e) => !edgeHidden(e.source, e.target, e.kind)));
 	const visibleSharedEdges = $derived(
-		sharedEdges.filter((e) => !edgeHidden(e.source, e.target, e.category))
+		activeMode === 'stack'
+			? sharedEdges.filter((e) => !edgeHidden(e.source, e.target, e.category))
+			: []
+	);
+	const visibleThemeEdges = $derived(
+		activeMode === 'relationships'
+			? themeEdges.filter((e) => !edgeHidden(e.source, e.target, themeEdgeType(e.theme)))
+			: []
+	);
+
+	// Pre-built SimLinks for tech co-occurrence (TechCoEdge has no `category`,
+	// so it can't be passed directly to createForceSimulation).
+	// Formula matches computeTechLayout so the client sim starts from the same physics.
+	const techSimLinks = $derived<SimLink[]>(
+		techCoEdges.map((e) => ({
+			source: e.source,
+			target: e.target,
+			distance: 60 + 40 / Math.max(1, e.weight),
+			strength: Math.min(0.5, 0.08 * e.weight)
+		}))
 	);
 
 	onMount(() => {
 		const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-		// Build node array seeded from baked positions; radius mirrors radiusScale.
-		const weights = nodes.map((n) => n.commits ?? (n.linesOfCode ? n.linesOfCode / 50 : 0));
-		const maxWeight = Math.max(1, ...weights);
-		const simNodes: LiveSimNode[] = nodes.map((n) => {
-			const weight = n.commits ?? (n.linesOfCode ? n.linesOfCode / 50 : 0);
-			const base = 16 + 39 * Math.sqrt(weight / maxWeight);
-			const radius = n.hub ? Math.max(43, base) : base;
-			return { slug: n.slug, radius, x: n.x, y: n.y };
-		});
+		function buildProjectSimNodes(nodes: MapNode[]): LiveSimNode[] {
+			const weights = nodes.map((n) => n.commits ?? (n.linesOfCode ? n.linesOfCode / 50 : 0));
+			const maxWeight = Math.max(1, ...weights);
+			return nodes.map((n) => {
+				const weight = n.commits ?? (n.linesOfCode ? n.linesOfCode / 50 : 0);
+				const base = 16 + 39 * Math.sqrt(weight / maxWeight);
+				const radius = n.hub ? Math.max(43, base) : base;
+				return { slug: n.slug, radius, x: n.x, y: n.y };
+			});
+		}
 
-		const sim = createForceSimulation(simNodes, visibleEdges, visibleSharedEdges, size);
+		function buildTechSimNodes(nodes: TechMapNode[]): LiveSimNode[] {
+			const max = Math.max(1, ...nodes.map((n) => n.projectCount));
+			return nodes.map((n) => ({
+				slug: n.label,
+				radius: techNodeRadius(n.projectCount, max),
+				x: n.x,
+				y: n.y
+			}));
+		}
+
+		type SimType = ReturnType<typeof createForceSimulation>;
+
+		function buildSim(
+			mode: MapMode,
+			sNodes: LiveSimNode[],
+			curEdges: typeof visibleEdges,
+			curShared: typeof visibleSharedEdges,
+			curTheme: typeof visibleThemeEdges
+		): SimType {
+			if (mode === 'technologies') {
+				return createForceSimulationFromLinks(sNodes, techSimLinks, size);
+			}
+			return createForceSimulation(sNodes, curEdges, curShared, size, mode, curTheme);
+		}
+
+		let simNodes: LiveSimNode[] =
+			activeMode === 'technologies'
+				? buildTechSimNodes(techNodes)
+				: buildProjectSimNodes(activeMode === 'stack' ? stackNodes : relationshipsNodes);
+
+		let sim: SimType = buildSim(
+			activeMode,
+			simNodes,
+			visibleEdges,
+			visibleSharedEdges,
+			visibleThemeEdges
+		);
 
 		let rafId: number;
 
-		function flush() {
-			// Write updated positions into the reactive map so Svelte re-renders.
+		function flush(): void {
 			const next = new Map<string, { x: number; y: number }>();
-			for (const n of simNodes) {
-				next.set(n.slug, { x: n.x ?? 0, y: n.y ?? 0 });
-			}
+			for (const n of simNodes) next.set(n.slug, { x: n.x ?? 0, y: n.y ?? 0 });
 			livePositions = next;
 		}
 
-		function loop() {
+		function loop(): void {
 			if (sim.alpha() < sim.alphaMin()) return;
 			sim.tick();
 			flush();
@@ -330,78 +510,72 @@
 		}
 
 		if (prefersReducedMotion) {
-			// Run to convergence in one synchronous burst; snap to result.
 			for (let i = 0; i < 320; i++) sim.tick();
 			flush();
 		} else {
 			rafId = requestAnimationFrame(loop);
 		}
 
-		// Reheat the simulation whenever the visible edge set changes.
-		// $effect.root so we can call it inside onMount and return a cleanup fn.
-		// The curEdges/curShared reads must precede the firstRun guard so that
-		// Svelte still registers the dependency on the first (no-op) pass.
 		let firstRun = true;
 		let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+
 		const stopEffect = $effect.root(() => {
 			$effect(() => {
-				// Snapshot the current visible edges (touches reactive state so Svelte tracks it).
 				const curEdges = [...visibleEdges];
 				const curShared = [...visibleSharedEdges];
+				const curTheme = [...visibleThemeEdges];
+				const curMode = activeMode;
+				const curTechNodes = [...techNodes];
 
-				// The simulation is already seeded with these edges at creation, so the
-				// effect's initial synchronous run would re-feed identical data and waste a reheat.
 				if (firstRun) {
 					firstRun = false;
 					return;
 				}
 
-				// Under reduced-motion, skip debounce — run synchronously and snap.
 				if (prefersReducedMotion) {
-					const targets = computeRelayoutTargets(
-						{ nodes: simNodes, visibleEdges: curEdges, visibleSharedEdges: curShared, size },
-						{ candidates: 5, ticks: 220 }
-					);
-					for (const n of simNodes) {
-						const t = targets.get(n.slug);
-						if (t) {
-							n.x = t.x;
-							n.y = t.y;
-						}
-					}
-					const fl = sim.force<ReturnType<typeof d3ForceLink>>('link');
-					if (fl) fl.links(buildSimLinks(curEdges, curShared) as never);
-					for (let i = 0; i < 60; i++) sim.tick();
+					sim.stop();
+					simNodes =
+						curMode === 'technologies'
+							? buildTechSimNodes(curTechNodes)
+							: buildProjectSimNodes(curMode === 'stack' ? stackNodes : relationshipsNodes);
+					sim = buildSim(curMode, simNodes, curEdges, curShared, curTheme);
+					for (let i = 0; i < 320; i++) sim.tick();
 					flush();
 					return;
 				}
 
-				// Debounce rapid filter toggles (~120ms) so we don't stack lotteries
-				// during quick chip-clicking, then run the reduced best-of-N relayout.
 				if (debounceTimer !== null) clearTimeout(debounceTimer);
 				debounceTimer = setTimeout(() => {
 					debounceTimer = null;
+					sim.stop();
 
-					// Run a reduced seeded lottery over the visible subgraph to find a
-					// low-crossing topology, then seed the live nodes toward it. The sim
-					// then relaxes from that target, preserving physical motion.
-					const targets = computeRelayoutTargets(
-						{ nodes: simNodes, visibleEdges: curEdges, visibleSharedEdges: curShared, size },
-						{ candidates: 5, ticks: 220 }
-					);
-					for (const n of simNodes) {
-						const t = targets.get(n.slug);
-						if (t) {
-							n.x = t.x;
-							n.y = t.y;
+					if (curMode === 'technologies') {
+						simNodes = buildTechSimNodes(curTechNodes);
+					} else {
+						simNodes = buildProjectSimNodes(
+							curMode === 'stack' ? stackNodes : relationshipsNodes
+						);
+						const targets = computeRelayoutTargets(
+							{
+								nodes: simNodes,
+								visibleEdges: curEdges,
+								visibleSharedEdges: curShared,
+								visibleThemeEdges: curTheme,
+								mode: curMode,
+								size
+							},
+							{ candidates: 5, ticks: 220 }
+						);
+						for (const n of simNodes) {
+							const t = targets.get(n.slug);
+							if (t) {
+								n.x = t.x;
+								n.y = t.y;
+							}
 						}
 					}
 
-					// Re-feed the link force with only the now-visible edges.
-					const fl = sim.force<ReturnType<typeof d3ForceLink>>('link');
-					if (fl) fl.links(buildSimLinks(curEdges, curShared) as never);
-
-					sim.alpha(0.5).restart();
+					sim = buildSim(curMode, simNodes, curEdges, curShared, curTheme);
 					cancelAnimationFrame(rafId);
 					rafId = requestAnimationFrame(loop);
 				}, 120);
@@ -422,161 +596,331 @@
 		class="map__svg"
 		viewBox="0 0 {size} {size}"
 		role="group"
-		aria-label="Map of projects and the connections between them"
+		aria-label="Map of projects and connections"
 	>
-		<!-- Shared-tech links: faintest, behind the curated edges, coloured by category. -->
-		<g class="map__edges">
-			{#each sharedEdges as edge (`shared:${edge.category}:${edge.source}-${edge.target}`)}
-				{@const a = pos(edge.source)}
-				{@const b = pos(edge.target)}
-				{#if a && b}
-					<line
-						class="map__edge map__edge--shared"
-						class:map__edge--dim={edgeDimmed(edge.source, edge.target)}
-						class:map__edge--hidden={edgeHidden(edge.source, edge.target, edge.category)}
-						style="stroke: {categoryColour(edge.category)}"
-						x1={a.x}
-						y1={a.y}
-						x2={b.x}
-						y2={b.y}
-					/>
-				{/if}
-			{/each}
-		</g>
+		{#if activeMode === 'relationships'}
+			<!-- Theme edges: one per (pair, theme), each coloured by its theme. -->
+			<g class="map__edges">
+				{#each themeEdges as edge (`theme:${edge.theme}:${edge.source}-${edge.target}`)}
+					{@const a = projectPos(edge.source)}
+					{@const b = projectPos(edge.target)}
+					{#if a && b}
+						<line
+							class="map__edge map__edge--theme"
+							class:map__edge--dim={edgeDimmed(edge.source, edge.target)}
+							class:map__edge--hidden={edgeHidden(edge.source, edge.target, themeEdgeType(edge.theme))}
+							style="stroke: {themeColour(edge.theme)}"
+							x1={a.x} y1={a.y} x2={b.x} y2={b.y}
+						/>
+					{/if}
+				{/each}
+			</g>
+			<!-- Curated relationship edges, above the theme web. -->
+			<g class="map__edges">
+				{#each edges as edge (`${edge.kind}:${edge.source}-${edge.target}`)}
+					{@const a = projectPos(edge.source)}
+					{@const b = projectPos(edge.target)}
+					{#if a && b}
+						<line
+							class="map__edge map__edge--{edge.kind}"
+							class:map__edge--dim={edgeDimmed(edge.source, edge.target)}
+							class:map__edge--hidden={edgeHidden(edge.source, edge.target, edge.kind)}
+							x1={a.x} y1={a.y} x2={b.x} y2={b.y}
+						/>
+					{/if}
+				{/each}
+			</g>
+		{:else if activeMode === 'stack'}
+			<!-- Stack mode: shared-tech edges coloured by category. -->
+			<g class="map__edges">
+				{#each sharedEdges as edge (`shared:${edge.category}:${edge.source}-${edge.target}`)}
+					{@const a = projectPos(edge.source)}
+					{@const b = projectPos(edge.target)}
+					{#if a && b}
+						<line
+							class="map__edge map__edge--shared"
+							class:map__edge--dim={edgeDimmed(edge.source, edge.target)}
+							class:map__edge--hidden={edgeHidden(edge.source, edge.target, edge.category)}
+							style="stroke: {categoryColour(edge.category)}"
+							x1={a.x} y1={a.y} x2={b.x} y2={b.y}
+						/>
+					{/if}
+				{/each}
+			</g>
+		{:else}
+			<!-- Technologies mode: co-occurrence edges, neutral colour. -->
+			<g class="map__edges">
+				{#each techCoEdges as edge (`co:${edge.source}-${edge.target}`)}
+					{@const a = techPos(edge.source)}
+					{@const b = techPos(edge.target)}
+					{#if a && b}
+						<line
+							class="map__edge map__edge--co-occurrence"
+							class:map__edge--dim={edgeDimmed(edge.source, edge.target)}
+							x1={a.x} y1={a.y} x2={b.x} y2={b.y}
+						/>
+					{/if}
+				{/each}
+			</g>
+		{/if}
 
-		<!-- Curated relationship edges, above the shared-tech web. -->
-		<g class="map__edges">
-			{#each edges as edge (`${edge.kind}:${edge.source}-${edge.target}`)}
-				{@const a = pos(edge.source)}
-				{@const b = pos(edge.target)}
-				{#if a && b}
-					<line
-						class="map__edge map__edge--{edge.kind}"
-						class:map__edge--dim={edgeDimmed(edge.source, edge.target)}
-						class:map__edge--hidden={edgeHidden(edge.source, edge.target, edge.kind)}
-						x1={a.x}
-						y1={a.y}
-						x2={b.x}
-						y2={b.y}
-					/>
-				{/if}
-			{/each}
-		</g>
+		<!-- Project nodes (relationships + stack modes) -->
+		{#if activeMode !== 'technologies'}
+			<g class="map__nodes">
+				{#each projectNodes as node (node.slug)}
+					{@const r = radiusScale(node)}
+					{@const p = projectPos(node.slug)}
+					<a
+						class="map__node"
+						class:map__node--dim={nodeDimmed(node)}
+						class:map__node--hidden={nodeHidden(node)}
+						class:map__node--labelled={node.labelled}
+						class:map__node--pinned={pinnedSlug === node.slug}
+						href="{base}/projects/{node.slug}"
+						onclick={(e) => {
+							e.preventDefault();
+							openProjectModal(node);
+						}}
+						onpointerenter={() => (activeSlug = node.slug)}
+						onpointerleave={() => (activeSlug = null)}
+						onfocus={() => (activeSlug = node.slug)}
+						onblur={() => (activeSlug = null)}
+					>
+						<title>{node.name}: {node.tagline}</title>
+						<circle
+							class="map__dot"
+							cx={p.x}
+							cy={p.y}
+							{r}
+							style="fill: {statusColour(node.status)}; fill-opacity: {opacityScale(node)}"
+						/>
+						<text class="map__label" x={p.x} y={p.y + r + 16} text-anchor="middle">
+							{node.name}
+						</text>
+					</a>
+				{/each}
+			</g>
+		{/if}
 
-		<!-- Nodes: each is a real link, so the map is navigable without JavaScript. -->
-		<g class="map__nodes">
-			{#each nodes as node (node.slug)}
-				{@const r = radiusScale(node)}
-				{@const p = pos(node.slug)}
-				<a
-					class="map__node"
-					class:map__node--dim={nodeDimmed(node)}
-					class:map__node--hidden={nodeHidden(node)}
-					class:map__node--labelled={node.labelled}
-					class:map__node--pinned={pinnedSlug === node.slug}
-					href="{base}/projects/{node.slug}"
-					onclick={(e) => {
-						e.preventDefault();
-						openModal(node);
-					}}
-					onpointerenter={() => (activeSlug = node.slug)}
-					onpointerleave={() => (activeSlug = null)}
-					onfocus={() => (activeSlug = node.slug)}
-					onblur={() => (activeSlug = null)}
-				>
-					<title>{node.name}: {node.tagline}</title>
-					<circle
-						class="map__dot"
-						cx={p.x}
-						cy={p.y}
-						{r}
-						style="fill: {statusColour(node.status)}; fill-opacity: {opacityScale(node)}"
-					/>
-					<text class="map__label" x={p.x} y={p.y + r + 16} text-anchor="middle">
-						{node.name}
-					</text>
-				</a>
-			{/each}
-		</g>
+		<!-- Tech nodes (technologies mode) -->
+		{#if activeMode === 'technologies'}
+			<g class="map__nodes">
+				{#each techNodes as node (node.label)}
+					{@const r = techRadiusScale(node)}
+					{@const p = techPos(node.label)}
+					<a
+						class="map__node map__node--tech"
+						class:map__node--dim={techNodeDimmed(node)}
+						class:map__node--hidden={techNodeHidden(node)}
+						class:map__node--labelled={standingTechLabels.has(node.label)}
+						class:map__node--pinned={pinnedTechLabel === node.label}
+						href="{base}/projects?tags={encodeTechLabel(node.label)}"
+						onclick={(e) => {
+							e.preventDefault();
+							openTechModal(node);
+						}}
+						onpointerenter={() => (activeSlug = node.label)}
+						onpointerleave={() => (activeSlug = null)}
+						onfocus={() => (activeSlug = node.label)}
+						onblur={() => (activeSlug = null)}
+					>
+						<title
+							>{node.label} — used in {node.projectCount} project{node.projectCount === 1
+								? ''
+								: 's'}</title
+						>
+						<circle
+							class="map__dot"
+							cx={p.x}
+							cy={p.y}
+							{r}
+							style="fill: {techKindColour(node.kind)}"
+						/>
+						<text class="map__label" x={p.x} y={p.y + r + 15} text-anchor="middle">
+							{node.label}
+						</text>
+					</a>
+				{/each}
+			</g>
+		{/if}
 	</svg>
 
 	<figcaption class="map__legend">
+		<!-- View toggle -->
 		<div class="map__legend-group">
-			<span class="map__legend-title">Connections</span>
-			{#each edgeTypes as type (type)}
-				<button
-					type="button"
-					class="map__toggle"
-					class:map__toggle--off={edgeTypeChipOff(type)}
-					aria-pressed={!edgeTypeChipOff(type)}
-					onclick={() => toggleEdgeType(type)}
-				>
-					<span
-						class="map__swatch map__swatch--line"
-						style="border-top-color: {edgeTypeColour(type)}"
-					></span>
-					{edgeTypeLabel(type)}
-				</button>
-			{/each}
-		</div>
-
-		<div class="map__legend-group">
-			<span class="map__legend-title">Types</span>
-			{#each kinds as kind (kind)}
-				<button
-					type="button"
-					class="map__toggle"
-					class:map__toggle--off={kindChipOff(kind)}
-					aria-pressed={!kindChipOff(kind)}
-					onclick={() => toggleKind(kind)}
-				>
-					{kind}
-				</button>
-			{/each}
-		</div>
-
-		<div class="map__legend-group">
+			<span class="map__legend-title">View</span>
 			<button
 				type="button"
-				class="map__toggle map__toggle--mode"
-				class:map__toggle--on={isolateMode}
-				aria-pressed={isolateMode}
-				onclick={toggleIsolate}
+				class="map__toggle"
+				class:map__toggle--on={activeMode === 'relationships'}
+				aria-pressed={activeMode === 'relationships'}
+				onclick={() => setMode('relationships')}
 			>
-				Isolate
+				Relationships
 			</button>
-			{#if filtersActive}
-				<button type="button" class="map__toggle" onclick={resetFilters}>Reset</button>
+			<button
+				type="button"
+				class="map__toggle"
+				class:map__toggle--on={activeMode === 'stack'}
+				aria-pressed={activeMode === 'stack'}
+				onclick={() => setMode('stack')}
+			>
+				By stack
+			</button>
+			<button
+				type="button"
+				class="map__toggle"
+				class:map__toggle--on={activeMode === 'technologies'}
+				aria-pressed={activeMode === 'technologies'}
+				onclick={() => setMode('technologies')}
+			>
+				Technologies
+			</button>
+		</div>
+
+		<!-- Connections toggle (hidden in technologies mode) -->
+		{#if activeMode !== 'technologies' && edgeTypes.length > 0}
+			<div class="map__legend-group">
+				<span class="map__legend-title">Connections</span>
+				{#each edgeTypes as type (type)}
+					<button
+						type="button"
+						class="map__toggle"
+						class:map__toggle--off={edgeTypeChipOff(type)}
+						aria-pressed={!edgeTypeChipOff(type)}
+						onclick={() => toggleEdgeType(type)}
+					>
+						<span
+							class="map__swatch map__swatch--line"
+							style="border-top-color: {edgeTypeColour(type)}"
+						></span>
+						{edgeTypeLabel(type)}
+					</button>
+				{/each}
+			</div>
+		{/if}
+
+		<!-- Types toggle -->
+		<div class="map__legend-group">
+			<span class="map__legend-title">Types</span>
+			{#if activeMode === 'technologies'}
+				{#each techKinds as kind (kind)}
+					<button
+						type="button"
+						class="map__toggle"
+						class:map__toggle--off={hiddenTechKinds.has(kind)}
+						aria-pressed={!hiddenTechKinds.has(kind)}
+						onclick={() => toggleTechKind(kind)}
+					>
+						<span class="map__swatch" style="background: {techKindColour(kind)}"></span>
+						{kind}
+					</button>
+				{/each}
+			{:else}
+				{#each projectKinds as kind (kind)}
+					<button
+						type="button"
+						class="map__toggle"
+						class:map__toggle--off={kindChipOff(kind)}
+						aria-pressed={!kindChipOff(kind)}
+						onclick={() => toggleKind(kind)}
+					>
+						{kind}
+					</button>
+				{/each}
 			{/if}
 		</div>
 
-		<div class="map__legend-group" aria-hidden="true">
-			<span class="map__legend-title">Status</span>
-			{#each statusOrder.filter((s) => nodes.some((n) => n.status === s)) as status (status)}
-				<span class="map__legend-item">
-					<span class="map__swatch" style="background: {statusColour(status)}"></span>
-					{statusLabel[status]}
-				</span>
-			{/each}
-		</div>
+		<!-- Isolate / Reset -->
+		{#if activeMode !== 'technologies'}
+			<div class="map__legend-group">
+				<button
+					type="button"
+					class="map__toggle map__toggle--mode"
+					class:map__toggle--on={isolateMode}
+					aria-pressed={isolateMode}
+					onclick={toggleIsolate}
+				>
+					Isolate
+				</button>
+				{#if filtersActive}
+					<button type="button" class="map__toggle" onclick={resetFilters}>Reset</button>
+				{/if}
+			</div>
+		{:else if filtersActive}
+			<div class="map__legend-group">
+				<button type="button" class="map__toggle" onclick={resetFilters}>Reset</button>
+			</div>
+		{/if}
+
+		<!-- Status key (project modes only) -->
+		{#if activeMode !== 'technologies'}
+			<div class="map__legend-group" aria-hidden="true">
+				<span class="map__legend-title">Status</span>
+				{#each statusOrder.filter((s) => projectNodes.some((n) => n.status === s)) as status (status)}
+					<span class="map__legend-item">
+						<span class="map__swatch" style="background: {statusColour(status)}"></span>
+						{statusLabel[status]}
+					</span>
+				{/each}
+			</div>
+		{/if}
 
 		<p class="map__note">
-			Node size tracks commit activity; fainter dots are older. Click a node to pin it or navigate
-			to the project. Click a type or connection to hide it. Turn on Isolate, then click each
-			connection or type you want to keep: you can select more than one.
+			{#if activeMode === 'relationships'}
+				Solid lines trace engine extraction: a library pulled out of an application. Dashed lines
+				mark related work. Coloured threads link projects in a shared theme; each theme has its own
+				colour and toggle. Switch to "By stack" to cluster by shared technology, or "Technologies"
+				to explore the tech landscape directly.
+			{:else if activeMode === 'stack'}
+				Projects cluster by shared technology: runtime, framework, data layer, and tooling. Dense
+				nodes share multiple tools; outliers use a distinct stack. Switch to "Relationships" for
+				curated connections, or "Technologies" to see the tech nodes themselves.
+			{:else}
+				Every technology in the registry, sized by how many projects use it and coloured by kind.
+				Lines connect technologies that appear together in the same project. Language tags
+				(TypeScript, Go, etc.) are shown as nodes but have no edges — they connect almost
+				everything, so they cluster nothing useful. Click any node to see the projects that use it.
+			{/if}
+			{#if activeMode !== 'technologies'}
+				Node size tracks commit activity; fainter dots are older. Click a node to pin it or navigate
+				to the project.
+			{/if}
 		</p>
 	</figcaption>
 </figure>
 
-{#if selected !== null}
-	{@const isPinned = pinnedSlug === selected.slug}
-	<SelectionModal open={true} title={selected.name} onclose={() => (selected = null)}>
-		<p class="map-modal__tagline">{selected.tagline}</p>
-		<button type="button" class="modal-action modal-action--primary" onclick={pinSelected}>
+<!-- Project selection modal -->
+{#if selectedProject !== null}
+	{@const isPinned = pinnedSlug === selectedProject.slug}
+	<SelectionModal open={true} title={selectedProject.name} onclose={() => (selectedProject = null)}>
+		<p class="map-modal__tagline">{selectedProject.tagline}</p>
+		<button type="button" class="modal-action modal-action--primary" onclick={pinSelectedProject}>
 			{isPinned ? 'Unpin' : 'Pin this project'}
 		</button>
-		<a href={projectHref(base, selected.slug)} class="modal-action modal-action--secondary">
+		<a href={projectHref(base, selectedProject.slug)} class="modal-action modal-action--secondary">
 			Go to project
+		</a>
+	</SelectionModal>
+{/if}
+
+<!-- Tech selection modal -->
+{#if selectedTech !== null}
+	{@const isPinnedTech = pinnedTechLabel === selectedTech.label}
+	<SelectionModal open={true} title={selectedTech.label} onclose={() => (selectedTech = null)}>
+		<p class="map-modal__tagline">
+			Used in {selectedTech.projectCount} project{selectedTech.projectCount === 1
+				? ''
+				: 's'}. Kind: {selectedTech.kind}.
+		</p>
+		<button type="button" class="modal-action modal-action--primary" onclick={pinSelectedTech}>
+			{isPinnedTech ? 'Unpin' : 'Pin this technology'}
+		</button>
+		<a
+			href="{base}/projects?tags={encodeTechLabel(selectedTech.label)}"
+			class="modal-action modal-action--secondary"
+		>
+			See projects using this
 		</a>
 	</SelectionModal>
 {/if}
@@ -593,7 +937,7 @@
 		width: 100%;
 		height: auto;
 		max-height: 80vh;
-		overflow: visible;
+		overflow: clip;
 	}
 
 	.map__edge {
@@ -615,17 +959,28 @@
 		opacity: 0.6;
 	}
 
-	/* Shared-tech edges carry their category colour inline; this sets weight. */
+	.map__edge--theme {
+		/* stroke colour set inline per-theme */
+		stroke-width: 1.2;
+		stroke-dasharray: 3 7;
+		opacity: 0.5;
+	}
+
 	.map__edge--shared {
 		stroke-width: 1.4;
 		opacity: 0.5;
+	}
+
+	.map__edge--co-occurrence {
+		stroke: var(--color-border-strong);
+		stroke-width: 1.2;
+		opacity: 0.4;
 	}
 
 	.map__edge--dim {
 		opacity: 0.06;
 	}
 
-	/* Hidden by a legend toggle: removed from the picture entirely. */
 	.map__edge--hidden,
 	.map__node--hidden {
 		display: none;
@@ -658,10 +1013,6 @@
 		pointer-events: none;
 	}
 
-	/*
-	 * Show only the selected "labelled" projects (a diverse ~10, chosen in the
-	 * data layer) plus any pinned node. The rest reveal on hover/focus.
-	 */
 	.map__node:not(.map__node--labelled):not(.map__node--pinned) .map__label {
 		opacity: 0;
 		transition: opacity var(--transition-base);
@@ -682,20 +1033,24 @@
 		stroke-width: 3;
 	}
 
-	/* Pinned node: persistent ring so the selection reads as "locked". */
 	.map__node--pinned .map__dot {
 		stroke: var(--color-primary-text);
 		stroke-width: 2.5;
 	}
 
-	/*
-	 * Mobile: the SVG scales down with the viewport, so every label shrinks at
-	 * once and the picture turns to noise. Larger type so the ~10 standing labels
-	 * stay readable; the hide/reveal logic is already in the base rules above.
-	 */
+	/* Tech nodes: slightly smaller label — they're denser. */
+	.map__node--tech .map__label {
+		font-size: 14px;
+		font-weight: 500;
+	}
+
 	@media (max-width: 40rem) {
 		.map__label {
 			font-size: 22px;
+		}
+
+		.map__node--tech .map__label {
+			font-size: 18px;
 		}
 	}
 
@@ -738,7 +1093,6 @@
 		flex-shrink: 0;
 	}
 
-	/* A short rule, coloured per edge type via an inline border-top-color. */
 	.map__swatch--line {
 		width: 1.25rem;
 		height: 0;
@@ -771,13 +1125,11 @@
 		color: var(--color-text);
 	}
 
-	/* Hidden: dimmed and struck through, so its "off" state reads at a glance. */
 	.map__toggle--off {
 		opacity: 0.45;
 		text-decoration: line-through;
 	}
 
-	/* Isolate mode engaged. */
 	.map__toggle--on {
 		background-color: var(--color-primary-bg);
 		border-color: var(--color-primary);
@@ -791,7 +1143,6 @@
 		color: var(--color-text-muted);
 	}
 
-	/* Modal tagline (shown in the map modal since it has the tagline available) */
 	.map-modal__tagline {
 		font-size: var(--text-sm);
 		color: var(--color-text-subtle);
@@ -799,7 +1150,6 @@
 		line-height: 1.5;
 	}
 
-	/* Modal action buttons */
 	.modal-action {
 		display: block;
 		width: 100%;
