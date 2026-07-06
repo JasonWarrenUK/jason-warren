@@ -605,7 +605,14 @@ export function computeRelayoutTargets(
 	input: RelayoutInput,
 	options: RelayoutOptions = {}
 ): Map<ProjectSlug, Point> {
-	const { nodes, visibleEdges, visibleSharedEdges, visibleThemeEdges = [], mode = 'relationships', size = 1000 } = input;
+	const {
+		nodes,
+		visibleEdges,
+		visibleSharedEdges,
+		visibleThemeEdges = [],
+		mode = 'relationships',
+		size = 1000
+	} = input;
 	const { candidates = 5, ticks = 220 } = options;
 	const centre = size / 2;
 	const links = buildSimLinks(visibleEdges, visibleSharedEdges, mode, visibleThemeEdges);

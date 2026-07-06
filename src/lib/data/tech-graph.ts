@@ -137,11 +137,11 @@ export function getTechCoEdges(options: TechCoEdgeOptions = {}): TechCoEdge[] {
 		// Non-language labels present in this project. Use kindByLabel (first-occurrence
 		// wins) so labels with multiple kind entries (e.g. Go as language + runtime)
 		// are classified consistently with getTechNodes.
-		const nonLangLabels = [...new Set(
-			project.tags
-				.filter((t) => kindByLabel.get(t.label) !== 'language')
-				.map((t) => t.label)
-		)];
+		const nonLangLabels = [
+			...new Set(
+				project.tags.filter((t) => kindByLabel.get(t.label) !== 'language').map((t) => t.label)
+			)
+		];
 
 		for (let i = 0; i < nonLangLabels.length; i++) {
 			for (let j = i + 1; j < nonLangLabels.length; j++) {

@@ -16,8 +16,8 @@
 		<p class="page__intro">
 			Every project, arranged as a force-directed graph. Three views: Relationships traces
 			extraction paths and theme links; By stack clusters projects around shared technology;
-			Technologies maps the tools themselves, sized by usage and linked by co-occurrence.
-			Hover or tap a node to highlight its neighbourhood, or use the legend to filter by type.
+			Technologies maps the tools themselves, sized by usage and linked by co-occurrence. Hover or
+			tap a node to highlight its neighbourhood, or use the legend to filter by type.
 		</p>
 	</header>
 

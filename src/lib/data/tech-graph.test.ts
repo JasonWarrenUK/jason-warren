@@ -17,7 +17,10 @@ describe('getTechNodes', () => {
 
 	it('excludes language-kind nodes', () => {
 		const langNodes = nodes.filter((n) => n.kind === 'language');
-		expect(langNodes, `language nodes found: ${langNodes.map((n) => n.label).join(', ')}`).toHaveLength(0);
+		expect(
+			langNodes,
+			`language nodes found: ${langNodes.map((n) => n.label).join(', ')}`
+		).toHaveLength(0);
 	});
 
 	it('is deterministic', () => {
@@ -76,7 +79,10 @@ describe('getTechCoEdges', () => {
 			connected.add(e.target);
 		}
 		const isolated = nodes.filter((n) => !connected.has(n.label));
-		expect(isolated.length, `isolated: ${isolated.map((n) => n.label).join(', ')}`).toBeLessThanOrEqual(2);
+		expect(
+			isolated.length,
+			`isolated: ${isolated.map((n) => n.label).join(', ')}`
+		).toBeLessThanOrEqual(2);
 	});
 });
 

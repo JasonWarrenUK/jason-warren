@@ -72,9 +72,7 @@ export function themeColour(themeId: string): string {
 }
 
 /** id → name lookup, built from themes.ts. */
-const themeNameById: Record<string, string> = Object.fromEntries(
-	themes.map((t) => [t.id, t.name])
-);
+const themeNameById: Record<string, string> = Object.fromEntries(themes.map((t) => [t.id, t.name]));
 
 /** Human-readable label for a theme edge type. */
 export function themeLabel(themeId: string): string {

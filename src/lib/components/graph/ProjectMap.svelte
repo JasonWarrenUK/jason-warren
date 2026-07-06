@@ -4,7 +4,12 @@
 	import { goto } from '$app/navigation';
 	import { base } from '$app/paths';
 	import { page } from '$app/stores';
-	import { EDGE_CATEGORIES, type ProjectKind, type ProjectStatus, type TagKind } from '$lib/data/types.js';
+	import {
+		EDGE_CATEGORIES,
+		type ProjectKind,
+		type ProjectStatus,
+		type TagKind
+	} from '$lib/data/types.js';
 	import { parseSet, serialiseSet, encodeTechLabel, decodeTechLabel } from '$lib/url-state.js';
 	import { writeParam } from '$lib/url-write.js';
 	import SelectionModal from '$lib/components/ui/SelectionModal.svelte';
@@ -94,11 +99,11 @@
 
 	const activeMode = $derived<MapMode>(
 		browser
-			? ($page.url.searchParams.get('mode') === 'stack'
+			? $page.url.searchParams.get('mode') === 'stack'
 				? 'stack'
 				: $page.url.searchParams.get('mode') === 'technologies'
 					? 'technologies'
-					: 'relationships')
+					: 'relationships'
 			: 'relationships'
 	);
 
@@ -161,9 +166,7 @@
 	// ---------------------------------------------------------------------------
 
 	const radiusScale = $derived.by(() => {
-		const weights = projectNodes.map(
-			(n) => n.commits ?? (n.linesOfCode ? n.linesOfCode / 50 : 0)
-		);
+		const weights = projectNodes.map((n) => n.commits ?? (n.linesOfCode ? n.linesOfCode / 50 : 0));
 		const max = Math.max(1, ...weights);
 		return (node: MapNode): number => {
 			const w = node.commits ?? (node.linesOfCode ? node.linesOfCode / 50 : 0);
@@ -188,8 +191,8 @@
 	});
 
 	const techMaxCount = $derived(Math.max(1, ...techNodes.map((n) => n.projectCount)));
-	const techRadiusScale = $derived(
-		(node: TechMapNode): number => techNodeRadius(node.projectCount, techMaxCount)
+	const techRadiusScale = $derived((node: TechMapNode): number =>
+		techNodeRadius(node.projectCount, techMaxCount)
 	);
 
 	const TECH_LABEL_COUNT = 12;
@@ -210,7 +213,9 @@
 	const isolateMode = $derived(browser ? $page.url.searchParams.get('isolate') === '1' : false);
 
 	const hiddenKinds = $derived(
-		browser ? parseSet<ProjectKind>($page.url.searchParams.get('hide-kinds')) : new Set<ProjectKind>()
+		browser
+			? parseSet<ProjectKind>($page.url.searchParams.get('hide-kinds'))
+			: new Set<ProjectKind>()
 	);
 	const hiddenEdgeTypes = $derived(
 		browser ? parseSet<EdgeType>($page.url.searchParams.get('hide-edges')) : new Set<EdgeType>()
@@ -219,7 +224,9 @@
 		browser ? parseSet<TagKind>($page.url.searchParams.get('hide-tech-kinds')) : new Set<TagKind>()
 	);
 	const isolatedKinds = $derived(
-		browser ? parseSet<ProjectKind>($page.url.searchParams.get('show-kinds')) : new Set<ProjectKind>()
+		browser
+			? parseSet<ProjectKind>($page.url.searchParams.get('show-kinds'))
+			: new Set<ProjectKind>()
 	);
 	const isolatedEdgeTypes = $derived(
 		browser ? parseSet<EdgeType>($page.url.searchParams.get('show-edges')) : new Set<EdgeType>()
@@ -234,7 +241,12 @@
 
 	const pinnedTechParam = $derived(browser ? $page.url.searchParams.get('tech') : null);
 	const pinnedTechLabel = $derived(
-		browser ? decodeTechLabel(pinnedTechParam, techNodes.map((n) => n.label)) : null
+		browser
+			? decodeTechLabel(
+					pinnedTechParam,
+					techNodes.map((n) => n.label)
+				)
+			: null
 	);
 
 	const effectivePinnedSlug = $derived(activeSlug ?? pinnedSlug);
@@ -348,6 +360,12 @@
 		const s = projectPositions.get(source);
 		const t = projectPositions.get(target);
 		return (!!s && nodeHidden(s)) || (!!t && nodeHidden(t));
+	}
+
+	function techEdgeHidden(source: string, target: string): boolean {
+		const s = techPositions.get(source);
+		const t = techPositions.get(target);
+		return (!!s && techNodeHidden(s)) || (!!t && techNodeHidden(t));
 	}
 
 	function kindChipOff(kind: ProjectKind): boolean {
@@ -552,9 +570,7 @@
 					if (curMode === 'technologies') {
 						simNodes = buildTechSimNodes(curTechNodes);
 					} else {
-						simNodes = buildProjectSimNodes(
-							curMode === 'stack' ? stackNodes : relationshipsNodes
-						);
+						simNodes = buildProjectSimNodes(curMode === 'stack' ? stackNodes : relationshipsNodes);
 						const targets = computeRelayoutTargets(
 							{
 								nodes: simNodes,
@@ -608,9 +624,16 @@
 						<line
 							class="map__edge map__edge--theme"
 							class:map__edge--dim={edgeDimmed(edge.source, edge.target)}
-							class:map__edge--hidden={edgeHidden(edge.source, edge.target, themeEdgeType(edge.theme))}
+							class:map__edge--hidden={edgeHidden(
+								edge.source,
+								edge.target,
+								themeEdgeType(edge.theme)
+							)}
 							style="stroke: {themeColour(edge.theme)}"
-							x1={a.x} y1={a.y} x2={b.x} y2={b.y}
+							x1={a.x}
+							y1={a.y}
+							x2={b.x}
+							y2={b.y}
 						/>
 					{/if}
 				{/each}
@@ -625,7 +648,10 @@
 							class="map__edge map__edge--{edge.kind}"
 							class:map__edge--dim={edgeDimmed(edge.source, edge.target)}
 							class:map__edge--hidden={edgeHidden(edge.source, edge.target, edge.kind)}
-							x1={a.x} y1={a.y} x2={b.x} y2={b.y}
+							x1={a.x}
+							y1={a.y}
+							x2={b.x}
+							y2={b.y}
 						/>
 					{/if}
 				{/each}
@@ -642,7 +668,10 @@
 							class:map__edge--dim={edgeDimmed(edge.source, edge.target)}
 							class:map__edge--hidden={edgeHidden(edge.source, edge.target, edge.category)}
 							style="stroke: {categoryColour(edge.category)}"
-							x1={a.x} y1={a.y} x2={b.x} y2={b.y}
+							x1={a.x}
+							y1={a.y}
+							x2={b.x}
+							y2={b.y}
 						/>
 					{/if}
 				{/each}
@@ -657,7 +686,11 @@
 						<line
 							class="map__edge map__edge--co-occurrence"
 							class:map__edge--dim={edgeDimmed(edge.source, edge.target)}
-							x1={a.x} y1={a.y} x2={b.x} y2={b.y}
+							class:map__edge--hidden={techEdgeHidden(edge.source, edge.target)}
+							x1={a.x}
+							y1={a.y}
+							x2={b.x}
+							y2={b.y}
 						/>
 					{/if}
 				{/each}
@@ -857,7 +890,7 @@
 		{#if activeMode !== 'technologies'}
 			<div class="map__legend-group" aria-hidden="true">
 				<span class="map__legend-title">Status</span>
-				{#each statusOrder.filter((s) => projectNodes.some((n) => n.status === s)) as status (status)}
+				{#each statusOrder.filter( (s) => projectNodes.some((n) => n.status === s) ) as status (status)}
 					<span class="map__legend-item">
 						<span class="map__swatch" style="background: {statusColour(status)}"></span>
 						{statusLabel[status]}
@@ -909,9 +942,7 @@
 	{@const isPinnedTech = pinnedTechLabel === selectedTech.label}
 	<SelectionModal open={true} title={selectedTech.label} onclose={() => (selectedTech = null)}>
 		<p class="map-modal__tagline">
-			Used in {selectedTech.projectCount} project{selectedTech.projectCount === 1
-				? ''
-				: 's'}. Kind: {selectedTech.kind}.
+			Used in {selectedTech.projectCount} project{selectedTech.projectCount === 1 ? '' : 's'}. Kind: {selectedTech.kind}.
 		</p>
 		<button type="button" class="modal-action modal-action--primary" onclick={pinSelectedTech}>
 			{isPinnedTech ? 'Unpin' : 'Pin this technology'}
