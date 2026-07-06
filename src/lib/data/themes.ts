@@ -11,7 +11,6 @@
  * narrative, surfaced by the cross-highlight interaction on /toolkit.
  */
 
-import { getBySlug } from './queries.js';
 import type { Project, ProjectSlug } from './types.js';
 
 export interface Theme {
@@ -88,23 +87,3 @@ export const themes: Theme[] = [
 		slugs: ['workwise', 'things-we-do', 'sparker', 'cogni', 'beacons']
 	}
 ];
-
-/**
- * Themes with their slugs resolved to full Project objects, in authored order.
- * Throws if a slug does not resolve, so a bad reference fails loudly at build
- * time rather than rendering an empty card.
- */
-export function getThemes(): ThemeWithProjects[] {
-	return themes.map((theme) => ({
-		id: theme.id,
-		name: theme.name,
-		blurb: theme.blurb,
-		projects: theme.slugs.map((slug) => {
-			const project = getBySlug(slug);
-			if (!project) {
-				throw new Error(`Theme "${theme.id}" references unknown project slug "${slug}"`);
-			}
-			return project;
-		})
-	}));
-}

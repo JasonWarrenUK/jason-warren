@@ -7,7 +7,8 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { themes, getThemes } from './themes.js';
+import { themes } from './themes.js';
+import { getThemes } from './theme-queries.js';
 import { projects } from './index.js';
 
 describe('theme territories', () => {

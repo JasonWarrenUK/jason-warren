@@ -1,7 +1,7 @@
 import sources from '$lib/data/sources.json';
 import { getHeroPool, HERO_COUNT } from '$lib/data/queries.js';
 import { getEngineThreads } from '$lib/data/threads.js';
-import { getThemes } from '$lib/data/themes.js';
+import { getThemes } from '$lib/data/theme-queries.js';
 
 export function load() {
 	// Use the last-synced timestamp as the reference point for recency decay.
