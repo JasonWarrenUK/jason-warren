@@ -31,6 +31,7 @@ import { projects } from './index.js';
 import { EDGE_CATEGORIES } from './types.js';
 import type { EdgeCategory, Project, ProjectSlug } from './types.js';
 import { substanceScore, hubThreshold } from './scoring.js';
+import { themes } from './themes.js';
 
 // ---------------------------------------------------------------------------
 // Graph shape
@@ -199,6 +200,64 @@ export function getSharedTechEdges(options: SharedTechOptions = {}): SharedTechE
 }
 
 // ---------------------------------------------------------------------------
+// Theme/collection edges
+// ---------------------------------------------------------------------------
+
+/**
+ * An undirected "shares a theme" link. One edge is emitted per (pair, theme) so
+ * each edge carries a single theme identity — the renderer colours them
+ * independently. Endpoints are canonically ordered (source < target).
+ */
+export interface SharedThemeEdge {
+	source: ProjectSlug;
+	target: ProjectSlug;
+	/** The curated theme id this edge belongs to, e.g. 'graph-native'. */
+	theme: string;
+}
+
+export interface SharedThemeOptions {
+	/** Maximum edges kept per node per theme, strongest-weighted first. Default: 4. */
+	maxPerNode?: number;
+}
+
+/**
+ * Derives "shares a theme" edges from the curated theme territories. Emits one
+ * edge per (pair, theme) so each thread can be coloured and toggled independently.
+ * A degree cap per theme prevents large themes from creating a dense clique.
+ * Deterministic for a fixed registry and theme list.
+ */
+export function getThemeEdges(options: SharedThemeOptions = {}): SharedThemeEdge[] {
+	const maxPerNode = options.maxPerNode ?? 4;
+	const edges: SharedThemeEdge[] = [];
+
+	for (const theme of themes) {
+		// Emit one edge per pair of co-members, capped per theme.
+		const slugs = [...theme.slugs].sort();
+		const degree = new Map<ProjectSlug, number>();
+		const candidates: Array<[ProjectSlug, ProjectSlug]> = [];
+
+		for (let i = 0; i < slugs.length; i++) {
+			for (let j = i + 1; j < slugs.length; j++) {
+				const [source, target] = [slugs[i], slugs[j]].sort() as [ProjectSlug, ProjectSlug];
+				candidates.push([source, target]);
+			}
+		}
+
+		// Greedily keep while both endpoints are below the per-theme cap.
+		for (const [source, target] of candidates) {
+			const ds = degree.get(source) ?? 0;
+			const dt = degree.get(target) ?? 0;
+			if (ds >= maxPerNode || dt >= maxPerNode) continue;
+			degree.set(source, ds + 1);
+			degree.set(target, dt + 1);
+			edges.push({ source, target, theme: theme.id });
+		}
+	}
+
+	return edges;
+}
+
+// ---------------------------------------------------------------------------
 // Map label selection
 // ---------------------------------------------------------------------------
 
@@ -346,7 +405,7 @@ export interface LayoutResult {
 	height: number;
 }
 
-interface SimNode extends SimulationNodeDatum {
+export interface SimNode extends SimulationNodeDatum {
 	slug: ProjectSlug;
 	radius: number;
 }
@@ -493,7 +552,7 @@ export function countCrossings(
  * cost ~12 × 320 ticks on ~40 nodes (sub-second) and yield a meaningfully
  * better layout than a single seed by lottery.
  */
-const LAYOUT_CANDIDATES = 12;
+export const LAYOUT_CANDIDATES = 12;
 
 /** Golden angle in radians — maximally spreads candidate seeds apart. */
 const GOLDEN_ANGLE = Math.PI * (3 - Math.sqrt(5));
@@ -507,8 +566,12 @@ export interface RelayoutInput {
 	nodes: LiveSimNode[];
 	/** Only edges currently visible on the map. */
 	visibleEdges: GraphEdge[];
-	/** Only shared-tech edges currently visible. */
+	/** Only shared-tech edges currently visible (used in stack mode). */
 	visibleSharedEdges: SharedTechEdge[];
+	/** Only theme edges currently visible (used in relationships mode). */
+	visibleThemeEdges?: SharedThemeEdge[];
+	/** Which map mode is active — determines link force weights. */
+	mode?: MapMode;
 	/** Canvas size in pixels — must match the SVG viewBox. */
 	size?: number;
 }
@@ -542,10 +605,10 @@ export function computeRelayoutTargets(
 	input: RelayoutInput,
 	options: RelayoutOptions = {}
 ): Map<ProjectSlug, Point> {
-	const { nodes, visibleEdges, visibleSharedEdges, size = 1000 } = input;
+	const { nodes, visibleEdges, visibleSharedEdges, visibleThemeEdges = [], mode = 'relationships', size = 1000 } = input;
 	const { candidates = 5, ticks = 220 } = options;
 	const centre = size / 2;
-	const links = buildSimLinks(visibleEdges, visibleSharedEdges);
+	const links = buildSimLinks(visibleEdges, visibleSharedEdges, mode, visibleThemeEdges);
 
 	// Determine the visible node set (only nodes incident to a visible edge,
 	// or all nodes — using all keeps the relayout sensible when edges are hidden
@@ -562,7 +625,7 @@ export function computeRelayoutTargets(
 			};
 		});
 
-		const candidateLinks = buildSimLinks(visibleEdges, visibleSharedEdges);
+		const candidateLinks = buildSimLinks(visibleEdges, visibleSharedEdges, mode, visibleThemeEdges);
 
 		const sim = forceSimulation<SimNode>(simNodes)
 			.force(
@@ -605,56 +668,33 @@ export function computeRelayoutTargets(
 // ---------------------------------------------------------------------------
 
 /**
- * Force-directed layout, run to completion at build time so the prerendered SVG
- * stays static (no runtime simulation, no JavaScript needed to view it).
- *
- * Position reflects connection: curated extraction/related edges pull hard,
- * shared-stack edges pull gently, charge separates, and collision keeps the
- * activity-scaled dots from overlapping.
- *
- * Determinism is guaranteed: all seeding uses only the integer candidate index
- * (no Math.random), d3-force's own PRNG is deterministic given the same input,
- * and the tick count is fixed — so identical input always yields identical
- * coordinates across builds. The best-of-N pass selects the candidate with the
- * fewest edge crossings (ties broken by shorter total edge length).
+ * Generic best-of-N ring-seeded force layout. Takes pre-built `SimNode[]`
+ * (caller is responsible for setting `slug` and `radius`); handles all seeding,
+ * force setup, scoring, and candidate selection. Exported so non-project graphs
+ * (e.g. the tech-node graph) can drive the same engine.
  */
-export function computeForceLayout(
-	graph: ProjectGraph,
-	sharedEdges: SharedTechEdge[] = [],
-	size = 1000
-): LayoutResult {
+export function layoutSimNodes(
+	initialNodes: SimNode[],
+	links: SimLink[],
+	size: number,
+	candidates: number
+): SimNode[] {
 	const centre = size / 2;
-	const hubSlugs = getHubSlugs(graph.nodes.map((n) => n.project));
-	const weights = graph.nodes.map((n) => substanceScore(n.project));
-	const maxWeight = Math.max(1, ...weights);
 
-	const radiusOf = (project: Project): number => {
-		const base = 16 + 39 * Math.sqrt(substanceScore(project) / maxWeight);
-		// Hubs (p85 substance) keep a minimum radius so they read as network anchors.
-		return hubSlugs.has(project.slug) ? Math.max(43, base) : base;
-	};
-
-	// All curated + shared-tech edges; constants live in buildSimLinks.
-	const links = buildSimLinks(graph.edges, sharedEdges);
-
-	/**
-	 * Runs one candidate: a ring seeded with angle offset `seed * GOLDEN_ANGLE`,
-	 * ticked to convergence. Returns the settled SimNodes (mutated in place by d3).
-	 */
 	function runCandidate(seed: number): SimNode[] {
 		const angleOffset = seed * GOLDEN_ANGLE;
-		const nodes: SimNode[] = graph.nodes.map((node, index) => {
-			const angle = (2 * Math.PI * index) / graph.nodes.length - Math.PI / 2 + angleOffset;
+		const nodes: SimNode[] = initialNodes.map((n, index) => {
+			const angle = (2 * Math.PI * index) / initialNodes.length - Math.PI / 2 + angleOffset;
 			return {
-				slug: node.slug,
-				radius: radiusOf(node.project),
+				slug: n.slug,
+				radius: n.radius,
 				x: centre + size * 0.3 * Math.cos(angle),
 				y: centre + size * 0.3 * Math.sin(angle)
 			};
 		});
 
 		// Re-build links each time so forceLink resolves fresh node references.
-		const candidateLinks = buildSimLinks(graph.edges, sharedEdges);
+		const candidateLinks = [...links.map((l) => ({ ...l }))];
 
 		const simulation = forceSimulation<SimNode>(nodes)
 			.force(
@@ -664,36 +704,73 @@ export function computeForceLayout(
 					.distance((link) => link.distance)
 					.strength((link) => link.strength)
 			)
-			.force('charge', forceManyBody<SimNode>().strength(-320))
-			.force('collide', forceCollide<SimNode>((node) => node.radius + 22).strength(1))
+			.force('charge', forceManyBody<SimNode>().strength(FORCE_TUNING.chargeStrength))
+			.force(
+				'collide',
+				forceCollide<SimNode>((node) => node.radius + FORCE_TUNING.collidePadding).strength(1)
+			)
 			.force('centre', forceCenter<SimNode>(centre, centre))
-			.force('x', forceX<SimNode>(centre).strength(0.04))
-			.force('y', forceY<SimNode>(centre).strength(0.04))
+			.force('x', forceX<SimNode>(centre).strength(FORCE_TUNING.axisStrength))
+			.force('y', forceY<SimNode>(centre).strength(FORCE_TUNING.axisStrength))
 			.stop();
 
-		for (let i = 0; i < 320; i++) simulation.tick();
+		for (let i = 0; i < FORCE_TUNING.ticks; i++) simulation.tick();
 
 		return nodes;
 	}
 
-	// Run all candidates and pick the one with fewest crossings (shorter total
-	// edge length as tiebreaker). Seed 0 is the canonical ring (original
-	// behaviour baseline); subsequent seeds rotate the ring by golden-angle
-	// increments for maximally diverse starting configurations.
-	const candidates = Array.from({ length: LAYOUT_CANDIDATES }, (_, seed) => {
+	const allCandidates = Array.from({ length: candidates }, (_, seed) => {
 		const settled = runCandidate(seed);
 		return { settled, ...scoreLayout(settled, links) };
 	});
 
-	const best = candidates.reduce((a, b) =>
+	return allCandidates.reduce((a, b) =>
 		b.crossings < a.crossings || (b.crossings === a.crossings && b.totalLength < a.totalLength)
 			? b
 			: a
-	);
+	).settled;
+}
 
-	const winner = best.settled;
+/**
+ * Project-graph layout runner. Derives node radii from substance scores and the
+ * hub threshold, then delegates to `layoutSimNodes`.
+ */
+function runBestOfN(
+	graphNodes: GraphNode[],
+	links: SimLink[],
+	size: number,
+	candidates: number
+): SimNode[] {
+	const hubSlugs = getHubSlugs(graphNodes.map((n) => n.project));
+	const weights = graphNodes.map((n) => substanceScore(n.project));
+	const maxWeight = Math.max(1, ...weights);
 
-	// Normalise the settled cloud to fill the canvas with uniform scaling.
+	const radiusOf = (project: Project): number => {
+		const base = 16 + 39 * Math.sqrt(substanceScore(project) / maxWeight);
+		return hubSlugs.has(project.slug) ? Math.max(43, base) : base;
+	};
+
+	const simNodes: SimNode[] = graphNodes.map((node) => ({
+		slug: node.slug,
+		radius: radiusOf(node.project)
+	}));
+
+	return layoutSimNodes(simNodes, links, size, candidates);
+}
+
+/**
+ * Normalises a settled SimNode cloud to fill the canvas with uniform scaling.
+ * Exported so non-project graph builders (e.g. tech-graph.ts) can reuse it.
+ *
+ * When `nodes` is provided (and carries `radius`), the fit is inset by the
+ * maximum node radius so no circle rim extends past the padded frame.
+ */
+export function normaliseToCanvas(
+	winner: SimNode[],
+	size: number,
+	nodes?: SimNode[]
+): Map<string, Point> {
+	const centre = size / 2;
 	const xs = winner.map((n) => n.x ?? centre);
 	const ys = winner.map((n) => n.y ?? centre);
 	const minX = Math.min(...xs);
@@ -702,7 +779,8 @@ export function computeForceLayout(
 	const maxY = Math.max(...ys);
 	const spanX = maxX - minX || 1;
 	const spanY = maxY - minY || 1;
-	const pad = size * 0.09;
+	const maxRadius = nodes ? Math.max(0, ...nodes.map((n) => n.radius ?? 0)) : 0;
+	const pad = size * 0.09 + maxRadius;
 	const usable = size - 2 * pad;
 	const scale = Math.min(usable / spanX, usable / spanY);
 	const offsetX = pad + (usable - spanX * scale) / 2;
@@ -715,8 +793,45 @@ export function computeForceLayout(
 			y: offsetY + ((node.y ?? centre) - minY) * scale
 		});
 	}
+	return positions;
+}
 
-	return { positions, width: size, height: size };
+/**
+ * Force-directed layout for the relationships mode, run to completion at build
+ * time so the prerendered SVG stays static (no runtime simulation needed).
+ *
+ * Uses curated extraction/related edges and theme/collection edges as the
+ * primary clustering forces. Shared-tech edges are not fed to this layout
+ * (they belong to the stack mode).
+ *
+ * Deterministic: all seeding uses only the integer candidate index (no
+ * Math.random). The best-of-N pass selects the candidate with the fewest edge
+ * crossings (ties broken by shorter total edge length).
+ */
+export function computeForceLayout(
+	graph: ProjectGraph,
+	themeEdges: SharedThemeEdge[] = [],
+	size = 1000
+): LayoutResult {
+	const links = buildSimLinks(graph.edges, [], 'relationships', themeEdges);
+	const winner = runBestOfN(graph.nodes, links, size, LAYOUT_CANDIDATES);
+	return { positions: normaliseToCanvas(winner, size), width: size, height: size };
+}
+
+/**
+ * Force-directed layout for the stack mode. Shared-tech edges are the primary
+ * clustering signal (shorter, stronger) so projects sharing a runtime or
+ * framework pull together; niche-stack projects drift to islands. Curated edges
+ * are present but weakened.
+ */
+export function computeStackLayout(
+	graph: ProjectGraph,
+	sharedEdges: SharedTechEdge[],
+	size = 1000
+): LayoutResult {
+	const links = buildSimLinks(graph.edges, sharedEdges, 'stack');
+	const winner = runBestOfN(graph.nodes, links, size, LAYOUT_CANDIDATES);
+	return { positions: normaliseToCanvas(winner, size), width: size, height: size };
 }
 
 // ---------------------------------------------------------------------------
@@ -743,14 +858,49 @@ export interface SimLink {
 }
 
 /**
+ * Controls how link forces are weighted when building the simulation.
+ * - `'relationships'`: curated + theme edges pull hard; tech edges are absent.
+ * - `'stack'`: shared-tech edges are the primary clustering signal; curated
+ *   edges are secondary (still present, but weaker and longer).
+ */
+export type MapMode = 'relationships' | 'stack' | 'technologies';
+
+/**
  * Builds the force-link array from the currently-visible edges. Used both to
  * seed `createForceSimulation` and to re-feed the link force on reheat, so the
  * distance/strength constants live in exactly one place.
+ *
+ * In `'relationships'` mode (default), curated + theme edges dominate; shared-tech
+ * edges are not fed to the simulation at all (they are absent from mode 1).
+ * In `'stack'` mode, shared-tech edges become the primary clustering force, and
+ * curated edges are weakened so they don't override the stack signal.
  */
 export function buildSimLinks(
 	visibleEdges: GraphEdge[],
-	visibleSharedEdges: SharedTechEdge[]
+	visibleSharedEdges: SharedTechEdge[],
+	mode: MapMode = 'relationships',
+	visibleThemeEdges: SharedThemeEdge[] = []
 ): SimLink[] {
+	if (mode === 'stack') {
+		return [
+			// Curated edges still present but weaker — they shouldn't override clustering.
+			...visibleEdges.map((edge) => ({
+				source: edge.source,
+				target: edge.target,
+				distance: edge.kind === 'extraction' ? 160 : 220,
+				strength: edge.kind === 'extraction' ? 0.3 : 0.15
+			})),
+			// Shared-tech edges are now the primary signal: shorter and stronger.
+			...visibleSharedEdges.map((edge) => ({
+				source: edge.source,
+				target: edge.target,
+				distance: 100,
+				strength: Math.min(0.55, 0.12 * edge.weight)
+			}))
+		];
+	}
+
+	// 'relationships' mode: curated + theme edges dominate; no shared-tech forces.
 	return [
 		...visibleEdges.map((edge) => ({
 			source: edge.source,
@@ -758,11 +908,11 @@ export function buildSimLinks(
 			distance: edge.kind === 'extraction' ? 90 : 140,
 			strength: edge.kind === 'extraction' ? 0.9 : 0.45
 		})),
-		...visibleSharedEdges.map((edge) => ({
+		...visibleThemeEdges.map((edge) => ({
 			source: edge.source,
 			target: edge.target,
-			distance: 180,
-			strength: Math.min(0.12, 0.03 * edge.weight)
+			distance: 160,
+			strength: 0.12 // one edge per (pair, theme); no weight to scale by
 		}))
 	];
 }
@@ -780,17 +930,21 @@ export function buildSimLinks(
  * @param initialNodes - Pre-built node array seeded with baked positions.
  * @param visibleEdges - Only the curated edges currently shown; hidden edges
  *   do not exert force, so the visible structure relaxes into a new shape.
- * @param visibleSharedEdges - Only the shared-tech edges currently shown.
+ * @param visibleSharedEdges - Only the shared-tech edges currently shown (stack mode).
  * @param size - Canvas size in pixels (must match the SVG viewBox).
+ * @param mode - Which map mode is active.
+ * @param visibleThemeEdges - Only the theme edges currently shown (relationships mode).
  */
 export function createForceSimulation(
 	initialNodes: LiveSimNode[],
 	visibleEdges: GraphEdge[],
 	visibleSharedEdges: SharedTechEdge[],
-	size = 1000
+	size = 1000,
+	mode: MapMode = 'relationships',
+	visibleThemeEdges: SharedThemeEdge[] = []
 ): Simulation<LiveSimNode, never> {
 	const centre = size / 2;
-	const links = buildSimLinks(visibleEdges, visibleSharedEdges);
+	const links = buildSimLinks(visibleEdges, visibleSharedEdges, mode, visibleThemeEdges);
 
 	return forceSimulation<LiveSimNode>(initialNodes)
 		.force(
@@ -800,10 +954,56 @@ export function createForceSimulation(
 				.distance((link) => link.distance)
 				.strength((link) => link.strength)
 		)
-		.force('charge', forceManyBody<LiveSimNode>().strength(-320))
-		.force('collide', forceCollide<LiveSimNode>((node) => node.radius + 22).strength(1))
+		.force('charge', forceManyBody<LiveSimNode>().strength(FORCE_TUNING.chargeStrength))
+		.force(
+			'collide',
+			forceCollide<LiveSimNode>((node) => node.radius + FORCE_TUNING.collidePadding).strength(1)
+		)
 		.force('centre', forceCenter<LiveSimNode>(centre, centre))
-		.force('x', forceX<LiveSimNode>(centre).strength(0.04))
-		.force('y', forceY<LiveSimNode>(centre).strength(0.04))
+		.force('x', forceX<LiveSimNode>(centre).strength(FORCE_TUNING.axisStrength))
+		.force('y', forceY<LiveSimNode>(centre).strength(FORCE_TUNING.axisStrength))
 		.alphaDecay(0.02);
+}
+
+/**
+ * Creates a live simulation directly from pre-built `SimLink[]`. Used by the
+ * Technologies mode where links are co-occurrence edges (not `SharedTechEdge[]`).
+ * A stronger centring axis strength and a per-tick clamp keep nodes inside the
+ * canvas — tech mode has ~2× the node count of project mode and needs more restraint.
+ */
+export function createForceSimulationFromLinks(
+	initialNodes: LiveSimNode[],
+	links: SimLink[],
+	size = 1000
+): Simulation<LiveSimNode, never> {
+	const centre = size / 2;
+	const axisStrength = FORCE_TUNING.axisStrength * 4; // stronger centre pull for dense tech graph
+
+	const sim = forceSimulation<LiveSimNode>(initialNodes)
+		.force(
+			'link',
+			forceLink<LiveSimNode, SimLink>([...links.map((l) => ({ ...l }))])
+				.id((node) => node.slug)
+				.distance((link) => link.distance)
+				.strength((link) => link.strength)
+		)
+		.force('charge', forceManyBody<LiveSimNode>().strength(FORCE_TUNING.chargeStrength))
+		.force(
+			'collide',
+			forceCollide<LiveSimNode>((node) => node.radius + FORCE_TUNING.collidePadding).strength(1)
+		)
+		.force('centre', forceCenter<LiveSimNode>(centre, centre))
+		.force('x', forceX<LiveSimNode>(centre).strength(axisStrength))
+		.force('y', forceY<LiveSimNode>(centre).strength(axisStrength))
+		.alphaDecay(0.02)
+		.on('tick', () => {
+			// Hard clamp: keep every node centre inside [r, size-r] so rims stay in the viewBox.
+			for (const node of initialNodes) {
+				const r = node.radius ?? 0;
+				if (node.x !== undefined) node.x = Math.max(r, Math.min(size - r, node.x));
+				if (node.y !== undefined) node.y = Math.max(r, Math.min(size - r, node.y));
+			}
+		});
+
+	return sim;
 }

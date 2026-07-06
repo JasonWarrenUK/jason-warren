@@ -77,6 +77,15 @@
 	--color-edge-concept: var(--color-chartreuse-4);
 	--color-edge-tool: var(--color-sky-4);
 
+	/* --- Map theme edges (one token per theme; unclaimed palettes only) --- */
+	--color-edge-theme-interactive-fiction: var(--color-cinnamon-4);
+	--color-edge-theme-procedural-generation: var(--color-cyan-4);
+	--color-edge-theme-human-history: var(--color-yellow-4);
+	--color-edge-theme-graph-native: var(--color-green-4);
+	--color-edge-theme-ai-language-tooling: var(--color-indigo-4);
+	--color-edge-theme-terminal-native: var(--color-rose-4);
+	--color-edge-theme-human-centred: var(--color-magenta-4);
+
 	/* --- Surface and foreground --- */
 	--color-surface: var(--color-gray-1);
 	--color-surface-raised: #ffffff;
@@ -220,6 +229,15 @@
 	--color-edge-concept: var(--color-chartreuse-3);
 	--color-edge-tool: var(--color-sky-3);
 
+	/* --- Map theme edges --- */
+	--color-edge-theme-interactive-fiction: var(--color-cinnamon-3);
+	--color-edge-theme-procedural-generation: var(--color-cyan-3);
+	--color-edge-theme-human-history: var(--color-yellow-3);
+	--color-edge-theme-graph-native: var(--color-green-3);
+	--color-edge-theme-ai-language-tooling: var(--color-indigo-3);
+	--color-edge-theme-terminal-native: var(--color-rose-3);
+	--color-edge-theme-human-centred: var(--color-magenta-3);
+
 	/* --- Shadows --- */
 	--shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.3);
 	--shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.4), 0 2px 4px -2px rgb(0 0 0 / 0.3);
@@ -295,6 +313,15 @@
 		--color-edge-ai: var(--color-pink-3);
 		--color-edge-concept: var(--color-chartreuse-3);
 		--color-edge-tool: var(--color-sky-3);
+
+		/* --- Map theme edges --- */
+		--color-edge-theme-interactive-fiction: var(--color-cinnamon-3);
+		--color-edge-theme-procedural-generation: var(--color-cyan-3);
+		--color-edge-theme-human-history: var(--color-yellow-3);
+		--color-edge-theme-graph-native: var(--color-green-3);
+		--color-edge-theme-ai-language-tooling: var(--color-indigo-3);
+		--color-edge-theme-terminal-native: var(--color-rose-3);
+		--color-edge-theme-human-centred: var(--color-magenta-3);
 
 		/* --- Shadows --- */
 		--shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.3);

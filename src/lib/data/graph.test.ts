@@ -265,17 +265,17 @@ describe('selectLabelledSlugs', () => {
 
 describe('computeForceLayout', () => {
 	const graph = getProjectGraph();
-	const shared = getSharedTechEdges();
+	// Use no theme edges to keep the layout fast; these tests verify geometry,
+	// not theme-edge influence.
+	const layout = computeForceLayout(graph);
 
 	it('positions every node', () => {
-		const layout = computeForceLayout(graph, shared);
 		for (const node of graph.nodes) {
 			expect(layout.positions.has(node.slug), `${node.slug} has no position`).toBe(true);
 		}
 	});
 
 	it('gives every node a finite position within the canvas bounds', () => {
-		const layout = computeForceLayout(graph, shared);
 		for (const [slug, point] of layout.positions) {
 			expect(Number.isFinite(point.x), `${slug}.x not finite`).toBe(true);
 			expect(Number.isFinite(point.y), `${slug}.y not finite`).toBe(true);
@@ -287,9 +287,8 @@ describe('computeForceLayout', () => {
 	});
 
 	it('is deterministic: identical input yields identical coordinates', () => {
-		const a = computeForceLayout(graph, shared);
-		const b = computeForceLayout(graph, shared);
-		for (const [slug, point] of a.positions) {
+		const b = computeForceLayout(graph);
+		for (const [slug, point] of layout.positions) {
 			expect(b.positions.get(slug)).toEqual(point);
 		}
 	});
@@ -400,5 +399,62 @@ describe('computeRelayoutTargets', () => {
 		const singleCrossings = countCrossings(toNodes(single), links);
 
 		expect(multiCrossings).toBeLessThanOrEqual(singleCrossings);
+	});
+});
+
+// ---------------------------------------------------------------------------
+// getThemeEdges — per-theme model
+// ---------------------------------------------------------------------------
+
+import { getThemeEdges } from './graph.js';
+import { themes } from './themes.js';
+
+describe('getThemeEdges', () => {
+	const edges = getThemeEdges();
+
+	it('emits at least one edge', () => {
+		expect(edges.length).toBeGreaterThan(0);
+	});
+
+	it('every edge carries a valid theme id', () => {
+		const validIds = new Set(themes.map((t) => t.id));
+		for (const e of edges) {
+			expect(validIds.has(e.theme), `unknown theme id "${e.theme}"`).toBe(true);
+		}
+	});
+
+	it('each edge connects two members of its named theme', () => {
+		const membersByTheme = new Map(themes.map((t) => [t.id, new Set(t.slugs)]));
+		for (const e of edges) {
+			const members = membersByTheme.get(e.theme)!;
+			expect(members.has(e.source), `${e.source} not in theme ${e.theme}`).toBe(true);
+			expect(members.has(e.target), `${e.target} not in theme ${e.theme}`).toBe(true);
+		}
+	});
+
+	it('source < target (canonical ordering)', () => {
+		for (const e of edges) {
+			expect(e.source <= e.target, `${e.source} > ${e.target}`).toBe(true);
+		}
+	});
+
+	it('is deterministic', () => {
+		expect(getThemeEdges()).toEqual(edges);
+	});
+
+	it('per-theme degree cap holds at maxPerNode: 2', () => {
+		const capped = getThemeEdges({ maxPerNode: 2 });
+		const degree = new Map<string, Map<string, number>>();
+		for (const e of capped) {
+			if (!degree.has(e.theme)) degree.set(e.theme, new Map());
+			const td = degree.get(e.theme)!;
+			td.set(e.source, (td.get(e.source) ?? 0) + 1);
+			td.set(e.target, (td.get(e.target) ?? 0) + 1);
+		}
+		for (const [themeId, td] of degree) {
+			for (const [slug, deg] of td) {
+				expect(deg, `${slug} exceeds cap in theme ${themeId}`).toBeLessThanOrEqual(2);
+			}
+		}
 	});
 });
