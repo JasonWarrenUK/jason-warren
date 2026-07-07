@@ -6,10 +6,12 @@
 	import { page } from '$app/stores';
 	import {
 		EDGE_CATEGORIES,
+		type LineageKind,
 		type ProjectKind,
 		type ProjectStatus,
 		type TagKind
 	} from '$lib/data/types.js';
+	import { techRelationships } from '$lib/data/tech-relationships.js';
 	import { parseSet, serialiseSet, encodeTechLabel, decodeTechLabel } from '$lib/url-state.js';
 	import { writeParam } from '$lib/url-write.js';
 	import SelectionModal from '$lib/components/ui/SelectionModal.svelte';
@@ -157,6 +159,16 @@
 			for (const category of EDGE_CATEGORIES) {
 				if (sharedEdges.some((e) => e.category === category)) present.push(category);
 			}
+		} else {
+			for (const kind of ['leads-to', 'replaced-by'] as const) {
+				if (
+					techRelationships.some(
+						(r) => r.kind === kind && techPositions.has(r.source) && techPositions.has(r.target)
+					)
+				) {
+					present.push(kind);
+				}
+			}
 		}
 		return present;
 	});
@@ -194,6 +206,20 @@
 	const techRadiusScale = $derived((node: TechMapNode): number =>
 		techNodeRadius(node.projectCount, techMaxCount)
 	);
+
+	/** Shortens a line from `from` to `to` so it stops `r` short of `to`, leaving room for an arrowhead. */
+	function shortenToRadius(
+		from: { x: number; y: number },
+		to: { x: number; y: number },
+		r: number
+	): { x: number; y: number } {
+		const dx = to.x - from.x;
+		const dy = to.y - from.y;
+		const dist = Math.hypot(dx, dy);
+		if (dist === 0) return to;
+		const t = Math.max(0, (dist - r) / dist);
+		return { x: from.x + dx * t, y: from.y + dy * t };
+	}
 
 	const TECH_LABEL_COUNT = 12;
 	const standingTechLabels = $derived(
@@ -363,6 +389,16 @@
 	}
 
 	function techEdgeHidden(source: string, target: string): boolean {
+		const s = techPositions.get(source);
+		const t = techPositions.get(target);
+		return (!!s && techNodeHidden(s)) || (!!t && techNodeHidden(t));
+	}
+
+	function lineageEdgeHidden(source: string, target: string, kind: LineageKind): boolean {
+		const typeHidden = isolateMode
+			? isolatedEdgeTypes.size > 0 && !isolatedEdgeTypes.has(kind)
+			: hiddenEdgeTypes.has(kind);
+		if (typeHidden) return true;
 		const s = techPositions.get(source);
 		const t = techPositions.get(target);
 		return (!!s && techNodeHidden(s)) || (!!t && techNodeHidden(t));
@@ -614,6 +650,30 @@
 		role="group"
 		aria-label="Map of projects and connections"
 	>
+		<defs>
+			<marker
+				id="lineage-arrow-leads-to"
+				viewBox="0 0 10 10"
+				refX="9"
+				refY="5"
+				markerWidth="7"
+				markerHeight="7"
+				orient="auto-start-reverse"
+			>
+				<path d="M0 0 L10 5 L0 10 z" fill="var(--color-edge-lineage-leads-to)" />
+			</marker>
+			<marker
+				id="lineage-arrow-replaced-by"
+				viewBox="0 0 10 10"
+				refX="9"
+				refY="5"
+				markerWidth="7"
+				markerHeight="7"
+				orient="auto-start-reverse"
+			>
+				<path d="M0 0 L10 5 L0 10 z" fill="var(--color-edge-lineage-replaced-by)" />
+			</marker>
+		</defs>
 		{#if activeMode === 'relationships'}
 			<!-- Theme edges: one per (pair, theme), each coloured by its theme. -->
 			<g class="map__edges">
@@ -691,6 +751,29 @@
 							y1={a.y}
 							x2={b.x}
 							y2={b.y}
+						/>
+					{/if}
+				{/each}
+			</g>
+			<!-- Lineage edges: authored "leads-to" / "replaced-by" arrows between tech tags. -->
+			<g class="map__edges">
+				{#each techRelationships as edge (`lineage:${edge.kind}:${edge.source}-${edge.target}`)}
+					{@const a = techPos(edge.source)}
+					{@const b = techPos(edge.target)}
+					{@const sNode = techPositions.get(edge.source)}
+					{@const tNode = techPositions.get(edge.target)}
+					{#if a && b && sNode && tNode}
+						{@const end = shortenToRadius(a, b, techRadiusScale(tNode) + 4)}
+						<line
+							class="map__edge map__edge--lineage"
+							class:map__edge--dim={edgeDimmed(edge.source, edge.target)}
+							class:map__edge--hidden={lineageEdgeHidden(edge.source, edge.target, edge.kind)}
+							style="stroke: {edgeTypeColour(edge.kind)}"
+							marker-end="url(#lineage-arrow-{edge.kind})"
+							x1={a.x}
+							y1={a.y}
+							x2={end.x}
+							y2={end.y}
 						/>
 					{/if}
 				{/each}
@@ -811,8 +894,8 @@
 			</button>
 		</div>
 
-		<!-- Connections toggle (hidden in technologies mode) -->
-		{#if activeMode !== 'technologies' && edgeTypes.length > 0}
+		<!-- Connections toggle -->
+		{#if edgeTypes.length > 0}
 			<div class="map__legend-group">
 				<span class="map__legend-title">Connections</span>
 				{#each edgeTypes as type (type)}
@@ -913,7 +996,8 @@
 				Every technology in the registry, sized by how many projects use it and coloured by kind.
 				Lines connect technologies that appear together in the same project. Language tags
 				(TypeScript, Go, etc.) are shown as nodes but have no edges — they connect almost
-				everything, so they cluster nothing useful. Click any node to see the projects that use it.
+				everything, so they cluster nothing useful. Arrowed lines trace lineage: what led to what,
+				and what replaced what. Click any node to see the projects that use it.
 			{/if}
 			{#if activeMode !== 'technologies'}
 				Node size tracks commit activity; fainter dots are older. Click a node to pin it or navigate
@@ -1006,6 +1090,12 @@
 		stroke: var(--color-border-strong);
 		stroke-width: 1.2;
 		opacity: 0.4;
+	}
+
+	.map__edge--lineage {
+		/* stroke colour set inline per-kind */
+		stroke-width: 2;
+		opacity: 1;
 	}
 
 	.map__edge--dim {
