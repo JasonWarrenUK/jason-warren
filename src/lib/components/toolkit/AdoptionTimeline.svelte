@@ -44,7 +44,7 @@
 	 * (away from the axis) so overlapping lineage arcs stay legible rather than
 	 * stacking as straight lines. The end point is trimmed back along the
 	 * straight from→to line by `trimEnd` so the arrowhead marker clears the
-	 * target dot — an approximation, since the true curve tangent at the
+	 * target dot: an approximation, since the true curve tangent at the
 	 * endpoint differs slightly, but close enough for a decorative arc.
 	 */
 	function arcPath(from: { x: number; y: number }, to: { x: number; y: number }, trimEnd: number): string {

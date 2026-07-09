@@ -11,7 +11,7 @@
  *
  * Registry-free by design: this module is imported by ProjectMap.svelte and
  * AdoptionTimeline.svelte, so it must not import './index.js' or anything that
- * transitively pulls in the project registry — the same constraint themes.ts
+ * transitively pulls in the project registry, the same constraint themes.ts
  * documents. Source and target labels are validated against the real tag set by
  * a data test instead of the compiler, exactly like `ProjectRelationship.target`
  * is checked against real slugs.
