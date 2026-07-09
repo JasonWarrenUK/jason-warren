@@ -46,8 +46,8 @@
 					between characters are the data model.
 				</p>
 				<p>
-					In fac-cra, I turned a blunt approval queue into a set of configurable segments with
-					their own independent logic. In Workwise, I replaced a tangle of loading booleans with a
+					In fac-cra, I turned a blunt approval queue into a set of configurable segments with their
+					own independent logic. In Workwise, I replaced a tangle of loading booleans with a
 					discriminated-union state machine.
 				</p>
 			</div>
@@ -62,9 +62,9 @@
 					ink, Inkle's scripting language for interactive narrative, and kept going from there.
 				</p>
 				<p>
-					Left to my own devices, I take things further than anyone asked. Iris is built on a
-					single TypeScript core driving three completely different interfaces: an OpenTUI terminal
-					UI, direct CLI commands, and a Tauri desktop app in Rust. Wyrd has its own Cypher-subset
+					Left to my own devices, I take things further than anyone asked. Iris is built on a single
+					TypeScript core driving three completely different interfaces: an OpenTUI terminal UI,
+					direct CLI commands, and a Tauri desktop app in Rust. Wyrd has its own Cypher-subset
 					parser and a binary merge driver for conflict resolution, because I wanted a proper graph
 					query language over JSON files rather than a workaround. This portfolio tracks itself
 					through a bespoke git-metrics CLI with a typed JSON Schema contract, because I have ADHD

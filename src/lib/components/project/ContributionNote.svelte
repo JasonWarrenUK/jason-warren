@@ -30,9 +30,7 @@
 	{:else if contribution.role !== 'solo'}
 		<!-- No contribution note yet; project was auto-listed from the manifest. -->
 	{:else}
-		<p class="contribution__note">
-			Solo project: designed, built, and maintained entirely by me.
-		</p>
+		<p class="contribution__note">Solo project: designed, built, and maintained entirely by me.</p>
 	{/if}
 </section>
 

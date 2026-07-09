@@ -1585,7 +1585,14 @@ function renderCardMarkdown({ slug, current, fields, firstCard = false, preserve
  * @param {boolean}  opts.firstCard   suppress leading rule on first card
  * @param {object}   opts.palette     ANSI colour codes
  */
-function renderCardPlain({ slug, current, fields, firstCard = false, palette, preservedFields = [] }) {
+function renderCardPlain({
+	slug,
+	current,
+	fields,
+	firstCard = false,
+	palette,
+	preservedFields = []
+}) {
 	const { RESET, BOLD, CYAN, DIM, YELLOW } = palette;
 
 	if (!firstCard) {
@@ -1870,7 +1877,15 @@ function runUpdate({ result, manifest, palette, useGum, args = [], dryRun = fals
 		for (const [slug, current] of Object.entries(scopedFresh)) {
 			const saved = manifest.sources[slug] ?? {};
 			const { changedFields, preservedFields } = mergeFingerprint(saved, current);
-			renderDryRunCard({ slug, current, fields: changedFields, preservedFields, firstCard, palette, useGum });
+			renderDryRunCard({
+				slug,
+				current,
+				fields: changedFields,
+				preservedFields,
+				firstCard,
+				palette,
+				useGum
+			});
 			firstCard = false;
 		}
 		return;

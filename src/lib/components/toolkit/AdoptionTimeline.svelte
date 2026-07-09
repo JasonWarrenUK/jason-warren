@@ -47,7 +47,11 @@
 	 * target dot: an approximation, since the true curve tangent at the
 	 * endpoint differs slightly, but close enough for a decorative arc.
 	 */
-	function arcPath(from: { x: number; y: number }, to: { x: number; y: number }, trimEnd: number): string {
+	function arcPath(
+		from: { x: number; y: number },
+		to: { x: number; y: number },
+		trimEnd: number
+	): string {
 		const dx = to.x - from.x;
 		const dy = to.y - from.y;
 		const dist = Math.hypot(dx, dy) || 1;
