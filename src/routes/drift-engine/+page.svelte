@@ -449,8 +449,8 @@
 				against the canonical commit. Repos run concurrently across a bounded worker pool (<code
 					>cpus().length</code
 				>
-				slots). A HEAD-plus-TTL cache, keyed on the measured commit's SHA and gitignored, means an
-				unchanged repo is not re-scanned. <code>drift sync</code>
+				slots). A HEAD-plus-TTL cache, keyed on the measured commit's SHA and gitignored, means an unchanged
+				repo is not re-scanned. <code>drift sync</code>
 				and <code>--no-cache</code> bypass it.
 			</p>
 			<p class="prose">
@@ -468,7 +468,7 @@
 		{#snippet stationStaging()}
 			<h3 id="drift-staging-heading">The staging pipeline</h3>
 			<p class="drift__station-lede">
-				In-flight work surfaces on the site before it merges, via a self-healing four-tier
+				In-flight work surfaces on the site before it merges, via a self-healing three-tier
 				precedence chain.
 			</p>
 			<p class="prose">
@@ -480,11 +480,11 @@
 				<code>baseOnMain</code> counterpart for context.
 			</p>
 			<p class="prose">
-				The integration layer's <code>withSyncedMetrics</code> applies a four-tier precedence across
-				every metric field. Manual overrides win; real synced figures come next; provisional values
-				from <code>in-progress.json</code> fill in below that; authored defaults are the floor. Once
-				a branch lands and <code>drift sync</code> picks up real numbers, the synced value naturally shadows
-				the provisional one. Promotion is self-healing: no stale figures leak through.
+				The integration layer's <code>withSyncedMetrics</code> applies a three-tier precedence
+				across every metric field. Manual overrides win; real synced figures come next; provisional
+				values from <code>in-progress.json</code> are the floor. Once a branch lands and
+				<code>drift sync</code> picks up real numbers, the synced value naturally shadows the provisional
+				one. Promotion is self-healing: no stale figures leak through.
 			</p>
 			<figure class="code">
 				{@html data.snippets.precedence}

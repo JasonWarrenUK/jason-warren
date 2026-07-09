@@ -492,9 +492,10 @@ describe('curation gate', () => {
 		}
 	});
 
-	it('team project without synced commitsMine falls back to authored commits value', () => {
-		// This ensures the authored fallback (chirpdb.ts `commits: 28`) is honoured
-		// before the manifest has commitsMine populated.
+	it('team project without synced commitsMine renders no commit headline', () => {
+		// Overlays no longer carry metrics, so with commitsMine absent from the
+		// manifest the headline must be absent rather than a stale authored number
+		// or the misleading all-authors total.
 		const chirpdb = projects.find((p) => p.slug === 'chirpdb');
 		if (!chirpdb) return;
 
@@ -505,8 +506,9 @@ describe('curation gate', () => {
 		// Only run this sub-case when commitsMine is absent from the manifest
 		if (manifestEntry?.commitsMine !== undefined) return;
 
-		// Should not be rendering the all-authors 309 as the headline
-		expect(chirpdb.metrics?.commits).not.toBe(manifestEntry?.commits);
+		if (!isOverridden('chirpdb', 'commits')) {
+			expect(chirpdb.metrics?.commits).toBeUndefined();
+		}
 	});
 });
 
@@ -527,8 +529,6 @@ describe('manual overrides', () => {
 		'linesRemovedRecent',
 		'linesAddedRecentAll',
 		'linesRemovedRecentAll',
-		'testCoverage',
-		'mergedPrs',
 		'lastCommit',
 		'firstCommit'
 	]);
@@ -563,17 +563,13 @@ describe('manual overrides', () => {
 		expect(offenders, `Malformed override entries:\n${offenders.join('\n')}`).toHaveLength(0);
 	});
 
-	it('syncedWhenSet is null only for no-synced-source fields (testCoverage, mergedPrs)', () => {
-		const NO_SYNCED_SOURCE = new Set(['testCoverage', 'mergedPrs']);
+	it('syncedWhenSet is never null (every overridable field has a synced source)', () => {
 		const offenders: string[] = [];
 		for (const [slug, fields] of Object.entries(overrides)) {
 			for (const [field, entry] of Object.entries(fields)) {
 				if (field.startsWith('_')) continue;
-				if (entry.syncedWhenSet === null && !NO_SYNCED_SOURCE.has(field)) {
+				if (entry.syncedWhenSet === null) {
 					offenders.push(`${slug}.${field} has syncedWhenSet: null but has a synced source`);
-				}
-				if (entry.syncedWhenSet !== null && NO_SYNCED_SOURCE.has(field)) {
-					offenders.push(`${slug}.${field} must use syncedWhenSet: null (no synced source)`);
 				}
 			}
 		}
@@ -643,7 +639,7 @@ describe('manual overrides', () => {
 // ---------------------------------------------------------------------------
 // Provisional precedence tests (in-progress.json)
 //
-// These tests verify the override > synced > provisional > authored precedence
+// These tests verify the override > synced > provisional precedence
 // chain using the live registry. Because in-progress.json ships empty, the
 // production tests are vacuously green and serve as regression guards.
 // The critical precedence behaviour is proven via unit tests in
