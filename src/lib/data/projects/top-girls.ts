@@ -26,9 +26,5 @@ export const topGirls: AuthoredProject = {
 		{ label: 'Vite', kind: 'tool' },
 		{ label: 'Bun', kind: 'runtime' },
 		{ label: 'Document / JSON', kind: 'data' }
-	],
-	lastCommit: '2026-06-14',
-	metrics: {
-		commits: 16
-	}
+	]
 };

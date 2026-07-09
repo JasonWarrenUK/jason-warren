@@ -31,11 +31,5 @@ export const chirpdb: AuthoredProject = {
 		{ label: 'Supabase', kind: 'data' },
 		{ label: 'pgvector', kind: 'data' },
 		{ label: 'Docker', kind: 'tool' }
-	],
-	lastCommit: '2026-06-12',
-	metrics: {
-		commits: 28,
-		linesAdded: 41200,
-		linesRemoved: 38911
-	}
+	]
 };

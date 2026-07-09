@@ -28,9 +28,5 @@ export const thoseWhoCameBefore: AuthoredProject = {
 		{ label: 'Tailwind CSS v4', kind: 'framework' },
 		{ label: 'Procedural Generation', kind: 'concept' },
 		{ label: 'Ephemeral / in-memory', kind: 'data' }
-	],
-	lastCommit: '2026-02-16',
-	metrics: {
-		commits: 75
-	}
+	]
 };

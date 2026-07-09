@@ -33,11 +33,5 @@ export const sakura: AuthoredProject = {
 		{ label: 'PostgreSQL', kind: 'data' },
 		{ label: 'React', kind: 'framework' },
 		{ label: '.NET 8', kind: 'runtime' }
-	],
-	lastCommit: '2024-11-21',
-	metrics: {
-		commits: 159,
-		mergedPrs: 20,
-		linesAdded: 5092
-	}
+	]
 };

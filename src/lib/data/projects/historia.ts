@@ -29,9 +29,5 @@ export const historia: AuthoredProject = {
 		{ label: 'Tailwind CSS v4', kind: 'framework' },
 		{ label: 'Bun', kind: 'runtime' },
 		{ label: 'Document / JSON', kind: 'data' }
-	],
-	lastCommit: '2026-03-14',
-	metrics: {
-		commits: 8
-	}
+	]
 };

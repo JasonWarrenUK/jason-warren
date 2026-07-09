@@ -26,9 +26,5 @@ export const babyNames: AuthoredProject = {
 		{ label: 'Svelte 5', kind: 'framework' },
 		{ label: 'Bun', kind: 'runtime' },
 		{ label: 'Claude API', kind: 'ai' }
-	],
-	lastCommit: '2026-03-14',
-	metrics: {
-		commits: 5
-	}
+	]
 };

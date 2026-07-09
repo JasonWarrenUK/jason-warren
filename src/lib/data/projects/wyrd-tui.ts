@@ -28,11 +28,5 @@ export const wyrdTui: AuthoredProject = {
 		{ label: 'Document / JSON', kind: 'data' },
 		{ label: 'Git', kind: 'tool' },
 		{ label: 'CLI', kind: 'tool' }
-	],
-	lastCommit: '2026-06-15',
-	metrics: {
-		commits: 279,
-		testCoverage: 68.5,
-		linesOfCode: 150
-	}
+	]
 };

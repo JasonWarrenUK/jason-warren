@@ -28,9 +28,5 @@ export const rimewarden: AuthoredProject = {
 		{ label: 'D2', kind: 'tool' },
 		{ label: 'Tailwind CSS', kind: 'framework' },
 		{ label: 'Document / JSON', kind: 'data' }
-	],
-	lastCommit: '2026-01-24',
-	metrics: {
-		commits: 2
-	}
+	]
 };

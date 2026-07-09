@@ -29,9 +29,5 @@ export const lyraRose: AuthoredProject = {
 		{ label: 'Web Audio API', kind: 'tool' },
 		{ label: 'Supabase', kind: 'data' },
 		{ label: 'Bun', kind: 'runtime' }
-	],
-	lastCommit: '2026-05-18',
-	metrics: {
-		commits: 26
-	}
+	]
 };

@@ -33,9 +33,5 @@ export const nib: AuthoredProject = {
 		{ label: 'SvelteKit', kind: 'framework' },
 		{ label: 'Ink / inkjs', kind: 'tool' },
 		{ label: 'No persistence', kind: 'data' }
-	],
-	lastCommit: '2026-03-11',
-	metrics: {
-		commits: 1
-	}
+	]
 };

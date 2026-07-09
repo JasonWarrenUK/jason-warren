@@ -34,12 +34,5 @@ export const workwise: AuthoredProject = {
 		{ label: 'PostgreSQL', kind: 'data' },
 		{ label: 'Tailwind CSS', kind: 'framework' },
 		{ label: 'Accessibility', kind: 'concept' }
-	],
-	lastCommit: '2025-11-01',
-	metrics: {
-		commits: 182,
-		mergedPrs: 24,
-		linesAdded: 16600,
-		linesRemoved: 9000
-	}
+	]
 };

@@ -32,11 +32,5 @@ export const facCra: AuthoredProject = {
 		{ label: 'Playwright', kind: 'tool' },
 		{ label: 'Monorepo', kind: 'tool' },
 		{ label: 'Node.js', kind: 'runtime' }
-	],
-	lastCommit: '2026-04-02',
-	metrics: {
-		commits: 320,
-		linesAdded: 31500,
-		linesRemoved: 28600
-	}
+	]
 };

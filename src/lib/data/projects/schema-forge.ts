@@ -31,9 +31,5 @@ export const schemaForge: AuthoredProject = {
 		{ label: 'Bun', kind: 'runtime' },
 		{ label: 'XML / XSD', kind: 'tool' },
 		{ label: 'No persistence', kind: 'data' }
-	],
-	lastCommit: '2026-03-12',
-	metrics: {
-		commits: 4
-	}
+	]
 };

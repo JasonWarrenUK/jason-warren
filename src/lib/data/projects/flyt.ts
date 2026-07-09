@@ -34,9 +34,5 @@ export const flyt: AuthoredProject = {
 		{ label: 'Interactive Fiction', kind: 'concept' },
 		{ label: 'Bun', kind: 'runtime' },
 		{ label: 'Document / JSON', kind: 'data' }
-	],
-	lastCommit: '2026-03-11',
-	metrics: {
-		commits: 30
-	}
+	]
 };

@@ -34,9 +34,5 @@ export const theWork: AuthoredProject = {
 		{ label: 'Interactive Fiction', kind: 'concept' },
 		{ label: 'Bun', kind: 'runtime' },
 		{ label: 'Document / JSON', kind: 'data' }
-	],
-	lastCommit: '2026-05-18',
-	metrics: {
-		commits: 114
-	}
+	]
 };

@@ -33,12 +33,5 @@ export const commonsTraybake: AuthoredProject = {
 		{ label: 'OpenAI Embeddings', kind: 'ai' },
 		{ label: 'RAG', kind: 'ai' },
 		{ label: 'PostgreSQL', kind: 'data' }
-	],
-	lastCommit: '2025-11-10',
-	metrics: {
-		commits: 46,
-		mergedPrs: 5,
-		linesAdded: 6300,
-		linesRemoved: 270
-	}
+	]
 };

@@ -39,10 +39,5 @@ export const iris: AuthoredProject = {
 		{ label: 'Vitest', kind: 'tool' },
 		{ label: 'XML / XSD', kind: 'tool' },
 		{ label: 'No persistence', kind: 'data' }
-	],
-	lastCommit: '2026-03-12',
-	metrics: {
-		commits: 666,
-		linesAdded: 31500
-	}
+	]
 };

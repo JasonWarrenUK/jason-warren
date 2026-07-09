@@ -27,9 +27,5 @@ export const sparker: AuthoredProject = {
 		{ label: 'Svelte 5', kind: 'framework' },
 		{ label: 'Neo4j', kind: 'data' },
 		{ label: 'Graph databases', kind: 'data' }
-	],
-	lastCommit: '2026-03-05',
-	metrics: {
-		commits: 11
-	}
+	]
 };
