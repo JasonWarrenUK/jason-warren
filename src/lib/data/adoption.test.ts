@@ -47,20 +47,51 @@ describe('getTechAdoption', () => {
 		}
 	});
 
-	it('curated entries use their authored date', () => {
+	/** Earliest firstCommit among projects carrying the label, or undefined. */
+	function earliestDerived(label: string): string | undefined {
+		const dates = projects
+			.filter((p) => p.tags.some((t) => t.label === label))
+			.map((p) => p.firstCommit)
+			.filter((d): d is string => d !== undefined)
+			.sort();
+		return dates[0];
+	}
+
+	it('curated entries use the floor date, which predates every carrying project', () => {
 		let checked = 0;
 		for (const item of adoption) {
 			if (item.dateSource !== 'curated') continue;
 			expect(item.firstDate).toBe(CURATED_FIRST_USED[item.label]);
+			const derived = earliestDerived(item.label);
+			if (derived !== undefined) {
+				expect(item.firstDate < derived).toBe(true);
+			}
 			checked++;
 		}
 		expect(checked).toBeGreaterThan(0);
 	});
 
-	it('marks a label curated exactly when it is in the curated map', () => {
+	it('applies the floor rule: derived wins when repo evidence is at or before the floor', () => {
 		for (const item of adoption) {
-			const expected = item.label in CURATED_FIRST_USED ? 'curated' : 'derived';
-			expect(item.dateSource).toBe(expected);
+			const curated = CURATED_FIRST_USED[item.label];
+			const derived = earliestDerived(item.label);
+			if (curated === undefined) {
+				expect(item.dateSource).toBe('derived');
+				continue;
+			}
+			const useDerived = derived !== undefined && derived <= curated;
+			expect(item.dateSource).toBe(useDerived ? 'derived' : 'curated');
+			expect(item.firstDate).toBe(useDerived ? derived : curated);
+		}
+	});
+
+	it('pre-repo floors surface on the timeline (Ink, HTML, CSS)', () => {
+		const byLabel = new Map(adoption.map((item) => [item.label, item]));
+		for (const label of ['Ink / inkjs', 'HTML', 'CSS']) {
+			const item = byLabel.get(label);
+			expect(item, `${label} missing from adoption timeline`).toBeDefined();
+			expect(item?.dateSource).toBe('curated');
+			expect(item?.firstDate).toBe(CURATED_FIRST_USED[label]);
 		}
 	});
 

@@ -19,9 +19,9 @@ export interface TechAdoption {
 	label: string;
 	/** Tag kind of the introducing project, used for colour mapping. */
 	kind: TagKind;
-	/** Adoption year (YYYY): the curated first-used year, or the earliest derived. */
+	/** Adoption year (YYYY): the earliest of the curated floor and the derived date. */
 	firstYear: number;
-	/** ISO date (YYYY-MM-DD) of adoption: the curated date, or the earliest derived. */
+	/** ISO date (YYYY-MM-DD) of adoption: the earliest of the curated floor and the derived date. */
 	firstDate: string;
 	/** The earliest project carrying this tag (deterministic tiebreak). */
 	firstProjectSlug: ProjectSlug;
@@ -29,16 +29,17 @@ export interface TechAdoption {
 	firstProjectName: string;
 	/** How many projects use this tag (drives dot weight). */
 	projectCount: number;
-	/** Whether the date is authored (curated) or estimated from project history (derived). */
+	/** 'derived' when repo evidence anchors the date; 'curated' when the authored floor predates any repo. */
 	dateSource: 'curated' | 'derived';
 }
 
 /**
- * Authored first-used dates for the core toolkit. The honest record of when each
- * technology actually entered the work, which the rough per-project firstCommit
- * stubs cannot reconstruct. Edit here to correct the timeline; anything absent
- * falls back to the earliest project that carries the tag. Labels must match the
- * curated tag labels exactly. Dates are approximate (mid-month).
+ * Authored first-used floor dates for the core toolkit. A curated entry records
+ * history that predates any tracked repo (the earliest manifest firstCommit is
+ * 2023); it acts as a floor, not a trump. When a project carrying the tag has a
+ * firstCommit earlier than or equal to the curated date, the derived date wins
+ * so drift keeps the timeline honest as repos sync. Labels must match the tag
+ * labels exactly. Dates are approximate (mid-month).
  */
 export const CURATED_FIRST_USED: Record<string, string> = {
 	// Languages
@@ -49,6 +50,9 @@ export const CURATED_FIRST_USED: Record<string, string> = {
 	'C#': '2024-08-15',
 	Rust: '2025-08-15',
 	Go: '2025-12-15',
+	// Markup & styling (pre-repo history: first used years before any tracked repo)
+	HTML: '2020-06-15',
+	CSS: '2020-06-15',
 	// Runtimes
 	'Node.js': '2021-09-15',
 	CPython: '2022-06-15',
@@ -70,7 +74,8 @@ export const CURATED_FIRST_USED: Record<string, string> = {
 	Oak: '2025-07-15',
 	Tauri: '2025-09-15',
 	OpenTUI: '2025-10-15',
-	'Bubble Tea': '2025-12-15'
+	'Bubble Tea': '2025-12-15',
+	'Ink / inkjs': '2019-06-15'
 };
 
 /**
@@ -140,10 +145,16 @@ export function getTechAdoption(opts?: { kinds?: TagKind[] }): TechAdoption[] {
 
 	const adoption: TechAdoption[] = [];
 	for (const entry of byLabel.values()) {
-		// Curated date wins; otherwise fall back to the earliest dated project.
+		// The curated date is a floor: it survives only when it predates any repo
+		// evidence. Derived evidence (earliest firstCommit among carrying projects)
+		// wins whenever it is earlier than or equal to the floor, so synced repos
+		// keep the timeline honest without hand-editing. ISO strings compare
+		// correctly with <=.
 		const curated = CURATED_FIRST_USED[entry.label];
-		const firstDate = curated ?? (entry.firstDate || undefined);
-		if (firstDate === undefined) continue; // no curated and no dated project
+		const derived = entry.firstDate || undefined; // '' means no dated project
+		if (curated === undefined && derived === undefined) continue;
+		const useDerived = derived !== undefined && (curated === undefined || derived <= curated);
+		const firstDate = useDerived ? derived : (curated as string);
 		adoption.push({
 			label: entry.label,
 			kind: entry.kind,
@@ -152,7 +163,7 @@ export function getTechAdoption(opts?: { kinds?: TagKind[] }): TechAdoption[] {
 			firstProjectSlug: entry.firstProjectSlug,
 			firstProjectName: entry.firstProjectName,
 			projectCount: entry.projectCount,
-			dateSource: curated !== undefined ? 'curated' : 'derived'
+			dateSource: useDerived ? 'derived' : 'curated'
 		});
 	}
 

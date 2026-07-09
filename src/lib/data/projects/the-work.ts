@@ -30,7 +30,7 @@ export const theWork: AuthoredProject = {
 		{ label: 'TypeScript', kind: 'language' },
 		{ label: 'SvelteKit', kind: 'framework' },
 		{ label: 'Svelte 5', kind: 'framework' },
-		{ label: 'Ink / inkjs', kind: 'tool' },
+		{ label: 'Ink / inkjs', kind: 'framework' },
 		{ label: 'Interactive Fiction', kind: 'concept' },
 		{ label: 'Bun', kind: 'runtime' },
 		{ label: 'Document / JSON', kind: 'data' }
