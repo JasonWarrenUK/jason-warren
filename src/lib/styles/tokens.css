@@ -86,6 +86,10 @@
 	--color-edge-theme-terminal-native: var(--color-rose-4);
 	--color-edge-theme-human-centred: var(--color-magenta-4);
 
+	/* --- Tech lineage edges --- */
+	--color-edge-lineage-leads-to: var(--color-lime-4);
+	--color-edge-lineage-replaced-by: var(--color-raspberry-4);
+
 	/* --- Surface and foreground --- */
 	--color-surface: var(--color-gray-1);
 	--color-surface-raised: #ffffff;
@@ -238,6 +242,10 @@
 	--color-edge-theme-terminal-native: var(--color-rose-3);
 	--color-edge-theme-human-centred: var(--color-magenta-3);
 
+	/* --- Tech lineage edges --- */
+	--color-edge-lineage-leads-to: var(--color-lime-3);
+	--color-edge-lineage-replaced-by: var(--color-raspberry-3);
+
 	/* --- Shadows --- */
 	--shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.3);
 	--shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.4), 0 2px 4px -2px rgb(0 0 0 / 0.3);
@@ -322,6 +330,10 @@
 		--color-edge-theme-ai-language-tooling: var(--color-indigo-3);
 		--color-edge-theme-terminal-native: var(--color-rose-3);
 		--color-edge-theme-human-centred: var(--color-magenta-3);
+
+		/* --- Tech lineage edges --- */
+		--color-edge-lineage-leads-to: var(--color-lime-3);
+		--color-edge-lineage-replaced-by: var(--color-raspberry-3);
 
 		/* --- Shadows --- */
 		--shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.3);

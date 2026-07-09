@@ -981,10 +981,7 @@ function makeSyncSandbox(slug = 'sync-test-repo'): { dir: string; slug: string }
 		JSON.stringify({ slugs: [], repoNames: [] }, null, '\t')
 	);
 	writeFileSync(join(dir, '.drift-cache.json'), JSON.stringify({}, null, '\t'));
-	writeFileSync(
-		join(dir, 'in-progress.json'),
-		JSON.stringify({ inProgress: {} }, null, '\t')
-	);
+	writeFileSync(join(dir, 'in-progress.json'), JSON.stringify({ inProgress: {} }, null, '\t'));
 
 	// in-progress.schema.json must exist (loadManifests does not validate but
 	// some paths reference it). Copy the real one.

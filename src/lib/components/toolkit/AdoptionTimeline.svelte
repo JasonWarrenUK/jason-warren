@@ -4,7 +4,8 @@
 	import { page } from '$app/stores';
 	import type { TagKind } from '$lib/data/types.js';
 	import type { TechAdoption } from '$lib/data/adoption.js';
-	import { techKindColour } from '$lib/components/graph/graph-style.js';
+	import { techRelationships } from '$lib/data/tech-relationships.js';
+	import { techKindColour, edgeTypeColour } from '$lib/components/graph/graph-style.js';
 	import { encodeTechLabel, decodeTechLabel } from '$lib/url-state.js';
 	import { writeParam } from '$lib/url-write.js';
 	import SelectionModal from '$lib/components/ui/SelectionModal.svelte';
@@ -36,6 +37,34 @@
 	function dayValue(iso: string): number {
 		const [y, m, d] = iso.split('-').map(Number);
 		return Date.UTC(y, m - 1, d) / 86_400_000;
+	}
+
+	/**
+	 * Builds an SVG quadratic-bezier path from `from` to `to`, bowed upward
+	 * (away from the axis) so overlapping lineage arcs stay legible rather than
+	 * stacking as straight lines. The end point is trimmed back along the
+	 * straight from→to line by `trimEnd` so the arrowhead marker clears the
+	 * target dot: an approximation, since the true curve tangent at the
+	 * endpoint differs slightly, but close enough for a decorative arc.
+	 */
+	function arcPath(
+		from: { x: number; y: number },
+		to: { x: number; y: number },
+		trimEnd: number
+	): string {
+		const dx = to.x - from.x;
+		const dy = to.y - from.y;
+		const dist = Math.hypot(dx, dy) || 1;
+
+		const lift = Math.min(24, dist * 0.18);
+		const cx = (from.x + to.x) / 2;
+		const cy = (from.y + to.y) / 2 - lift;
+
+		const t = Math.max(0, (dist - trimEnd) / dist);
+		const ex = from.x + dx * t;
+		const ey = from.y + dy * t;
+
+		return `M ${from.x} ${from.y} Q ${cx} ${cy} ${ex} ${ey}`;
 	}
 
 	interface PlacedItem extends TechAdoption {
@@ -106,6 +135,29 @@
 		}
 
 		return { placed, ticks, height, axisY };
+	});
+
+	// --- Lineage arcs ---------------------------------------------------------
+	// Authored tech-relationship edges resolved against this chart's placed
+	// items. A relationship whose source or target isn't rendered here (rare,
+	// but not impossible if a tech is filtered from the adoption list) is
+	// silently dropped rather than partially drawn.
+	const placedByLabel = $derived(new Map(layout.placed.map((p) => [p.label, p])));
+
+	interface LineageArc {
+		rel: (typeof techRelationships)[number];
+		from: PlacedItem;
+		to: PlacedItem;
+	}
+
+	const lineageArcs = $derived.by((): LineageArc[] => {
+		const arcs: LineageArc[] = [];
+		for (const rel of techRelationships) {
+			const from = placedByLabel.get(rel.source);
+			const to = placedByLabel.get(rel.target);
+			if (from && to) arcs.push({ rel, from, to });
+		}
+		return arcs;
 	});
 
 	// --- Highlight ----------------------------------------------------------
@@ -197,6 +249,31 @@
 		role="group"
 		aria-label="Timeline of when each technology first entered the work, earliest on the left"
 	>
+		<defs>
+			<marker
+				id="adoption-arrow-leads-to"
+				viewBox="0 0 10 10"
+				refX="9"
+				refY="5"
+				markerWidth="6"
+				markerHeight="6"
+				orient="auto-start-reverse"
+			>
+				<path d="M0 0 L10 5 L0 10 z" fill="var(--color-edge-lineage-leads-to)" />
+			</marker>
+			<marker
+				id="adoption-arrow-replaced-by"
+				viewBox="0 0 10 10"
+				refX="9"
+				refY="5"
+				markerWidth="6"
+				markerHeight="6"
+				orient="auto-start-reverse"
+			>
+				<path d="M0 0 L10 5 L0 10 z" fill="var(--color-edge-lineage-replaced-by)" />
+			</marker>
+		</defs>
+
 		<!-- Year axis. -->
 		<g class="adoption__axis" aria-hidden="true">
 			<line
@@ -209,6 +286,19 @@
 			{#each layout.ticks as tick (tick.year)}
 				<line class="adoption__tick" x1={tick.x} y1={topPad - 8} x2={tick.x} y2={layout.axisY} />
 				<text class="adoption__tick-label" x={tick.x} y={layout.axisY + 18}>{tick.year}</text>
+			{/each}
+		</g>
+
+		<!-- Lineage arcs: authored "leads-to" / "replaced-by" relationships between
+		     technologies, rendered behind the dots for a subtle connective layer. -->
+		<g class="adoption__lineage" aria-hidden="true">
+			{#each lineageArcs as { rel, from, to } (`${rel.kind}:${rel.source}-${rel.target}`)}
+				<path
+					class="adoption__arc adoption__arc--{rel.kind}"
+					d={arcPath(from, to, to.radius + 3)}
+					style="stroke: {edgeTypeColour(rel.kind)}"
+					marker-end="url(#adoption-arrow-{rel.kind})"
+				/>
 			{/each}
 		</g>
 
@@ -359,6 +449,12 @@
 		stroke-width: 2;
 	}
 
+	.adoption__arc {
+		fill: none;
+		stroke-width: 1.5;
+		stroke-opacity: 0.55;
+	}
+
 	.adoption__label {
 		font-size: 13px;
 		font-weight: 600;
@@ -421,6 +517,15 @@
 		transition:
 			opacity var(--transition-slow) var(--reveal-delay),
 			transform var(--transition-slow) var(--reveal-delay);
+	}
+
+	.adoption__svg--animate .adoption__lineage {
+		opacity: 0;
+	}
+
+	.adoption__svg--animate.adoption__svg--revealed .adoption__lineage {
+		opacity: 1;
+		transition: opacity var(--transition-slow);
 	}
 
 	.adoption__legend {
@@ -539,6 +644,11 @@
 		.adoption__svg--animate .adoption__item {
 			opacity: 1;
 			transform: none;
+			transition: none;
+		}
+
+		.adoption__lineage {
+			opacity: 1;
 			transition: none;
 		}
 

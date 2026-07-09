@@ -42,19 +42,22 @@
 			id: 'engine',
 			label: 'Core engine',
 			path: 'scripts/check-drift.js',
-			detail: 'Framework-agnostic. Fingerprints repos, owns the data files, knows nothing about Svelte.'
+			detail:
+				'Framework-agnostic. Fingerprints repos, owns the data files, knows nothing about Svelte.'
 		},
 		{
 			id: 'contract',
 			label: 'Schema contract',
 			path: 'scripts/sources.schema.json',
-			detail: 'JSON Schema draft-07, additionalProperties: false. The engine validates every record before writing.'
+			detail:
+				'JSON Schema draft-07, additionalProperties: false. The engine validates every record before writing.'
 		},
 		{
 			id: 'integration',
 			label: 'Integration layer',
 			path: 'src/lib/data/',
-			detail: 'Build-time registry. Reads files as static JSON, assembles typed Project objects for the site.'
+			detail:
+				'Build-time registry. Reads files as static JSON, assembles typed Project objects for the site.'
 		}
 	];
 
@@ -116,7 +119,6 @@
 			write: null
 		}
 	];
-
 </script>
 
 <Seo
@@ -129,9 +131,9 @@
 	<header class="page__header">
 		<h1>Drift Engine</h1>
 		<p class="page__intro">
-			Every commit count, churn figure and timeline date on this site is measured by a bespoke
-			CLI, validated against a schema and written to a manifest the build reads. None of it is
-			typed by hand.
+			Every commit count, churn figure and timeline date on this site is measured by a bespoke CLI,
+			validated against a schema and written to a manifest the build reads. None of it is typed by
+			hand.
 		</p>
 	</header>
 
@@ -174,7 +176,6 @@
 
 	<!-- ── Gallery wall: masonry of flip cards + flow tile ──────────────── -->
 	<section class="gallery" aria-label="How this portfolio is built">
-
 		<!-- Flip card 1: the content is code ─────────────────────────────── -->
 		<FlipCard label="The content is code">
 			{#snippet front()}
@@ -186,8 +187,8 @@
 					</p>
 					<p class="flip-front__body">
 						A team project that does not say what I actually did fails the build. The
-						<code>Contribution</code> type discriminates on role, so any team-project entry must carry
-						either <code>'lead'</code> or <code>'collaborator'</code> before it will compile.
+						<code>Contribution</code> type discriminates on role, so any team-project entry must
+						carry either <code>'lead'</code> or <code>'collaborator'</code> before it will compile.
 					</p>
 					<span class="flip-front__hint" aria-hidden="true">Flip for the code →</span>
 				</div>
@@ -222,9 +223,9 @@
 					</p>
 					<p class="flip-front__body">
 						The "libraries from the inside out" thread on the home page is a clear example. Nothing
-						declares those pairings by hand. A library says it <code>powers</code> an application;
-						the derivation walks the graph and finds every such pair, so the story stays true to the
-						data rather than to my memory of it.
+						declares those pairings by hand. A library says it <code>powers</code> an application; the
+						derivation walks the graph and finds every such pair, so the story stays true to the data
+						rather than to my memory of it.
 					</p>
 					<span class="flip-front__hint" aria-hidden="true">Flip for the code →</span>
 				</div>
@@ -267,7 +268,9 @@
 						</li>
 					{/each}
 				</ol>
-				<figcaption>One dataset in, every page out. The whole pipeline runs at build time.</figcaption>
+				<figcaption>
+					One dataset in, every page out. The whole pipeline runs at build time.
+				</figcaption>
 			</figure>
 		</details>
 
@@ -280,13 +283,12 @@
 				social card is procedurally generated from four project dimensions: the kind sets the colour
 				scheme, the curated language tags drive a row of branded glyphs, the runtime selects a
 				background geometry tiled across the canvas, and the data model picks the typeface for the
-				project name. Satori lays it out as SVG; resvg rasterises it to PNG at build time.
-				Identical inputs produce an identical card, so the prerendered result never drifts between
-				builds. The syntax highlighting is baked in at build time by Shiki; the browser receives
-				finished HTML. A page either built correctly or it did not.
+				project name. Satori lays it out as SVG; resvg rasterises it to PNG at build time. Identical
+				inputs produce an identical card, so the prerendered result never drifts between builds. The
+				syntax highlighting is baked in at build time by Shiki; the browser receives finished HTML.
+				A page either built correctly or it did not.
 			</p>
 		</article>
-
 	</section>
 
 	<!-- ══════════════════════════════════════════════════════════════════════
@@ -299,9 +301,9 @@
 				<span class="drift__tag">bespoke tooling</span>
 			</div>
 			<p class="drift__lede">
-				Commit counts and churn figures are the easiest things on a portfolio to quietly inflate.
-				So I do not write them. A bespoke CLI measures them against a schema that decides what it
-				is allowed to say.
+				Commit counts and churn figures are the easiest things on a portfolio to quietly inflate. So
+				I do not write them. A bespoke CLI measures them against a schema that decides what it is
+				allowed to say.
 			</p>
 		</header>
 
@@ -317,23 +319,27 @@
 		{#snippet stationSplit()}
 			<h3 id="drift-split-heading">The split</h3>
 			<p class="drift__station-lede">
-				Two things with a contract between them. The engine measures; the integration layer presents.
+				Two things with a contract between them. The engine measures; the integration layer
+				presents.
 			</p>
 			<p class="prose">
-				Drift started as a single script that did everything: walked the repos, measured them,
-				wrote the manifest and understood how the site would render every figure. Measurement was
-				tangled with presentation, so neither could move without the other.
+				Drift started as a single script that did everything: walked the repos, measured them, wrote
+				the manifest and understood how the site would render every figure. Measurement was tangled
+				with presentation, so neither could move without the other.
 			</p>
 			<p class="prose">
-				It is now two things with a contract between them. The engine
-				(<code>scripts/check-drift.js</code>) is a framework-agnostic Bun script: it fingerprints
-				repos, owns the four data files, and knows nothing about Svelte. The integration layer
-				(<code>src/lib/data/</code>) is build-time SvelteKit code: it reads those files as static
-				JSON imports and assembles the typed <code>Project</code> objects the site is built from.
-				The engine could be lifted out as a standalone package and nothing on the site would
-				notice.
+				It is now two things with a contract between them. The engine (<code
+					>scripts/check-drift.js</code
+				>) is a framework-agnostic Bun script: it fingerprints repos, owns the four data files, and
+				knows nothing about Svelte. The integration layer (<code>src/lib/data/</code>) is build-time
+				SvelteKit code: it reads those files as static JSON imports and assembles the typed
+				<code>Project</code> objects the site is built from. The engine could be lifted out as a standalone
+				package and nothing on the site would notice.
 			</p>
-			<figure class="drift__arch" aria-label="Architecture: engine, schema contract, integration layer">
+			<figure
+				class="drift__arch"
+				aria-label="Architecture: engine, schema contract, integration layer"
+			>
 				<div class="arch__layers">
 					{#each driftLayers as layer, i (layer.id)}
 						<div class="arch__layer arch__layer--{layer.id}">
@@ -348,7 +354,10 @@
 						{/if}
 					{/each}
 				</div>
-				<figcaption>The engine owns measurement; the integration layer owns presentation. The schema is the seam.</figcaption>
+				<figcaption>
+					The engine owns measurement; the integration layer owns presentation. The schema is the
+					seam.
+				</figcaption>
 			</figure>
 			<figure class="drift__split-visual" aria-label="Before and after the decoupling">
 				<div class="split__before">
@@ -404,8 +413,8 @@
 			</p>
 			<p class="prose">
 				This makes adding a new metric a deliberate three-step act. Declare the property in the
-				schema. Add it to the <code>SyncedSource</code> interface in <code>index.ts</code>. Return it
-				from <code>getFingerprint</code> in the engine. Miss one and the build tells you, either
+				schema. Add it to the <code>SyncedSource</code> interface in <code>index.ts</code>. Return
+				it from <code>getFingerprint</code> in the engine. Miss one and the build tells you, either
 				at <code>bun run check</code> or when the engine throws on its next sync. The boundary is not
 				a convention I am trusting myself to respect; it is enforced.
 			</p>
@@ -414,16 +423,16 @@
 				<figcaption>scripts/check-drift.js: validation gate</figcaption>
 			</figure>
 			<aside class="callout">
-				<strong>Fail-closed invariant:</strong> the engine throws and writes nothing on a schema
-				violation. The Svelte integration layer never sees a partial or off-contract manifest.
+				<strong>Fail-closed invariant:</strong> the engine throws and writes nothing on a schema violation.
+				The Svelte integration layer never sees a partial or off-contract manifest.
 			</aside>
 		{/snippet}
 
 		{#snippet stationMeasure()}
 			<h3 id="drift-measurement-heading">Measurement</h3>
 			<p class="drift__station-lede">
-				Every figure is measured against the canonical commit, not the working tree, via a
-				bounded concurrent worker pool.
+				Every figure is measured against the canonical commit, not the working tree, via a bounded
+				concurrent worker pool.
 			</p>
 			<p class="prose">
 				For each repo, <code>getFingerprint</code> fans a set of independent git calls out via
@@ -437,16 +446,18 @@
 			<p class="prose">
 				Lines of code and languages are read straight from git blobs via
 				<code>git cat-file --batch</code>, not the working tree, so the measurement is always
-				against the canonical commit. Repos run concurrently across a bounded worker pool
-				(<code>cpus().length</code> slots). A HEAD-plus-TTL cache, keyed on the measured commit's
-				SHA and gitignored, means an unchanged repo is not re-scanned. <code>drift sync</code>
+				against the canonical commit. Repos run concurrently across a bounded worker pool (<code
+					>cpus().length</code
+				>
+				slots). A HEAD-plus-TTL cache, keyed on the measured commit's SHA and gitignored, means an
+				unchanged repo is not re-scanned. <code>drift sync</code>
 				and <code>--no-cache</code> bypass it.
 			</p>
 			<p class="prose">
 				Per repo, the fingerprint covers: commit counts on two axes (mine versus all authors,
 				lifetime versus trailing four weeks); line churn on the same axes; lines of code; languages
-				by file count; first and last commit dates; and the runtime, framework and database
-				inferred from manifest files.
+				by file count; first and last commit dates; and the runtime, framework and database inferred
+				from manifest files.
 			</p>
 			<figure class="code">
 				{@html data.snippets.sources}
@@ -461,20 +472,19 @@
 				precedence chain.
 			</p>
 			<p class="prose">
-				Work that is still on an unmerged branch has no entry in <code>sources.json</code> yet,
-				but it can still surface on the site. A committed <code>in-progress.json</code> holds
-				provisional metrics for in-flight projects: the branch name, a promotion pipeline
-				(ordered merge targets), a visibility flag (<code>'public'</code> surfaces on the site;
+				Work that is still on an unmerged branch has no entry in <code>sources.json</code> yet, but
+				it can still surface on the site. A committed <code>in-progress.json</code> holds
+				provisional metrics for in-flight projects: the branch name, a promotion pipeline (ordered
+				merge targets), a visibility flag (<code>'public'</code> surfaces on the site;
 				<code>'local'</code> stays in the CLI), and per-field tracked values with their
 				<code>baseOnMain</code> counterpart for context.
 			</p>
 			<p class="prose">
-				The integration layer's <code>withSyncedMetrics</code> applies a four-tier precedence
-				across every metric field. Manual overrides win; real synced figures come next; provisional
-				values from <code>in-progress.json</code> fill in below that; authored defaults are the
-				floor. Once a branch lands and <code>drift sync</code> picks up real numbers, the synced
-				value naturally shadows the provisional one. Promotion is self-healing: no stale figures
-				leak through.
+				The integration layer's <code>withSyncedMetrics</code> applies a four-tier precedence across
+				every metric field. Manual overrides win; real synced figures come next; provisional values
+				from <code>in-progress.json</code> fill in below that; authored defaults are the floor. Once
+				a branch lands and <code>drift sync</code> picks up real numbers, the synced value naturally shadows
+				the provisional one. Promotion is self-healing: no stale figures leak through.
 			</p>
 			<figure class="code">
 				{@html data.snippets.precedence}

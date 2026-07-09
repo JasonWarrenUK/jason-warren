@@ -131,7 +131,10 @@ const provisionalBySlug: Record<string, InProgressEntry> = Object.fromEntries(
 //   - two modules claiming the same slug
 // ---------------------------------------------------------------------------
 
-const authoredModules = import.meta.glob(['./projects/*.ts', '!./projects/*-test.ts', '!./projects/*.test.ts'], { eager: true });
+const authoredModules = import.meta.glob(
+	['./projects/*.ts', '!./projects/*-test.ts', '!./projects/*.test.ts'],
+	{ eager: true }
+);
 
 const authoredBySlug: Record<string, AuthoredProject> = {};
 

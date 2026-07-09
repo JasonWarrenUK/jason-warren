@@ -127,6 +127,22 @@ export interface ProjectRelationship {
 	note?: string;
 }
 
+export type LineageKind =
+	/** The source technology enabled or led to the target (e.g. Express leads-to Oak). */
+	| 'leads-to'
+	/** The source technology was superseded by the target (e.g. Node.js replaced-by Bun). */
+	| 'replaced-by';
+
+export interface TechRelationship {
+	kind: LineageKind;
+	/** Exact tech tag label, e.g. "React". Validated against real labels by a data test, not the compiler. */
+	source: string;
+	/** Exact tech tag label, e.g. "Svelte 5". */
+	target: string;
+	/** Human-readable description of the relationship. */
+	note?: string;
+}
+
 // ---------------------------------------------------------------------------
 // Contribution — discriminated on role
 //

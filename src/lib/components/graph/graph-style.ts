@@ -4,7 +4,7 @@
  * semantic tokens in tokens.css, so every connection view reads the same.
  */
 
-import type { EdgeCategory, ProjectStatus, TagKind } from '$lib/data/types.js';
+import type { EdgeCategory, LineageKind, ProjectStatus, TagKind } from '$lib/data/types.js';
 import type { GraphEdge } from '$lib/data/graph.js';
 import { themes } from '$lib/data/themes.js';
 
@@ -66,6 +66,11 @@ export function isThemeEdgeType(type: string): type is ThemeEdgeType {
 	return type.startsWith('theme:');
 }
 
+/** Returns true when an EdgeType string is a tech lineage kind. */
+export function isLineageKind(type: string): type is LineageKind {
+	return type === 'leads-to' || type === 'replaced-by';
+}
+
 /** CSS colour token for a theme edge. */
 export function themeColour(themeId: string): string {
 	return `var(--color-edge-theme-${themeId})`;
@@ -92,7 +97,7 @@ export const themeIds: string[] = themes.map((t) => t.id);
  * stack mode. Keyed strings so node/edge legends and the hidden-set state can
  * share one vocabulary.
  */
-export type EdgeType = GraphEdge['kind'] | ThemeEdgeType | EdgeCategory;
+export type EdgeType = GraphEdge['kind'] | ThemeEdgeType | EdgeCategory | LineageKind;
 
 /** Colour token for a shared-tech category edge. Decorative, distinct hues. */
 export function categoryColour(category: EdgeCategory): string {
@@ -118,6 +123,8 @@ export function techKindColour(kind: TagKind): string {
 export function edgeTypeColour(type: EdgeType): string {
 	if (type === 'extraction') return 'var(--color-primary)';
 	if (type === 'related') return 'var(--color-text-subtle)';
+	if (type === 'leads-to') return 'var(--color-edge-lineage-leads-to)';
+	if (type === 'replaced-by') return 'var(--color-edge-lineage-replaced-by)';
 	if (isThemeEdgeType(type)) return themeColour(type.slice('theme:'.length));
 	return categoryColour(type as EdgeCategory);
 }
@@ -136,6 +143,8 @@ export const categoryLabel: Record<EdgeCategory, string> = {
 export function edgeTypeLabel(type: EdgeType): string {
 	if (type === 'extraction') return 'Extraction';
 	if (type === 'related') return 'Related';
+	if (type === 'leads-to') return 'Leads to';
+	if (type === 'replaced-by') return 'Replaced by';
 	if (isThemeEdgeType(type)) return themeLabel(type.slice('theme:'.length));
 	return categoryLabel[type as EdgeCategory];
 }

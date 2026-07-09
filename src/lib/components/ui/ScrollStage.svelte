@@ -75,12 +75,7 @@
 	    .scrolly__flow-col   (THE SSR TRUTH — always fully rendered in-flow)
 	      section.scrolly__station × N  (real headings, prose, figures, table)
 -->
-<div
-	class="scrolly"
-	class:scrolly--live={live}
-	aria-label={label}
-	bind:this={rootEl}
->
+<div class="scrolly" class:scrolly--live={live} aria-label={label} bind:this={rootEl}>
 	<!-- Stage col: decorative pinned visual. aria-hidden because the real content
 	     is always present in the flow column below. No focusable elements here. -->
 	<div class="scrolly__stage-col" aria-hidden="true">
@@ -96,11 +91,7 @@
 	<!-- Flow col: THE SSR TRUTH. Always fully rendered regardless of JS or motion. -->
 	<div class="scrolly__flow-col">
 		{#each stations as station, i (i)}
-			<section
-				class="scrolly__station"
-				data-station={i}
-				bind:this={sectionEls[i]}
-			>
+			<section class="scrolly__station" data-station={i} bind:this={sectionEls[i]}>
 				{@render station()}
 			</section>
 		{/each}

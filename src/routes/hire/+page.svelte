@@ -35,10 +35,10 @@
 		<div class="engagement">
 			<h3 class="engagement__heading">Freelance or contract</h3>
 			<p class="prose">
-				I take on scoped project work when the brief is precise and the deliverable is
-				well-defined; a well-scoped problem with no prescribed solution qualifies. Contract
-				engagements via Tandem Creative Dev and Yalla Cooperative. Web applications, TUIs, CLIs,
-				data-layer architecture and bespoke TypeScript or Go projects.
+				I take on scoped project work when the brief is precise and the deliverable is well-defined;
+				a well-scoped problem with no prescribed solution qualifies. Contract engagements via Tandem
+				Creative Dev and Yalla Cooperative. Web applications, TUIs, CLIs, data-layer architecture
+				and bespoke TypeScript or Go projects.
 			</p>
 		</div>
 
