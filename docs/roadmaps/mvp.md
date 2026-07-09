@@ -8,9 +8,9 @@ The site is live and substantially built (full routes, graph/timeline/map/toolki
 
 |              | Status                                                                                                                                                                                                                                                                                                                                       | Next Up                                                              | Blocked                                                                   |
 | ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------- | ------------------------------------------------------------------------- |
-| **Content**  | 30+ entries, themes, threads, About, CV/hire; depth audit complete; Colophon/drift-engine rebuilt post-M5 (1CO.5); style-guide pass complete (1CO.8) — **Milestone 1 done**                                                                                                                                                                  | Tech constellation (2FE.6) now unblocked                             | _None._                                                                   |
-| **Features** | 2FE.1, 2FE.2, 2FE.4, 2FE.5, 2FE.8 done; all connection views built (search, multi-select, cross-view continuity, relayout)                                                                                                                                                                                                                   | Polish pass (2FE.3) after 2FE.7; tech constellation (2FE.6) after M1 | 2FE.6 blocked on M1; 2FE.7 blocked on 2FE.6; 2FE.3 blocked on 2FE.7/2FE.8 |
-| **Design**   | Reasonable Colors tokens, dark mode                                                                                                                                                                                                                                                                                                          | Visual direction (3DE.0) after M2                                    | All M3 tasks blocked on M2 completion                                     |
+| **Content**  | 30+ entries, themes, threads, About, CV/hire; depth audit complete; Colophon/drift-engine rebuilt post-M5 (1CO.5); style-guide pass complete (1CO.8) — **Milestone 1 done**                                                                                                                                                                  | _None._                                                              | _None._                                                                   |
+| **Features** | All 8 tasks done: search, multi-select, cross-view continuity, relayout, tech constellation, lineage edges, polish pass — **Milestone 2 done**                                                                                                                                                                                              | _None._                                                              | _None._                                                                   |
+| **Design**   | Reasonable Colors tokens, dark mode                                                                                                                                                                                                                                                                                                          | Visual direction (3DE.0) — M2 complete, now unblocked                | 3DE.1/3DE.5 blocked on 3DE.0; 3DE.3 blocked on 3DE.1; 3DE.4 blocked on 3DE.5; 3DE.2 blocked on 3DE.3/3DE.4 |
 | **Quality**  | Strict types, data-integrity tests, prerendered                                                                                                                                                                                                                                                                                              | Test coverage (4QU.5) and OG coverage (4QU.4) after M3               | All M4 tasks blocked on M3; a11y (4QU.7) blocked on 4QU.1                 |
 | **Drift**    | 2.5k-line CLI, manifest registry, cache, verbs, Bun migration, boundary doc, config layer, tag taxonomy (5DR.4), engine schema (5DR.5), engine/integration split (5DR.6), branch awareness + staging pipeline (5DR.7), init scaffold (5DR.13), audit verb (5DR.11), author/pin verbs (5DR.15/5DR.16), `flag` verb (5DR.17) — **M5 complete** | Colophon/drift-engine Drift story (1CO.5) delivered                  | Tests & docs (M6) blocked on M3 + M5                                      |
 
@@ -80,9 +80,7 @@ _None._
 
 <a name="m2-blocked"><h4>Blocked (Milestone 2)</h4></a>
 
-- [ ] 2FE.3. Polish existing interactions — final integration pass covering all new interactions — **re-do once 2FE.7/2FE.8 are complete** — **depends on 2FE.7, 2FE.8**. _Previously completed: `AdoptionTimeline` hover/focus highlight with animated dot-scale, dim-others behaviour, and date-honesty distinction; TimelineChart pointer events for touch parity, per-node `<title>`, and `prefers-reduced-motion` guard._
-- [ ] 2FE.6. Tech-stack constellation visualisation — a `ProjectMap` variant clustering projects by shared stack; islands = niche tech, dense core = default toolkit — **depends on m1**
-- [ ] 2FE.7. Technology lineage edges — hand-authored `leads-to` / `replaced-by` relationships between technologies, rendered as directed edges on the adoption chart or constellation; modelled on `ProjectRelationship`. Requires a new `TechRelationship { kind: 'leads-to' | 'replaced-by'; source: label; target: label; note?: string }` structure and hand-authored edge data — **depends on 2FE.6**
+_None._
 
 <a name="m2-done"><h4>Completed (Milestone 2)</h4></a>
 
@@ -91,6 +89,9 @@ _None._
 - [x] 2FE.4. Multi-select filters — each dimension (role, type, status, tag) accumulates a set of selections: OR within a dimension, AND across dimensions. URL params pluralised (`roles`/`types`/`statuses`/`tags`); per-token percent-encoding for `C#`, `.NET 8` etc.; `FilterBar` widened to `Set<T>`; full test coverage.
 - [x] 2FE.5. Cross-view continuity — shared `validatePin`/`nextPinValue` helpers extracted into `src/lib/selection.ts`; all three connection views (`ProjectMap`, `TimelineChart`, `ThemeTerritories`) use them; project detail page gains "View in map / timeline / toolkit" links carrying `?project=`; modal "Go to project" links route via `projectHref`; `RelatedProjects` neighbour links via `projectHref`.
 - [x] 2FE.8. Robust filter-toggle relayout — `computeRelayoutTargets` exported from `graph.ts`: deterministic reduced best-of-N (5 seeds × 220 ticks) over the visible subgraph, crossing-minimised. `ProjectMap` reheat debounced (120ms) and seeded from the lowest-crossing topology before the live d3 simulation relaxes. `FORCE_TUNING` and `countCrossings` exported for tests.
+- [x] 2FE.6. Tech-stack constellation visualisation — `ProjectMap` gained a `technologies` mode (three-mode layout alongside `relationships`/`stack`) clustering by shared tech, densified co-occurrence graph excluding language nodes, per-theme edge rendering, unified node radius, and overflow containment.
+- [x] 2FE.7. Technology lineage edges — hand-authored `TechRelationship { kind: 'leads-to' | 'replaced-by'; source; target; note? }` data in `tech-relationships.ts`, validated against the real tag set by a data test. Rendered on both surfaces: directed arrow edges in `ProjectMap`'s technologies mode, and bowed quadratic-bezier arcs (always-on, behind the dots) in `AdoptionTimeline`.
+- [x] 2FE.3. Polish existing interactions — final integration pass covering all new interactions. Fixed a broken `?tag=`/`?tags=` param mismatch on the AdoptionTimeline "see projects" link (added `projectsByTagHref` codec helper); brought `ProjectMap`/`TimelineChart`/`ThemeTerritories` up to `AdoptionTimeline`'s keyboard/ARIA bar (`role="button"`, `aria-pressed`, `aria-haspopup="dialog"`, Space-key activation); added the missing `<title>` and `prefers-reduced-motion` guards to `ThemeTerritories`/`FilterChip`; unified dim-opacity into shared `--dim-*` tokens; extracted the four-times-duplicated modal-action CSS into `SelectionModal`; added a `techViewHref` bridge so a pinned technology cross-links between the map and toolkit adoption chart; split `ProjectMap`'s overloaded `activeSlug` state into separate project/tech variables.
 
 ---
 
@@ -105,11 +106,10 @@ _None._
 
 <a name="m3-todo"><h4>To Do (Milestone 3)</h4></a>
 
-_None._
+- [ ] 3DE.0. Define visual direction / signature — mood, type pairing, motion language, graph styling principles; the foundation everything else depends on
 
 <a name="m3-blocked"><h4>Blocked (Milestone 3)</h4></a>
 
-- [ ] 3DE.0. Define visual direction / signature — mood, type pairing, motion language, graph styling principles; the foundation everything else depends on — **depends on m2**
 - [ ] 3DE.1. Typography pass (scale, rhythm, measure) across all routes — **depends on 3DE.0**
 - [ ] 3DE.3. Motion pass: meaningful transitions, respect `prefers-reduced-motion` — **depends on 3DE.1**
 - [ ] 3DE.4. Refine graph aesthetics (edge styling, clustering legibility, constellation view) — **depends on 3DE.5**
@@ -262,33 +262,12 @@ flowchart TD
 	%% ── Milestone 2: Exploration & New Features ──────────────────────
 	m2{"`**Milestone 2**<br/>Exploration & Features`"}:::mile
 
-	2FE.1["`*2FE.1*<br/>**Features**<br/>client-side search`"]:::done
-	2FE.2["`*2FE.2*<br/>**Features**<br/>deep-link map/timeline/toolkit`"]:::done
-	2FE.3["`*2FE.3*<br/>**Features**<br/>polish existing interactions`"]:::blocked
-	2FE.4["`*2FE.4*<br/>**Features**<br/>multi-select filters`"]:::done
-	2FE.5["`*2FE.5*<br/>**Features**<br/>cross-view continuity`"]:::done
-	2FE.6["`*2FE.6*<br/>**Features**<br/>tech-stack constellation`"]:::blocked
-	2FE.7["`*2FE.7*<br/>**Features**<br/>tech lineage edges`"]:::blocked
-	2FE.8["`*2FE.8*<br/>**Features**<br/>robust filter-toggle relayout`"]:::done
-
-	%% M2 — deps
-	2FE.2 --> 2FE.5
-	2FE.2 --> 2FE.4
-	2FE.4 --> 2FE.1
-	2FE.6 --> 2FE.7
-	2FE.2 --> 2FE.8
-	2FE.1 --> 2FE.3
-	2FE.5 --> 2FE.3
-	2FE.7 --> 2FE.3
-	2FE.8 --> 2FE.3
-
-	%% M2 track completers → m2
-	2FE.3 --> m2
+	%% M2 — all 8 tasks complete, milestone gate reached
 
 	%% ── Milestone 3: Design & Interaction Polish ──────────────────────
 	m3{"`**Milestone 3**<br/>Design & Interaction`"}:::mile
 
-	3DE.0["`*3DE.0*<br/>**Design**<br/>define visual direction`"]:::blocked
+	3DE.0["`*3DE.0*<br/>**Design**<br/>define visual direction`"]:::open
 	3DE.1["`*3DE.1*<br/>**Design**<br/>typography pass`"]:::blocked
 	3DE.2["`*3DE.2*<br/>**Design**<br/>responsive audit`"]:::blocked
 	3DE.3["`*3DE.3*<br/>**Design**<br/>motion pass`"]:::blocked
@@ -386,7 +365,6 @@ flowchart TD
 	5DR.10 --> m6
 
 	%% ── Cross-milestone gates ────────────────────────────────────────
-	m1 --> 2FE.6
 	m2 --> 3DE.0
 	m3 --> 4QU.4
 	m3 --> 4QU.5
