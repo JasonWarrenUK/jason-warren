@@ -11,6 +11,7 @@ description: Hybrid depth audit of all 34 hand-authored project entries. Output 
 ## Contents
 
 - [Rubric](#rubric)
+- [Volatile-Prose Check](#volatile-prose)
 - [Scorecard](#scorecard)
 - [Gap Notes](#gap-notes)
 - [Theme Observations](#theme-observations)
@@ -49,6 +50,18 @@ Word counts below are approximate; the editorial tier is the verdict when they d
 **Iris** sets the bar: a description that opens with the problem (apprenticeship XML submissions demand a strict format; data rarely arrives in it), names the architecture (single TS core driving three interfaces), explains the technical approach (real ESFA XSD parsed into a type-resolving registry), and closes with a verification signal (v5.0.0, 666 commits, 1:1 source-to-test mapping). Five feature-level highlights, none of which reference ESLint or project structure. A relationship note that explains why Schema Forge was extracted and what it now powers.
 
 **Wyrd** is the second flagship and reaches the same level from a different angle: the description is unusually specific about the custom Cypher subset (what it parses, what traversals it supports), the merge driver (its own binary, conflict resolution strategy), and test coverage (68.5% across 150 Go files). The technical rigour is the narrative.
+
+---
+
+<a name="volatile-prose"><h2>Volatile-Prose Check</h2></a>
+
+Alongside the depth tier, `drift audit` runs an **advisory** scan for prose that will drift as the underlying repo moves on: commit/line/PR counts, percentages, status-tense phrases ("in progress", "current phase", "currently"), hardcoded dates, and model names (`gpt-*`, `claude-*`, `gemini-*`) baked into `description`, `blurb`, `tagline`, `highlights[]`, or `contributionNote`.
+
+Volatile findings **never affect the depth tier** — a Full entry with a volatile highlight stays Full. The check exists because depth and durability are different failure modes: a description can be rich, specific, and Full-tier while still quoting a commit count that will be wrong within a week. The rubric above rewards specificity; the volatile check flags specificity that expires.
+
+This check was added after a sweep found hand-rolled stale values predating the drift pipeline — commit counts and version numbers baked into overlay prose (e.g. "Version 5.0.0 across 666 commits", "68.5% statement coverage across 150 Go files") that duplicated fields the drift manifest already tracks, plus status-tense phrasing ("the current phase is…") that dated the moment the phase changed. Those instances were rewritten to durable claims; the check exists so new ones get caught before they ship rather than found in a future audit like this one.
+
+Run `drift audit` (or `drift audit --json` for the structured form) to see current volatile findings.
 
 ---
 
