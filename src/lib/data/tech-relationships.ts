@@ -22,6 +22,24 @@ import type { TechRelationship } from './types.js';
 export const techRelationships: TechRelationship[] = [
 	{
 		kind: 'replaced-by',
+		source: 'Node.js',
+		target: 'Bun',
+		note: 'Bun became the default JavaScript runtime for its speed and built-in tooling, ahead of npm and ts-node friction.'
+	},
+	{
+		kind: 'replaced-by',
+		source: 'Node.js',
+		target: 'Deno',
+		note: 'Deno picked up server-side work from Node.js for its native TypeScript support and stricter security model.'
+	},
+	{
+		kind: 'replaced-by',
+		source: 'Express',
+		target: 'Oak',
+		note: "Oak is Deno's Express-shaped middleware router; it took over once server work moved off Node."
+	},
+	{
+		kind: 'replaced-by',
 		source: 'React',
 		target: 'Svelte 5',
 		note: 'Svelte 5 runes gave the same component model with less ceremony and no virtual DOM, so React was dropped from new work.'
@@ -34,38 +52,20 @@ export const techRelationships: TechRelationship[] = [
 	},
 	{
 		kind: 'leads-to',
-		source: 'Express',
+		source: 'Deno',
 		target: 'Oak',
-		note: "Oak is Deno's Express-shaped middleware router; picked up once server work moved off Node."
-	},
-	{
-		kind: 'replaced-by',
-		source: 'Node.js',
-		target: 'Bun',
-		note: 'Bun became the default JavaScript runtime for its speed and built-in tooling, ahead of npm and ts-node friction.'
-	},
-	{
-		kind: 'leads-to',
-		source: 'Node.js',
-		target: 'Deno',
-		note: 'Deno was explored alongside Bun for its native TypeScript support and stricter security model, mainly on server-side experiments.'
-	},
-	{
-		kind: 'replaced-by',
-		source: 'Tailwind CSS',
-		target: 'Tailwind CSS v4',
-		note: 'v4 dropped the JS config file for CSS-native configuration, adopted as soon as projects moved to Vite 5+ tooling.'
-	},
-	{
-		kind: 'leads-to',
-		source: 'Vite',
-		target: 'SvelteKit',
-		note: "SvelteKit builds on Vite's dev server and bundling directly; adopting SvelteKit meant Vite came with it, not as a separate choice."
+		note: 'Adopting Deno as a runtime meant reaching for Oak as its natural middleware router.'
 	},
 	{
 		kind: 'leads-to',
 		source: 'JavaScript',
 		target: 'TypeScript',
 		note: 'TypeScript was adopted for its static types and editor tooling once projects grew past the size where plain JavaScript stayed manageable.'
+	},
+	{
+		kind: 'leads-to',
+		source: 'Svelte 5',
+		target: 'SvelteKit',
+		note: "SvelteKit is Svelte 5's own full-stack framework; picking up the component model brought its meta-framework with it."
 	}
 ];
