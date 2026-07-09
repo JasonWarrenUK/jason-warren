@@ -20,7 +20,7 @@ export const iris: AuthoredProject = {
 		'Schema-driven validation: parses the real ESFA XSD to build a validation registry with type resolution, cardinality and constraint checking. Semantic validation beyond structural XML.',
 		'Header-tolerant CSV parsing handles column reordering; cross-submission consistency checks guard against data drift between submissions.',
 		'Close to 1:1 source-to-test mapping with Vitest and Bun test; round-trip tests cover the full CSV → XML → re-parse cycle.',
-		'Version 5.0.0 across 666 commits; full ADRs, technical specs, dev-log work records, and per-workflow roadmaps.'
+		'Documented like a product: full ADRs, technical specs, dev-log work records, and per-workflow roadmaps.'
 	],
 	relationships: [
 		{
