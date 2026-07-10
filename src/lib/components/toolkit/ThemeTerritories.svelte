@@ -100,9 +100,19 @@
 									class:themes__chip--spanning={spans}
 									class:themes__chip--dimmed={effectiveSlug !== null &&
 										effectiveSlug !== project.slug}
+									title={spans ? `${project.name} — spans multiple themes` : project.name}
+									role="button"
+									aria-haspopup="dialog"
+									aria-pressed={pinnedSlug === project.slug}
 									onclick={(e) => {
 										e.preventDefault();
 										openModal(project.slug, project.name);
+									}}
+									onkeydown={(e) => {
+										if (e.key === ' ') {
+											e.preventDefault();
+											openModal(project.slug, project.name);
+										}
 									}}
 									onpointerenter={() => (activeSlug = project.slug)}
 									onpointerleave={() => (activeSlug = null)}
@@ -213,7 +223,7 @@
 	}
 
 	.themes__chip--dimmed {
-		opacity: 0.32;
+		opacity: var(--dim-label);
 	}
 
 	.themes__chip-mark {
@@ -235,50 +245,6 @@
 	.themes__chip:focus-visible {
 		outline: 2px solid var(--color-primary-text);
 		outline-offset: 2px;
-	}
-
-	/* Modal action buttons */
-	.modal-action {
-		display: block;
-		width: 100%;
-		padding: var(--space-3) var(--space-4);
-		border-radius: var(--radius-md);
-		font-size: var(--text-sm);
-		font-weight: 600;
-		text-align: center;
-		text-decoration: none;
-		cursor: pointer;
-		transition:
-			background-color var(--transition-fast),
-			border-color var(--transition-fast),
-			color var(--transition-fast);
-	}
-
-	.modal-action:focus-visible {
-		outline: 2px solid var(--color-primary-text);
-		outline-offset: 2px;
-	}
-
-	.modal-action--primary {
-		background-color: var(--color-primary-bg);
-		border: 1px solid var(--color-primary);
-		color: var(--color-primary-text);
-	}
-
-	.modal-action--primary:hover {
-		background-color: var(--color-primary);
-		color: var(--color-surface);
-	}
-
-	.modal-action--secondary {
-		background-color: var(--color-surface);
-		border: 1px solid var(--color-border);
-		color: var(--color-text-subtle);
-	}
-
-	.modal-action--secondary:hover {
-		border-color: var(--color-border-strong);
-		color: var(--color-text);
 	}
 
 	.themes__note {
@@ -372,5 +338,12 @@
 
 	.themes-teaser__cta:hover {
 		color: var(--color-primary);
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.themes__chip,
+		.themes-teaser__cta {
+			transition: none;
+		}
 	}
 </style>

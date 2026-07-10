@@ -31,12 +31,5 @@ export const redot: AuthoredProject = {
 		{ label: 'Anthropic SDK', kind: 'ai' },
 		{ label: 'GitHub Actions', kind: 'tool' },
 		{ label: 'No persistence', kind: 'data' }
-	],
-	lastCommit: '2025-10-13',
-	metrics: {
-		commits: 28,
-		mergedPrs: 6,
-		linesAdded: 2386,
-		linesRemoved: 1091
-	}
+	]
 };

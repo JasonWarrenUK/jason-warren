@@ -98,12 +98,6 @@
 										<dt class="hero-rotation__metric-label">commits</dt>
 									</div>
 								{/if}
-								{#if project.metrics.testCoverage != null}
-									<div class="hero-rotation__metric">
-										<dd class="hero-rotation__metric-value">{project.metrics.testCoverage}%</dd>
-										<dt class="hero-rotation__metric-label">test coverage</dt>
-									</div>
-								{/if}
 								{#if project.metrics.linesAdded != null}
 									<div class="hero-rotation__metric">
 										<dd class="hero-rotation__metric-value">

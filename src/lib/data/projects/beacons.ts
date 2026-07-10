@@ -33,11 +33,5 @@ export const beacons: AuthoredProject = {
 		{ label: 'Oak', kind: 'framework' },
 		{ label: 'React', kind: 'framework' },
 		{ label: 'Supabase', kind: 'data' }
-	],
-	lastCommit: '2025-11-06',
-	metrics: {
-		commits: 175,
-		mergedPrs: 21,
-		linesAdded: 19800
-	}
+	]
 };

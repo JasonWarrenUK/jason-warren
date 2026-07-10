@@ -30,9 +30,5 @@ export const epoch: AuthoredProject = {
 		{ label: 'Vercel', kind: 'tool' },
 		{ label: 'Node.js', kind: 'runtime' },
 		{ label: 'Document / JSON', kind: 'data' }
-	],
-	lastCommit: '2026-06-14',
-	metrics: {
-		commits: 56
-	}
+	]
 };

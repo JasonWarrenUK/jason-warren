@@ -107,19 +107,19 @@ writeJson(sourcesPath, manifest); // the only write to sources.json`;
 
 // — src/lib/data/index.ts ————————————————————————————————————————————————
 // The metric precedence chain in withSyncedMetrics. Every field follows the
-// same pattern: override > synced > provisional > authored. Once a branch
-// lands and drift sync runs, the synced value naturally shadows any
-// provisional figure — promotion is self-healing, no stale leak.
-const precedenceSnippet = `// Precedence: override > synced > provisional > authored.
+// same pattern: override > synced > provisional. Once a branch lands and
+// drift sync runs, the synced value naturally shadows any provisional
+// figure — promotion is self-healing, no stale leak.
+const precedenceSnippet = `// Precedence: override > synced > provisional.
 // prov(field) returns the in-progress tracked value, or undefined.
 const prov = (field: keyof ProjectMetrics) =>
 	provisional?.tracked?.[field]?.value;
 
 commitsMine:
-	ov?.commitsMine?.value ?? synced?.commitsMine ?? prov('commitsMine') ?? authored?.commitsMine,
+	ov?.commitsMine?.value ?? synced?.commitsMine ?? prov('commitsMine'),
 linesOfCode:
-	ov?.linesOfCode?.value ?? synced?.linesOfCode ?? prov('linesOfCode') ?? authored?.linesOfCode,
-// ...every metric field follows the same four-tier chain`;
+	ov?.linesOfCode?.value ?? synced?.linesOfCode ?? prov('linesOfCode'),
+// ...every metric field follows the same three-tier chain`;
 
 // — src/lib/data/sources.json ————————————————————————————————————————————
 // One entry from the drift manifest. Written only by drift sync, and only

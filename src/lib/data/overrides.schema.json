@@ -82,14 +82,6 @@
 					"$ref": "#/$defs/NumericOverride",
 					"description": "Lines removed by all authors, trailing 4 weeks."
 				},
-				"testCoverage": {
-					"$ref": "#/$defs/NumericPinOverride",
-					"description": "Statement coverage, 0–100. No synced source; use syncedWhenSet: null."
-				},
-				"mergedPrs": {
-					"$ref": "#/$defs/NumericPinOverride",
-					"description": "Merged pull requests (team projects). No synced source; use syncedWhenSet: null."
-				},
 				"lastCommit": {
 					"$ref": "#/$defs/DateOverride",
 					"description": "ISO date of the most recent commit."
@@ -108,29 +100,13 @@
 			"properties": {
 				"value": { "type": "integer", "minimum": 0, "description": "The pinned value to render." },
 				"syncedWhenSet": {
-					"oneOf": [{ "type": "integer", "minimum": 0 }, { "type": "null" }],
-					"description": "The synced value at the time this override was set. null only for fields with no synced source."
+					"type": "integer",
+					"minimum": 0,
+					"description": "The synced value at the time this override was set. Every overridable metric has a synced source, so this is never null."
 				},
 				"syncedField": {
 					"type": "string",
 					"description": "The underlying synced field to compare against (defaults to this field's name). Only `commits` ever needs this — set to 'commitsMine' for team projects, 'commits' for solo."
-				},
-				"_setNote": {
-					"type": "string",
-					"description": "Why this value was pinned (context for future-you)."
-				}
-			}
-		},
-		"NumericPinOverride": {
-			"type": "object",
-			"description": "Override for a field with no synced source (testCoverage, mergedPrs). syncedWhenSet must be null — nothing to drift against.",
-			"required": ["value", "syncedWhenSet"],
-			"additionalProperties": false,
-			"properties": {
-				"value": { "type": "integer", "minimum": 0, "description": "The pinned value to render." },
-				"syncedWhenSet": {
-					"type": "null",
-					"description": "Must be null: these fields have no synced source and cannot drift."
 				},
 				"_setNote": {
 					"type": "string",

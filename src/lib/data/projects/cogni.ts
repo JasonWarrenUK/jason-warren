@@ -27,9 +27,5 @@ export const cogni: AuthoredProject = {
 		{ label: 'Bun', kind: 'runtime' },
 		{ label: 'Vitest', kind: 'tool' },
 		{ label: 'Document / JSON', kind: 'data' }
-	],
-	lastCommit: '2026-06-11',
-	metrics: {
-		commits: 24
-	}
+	]
 };

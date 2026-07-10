@@ -27,9 +27,5 @@ export const kitchenGremlin: AuthoredProject = {
 		{ label: 'Bun', kind: 'runtime' },
 		{ label: 'SQLite', kind: 'data' },
 		{ label: 'WASM', kind: 'tool' }
-	],
-	lastCommit: '2026-04-28',
-	metrics: {
-		commits: 18
-	}
+	]
 };

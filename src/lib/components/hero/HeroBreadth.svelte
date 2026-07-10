@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { base } from '$app/paths';
+	import { getStackGroups } from '$lib/data/stack.js';
 
 	// Collapsed on mobile, expanded on desktop. Default closed so there is no
 	// flash of a long list on small screens; desktop expands on mount.
@@ -14,25 +15,9 @@
 		return () => mq.removeEventListener('change', apply);
 	});
 
-	// The polyglot stack claim — curated for breadth and distinctiveness
-	const stackGroups = [
-		{
-			label: 'Languages',
-			items: ['TypeScript', 'Go', 'Rust', 'Python', 'JavaScript']
-		},
-		{
-			label: 'Frontend',
-			items: ['Svelte 5', 'SvelteKit', 'React', 'Next.js', 'Tailwind CSS']
-		},
-		{
-			label: 'Backend & data',
-			items: ['Node.js', 'Bun', 'Deno', 'PostgreSQL', 'Neo4j', 'Supabase']
-		},
-		{
-			label: 'Tooling & platforms',
-			items: ['Tauri', 'Vitest', 'Playwright', 'Docker', 'GitHub Actions', 'Vercel']
-		}
-	];
+	// The polyglot stack claim, derived from the project registry so it can
+	// never claim a technology no project actually uses.
+	const stackGroups = getStackGroups();
 </script>
 
 <section class="hero-breadth" aria-label="Technology breadth">

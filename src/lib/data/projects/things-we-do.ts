@@ -34,12 +34,5 @@ export const thingsWeDo: AuthoredProject = {
 		{ label: 'Plotly.js', kind: 'tool' },
 		{ label: 'PWA', kind: 'concept' },
 		{ label: 'Tailwind CSS', kind: 'framework' }
-	],
-	lastCommit: '2024-12-19',
-	metrics: {
-		commits: 183,
-		mergedPrs: 21,
-		linesAdded: 6700,
-		linesRemoved: 3000
-	}
+	]
 };

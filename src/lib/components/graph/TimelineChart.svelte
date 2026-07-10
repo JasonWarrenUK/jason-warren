@@ -136,9 +136,18 @@
 					class:timeline__node--pinned={pinnedSlug === row.slug}
 					class:timeline__node--dim={effectiveSlug !== null && effectiveSlug !== row.slug}
 					href="{base}/projects/{row.slug}"
+					role="button"
+					aria-haspopup="dialog"
+					aria-pressed={pinnedSlug === row.slug}
 					onclick={(e) => {
 						e.preventDefault();
 						openModal(row);
+					}}
+					onkeydown={(e) => {
+						if (e.key === ' ') {
+							e.preventDefault();
+							openModal(row);
+						}
 					}}
 					onpointerenter={() => (activeSlug = row.slug)}
 					onpointerleave={() => (activeSlug = null)}
@@ -232,7 +241,7 @@
 	}
 
 	.timeline__node--dim .timeline__name {
-		opacity: 0.35;
+		opacity: var(--dim-label);
 	}
 
 	.timeline__node:focus-visible {
@@ -274,58 +283,10 @@
 		fill: var(--color-primary-text);
 	}
 
-	/* Modal action buttons */
-	.modal-action {
-		display: block;
-		width: 100%;
-		padding: var(--space-3) var(--space-4);
-		border-radius: var(--radius-md);
-		font-size: var(--text-sm);
-		font-weight: 600;
-		text-align: center;
-		text-decoration: none;
-		cursor: pointer;
-		transition:
-			background-color var(--transition-fast),
-			border-color var(--transition-fast),
-			color var(--transition-fast);
-	}
-
-	.modal-action:focus-visible {
-		outline: 2px solid var(--color-primary-text);
-		outline-offset: 2px;
-	}
-
-	.modal-action--primary {
-		background-color: var(--color-primary-bg);
-		border: 1px solid var(--color-primary);
-		color: var(--color-primary-text);
-	}
-
-	.modal-action--primary:hover {
-		background-color: var(--color-primary);
-		color: var(--color-surface);
-	}
-
-	.modal-action--secondary {
-		background-color: var(--color-surface);
-		border: 1px solid var(--color-border);
-		color: var(--color-text-subtle);
-	}
-
-	.modal-action--secondary:hover {
-		border-color: var(--color-border-strong);
-		color: var(--color-text);
-	}
-
 	@media (prefers-reduced-motion: reduce) {
 		.timeline__node,
 		.timeline__name,
 		.timeline__connector {
-			transition: none;
-		}
-
-		.modal-action {
 			transition: none;
 		}
 	}

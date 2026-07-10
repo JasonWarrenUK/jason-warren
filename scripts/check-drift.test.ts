@@ -717,9 +717,18 @@ function writeFixture(
 		highlights?: string[];
 		role?: string;
 		contributionNote?: string;
+		tagline?: string;
+		blurb?: string;
 	}
 ) {
-	const { description = '', highlights = [], role = 'solo', contributionNote } = fields;
+	const {
+		description = '',
+		highlights = [],
+		role = 'solo',
+		contributionNote,
+		tagline,
+		blurb
+	} = fields;
 	const contribution = contributionNote
 		? `{ role: '${role}', contributionNote: ${JSON.stringify(contributionNote)} }`
 		: `{ role: '${role}' }`;
@@ -727,12 +736,16 @@ function writeFixture(
 	const source = [
 		`export const ${binding} = {`,
 		`\tslug: ${JSON.stringify(slug)},`,
+		tagline !== undefined ? `\ttagline: ${JSON.stringify(tagline)},` : null,
+		blurb !== undefined ? `\tblurb: ${JSON.stringify(blurb)},` : null,
 		`\tdescription: ${JSON.stringify(description)},`,
 		`\thighlights: ${JSON.stringify(highlights)},`,
 		`\tcontribution: ${contribution}`,
 		'};',
 		''
-	].join('\n');
+	]
+		.filter((line) => line !== null)
+		.join('\n');
 	writeFileSync(join(dir, 'projects', `${slug}.ts`), source);
 }
 
@@ -901,6 +914,157 @@ describe('drift audit', () => {
 		expect(summary.Thin).toBe(0);
 		expect(summary.Partial).toBe(0);
 		expect(summary.Full).toBe(0);
+	});
+});
+
+// ---------------------------------------------------------------------------
+// drift audit: volatile-prose tests
+//
+// Advisory only — every case here also asserts the tier is unaffected, since
+// the whole point of the check is that it never changes the depth verdict.
+// ---------------------------------------------------------------------------
+
+describe('drift audit volatile prose', () => {
+	let dir: string;
+	let configPath: string;
+
+	beforeEach(() => {
+		({ dir, configPath } = makeOverlaySandbox());
+	});
+
+	afterEach(() => {
+		rmSync(dir, { recursive: true, force: true });
+	});
+
+	function runAuditJSON(): {
+		summary: Record<string, number>;
+		entries: Record<string, unknown>[];
+	} {
+		const result = runVerbInSandbox(configPath, ['audit', '--json']);
+		expect(result.status, result.stderr).toBe(0);
+		return JSON.parse(result.stdout);
+	}
+
+	const fullDesc = Array(90).fill('word').join(' ');
+	const fullHighlights = ['h1', 'h2', 'h3', 'h4', 'h5'];
+
+	it('flags a metric-number and a status-tense phrase in the same highlight', () => {
+		writeFixture(dir, 'metric-and-tense', {
+			description: fullDesc,
+			highlights: [
+				'Version 5.0.0 across 666 commits; full ADRs and technical specs.',
+				...fullHighlights.slice(1)
+			]
+		});
+		const { entries } = runAuditJSON();
+		const entry = entries.find((e) => e.slug === 'metric-and-tense') as {
+			tier: string;
+			volatile: Array<{ field: string; pattern: string }>;
+		};
+		const patterns = entry.volatile.map((v) => v.pattern);
+		expect(patterns).toContain('metric-number');
+		expect(patterns).toContain('status-tense');
+		expect(entry.volatile.some((v) => v.field === 'highlights[0]')).toBe(true);
+	});
+
+	it('flags status-tense phrasing in the description', () => {
+		writeFixture(dir, 'status-tense-desc', {
+			description: `The current phase is building the evaluation harness. ${fullDesc}`,
+			highlights: fullHighlights
+		});
+		const { entries } = runAuditJSON();
+		const entry = entries.find((e) => e.slug === 'status-tense-desc') as {
+			volatile: Array<{ field: string; pattern: string }>;
+		};
+		expect(
+			entry.volatile.some((v) => v.pattern === 'status-tense' && v.field === 'description')
+		).toBe(true);
+	});
+
+	it('flags a hardcoded ISO date', () => {
+		writeFixture(dir, 'iso-date', {
+			description: fullDesc,
+			tagline: 'Released 2026-06-12.'
+		});
+		const { entries } = runAuditJSON();
+		const entry = entries.find((e) => e.slug === 'iso-date') as {
+			volatile: Array<{ field: string; pattern: string }>;
+		};
+		expect(
+			entry.volatile.some((v) => v.pattern === 'hardcoded-date' && v.field === 'tagline')
+		).toBe(true);
+	});
+
+	it('flags a "Month YYYY" date', () => {
+		writeFixture(dir, 'month-year-date', {
+			description: fullDesc,
+			blurb: 'Following a March 2024 prototype.'
+		});
+		const { entries } = runAuditJSON();
+		const entry = entries.find((e) => e.slug === 'month-year-date') as {
+			volatile: Array<{ field: string; pattern: string }>;
+		};
+		expect(entry.volatile.some((v) => v.pattern === 'hardcoded-date' && v.field === 'blurb')).toBe(
+			true
+		);
+	});
+
+	it('flags a hardcoded model name', () => {
+		writeFixture(dir, 'model-name', {
+			description: fullDesc,
+			blurb: 'An LLM correction pass powered by gpt-5.4-nano verifies each record.'
+		});
+		const { entries } = runAuditJSON();
+		const entry = entries.find((e) => e.slug === 'model-name') as {
+			volatile: Array<{ field: string; pattern: string }>;
+		};
+		expect(entry.volatile.some((v) => v.pattern === 'model-name' && v.field === 'blurb')).toBe(
+			true
+		);
+	});
+
+	it('false-positive guard: technical specificity does not trigger any pattern', () => {
+		writeFixture(dir, 'clean-entry', {
+			description: fullDesc,
+			tagline: '384-dimension embeddings power semantic search across six axes.',
+			highlights: [
+				'Built with Svelte 5 and validated to UUID v5 semantics.',
+				...fullHighlights.slice(1)
+			]
+		});
+		const { entries } = runAuditJSON();
+		const entry = entries.find((e) => e.slug === 'clean-entry') as {
+			volatile: Array<{ field: string; pattern: string }>;
+		};
+		expect(entry.volatile).toEqual([]);
+	});
+
+	it('volatile findings do not change the tier', () => {
+		writeFixture(dir, 'full-but-volatile', {
+			description: fullDesc,
+			highlights: ['Version 5.0.0 across 666 commits.', ...fullHighlights.slice(1)]
+		});
+		const { entries } = runAuditJSON();
+		const entry = entries.find((e) => e.slug === 'full-but-volatile') as {
+			tier: string;
+			volatile: unknown[];
+		};
+		expect(entry.volatile.length).toBeGreaterThan(0);
+		expect(entry.tier).toBe('Full');
+	});
+
+	it('summary.volatile counts entries with at least one finding', () => {
+		writeFixture(dir, 'clean-1', { description: fullDesc, highlights: fullHighlights });
+		writeFixture(dir, 'volatile-1', {
+			description: fullDesc,
+			highlights: ['666 commits and counting.', ...fullHighlights.slice(1)]
+		});
+		writeFixture(dir, 'volatile-2', {
+			description: fullDesc,
+			tagline: 'Currently in progress.'
+		});
+		const { summary } = runAuditJSON();
+		expect(summary.volatile).toBe(2);
 	});
 });
 

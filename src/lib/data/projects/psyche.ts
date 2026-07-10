@@ -24,9 +24,5 @@ export const psyche: AuthoredProject = {
 		{ label: 'C#', kind: 'language' },
 		{ label: '.NET', kind: 'runtime' },
 		{ label: 'Document / JSON', kind: 'data' }
-	],
-	lastCommit: '2025-11-27',
-	metrics: {
-		commits: 82
-	}
+	]
 };

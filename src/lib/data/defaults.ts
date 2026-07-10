@@ -282,6 +282,6 @@ export function mergeAuthored(base: Project, authored: AuthoredProject | undefin
 			authored.relationships !== undefined ? authored.relationships : base.relationships,
 		pin: authored.pin !== undefined ? authored.pin : base.pin,
 		hide: authored.hide !== undefined ? authored.hide : base.hide,
-		metrics: authored.metrics !== undefined ? authored.metrics : base.metrics
+		metrics: base.metrics
 	};
 }

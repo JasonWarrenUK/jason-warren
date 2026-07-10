@@ -26,12 +26,6 @@
 								: undefined
 					}
 				: null,
-			metrics.testCoverage != null
-				? { label: 'Test coverage', value: `${metrics.testCoverage}%` }
-				: null,
-			metrics.mergedPrs != null
-				? { label: 'Merged PRs', value: metrics.mergedPrs.toLocaleString() }
-				: null,
 			metrics.linesAdded != null
 				? { label: 'Lines added', value: `+${metrics.linesAdded.toLocaleString()}` }
 				: null,

@@ -29,10 +29,5 @@ export const rhea: AuthoredProject = {
 		{ label: 'Zod', kind: 'tool' },
 		{ label: 'Deno', kind: 'runtime' },
 		{ label: 'Document / JSON', kind: 'data' }
-	],
-	lastCommit: '2026-03-25',
-	metrics: {
-		commits: 356,
-		linesAdded: 6000
-	}
+	]
 };

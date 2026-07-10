@@ -153,6 +153,16 @@
 	--transition-fast: 120ms ease;
 	--transition-base: 200ms ease;
 	--transition-slow: 350ms ease;
+
+	/*
+	 * --- Dim-others opacity, shared across the connection views ---
+	 * (ProjectMap, TimelineChart, ThemeTerritories, AdoptionTimeline). Nodes and
+	 * chips dim more than edges/connectors, which need to stay legible enough to
+	 * still trace as background structure.
+	 */
+	--dim-node: 0.28;
+	--dim-edge: 0.08;
+	--dim-label: 0.32;
 }
 
 /*

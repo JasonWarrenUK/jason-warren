@@ -34,12 +34,5 @@ export const guardrails: AuthoredProject = {
 		{ label: 'Chrome Extension', kind: 'tool' },
 		{ label: 'NLP / NER', kind: 'ai' },
 		{ label: 'PostgreSQL', kind: 'data' }
-	],
-	lastCommit: '2026-06-12',
-	metrics: {
-		commits: 14,
-		mergedPrs: 4,
-		linesAdded: 6500,
-		linesRemoved: 173
-	}
+	]
 };

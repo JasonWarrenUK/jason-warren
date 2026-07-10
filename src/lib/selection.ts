@@ -5,6 +5,8 @@
  * unit-testable under Vitest's node-only environment.
  */
 
+import { encodeTagSet, encodeTechLabel } from './url-state.js';
+
 /**
  * Validate a raw `?project=` URL param against the slugs visible in the
  * current view. A stale or absent value returns `null` so a dead pin can
@@ -39,4 +41,27 @@ export function projectHref(base: string, slug: string): string {
  */
 export function viewHref(base: string, view: 'map' | 'timeline' | 'toolkit', slug: string): string {
 	return `${base}/${view}?project=${encodeURIComponent(slug)}`;
+}
+
+/**
+ * Build a `/projects` href pre-filtered to a single technology tag.
+ *
+ * `/projects` reads the plural `?tags=` param (a comma-joined set, each token
+ * percent-encoded — see `decodeTagSet`), so a single-tag link must still go
+ * through that codec rather than a bare `?tag=`. Single-sourced here so every
+ * "see projects using this" link (adoption timeline, map) stays correct.
+ */
+export function projectsByTagHref(base: string, label: string): string {
+	return `${base}/projects?tags=${encodeTagSet(new Set([label]))}`;
+}
+
+/**
+ * Build a connection-view href that pins the given technology on arrival.
+ * `ProjectMap` (technologies mode) and `AdoptionTimeline` both honour an
+ * incoming `?tech=` param; the map additionally needs `&mode=technologies`
+ * to land on the surface that renders tech nodes at all.
+ */
+export function techViewHref(base: string, view: 'map' | 'toolkit', label: string): string {
+	const tech = `tech=${encodeTechLabel(label)}`;
+	return view === 'map' ? `${base}/map?mode=technologies&${tech}` : `${base}/toolkit?${tech}`;
 }

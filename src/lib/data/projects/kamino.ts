@@ -27,9 +27,5 @@ export const kamino: AuthoredProject = {
 		{ label: 'Claude Code', kind: 'ai' },
 		{ label: 'Developer Tooling', kind: 'concept' },
 		{ label: 'No persistence', kind: 'data' }
-	],
-	lastCommit: '2026-01-09',
-	metrics: {
-		commits: 1
-	}
+	]
 };

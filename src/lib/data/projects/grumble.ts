@@ -26,9 +26,5 @@ export const grumble: AuthoredProject = {
 		{ label: 'Svelte 5', kind: 'framework' },
 		{ label: 'Bun', kind: 'runtime' },
 		{ label: 'Ephemeral / in-memory', kind: 'data' }
-	],
-	lastCommit: '2026-06-14',
-	metrics: {
-		commits: 11
-	}
+	]
 };

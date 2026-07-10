@@ -146,10 +146,60 @@
 		background: rgb(0 0 0 / 0.45);
 	}
 
+	/*
+	 * Modal action buttons. Every connection view (ProjectMap, TimelineChart,
+	 * ThemeTerritories, AdoptionTimeline) renders its "Pin" / "Go to project" /
+	 * "See in map" style buttons as children of this modal, so the shared markup
+	 * is styled here once via :global() rather than duplicated per component.
+	 */
+	:global(.modal-action) {
+		display: block;
+		width: 100%;
+		padding: var(--space-3) var(--space-4);
+		border-radius: var(--radius-md);
+		font-size: var(--text-sm);
+		font-weight: 600;
+		text-align: center;
+		text-decoration: none;
+		cursor: pointer;
+		transition:
+			background-color var(--transition-fast),
+			border-color var(--transition-fast),
+			color var(--transition-fast);
+	}
+
+	:global(.modal-action:focus-visible) {
+		outline: 2px solid var(--color-primary-text);
+		outline-offset: 2px;
+	}
+
+	:global(.modal-action--primary) {
+		background-color: var(--color-primary-bg);
+		border: 1px solid var(--color-primary);
+		color: var(--color-primary-text);
+	}
+
+	:global(.modal-action--primary:hover) {
+		background-color: var(--color-primary);
+		color: var(--color-surface);
+	}
+
+	:global(.modal-action--secondary) {
+		background-color: var(--color-surface);
+		border: 1px solid var(--color-border);
+		color: var(--color-text-subtle);
+	}
+
+	:global(.modal-action--secondary:hover) {
+		border-color: var(--color-border-strong);
+		color: var(--color-text);
+	}
+
 	@media (prefers-reduced-motion: reduce) {
 		.modal,
 		.modal__inner,
-		.modal__close {
+		.modal__close,
+		:global(.modal-action) {
 			transition: none;
 		}
 	}

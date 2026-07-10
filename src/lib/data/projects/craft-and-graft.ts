@@ -33,10 +33,5 @@ export const craftAndGraft: AuthoredProject = {
 		{ label: 'Express', kind: 'framework' },
 		{ label: 'PostgreSQL', kind: 'data' },
 		{ label: 'Node.js', kind: 'runtime' }
-	],
-	lastCommit: '2024-10-31',
-	metrics: {
-		commits: 92,
-		mergedPrs: 32
-	}
+	]
 };

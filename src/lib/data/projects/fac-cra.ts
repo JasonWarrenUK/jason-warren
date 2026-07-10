@@ -7,13 +7,13 @@ export const facCra: AuthoredProject = {
 		'The Founders and Coders apprenticeship platform: a large, mature TypeScript monorepo with a GraphQL API, a distribution pipeline, and a learner dashboard.',
 	blurb: 'The Founders and Coders apprenticeship platform: a mature TypeScript monorepo.',
 	description:
-		'Maintained by the wider Founders and Coders team, this is a large, mature TypeScript monorepo behind the apprenticeship platform: a GraphQL API, a distribution pipeline, and a learner dashboard. I contributed self-contained features and well-scoped fixes into the established codebase. The headliners are the Lead Pool multi-axis candidate segmentation (six axes, composable signal groups, a hydration orchestrator, and pattern-based strength classification), distribution pipeline extensions (saved-query folders, workshop runsheets, batch lead-scoring, a markdown email composer), a learner dashboard restructure with collapsible tiles and health metrics, and the first automated browser tests on the project via a full Playwright E2E suite. A non-invasive audit pass added security hardening and accessibility fixes and removed 17 unused packages.',
+		'Maintained by the wider Founders and Coders team, this is a large, mature TypeScript monorepo behind the apprenticeship platform: a GraphQL API, a distribution pipeline, and a learner dashboard. I contributed self-contained features and well-scoped fixes into the established codebase. The headliners are the Lead Pool multi-axis candidate segmentation (six axes, composable signal groups, a hydration orchestrator, and pattern-based strength classification), distribution pipeline extensions (saved-query folders, workshop runsheets, batch lead-scoring, a markdown email composer), a learner dashboard restructure with collapsible tiles and health metrics, and the first automated browser tests on the project via a full Playwright E2E suite. A non-invasive audit pass added security hardening and accessibility fixes and stripped out dead dependencies.',
 	kind: 'app',
 	contribution: {
 		role: 'collaborator',
 		collaboration: { team: 'Founders and Coders', employer: 'Founders and Coders' },
 		contributionNote:
-			'Lead Pool candidate segmentation (6 axes, composable signal groups, hydration orchestrator); learner dashboard restructure (collapsible tiles, health metrics, Article Stats tab); the first automated browser tests on the project via a full Playwright E2E suite; distribution pipeline extensions; security and a11y audit pass removing 17 unused packages.'
+			'Lead Pool candidate segmentation (6 axes, composable signal groups, hydration orchestrator); learner dashboard restructure (collapsible tiles, health metrics, Article Stats tab); the first automated browser tests on the project via a full Playwright E2E suite; distribution pipeline extensions; security and a11y audit pass stripping dead code and unused dependencies.'
 	},
 	status: 'wip',
 	repoUrl: 'https://github.com/izaakrogan/fac-cra',
@@ -22,7 +22,7 @@ export const facCra: AuthoredProject = {
 		'Full Playwright E2E suite for the learn app. First automated browser tests on the project.',
 		'Learner dashboard restructure: collapsible tiles, health metrics, responsive layout, and an Article Stats tab.',
 		'Distribution pipeline extensions: saved-query folder system, workshop runsheets, batch lead-scoring, markdown email composer.',
-		'Non-invasive audit pass: security hardening, a11y fixes, dead-code removal, 17 unused packages removed.'
+		'Non-invasive audit pass: security hardening, a11y fixes, dead-code and unused-dependency removal.'
 	],
 	relationships: [],
 	tags: [
@@ -32,11 +32,5 @@ export const facCra: AuthoredProject = {
 		{ label: 'Playwright', kind: 'tool' },
 		{ label: 'Monorepo', kind: 'tool' },
 		{ label: 'Node.js', kind: 'runtime' }
-	],
-	lastCommit: '2026-04-02',
-	metrics: {
-		commits: 320,
-		linesAdded: 31500,
-		linesRemoved: 28600
-	}
+	]
 };

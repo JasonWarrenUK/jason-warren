@@ -2714,6 +2714,11 @@ async function runFlag({ args, values, palette }) {
 //   teamNote:    contributionNote present (team projects only)
 //   Final tier = WORST axis. Full requires all axes Full.
 //
+// Alongside the depth tier, every entry also carries a `volatile` array: an
+// advisory scan for prose that will drift as the repo moves on (commit
+// counts, "in progress", hardcoded dates, model names). Volatile findings
+// never affect the tier — they are surfaced for editorial review only.
+//
 // Write-isolation: writes nothing.
 // ---------------------------------------------------------------------------
 
@@ -2724,6 +2729,84 @@ function wordCount(s) {
 
 const TIER_RANK = { Thin: 0, Partial: 1, Full: 2 };
 const RANK_TIER = ['Thin', 'Partial', 'Full'];
+
+// ---------------------------------------------------------------------------
+// Volatile-prose detection
+//
+// Advisory only: findings never affect the depth tier. Overlay prose that
+// bakes in a number, tense, or date the codebase will outgrow (commit counts,
+// "in progress", a hardcoded model name) reads as stale the moment the repo
+// moves on. The rubric above scores depth; this scores durability.
+// ---------------------------------------------------------------------------
+
+const VOLATILE_PATTERNS = [
+	{
+		id: 'metric-number',
+		// A number that is a percentage, or sits within one word of a
+		// churn/metric noun. Proximity keeps unrelated numbers (dimensions,
+		// version numbers without the word "version", axis counts) clean.
+		re: /\b\d[\d,.]*%|\b\d[\d,.]*\+?\s+(?:\w+\s+)?(?:commits?|lines?|LOC\b|PRs?|packages?|files?|contributors?)\b/i
+	},
+	{
+		id: 'status-tense',
+		re: /\b(?:in progress|work in progress|current phase|currently|active development|actively developed|version \d[\d.]*|v\d+\.\d+[\d.]*)\b/i
+	},
+	{
+		id: 'hardcoded-date',
+		re: /\b\d{4}-\d{2}(?:-\d{2})?\b|\b(?:January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{4}\b/
+	},
+	{
+		id: 'model-name',
+		re: /\bgpt-[\w.-]+|\bclaude-[\w.-]+|\bgemini-[\w.-]+/i
+	}
+];
+
+/** Characters of context kept on each side of a volatile-prose match. */
+const VOLATILE_EXCERPT_PAD = 20;
+
+/**
+ * Scans one prose string for volatile patterns.
+ *
+ * @param {string} field  Field name, for the finding's location.
+ * @param {string} text
+ * @returns {Array<{ field: string, pattern: string, excerpt: string }>}
+ */
+function findVolatileInText(field, text) {
+	if (!text) return [];
+	const findings = [];
+	for (const { id, re } of VOLATILE_PATTERNS) {
+		const match = re.exec(text);
+		if (!match) continue;
+		const start = Math.max(0, match.index - VOLATILE_EXCERPT_PAD);
+		const end = Math.min(text.length, match.index + match[0].length + VOLATILE_EXCERPT_PAD);
+		const excerpt = `${start > 0 ? '…' : ''}${text.slice(start, end)}${end < text.length ? '…' : ''}`;
+		findings.push({ field, pattern: id, excerpt });
+	}
+	return findings;
+}
+
+/**
+ * Scans an overlay's prose fields (description, blurb, tagline, highlights,
+ * contribution.contributionNote) for volatile content: numbers or tenses that
+ * will drift as the underlying repo moves on. Advisory — never affects the
+ * depth tier computed by scoreOverlay.
+ *
+ * @param {object} o  A loaded overlay object.
+ * @returns {Array<{ field: string, pattern: string, excerpt: string }>}
+ */
+function findVolatileProse(o) {
+	const findings = [];
+	findings.push(...findVolatileInText('description', o.description));
+	findings.push(...findVolatileInText('blurb', o.blurb));
+	findings.push(...findVolatileInText('tagline', o.tagline));
+	if (Array.isArray(o.highlights)) {
+		o.highlights.forEach((h, i) => {
+			findings.push(...findVolatileInText(`highlights[${i}]`, h));
+		});
+	}
+	findings.push(...findVolatileInText('contributionNote', o.contribution?.contributionNote));
+	return findings;
+}
 
 /**
  * Dynamically imports every .ts overlay in projectsDir and returns the
@@ -2767,6 +2850,7 @@ function scoreOverlay(o) {
 			axes: {},
 			borderline: true,
 			metrics: {},
+			volatile: [],
 			loadError: o._loadError
 		};
 	}
@@ -2803,7 +2887,8 @@ function scoreOverlay(o) {
 		tier,
 		axes,
 		borderline,
-		metrics: { words, highlights: hl, isTeam: !!isTeam, hasNote }
+		metrics: { words, highlights: hl, isTeam: !!isTeam, hasNote },
+		volatile: findVolatileProse(o)
 	};
 }
 
@@ -2820,6 +2905,7 @@ function runAuditPlain(scored, palette) {
 	const summary = { Full: 0, Partial: 0, Thin: 0 };
 	for (const s of scored) summary[s.tier]++;
 	const borderlineCount = scored.filter((s) => s.borderline || s.loadError).length;
+	const volatileCount = scored.filter((s) => s.volatile.length > 0).length;
 	const authored = scored.length;
 
 	process.stdout.write(
@@ -2829,6 +2915,11 @@ function runAuditPlain(scored, palette) {
 	if (borderlineCount > 0) {
 		process.stdout.write(
 			`${DIM}${borderlineCount} entr${borderlineCount === 1 ? 'y' : 'ies'} flagged for manual review.${RESET}\n`
+		);
+	}
+	if (volatileCount > 0) {
+		process.stdout.write(
+			`${DIM}${volatileCount} entr${volatileCount === 1 ? 'y' : 'ies'} with volatile prose (advisory).${RESET}\n`
 		);
 	}
 	process.stdout.write('\n');
@@ -2849,11 +2940,15 @@ function runAuditPlain(scored, palette) {
 				`${s.metrics.highlights} highlight${s.metrics.highlights === 1 ? '' : 's'} (${s.axes.highlights})`,
 				s.metrics.isTeam
 					? `team note ${s.metrics.hasNote ? 'present' : 'missing'} (${s.axes.contributionNote})`
-					: null
+					: null,
+				s.volatile.length > 0 ? `${s.volatile.length} volatile` : null
 			]
 				.filter(Boolean)
 				.join(' · ');
 			process.stdout.write(`  ${BOLD}${s.slug}${RESET}${marker}  ${DIM}${axisDetail}${RESET}\n`);
+			for (const v of s.volatile) {
+				process.stdout.write(`      ${DIM}${v.field}: "${v.excerpt}" (${v.pattern})${RESET}\n`);
+			}
 		}
 		process.stdout.write('\n');
 	}
@@ -2872,10 +2967,17 @@ async function runAudit({ palette, useGum, json }) {
 	const summary = { Full: 0, Partial: 0, Thin: 0 };
 	for (const s of scored) summary[s.tier]++;
 	const borderlineCount = scored.filter((s) => s.borderline || s.loadError).length;
+	const volatileCount = scored.filter((s) => s.volatile.length > 0).length;
 
 	// Machine-readable mode: emit structured JSON and return.
 	if (json) {
-		process.stdout.write(JSON.stringify({ summary, entries: scored }, null, 2) + '\n');
+		process.stdout.write(
+			JSON.stringify(
+				{ summary: { ...summary, volatile: volatileCount }, entries: scored },
+				null,
+				2
+			) + '\n'
+		);
 		return;
 	}
 
@@ -2886,9 +2988,13 @@ async function runAudit({ palette, useGum, json }) {
 			borderlineCount > 0
 				? `\n_${borderlineCount} entr${borderlineCount === 1 ? 'y' : 'ies'} flagged for manual review (⚠)._`
 				: '';
+		const volatileNote =
+			volatileCount > 0
+				? `\n_${volatileCount} entr${volatileCount === 1 ? 'y' : 'ies'} with volatile prose (advisory)._`
+				: '';
 
 		let md = `# drift audit · content-depth proxy\n\n`;
-		md += `${summary.Thin} Thin · ${summary.Partial} Partial · ${summary.Full} Full · ${authored} authored${borderlineNote}\n`;
+		md += `${summary.Thin} Thin · ${summary.Partial} Partial · ${summary.Full} Full · ${authored} authored${borderlineNote}${volatileNote}\n`;
 
 		for (const tierName of ['Thin', 'Partial', 'Full']) {
 			const entries = scored.filter((s) => s.tier === tierName);
@@ -2905,11 +3011,15 @@ async function runAudit({ palette, useGum, json }) {
 					`${s.metrics.highlights} highlight${s.metrics.highlights === 1 ? '' : 's'} (${s.axes.highlights})`,
 					s.metrics.isTeam
 						? `team note ${s.metrics.hasNote ? 'present' : 'missing'} (${s.axes.contributionNote})`
-						: null
+						: null,
+					s.volatile.length > 0 ? `${s.volatile.length} volatile` : null
 				]
 					.filter(Boolean)
 					.join(' · ');
 				md += `- \`${s.slug}\`${marker} — ${axisDetail}\n`;
+				for (const v of s.volatile) {
+					md += `  - ${v.field}: "${v.excerpt}" (${v.pattern})\n`;
+				}
 			}
 		}
 
@@ -3389,6 +3499,13 @@ penalised for the absence of a note.
 Entries within ±5 words of a threshold, or with exactly 3 or 4 highlights,
 are flagged (⚠) for manual editorial review.
 
+Each entry also carries an **advisory** volatile-prose scan: description,
+blurb, tagline, highlights, and the team contribution note are checked for
+content that will drift as the repo moves on — commit/line/PR counts,
+percentages, status-tense phrases ("in progress", "current phase"),
+hardcoded dates, and model names. Volatile findings never affect the tier;
+they are a prompt to rewrite, not a verdict.
+
 Writes nothing. Recomputes from live files every run.
 
 ## Usage
@@ -3565,6 +3682,10 @@ Reads every projects/*.ts overlay and reports a mechanical-proxy tier:
 
 Final tier is the worst axis. Full requires all axes Full.
 Entries near a threshold are flagged for manual review.
+
+Each entry also carries an advisory volatile-prose scan (commit/line/PR
+counts, percentages, "in progress"-style tense, hardcoded dates, model
+names). Volatile findings never affect the tier.
 
 ${DIM}Writes nothing. Recomputes from live files every run.${RESET}
 

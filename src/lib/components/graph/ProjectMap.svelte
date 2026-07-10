@@ -30,7 +30,13 @@
 	} from '$lib/data/graph.js';
 	import type { TechCoEdge } from '$lib/data/tech-graph.js';
 	import { techNodeRadius } from '$lib/data/tech-graph.js';
-	import { validatePin, nextPinValue, projectHref } from '$lib/selection.js';
+	import {
+		validatePin,
+		nextPinValue,
+		projectHref,
+		projectsByTagHref,
+		techViewHref
+	} from '$lib/selection.js';
 	import {
 		statusColour,
 		statusLabel,
@@ -235,7 +241,13 @@
 	// Filter / visibility state
 	// ---------------------------------------------------------------------------
 
+	// Two separate highlight states rather than one shared variable: relationships/
+	// stack modes highlight a project slug, technologies mode highlights a tech
+	// label. Modes are mutually exclusive so reusing one variable would work, but
+	// keeping them apart matches the effectivePinned*/*Dimmed split below and
+	// avoids a name that means two different things depending on `activeMode`.
 	let activeSlug = $state<string | null>(null);
+	let activeTechLabel = $state<string | null>(null);
 	const isolateMode = $derived(browser ? $page.url.searchParams.get('isolate') === '1' : false);
 
 	const hiddenKinds = $derived(
@@ -276,7 +288,7 @@
 	);
 
 	const effectivePinnedSlug = $derived(activeSlug ?? pinnedSlug);
-	const effectivePinnedTech = $derived(activeSlug ?? pinnedTechLabel);
+	const effectivePinnedTech = $derived(activeTechLabel ?? pinnedTechLabel);
 
 	let selectedProject = $state<{ slug: string; name: string; tagline: string } | null>(null);
 	let selectedTech = $state<{ label: string; kind: TagKind; projectCount: number } | null>(null);
@@ -793,9 +805,18 @@
 						class:map__node--labelled={node.labelled}
 						class:map__node--pinned={pinnedSlug === node.slug}
 						href="{base}/projects/{node.slug}"
+						role="button"
+						aria-haspopup="dialog"
+						aria-pressed={pinnedSlug === node.slug}
 						onclick={(e) => {
 							e.preventDefault();
 							openProjectModal(node);
+						}}
+						onkeydown={(e) => {
+							if (e.key === ' ') {
+								e.preventDefault();
+								openProjectModal(node);
+							}
 						}}
 						onpointerenter={() => (activeSlug = node.slug)}
 						onpointerleave={() => (activeSlug = null)}
@@ -830,15 +851,24 @@
 						class:map__node--hidden={techNodeHidden(node)}
 						class:map__node--labelled={standingTechLabels.has(node.label)}
 						class:map__node--pinned={pinnedTechLabel === node.label}
-						href="{base}/projects?tags={encodeTechLabel(node.label)}"
+						href={projectsByTagHref(base, node.label)}
+						role="button"
+						aria-haspopup="dialog"
+						aria-pressed={pinnedTechLabel === node.label}
 						onclick={(e) => {
 							e.preventDefault();
 							openTechModal(node);
 						}}
-						onpointerenter={() => (activeSlug = node.label)}
-						onpointerleave={() => (activeSlug = null)}
-						onfocus={() => (activeSlug = node.label)}
-						onblur={() => (activeSlug = null)}
+						onkeydown={(e) => {
+							if (e.key === ' ') {
+								e.preventDefault();
+								openTechModal(node);
+							}
+						}}
+						onpointerenter={() => (activeTechLabel = node.label)}
+						onpointerleave={() => (activeTechLabel = null)}
+						onfocus={() => (activeTechLabel = node.label)}
+						onblur={() => (activeTechLabel = null)}
 					>
 						<title
 							>{node.label} — used in {node.projectCount} project{node.projectCount === 1
@@ -1031,11 +1061,14 @@
 		<button type="button" class="modal-action modal-action--primary" onclick={pinSelectedTech}>
 			{isPinnedTech ? 'Unpin' : 'Pin this technology'}
 		</button>
+		<a href={projectsByTagHref(base, selectedTech.label)} class="modal-action modal-action--secondary">
+			See projects using this
+		</a>
 		<a
-			href="{base}/projects?tags={encodeTechLabel(selectedTech.label)}"
+			href={techViewHref(base, 'toolkit', selectedTech.label)}
 			class="modal-action modal-action--secondary"
 		>
-			See projects using this
+			See on the timeline
 		</a>
 	</SelectionModal>
 {/if}
@@ -1099,7 +1132,7 @@
 	}
 
 	.map__edge--dim {
-		opacity: 0.06;
+		opacity: var(--dim-edge);
 	}
 
 	.map__edge--hidden,
@@ -1113,7 +1146,7 @@
 	}
 
 	.map__node--dim {
-		opacity: 0.2;
+		opacity: var(--dim-node);
 	}
 
 	.map__dot {
@@ -1271,58 +1304,11 @@
 		line-height: 1.5;
 	}
 
-	.modal-action {
-		display: block;
-		width: 100%;
-		padding: var(--space-3) var(--space-4);
-		border-radius: var(--radius-md);
-		font-size: var(--text-sm);
-		font-weight: 600;
-		text-align: center;
-		text-decoration: none;
-		cursor: pointer;
-		transition:
-			background-color var(--transition-fast),
-			border-color var(--transition-fast),
-			color var(--transition-fast);
-	}
-
-	.modal-action:focus-visible {
-		outline: 2px solid var(--color-primary-text);
-		outline-offset: 2px;
-	}
-
-	.modal-action--primary {
-		background-color: var(--color-primary-bg);
-		border: 1px solid var(--color-primary);
-		color: var(--color-primary-text);
-	}
-
-	.modal-action--primary:hover {
-		background-color: var(--color-primary);
-		color: var(--color-surface);
-	}
-
-	.modal-action--secondary {
-		background-color: var(--color-surface);
-		border: 1px solid var(--color-border);
-		color: var(--color-text-subtle);
-	}
-
-	.modal-action--secondary:hover {
-		border-color: var(--color-border-strong);
-		color: var(--color-text);
-	}
-
 	@media (prefers-reduced-motion: reduce) {
 		.map__edge,
 		.map__node,
 		.map__dot,
 		.map__label {
-			transition: none;
-		}
-
-		.modal-action {
 			transition: none;
 		}
 	}

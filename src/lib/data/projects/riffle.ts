@@ -33,9 +33,5 @@ export const riffle: AuthoredProject = {
 		{ label: 'DendryNexus', kind: 'tool' },
 		{ label: 'Interactive Fiction', kind: 'concept' },
 		{ label: 'No persistence', kind: 'data' }
-	],
-	lastCommit: '2026-03-12',
-	metrics: {
-		commits: 2
-	}
+	]
 };

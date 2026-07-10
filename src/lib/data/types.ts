@@ -97,15 +97,11 @@ export interface ProjectMetrics {
 	linesRemovedRecentAll?: number;
 
 	// ---------------------------------------------------------------------------
-	// Other metrics (authored in project .ts files; not from drift manifest)
+	// Size — every metric here has a synced source in the drift manifest
 	// ---------------------------------------------------------------------------
 
 	/** Overall codebase size: total lines across tracked source files, all authors. */
 	linesOfCode?: number;
-	/** Statement coverage, 0–100 */
-	testCoverage?: number;
-	/** Merged pull requests (team projects) */
-	mergedPrs?: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -211,9 +207,9 @@ export type AuthoredContribution =
  * defaults.ts fills every field with a safe default derived from the manifest,
  * then mergeAuthored overlays any field the human actually authored.
  *
- * Date fields (firstCommit, lastCommit) may optionally be authored as a
- * fallback; the drift manifest's values (via index.ts) take precedence when
- * present.
+ * Dates and metrics are never authored here: they always come from the drift
+ * manifest (or an override/provisional entry) via withSyncedMetrics in
+ * index.ts, so overlays cannot carry stale copies of derived values.
  */
 export interface AuthoredProject {
 	slug: ProjectSlug;
@@ -227,10 +223,6 @@ export interface AuthoredProject {
 	status?: ProjectStatus;
 	repoUrl?: string;
 	secondaryRepoUrl?: string;
-	/** Fallback date used when the drift manifest carries no firstCommit value. */
-	firstCommit?: string;
-	/** Fallback date used when the drift manifest carries no lastCommit value. */
-	lastCommit?: string;
 	liveUrl?: string;
 	highlights?: string[];
 	relationships?: ProjectRelationship[];
@@ -244,7 +236,6 @@ export interface AuthoredProject {
 	 * Use when a project is technically live but not portfolio-ready.
 	 */
 	hide?: boolean;
-	metrics?: ProjectMetrics;
 }
 
 // ---------------------------------------------------------------------------

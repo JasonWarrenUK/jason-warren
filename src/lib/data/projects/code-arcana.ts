@@ -27,9 +27,5 @@ export const codeArcana: AuthoredProject = {
 		{ label: 'Deno', kind: 'runtime' },
 		{ label: 'Graph / D3', kind: 'tool' },
 		{ label: 'Document / JSON', kind: 'data' }
-	],
-	lastCommit: '2026-06-11',
-	metrics: {
-		commits: 2
-	}
+	]
 };

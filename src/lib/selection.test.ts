@@ -1,5 +1,12 @@
 import { describe, it, expect } from 'vitest';
-import { validatePin, nextPinValue, projectHref, viewHref } from './selection.js';
+import {
+	validatePin,
+	nextPinValue,
+	projectHref,
+	viewHref,
+	projectsByTagHref,
+	techViewHref
+} from './selection.js';
 
 describe('validatePin', () => {
 	const isKnown = (slug: string) => ['drift', 'epoch', 'kamino'].includes(slug);
@@ -66,5 +73,48 @@ describe('viewHref', () => {
 		// Slugs are kebab-case so this is unlikely in practice, but the
 		// encoding contract should hold for anything exotic.
 		expect(viewHref('', 'map', 'my project')).toBe('/map?project=my%20project');
+	});
+});
+
+describe('projectsByTagHref', () => {
+	it('builds a /projects href with a single-tag ?tags= filter (empty base)', () => {
+		expect(projectsByTagHref('', 'Svelte 5')).toBe('/projects?tags=Svelte%205');
+	});
+
+	it('prepends a non-empty base', () => {
+		expect(projectsByTagHref('/portfolio', 'Bun')).toBe('/portfolio/projects?tags=Bun');
+	});
+
+	it('percent-encodes characters that are unsafe in a URL, notably #', () => {
+		// # is especially dangerous: browsers treat it as a fragment delimiter
+		// and silently discard everything after it if left unencoded.
+		expect(projectsByTagHref('', 'C#')).toBe('/projects?tags=C%23');
+	});
+
+	it('matches the ?tags= codec /projects actually reads (decodeTagSet)', () => {
+		// Regression guard for the AdoptionTimeline bug: the link used to build
+		// a singular ?tag= param that /projects never read, landing on an
+		// unfiltered page. This asserts the plural param name directly.
+		expect(projectsByTagHref('', 'Deno')).toContain('?tags=');
+	});
+});
+
+describe('techViewHref', () => {
+	it('builds a map href with ?mode=technologies&tech= (empty base)', () => {
+		expect(techViewHref('', 'map', 'Bun')).toBe('/map?mode=technologies&tech=Bun');
+	});
+
+	it('builds a toolkit href with ?tech= only, no mode param', () => {
+		expect(techViewHref('', 'toolkit', 'Bun')).toBe('/toolkit?tech=Bun');
+	});
+
+	it('prepends a non-empty base', () => {
+		expect(techViewHref('/portfolio', 'map', 'Bun')).toBe(
+			'/portfolio/map?mode=technologies&tech=Bun'
+		);
+	});
+
+	it('percent-encodes special characters in the label', () => {
+		expect(techViewHref('', 'toolkit', 'C#')).toBe('/toolkit?tech=C%23');
 	});
 });
