@@ -149,6 +149,26 @@ describe('getHeroPool — pool completeness', () => {
 		const pool = getHeroPool(BASE_NOW, projects);
 		expect(pool.length).toBe(10);
 	});
+
+	// A slug-pinned snapshot of the real registry's top-N was tried here
+	// previously, but the live Drift CLI updates commit counts on every synced
+	// repo commit, so any pinned slug list goes stale on the next `drift sync`
+	// regardless of whether hero selection actually regressed. The property
+	// that matters (deterministic, score-descending output) is what's worth
+	// guarding, and it holds for the real registry just as it does for the
+	// synthetic fixtures in the "ordering" describe above.
+	it('real-registry top-N is deterministic and score-ordered', () => {
+		const a = getHeroPool(BASE_NOW).slice(0, HERO_COUNT).map((p) => p.slug);
+		const b = getHeroPool(BASE_NOW).slice(0, HERO_COUNT).map((p) => p.slug);
+		expect(a).toEqual(b);
+
+		const pool = getHeroPool(BASE_NOW);
+		for (let i = 1; i < pool.length; i++) {
+			expect(heroScore(pool[i - 1], BASE_NOW)).toBeGreaterThanOrEqual(
+				heroScore(pool[i], BASE_NOW)
+			);
+		}
+	});
 });
 
 // ---------------------------------------------------------------------------
