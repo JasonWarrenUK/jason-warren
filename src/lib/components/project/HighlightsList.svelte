@@ -39,9 +39,9 @@
 
 	.highlights__item {
 		display: grid;
-		grid-template-columns: 20px 1fr;
+		grid-template-columns: var(--space-5) 1fr;
 		gap: var(--space-3);
-		font-size: 15px;
+		font-size: var(--text-body-tight);
 		color: var(--color-text-subtle);
 		line-height: 1.6;
 	}

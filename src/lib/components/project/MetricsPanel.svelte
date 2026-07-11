@@ -79,16 +79,16 @@
 	.metrics__item {
 		display: flex;
 		flex-direction: column;
-		gap: 4px;
-		padding: 16px;
+		gap: var(--space-1);
+		padding: var(--space-4);
 		background-color: var(--color-surface-raised);
 		border: 1px solid var(--color-border);
-		border-radius: 6px;
+		border-radius: var(--radius-panel);
 	}
 
 	.metrics__label {
 		font-family: var(--font-mono);
-		font-size: 10px;
+		font-size: var(--text-apparatus);
 		font-weight: 500;
 		text-transform: uppercase;
 		letter-spacing: 0.08em;
@@ -97,7 +97,7 @@
 
 	.metrics__value {
 		font-family: var(--font-mono);
-		font-size: 24px;
+		font-size: var(--text-2xl);
 		font-weight: 600;
 		color: var(--color-primary);
 		font-variant-numeric: tabular-nums;
@@ -106,7 +106,7 @@
 	.metrics__context {
 		margin: 0;
 		font-family: var(--font-mono);
-		font-size: 11px;
+		font-size: var(--text-apparatus-lg);
 		color: var(--color-text-muted);
 		font-variant-numeric: tabular-nums;
 	}

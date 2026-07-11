@@ -23,11 +23,11 @@
 		display: inline-flex;
 		align-items: center;
 		font-family: var(--font-mono);
-		font-size: 10px;
+		font-size: var(--text-apparatus);
 		font-weight: 600;
 		letter-spacing: 0.08em;
 		text-transform: uppercase;
-		padding: 3px 10px;
+		padding: var(--space-badge);
 		border-radius: var(--radius-full);
 		white-space: nowrap;
 	}

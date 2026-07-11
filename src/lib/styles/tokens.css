@@ -156,6 +156,14 @@
 	--text-4xl: 2.25rem;
 	--text-5xl: 3rem;
 
+	/* Apparatus sub-scale: the survey-instrument mono labels (badges, metrics
+	   captions) sit below --text-xs. Named separately rather than folded into
+	   the main scale since they're a deliberately finer grain used only by
+	   these small UI apparatus, not body content. */
+	--text-apparatus: 0.625rem;
+	--text-apparatus-lg: 0.6875rem;
+	--text-body-tight: 0.9375rem;
+
 	/* --- Spacing --- */
 	--space-1: 0.25rem;
 	--space-2: 0.5rem;
@@ -171,9 +179,14 @@
 	--space-20: 5rem;
 	--space-24: 6rem;
 
+	/* Badge padding: shared by RoleBadge and StatusBadge, both pill-shaped
+	   mono labels with the same asymmetric vertical/horizontal padding. */
+	--space-badge: 0.1875rem 0.625rem;
+
 	/* --- Radii --- */
 	--radius-sm: 0.25rem;
 	--radius-md: 0.5rem;
+	--radius-panel: 0.375rem;
 	--radius-lg: 0.75rem;
 	--radius-xl: 1rem;
 	--radius-full: 9999px;
@@ -238,7 +251,10 @@
 
 :root[data-theme='dark'] {
 	/* --- Surface and foreground: lamplit dark, same warm-mix rule applied
-	   to the existing hand-set dark surfaces. --- */
+	   to the existing hand-set dark surfaces. The four base tones below are
+	   hand-picked hex rather than Reasonable Colors variables: RC's palette
+	   has no swatch this close to near-black lamplit ink, so these are a
+	   deliberate exception to "always derive from RC", not an oversight. --- */
 	--color-surface: color-mix(in oklab, #1a1b1e 88%, var(--color-cinnamon-6));
 	--color-surface-raised: color-mix(in oklab, #232429 88%, var(--color-cinnamon-6));
 	--color-surface-sunken: color-mix(in oklab, #141517 88%, var(--color-cinnamon-6));
@@ -331,7 +347,11 @@
 @media (prefers-color-scheme: dark) {
 	:root:not([data-theme='light']) {
 		/* --- Surface and foreground: lamplit dark, same warm-mix rule
-		   applied to the existing hand-set dark surfaces. --- */
+		   applied to the existing hand-set dark surfaces. The four base tones
+		   below are hand-picked hex rather than Reasonable Colors variables:
+		   RC's palette has no swatch this close to near-black lamplit ink, so
+		   these are a deliberate exception to "always derive from RC", not an
+		   oversight. --- */
 		--color-surface: color-mix(in oklab, #1a1b1e 88%, var(--color-cinnamon-6));
 		--color-surface-raised: color-mix(in oklab, #232429 88%, var(--color-cinnamon-6));
 		--color-surface-sunken: color-mix(in oklab, #141517 88%, var(--color-cinnamon-6));
