@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { polygonHull, polygonCentroid } from 'd3-polygon';
 	import { browser } from '$app/environment';
 	import { goto } from '$app/navigation';
 	import { base } from '$app/paths';
@@ -79,6 +80,12 @@
 		y: number;
 	}
 
+	interface Territory {
+		id: string;
+		name: string;
+		slugs: string[];
+	}
+
 	interface Props {
 		relationshipsNodes: MapNode[];
 		stackNodes: MapNode[];
@@ -87,6 +94,7 @@
 		sharedEdges: SharedTechEdge[];
 		themeEdges: SharedThemeEdge[];
 		techCoEdges: TechCoEdge[];
+		territories: Territory[];
 		size: number;
 	}
 
@@ -98,6 +106,7 @@
 		sharedEdges,
 		themeEdges,
 		techCoEdges,
+		territories,
 		size
 	}: Props = $props();
 
@@ -292,6 +301,79 @@
 		};
 		return `M${wing(-0.42)} L${tipX} ${tipY} L${wing(0.42)}`;
 	}
+
+	// ---------------------------------------------------------------------------
+	// Territory hulls: convex hull per theme cluster, relationships mode only.
+	// ---------------------------------------------------------------------------
+
+	const HULL_PADDING = 32;
+	const HULL_MIN_MEMBERS = 3;
+
+	/** Expands each hull vertex outward from the centroid by `padding`. */
+	function padHull(hull: [number, number][], padding: number): [number, number][] {
+		const [ccx, ccy] = polygonCentroid(hull);
+		return hull.map(([x, y]) => {
+			const dx = x - ccx;
+			const dy = y - ccy;
+			const len = Math.hypot(dx, dy) || 1;
+			return [x + (dx / len) * padding, y + (dy / len) * padding] as [number, number];
+		});
+	}
+
+	/** Rounded-corner closed path through `points`, via quadratic curves through edge midpoints. */
+	function roundedHullPath(points: [number, number][]): string {
+		const n = points.length;
+		const mid = (a: [number, number], b: [number, number]): [number, number] => [
+			(a[0] + b[0]) / 2,
+			(a[1] + b[1]) / 2
+		];
+		const start = mid(points[n - 1], points[0]);
+		let d = `M${start[0]} ${start[1]}`;
+		for (let i = 0; i < n; i++) {
+			const p = points[i];
+			const next = points[(i + 1) % n];
+			const m = mid(p, next);
+			d += ` Q${p[0]} ${p[1]} ${m[0]} ${m[1]}`;
+		}
+		d += ' Z';
+		return d;
+	}
+
+	interface TerritoryHull {
+		id: string;
+		name: string;
+		tone: string;
+		path: string;
+		labelX: number;
+		labelY: number;
+	}
+
+	const territoryHulls = $derived.by((): TerritoryHull[] => {
+		if (activeMode !== 'relationships') return [];
+		const hulls: TerritoryHull[] = [];
+		for (const territory of territories) {
+			const points: [number, number][] = territory.slugs
+				.filter((slug) => !nodeHidden(projectPositions.get(slug) as MapNode))
+				.map((slug) => projectPos(slug))
+				.filter((p): p is { x: number; y: number } => !!p)
+				.map((p) => [p.x, p.y]);
+			if (points.length < HULL_MIN_MEMBERS) continue;
+			const hull = polygonHull(points);
+			if (!hull) continue;
+			const padded = padHull(hull, HULL_PADDING);
+			const [, topY] = padded.reduce((top, pt) => (pt[1] < top[1] ? pt : top));
+			const [cx] = polygonCentroid(padded);
+			hulls.push({
+				id: territory.id,
+				name: territory.name,
+				tone: themeColour(territory.id),
+				path: roundedHullPath(padded),
+				labelX: cx,
+				labelY: topY + 22
+			});
+		}
+		return hulls;
+	});
 
 	const TECH_LABEL_COUNT = 12;
 	const standingTechLabels = $derived(
@@ -860,6 +942,25 @@
 			{/each}
 		</g>
 
+		<!-- Territory hulls: theme clusters as surveyed regions, behind routes/marks. -->
+		{#if territoryHulls.length > 0}
+			<g class="map__territories">
+				{#each territoryHulls as hull (hull.id)}
+					<path class="map__territory-fill" d={hull.path} style="fill: {hull.tone}" />
+					<path class="map__territory-boundary" d={hull.path} style="stroke: {hull.tone}" />
+					<text
+						class="map__territory-label"
+						x={hull.labelX}
+						y={hull.labelY}
+						text-anchor="middle"
+						style="fill: {hull.tone}"
+					>
+						{hull.name}
+					</text>
+				{/each}
+			</g>
+		{/if}
+
 		{#if activeMode === 'relationships'}
 			<!-- Theme edges: one per (pair, theme), each coloured by its theme. -->
 			<g class="map__edges">
@@ -1322,6 +1423,25 @@
 		stroke: var(--color-grid);
 		stroke-width: 1;
 		stroke-dasharray: 1 6;
+	}
+
+	.map__territory-fill {
+		opacity: 0.07;
+	}
+
+	.map__territory-boundary {
+		fill: none;
+		stroke-width: 1;
+		stroke-dasharray: 3 5;
+		opacity: 0.5;
+	}
+
+	.map__territory-label {
+		font-family: var(--font-display);
+		font-style: italic;
+		font-size: 18px;
+		opacity: 0.9;
+		pointer-events: none;
 	}
 
 	.map__edge {

@@ -29,6 +29,7 @@
 		sharedEdges={data.sharedEdges}
 		themeEdges={data.themeEdges}
 		techCoEdges={data.techCoEdges}
+		territories={data.territories}
 		size={data.size}
 	/>
 </div>
