@@ -16,7 +16,6 @@ export const redot: AuthoredProject = {
 			'Replaced LangChain with the Anthropic SDK directly on a FAC-31 cohort GitHub Action, cutting abstraction layers and the transitive dependency surface; improved prompts with XML structure and batch processing; prepared the action for public distribution with a full action.yml input schema.'
 	},
 	status: 'finished',
-	repoUrl: 'https://github.com/fac-31/ReDoT',
 	highlights: [
 		'Analyses only functions modified in the current PR: context-aware, not a full codebase scan.',
 		'Recognises the full range of JS/TS function forms: arrow, async, generators, class methods, getters/setters, constructors.',
@@ -26,8 +25,6 @@ export const redot: AuthoredProject = {
 	],
 	relationships: [],
 	tags: [
-		{ label: 'JavaScript', kind: 'language' },
-		{ label: 'Node.js', kind: 'runtime' },
 		{ label: 'Anthropic SDK', kind: 'ai' },
 		{ label: 'GitHub Actions', kind: 'tool' },
 		{ label: 'No persistence', kind: 'data' }

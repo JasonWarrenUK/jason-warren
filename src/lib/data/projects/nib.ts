@@ -2,7 +2,6 @@ import type { AuthoredProject } from '../types.js';
 
 export const nib: AuthoredProject = {
 	slug: 'nib',
-	name: 'Nib',
 	tagline:
 		'A minimal, copy-paste Ink runtime for SvelteKit: one onInit callback for game-specific wiring, a tick counter to bridge non-reactive inkjs to Svelte 5 runes.',
 	blurb: 'A minimal, copy-paste Ink runtime for SvelteKit with a clean injection seam.',
@@ -11,7 +10,6 @@ export const nib: AuthoredProject = {
 	kind: 'library',
 	contribution: { role: 'solo' },
 	status: 'finished',
-	repoUrl: 'https://github.com/JasonWarrenUK/nib',
 	highlights: [
 		'Single onInit injection seam: game-specific BindExternalFunction calls and data registration in one callback, nowhere else.',
 		'tick counter bridges non-reactive inkjs to Svelte 5 runes: UI reads tick inside $derived, so getVariable() re-evaluates on every continue().',
@@ -27,11 +25,6 @@ export const nib: AuthoredProject = {
 		}
 	],
 	tags: [
-		{ label: 'TypeScript', kind: 'language' },
-		{ label: 'Node.js', kind: 'runtime' },
-		{ label: 'Svelte 5', kind: 'framework' },
-		{ label: 'SvelteKit', kind: 'framework' },
-		{ label: 'Ink / inkjs', kind: 'framework' },
 		{ label: 'No persistence', kind: 'data' }
 	]
 };

@@ -2,7 +2,6 @@ import type { AuthoredProject } from '../types.js';
 
 export const rhea: AuthoredProject = {
 	slug: 'rhea',
-	name: 'Rhea',
 	tagline:
 		'An AI curriculum generator for peer-led learning cohorts. Produces multi-week course structures via Claude, with optional live research so output reflects current industry practice.',
 	blurb: 'An AI curriculum generator for peer-led learning cohorts.',
@@ -11,7 +10,6 @@ export const rhea: AuthoredProject = {
 	kind: 'app',
 	contribution: { role: 'solo' },
 	status: 'prototype',
-	repoUrl: 'https://github.com/JasonWarrenUK/rhea',
 	highlights: [
 		'Named sub-workflows (Themis/Metis/Theia) share a common generation engine with the Anthropic SDK and LangChain, making each workflow independently maintainable.',
 		'Provenance/cascade pattern: every generated module carries a changelog, confidence score (high/medium/low), and auto-cited research sources.',
@@ -21,13 +19,9 @@ export const rhea: AuthoredProject = {
 	],
 	relationships: [],
 	tags: [
-		{ label: 'TypeScript', kind: 'language' },
-		{ label: 'SvelteKit', kind: 'framework' },
-		{ label: 'Svelte 5', kind: 'framework' },
 		{ label: 'Anthropic SDK', kind: 'ai' },
 		{ label: 'LangChain', kind: 'ai' },
 		{ label: 'Zod', kind: 'tool' },
-		{ label: 'Deno', kind: 'runtime' },
 		{ label: 'Document / JSON', kind: 'data' }
 	]
 };

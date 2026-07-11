@@ -2,7 +2,6 @@ import type { AuthoredProject } from '../types.js';
 
 export const kitchenGremlin: AuthoredProject = {
 	slug: 'kitchen-gremlin',
-	name: 'Kitchen Gremlin',
 	tagline:
 		'A self-hosted, local-first recipe manager built around a real Paprika library, a FTS5 full-text search index, and a planned Yjs CRDT sync layer.',
 	blurb: 'A self-hosted, local-first recipe manager built to replace Paprika.',
@@ -11,7 +10,6 @@ export const kitchenGremlin: AuthoredProject = {
 	kind: 'app',
 	contribution: { role: 'solo' },
 	status: 'wip',
-	repoUrl: 'https://github.com/JasonWarrenUK/kitchen-gremlin',
 	highlights: [
 		'SQLite/WASM in a Web Worker, persisted to OPFS; in-memory fallback when OPFS is unavailable.',
 		'Normalised schema with an FTS5 full-text search index and synonym expansion (explicit ingredient ontology stub).',
@@ -21,11 +19,6 @@ export const kitchenGremlin: AuthoredProject = {
 	],
 	relationships: [],
 	tags: [
-		{ label: 'TypeScript', kind: 'language' },
-		{ label: 'SvelteKit', kind: 'framework' },
-		{ label: 'Svelte 5', kind: 'framework' },
-		{ label: 'Bun', kind: 'runtime' },
-		{ label: 'SQLite', kind: 'data' },
 		{ label: 'WASM', kind: 'tool' }
 	]
 };

@@ -2,7 +2,6 @@ import type { AuthoredProject } from '../types.js';
 
 export const iris: AuthoredProject = {
 	slug: 'iris',
-	name: 'Iris',
 	tagline:
 		'A three-interface toolkit that converts apprenticeship learner data from CSV into ESFA-compliant ILR XML, with semantic XSD validation.',
 	blurb: 'Converts apprenticeship CSV data into compliant ILR XML, three ways.',
@@ -14,7 +13,6 @@ export const iris: AuthoredProject = {
 		collaboration: { team: 'Solo (Jason)', employer: 'Founders and Coders' }
 	},
 	status: 'finished',
-	repoUrl: 'https://github.com/JasonWarrenUK/iris',
 	highlights: [
 		'Single TypeScript core drives three interfaces: OpenTUI terminal UI, direct CLI commands, and a Tauri 2 (Rust) native desktop app.',
 		'Schema-driven validation: parses the real ESFA XSD to build a validation registry with type resolution, cardinality and constraint checking. Semantic validation beyond structural XML.',
@@ -30,12 +28,6 @@ export const iris: AuthoredProject = {
 		}
 	],
 	tags: [
-		{ label: 'TypeScript', kind: 'language' },
-		{ label: 'Bun', kind: 'runtime' },
-		{ label: 'SvelteKit', kind: 'framework' },
-		{ label: 'Tauri', kind: 'framework' },
-		{ label: 'Rust', kind: 'language' },
-		{ label: 'OpenTUI', kind: 'framework' },
 		{ label: 'Vitest', kind: 'tool' },
 		{ label: 'XML / XSD', kind: 'tool' },
 		{ label: 'No persistence', kind: 'data' }

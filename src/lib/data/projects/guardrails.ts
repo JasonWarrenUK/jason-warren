@@ -2,7 +2,6 @@ import type { AuthoredProject } from '../types.js';
 
 export const guardrails: AuthoredProject = {
 	slug: 'guardrails',
-	name: 'Guardrails',
 	tagline:
 		'A PII-redaction guardrail service: prompts pass through a browser extension and a FastAPI/Presidio NER pipeline before reaching Claude or OpenAI, with an org-level admin panel.',
 	blurb: 'A PII-redaction pipeline that cleans prompts before they reach an LLM.',
@@ -15,7 +14,6 @@ export const guardrails: AuthoredProject = {
 		contributionNote: 'PLACEHOLDER'
 	},
 	status: 'wip',
-	repoUrl: 'https://github.com/yalla-coop/yalla-labs-guardrails',
 	highlights: [
 		'Smarter PII detection: UK postcode pattern matching and name-initial detection.',
 		'Added Google Gemini as a third AI provider, extending the architecture beyond Claude and OpenAI.',
@@ -25,14 +23,7 @@ export const guardrails: AuthoredProject = {
 	],
 	relationships: [],
 	tags: [
-		{ label: 'TypeScript', kind: 'language' },
-		{ label: 'Python', kind: 'language' },
-		{ label: 'CPython', kind: 'runtime' },
-		{ label: 'React', kind: 'framework' },
-		{ label: 'Express', kind: 'framework' },
-		{ label: 'FastAPI', kind: 'framework' },
 		{ label: 'Chrome Extension', kind: 'tool' },
-		{ label: 'NLP / NER', kind: 'ai' },
-		{ label: 'PostgreSQL', kind: 'data' }
+		{ label: 'NLP / NER', kind: 'ai' }
 	]
 };

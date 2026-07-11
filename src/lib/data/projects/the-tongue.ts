@@ -2,7 +2,6 @@ import type { AuthoredProject } from '../types.js';
 
 export const theTongue: AuthoredProject = {
 	slug: 'the-tongue',
-	name: 'The Tongue',
 	tagline:
 		'A language-evolution simulator: generate a proto-language from a seed, steer its sound changes, and watch it fracture into a family of daughter languages as geography divides it.',
 	blurb: 'A simulator that evolves a proto-language into a family of tongues.',
@@ -11,7 +10,6 @@ export const theTongue: AuthoredProject = {
 	kind: 'game',
 	contribution: { role: 'solo' },
 	status: 'live',
-	repoUrl: 'https://github.com/JasonWarrenUK/the-tongue',
 	liveUrl: 'https://the-tongue.vercel.app',
 	highlights: [
 		'Procedural language generation from a numeric seed: phoneme inventory, syllable templates, 32-word core lexicon, 4x3 terrain map.',
@@ -22,13 +20,8 @@ export const theTongue: AuthoredProject = {
 	],
 	relationships: [],
 	tags: [
-		{ label: 'TypeScript', kind: 'language' },
-		{ label: 'SvelteKit', kind: 'framework' },
-		{ label: 'Svelte 5', kind: 'framework' },
-		{ label: 'Tailwind CSS v4', kind: 'framework' },
 		{ label: 'Procedural Generation', kind: 'concept' },
 		{ label: 'Vercel', kind: 'tool' },
-		{ label: 'Bun', kind: 'runtime' },
 		{ label: 'Document / JSON', kind: 'data' }
 	]
 };

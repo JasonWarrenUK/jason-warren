@@ -2,7 +2,6 @@ import type { AuthoredProject } from '../types.js';
 
 export const thoseWhoCameBefore: AuthoredProject = {
 	slug: 'those-who-came-before',
-	name: 'Those Who Came Before',
 	tagline:
 		'A browser game of archaeological interpretation: procedurally generated artefacts, an Interpretive Lens that bends what you see toward what you already believe, and error as the engine.',
 	blurb: 'A browser game of archaeological interpretation where wrong readings compound.',
@@ -11,7 +10,6 @@ export const thoseWhoCameBefore: AuthoredProject = {
 	kind: 'game',
 	contribution: { role: 'solo' },
 	status: 'prototype',
-	repoUrl: 'https://github.com/JasonWarrenUK/those-who-came-before',
 	highlights: [
 		'Intent-free geometric-primitive grammar: produces physical structures, never item types; classification is entirely downstream.',
 		'Culture-biased weighted selection with a probability floor plus a plausibility checker that re-rolls invalid forms.',
@@ -21,11 +19,6 @@ export const thoseWhoCameBefore: AuthoredProject = {
 	],
 	relationships: [],
 	tags: [
-		{ label: 'TypeScript', kind: 'language' },
-		{ label: 'SvelteKit', kind: 'framework' },
-		{ label: 'Svelte 5', kind: 'framework' },
-		{ label: 'Deno', kind: 'runtime' },
-		{ label: 'Tailwind CSS v4', kind: 'framework' },
 		{ label: 'Procedural Generation', kind: 'concept' },
 		{ label: 'Ephemeral / in-memory', kind: 'data' }
 	]

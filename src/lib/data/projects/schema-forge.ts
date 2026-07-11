@@ -2,7 +2,6 @@ import type { AuthoredProject } from '../types.js';
 
 export const schemaForge: AuthoredProject = {
 	slug: 'schema-forge',
-	name: 'Schema Forge',
 	tagline:
 		'An XSD-driven schema system for TypeScript: parse XSD files into queryable registries, then validate data, map CSV rows to nested schema objects, and generate valid XML.',
 	blurb: 'An XSD-driven schema system for validating data and generating XML.',
@@ -11,7 +10,6 @@ export const schemaForge: AuthoredProject = {
 	kind: 'library',
 	contribution: { role: 'solo' },
 	status: 'wip',
-	repoUrl: 'https://github.com/JasonWarrenUK/schema-forge',
 	highlights: [
 		'XSD parsing into SchemaRegistry objects with element trees, lookup maps, and full constraint metadata.',
 		'Data validation against XSD-defined constraints: types, patterns, cardinality, ranges, enumerations.',
@@ -27,8 +25,6 @@ export const schemaForge: AuthoredProject = {
 		}
 	],
 	tags: [
-		{ label: 'TypeScript', kind: 'language' },
-		{ label: 'Bun', kind: 'runtime' },
 		{ label: 'XML / XSD', kind: 'tool' },
 		{ label: 'No persistence', kind: 'data' }
 	]

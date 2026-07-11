@@ -2,7 +2,6 @@ import type { AuthoredProject } from '../types.js';
 
 export const commonsTraybake: AuthoredProject = {
 	slug: 'commons-traybake',
-	name: 'Commons Traybake',
 	tagline:
 		'A comparative RAG experiment demonstrating that "ethics-neutral" data-processing choices are not neutral, by applying four chunking strategies to UK Parliament (Hansard) data and surfacing what each retrieves.',
 	blurb: "A RAG experiment showing that 'neutral' chunking choices never are.",
@@ -16,7 +15,6 @@ export const commonsTraybake: AuthoredProject = {
 			'Co-led a FAC-31 cohort RAG research project into semantic chunking. Implemented the chunking foundation (1024 and 256 token strategies, late-chunking with 70/30 context blending); built the UK Parliament Hansard API integration; established the roadmap and documentation system.'
 	},
 	status: 'wip',
-	repoUrl: 'https://github.com/fac-31/commons-traybake',
 	highlights: [
 		'Four chunking strategies: early (1024 token), early (256 token), late (1024 token blended 70/30 chunk/debate context), late (256 token).',
 		'Late chunking blends embeddings: 70% chunk + 30% debate context, weighting document-level semantics into each retrieved fragment rather than treating chunks as isolated strings.',
@@ -26,12 +24,7 @@ export const commonsTraybake: AuthoredProject = {
 	],
 	relationships: [],
 	tags: [
-		{ label: 'TypeScript', kind: 'language' },
-		{ label: 'Bun', kind: 'runtime' },
-		{ label: 'SvelteKit', kind: 'framework' },
-		{ label: 'Neo4j', kind: 'data' },
 		{ label: 'OpenAI Embeddings', kind: 'ai' },
 		{ label: 'RAG', kind: 'ai' },
-		{ label: 'PostgreSQL', kind: 'data' }
 	]
 };

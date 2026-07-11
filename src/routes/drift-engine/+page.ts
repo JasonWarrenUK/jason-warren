@@ -11,6 +11,7 @@
  * real source; the file path beside each one is where they actually live.
  */
 import { highlight } from '$lib/code/highlight.js';
+import sourcesManifest from '$lib/data/sources.json';
 
 // — src/lib/data/types.ts ————————————————————————————————————————————————
 // The Contribution discriminated union. The role field determines shape;
@@ -123,25 +124,13 @@ linesOfCode:
 
 // — src/lib/data/sources.json ————————————————————————————————————————————
 // One entry from the drift manifest. Written only by drift sync, and only
-// after passing schema validation. measuredRef records the branch the
-// fingerprint was taken against so a rename never reads as drift.
-const sourcesSnippet = `"chirpdb": {
-	"head": "dc05eaf",
-	"measuredRef": "main",
-	"commits": 354,
-	"commitsRecentAll": 73,
-	"commitsMine": 53,
-	"commitsRecent": 53,
-	"lastCommit": "2026-06-18",
-	"firstCommit": "2026-02-23",
-	"languages": ["Python", "SQL", "Shell"],
-	"linesOfCode": 15694,
-	"linesAdded": 48786,
-	"linesRemoved": 40720,
-	"remote": "https://github.com/ZigZag-Technology/CHIRPdb",
-	"runtime": ["python"],
-	"framework": ["fastapi"]
-}`;
+// after passing schema validation. Read directly from the manifest so the
+// example changes whenever Drift syncs the underlying fingerprint.
+const sourcesSnippet = JSON.stringify(
+	{ chirpdb: sourcesManifest.sources.chirpdb },
+	null,
+	'\t'
+);
 
 export async function load() {
 	const [contribution, slug, threads, drift, precedence, sources] = await Promise.all([

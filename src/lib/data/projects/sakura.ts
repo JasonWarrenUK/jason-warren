@@ -2,7 +2,6 @@ import type { AuthoredProject } from '../types.js';
 
 export const sakura: AuthoredProject = {
 	slug: 'sakura',
-	name: 'Sakura',
 	tagline:
 		'A colour-palette manager with a hex-to-name matching engine, built on ASP.NET Core and Entity Framework.',
 	blurb: 'A colour-palette manager with a hex-to-name matching engine.',
@@ -16,8 +15,6 @@ export const sakura: AuthoredProject = {
 			'Led the ASP.NET Core API on a FAC-30 cohort project: a colour-matching engine (hex/RGB/HSL conversion, nearest-colour name resolution), Entity Framework Core data model with a ColourCollection join table, privacy-filtered collections endpoints scoped to the authenticated user and Swagger-documented REST with ASP.NET Identity auth.'
 	},
 	status: 'finished',
-	repoUrl: 'https://github.com/fac30/sakura-api',
-	secondaryRepoUrl: 'https://github.com/fac30/sakura-front',
 	highlights: [
 		'Colour-matching engine (ColourSearch.cs): hex to RGB to HSL conversion with validation and nearest-colour name resolution, letting the app name arbitrary hex codes.',
 		'Entity Framework Core data model with a ColourCollection join table, explicit ordering, and a full migrations history.',
@@ -27,11 +24,5 @@ export const sakura: AuthoredProject = {
 	],
 	relationships: [],
 	tags: [
-		{ label: 'C#', kind: 'language' },
-		{ label: 'ASP.NET Core', kind: 'framework' },
-		{ label: 'Entity Framework Core', kind: 'data' },
-		{ label: 'PostgreSQL', kind: 'data' },
-		{ label: 'React', kind: 'framework' },
-		{ label: '.NET 8', kind: 'runtime' }
 	]
 };

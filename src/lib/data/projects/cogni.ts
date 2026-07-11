@@ -2,7 +2,6 @@ import type { AuthoredProject } from '../types.js';
 
 export const cogni: AuthoredProject = {
 	slug: 'cogni',
-	name: 'Cogni',
 	tagline:
 		'A developer cognition self-assessment: map your style across 17 two-axis compasses, then see which methodologies (TDD, Shape Up, Kanban…) fit you and why.',
 	blurb: 'A self-assessment that maps your developer style to methodologies.',
@@ -11,7 +10,6 @@ export const cogni: AuthoredProject = {
 	kind: 'app',
 	contribution: { role: 'solo' },
 	status: 'prototype',
-	repoUrl: 'https://github.com/JasonWarrenUK/cogni',
 	highlights: [
 		'17 two-axis compasses organised in three tiers; constraint propagation crosshatches quadrants that would contradict already-set positions.',
 		'10+ methodology evaluations (TDD, Scrum, Shape Up, Kanban, XP, etc.) with per-methodology friction explanations.',
@@ -21,10 +19,6 @@ export const cogni: AuthoredProject = {
 	],
 	relationships: [],
 	tags: [
-		{ label: 'TypeScript', kind: 'language' },
-		{ label: 'Svelte 5', kind: 'framework' },
-		{ label: 'SvelteKit', kind: 'framework' },
-		{ label: 'Bun', kind: 'runtime' },
 		{ label: 'Vitest', kind: 'tool' },
 		{ label: 'Document / JSON', kind: 'data' }
 	]
