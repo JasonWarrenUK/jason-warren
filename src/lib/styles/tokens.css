@@ -240,7 +240,7 @@
 	/* --- Surface and foreground: lamplit dark, same warm-mix rule applied
 	   to the existing hand-set dark surfaces. --- */
 	--color-surface: color-mix(in oklab, #1a1b1e 88%, var(--color-cinnamon-6));
-	--color-surface-raised: color-mix(in oklab, #25262b 88%, var(--color-cinnamon-6));
+	--color-surface-raised: color-mix(in oklab, #232429 88%, var(--color-cinnamon-6));
 	--color-surface-sunken: color-mix(in oklab, #141517 88%, var(--color-cinnamon-6));
 	--color-border: color-mix(in oklab, var(--color-gray-5) 88%, var(--color-cinnamon-5));
 	--color-border-strong: color-mix(in oklab, var(--color-gray-4) 88%, var(--color-cinnamon-4));
@@ -333,7 +333,7 @@
 		/* --- Surface and foreground: lamplit dark, same warm-mix rule
 		   applied to the existing hand-set dark surfaces. --- */
 		--color-surface: color-mix(in oklab, #1a1b1e 88%, var(--color-cinnamon-6));
-		--color-surface-raised: color-mix(in oklab, #25262b 88%, var(--color-cinnamon-6));
+		--color-surface-raised: color-mix(in oklab, #232429 88%, var(--color-cinnamon-6));
 		--color-surface-sunken: color-mix(in oklab, #141517 88%, var(--color-cinnamon-6));
 		--color-border: color-mix(in oklab, var(--color-gray-5) 88%, var(--color-cinnamon-5));
 		--color-border-strong: color-mix(in oklab, var(--color-gray-4) 88%, var(--color-cinnamon-4));
