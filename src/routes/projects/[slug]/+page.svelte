@@ -67,15 +67,15 @@
 
 		<p class="page__tagline">{data.project.tagline}</p>
 
-			<div class="page__links">
-				<ExternalLink href={data.project.repoUrl} label="Repository" variant="repo" />
-				{#each data.project.companionRepoUrls as companionRepoUrl, index}
-					<ExternalLink
-						href={companionRepoUrl}
-						label={index === 0 ? 'Companion repo' : `Companion repo ${index + 1}`}
-						variant="repo"
-					/>
-				{/each}
+		<div class="page__links">
+			<ExternalLink href={data.project.repoUrl} label="Repository" variant="repo" />
+			{#each data.project.companionRepoUrls as companionRepoUrl, index}
+				<ExternalLink
+					href={companionRepoUrl}
+					label={index === 0 ? 'Companion repo' : `Companion repo ${index + 1}`}
+					variant="repo"
+				/>
+			{/each}
 			{#if data.project.liveUrl}
 				<ExternalLink href={data.project.liveUrl} label="Live site" variant="live" />
 			{/if}
