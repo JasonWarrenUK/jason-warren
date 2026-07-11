@@ -131,7 +131,10 @@ export function inferTags(manifest: SyncedSource): TechTag[] {
 // ---------------------------------------------------------------------------
 
 /**
- * Infers a Contribution from the commit share already in the manifest.
+ * Produces a provisional Contribution fallback from commit share for projects
+ * without an authored editorial role. Commit arithmetic cannot establish
+ * professional responsibility; mergeAuthored replaces this fallback whenever
+ * a curated role is present.
  *
  * Rules (per D3):
  *   - commitsMine === commits (or commitsMine absent/undefined): sole author -> solo
@@ -172,7 +175,7 @@ export function inferContribution(manifest: SyncedSource): Contribution {
  * overlays the dates and metrics from the same manifest entry.
  *
  * repoUrl falls back to the GitHub URL constructed from the slug when remote is
- * absent, so the link is never empty even before `drift update` populates remote.
+ * absent. Companion repository URLs preserve Drift's tracked topology order.
  */
 export function defaultProjectFromManifest(slug: string, manifest: SyncedSource): Project {
 	return {
@@ -186,6 +189,7 @@ export function defaultProjectFromManifest(slug: string, manifest: SyncedSource)
 		tags: inferTags(manifest),
 		status: 'uncategorised',
 		repoUrl: manifest.remote ?? `https://github.com/JasonWarrenUK/${slug}`,
+		companionRepoUrls: manifest.companionRemotes ?? [],
 		highlights: [],
 		relationships: []
 		// metrics and date fields are NOT set here; withSyncedMetrics supplies them
@@ -199,7 +203,8 @@ export function defaultProjectFromManifest(slug: string, manifest: SyncedSource)
 // ---------------------------------------------------------------------------
 
 /**
- * Merges an authored contribution overlay onto the inferred base.
+ * Merges authoritative editorial contribution context onto the provisional
+ * commit-share fallback.
  *
  * `Contribution` is a discriminated union, so a blind object spread is unsound
  * (it can produce a hybrid solo/team object TypeScript cannot narrow). Instead:
@@ -240,7 +245,8 @@ function mergeContribution(
  * Tag merge strategy: when the overlay supplies tags, the result is
  * (inferred tags) ++ (authored tags) deduplicated by (kind, label), with
  * inferred tags first. This means:
- *   - Authored tags add concept/kind/tool tags that inference can't produce.
+ *   - Authored tags add concept, AI, tool and semantic data-model labels that
+ *     dependency inference cannot prove.
  *   - Inferred language/runtime/framework/data tags are NOT dropped by an
  *     authored overlay that only specifies concept tags.
  *   - Exact duplicates (same kind and label) are collapsed.
@@ -273,9 +279,8 @@ export function mergeAuthored(base: Project, authored: AuthoredProject | undefin
 		contribution: mergeContribution(base.contribution, authored.contribution),
 		tags: mergedTags,
 		status: authored.status !== undefined ? authored.status : base.status,
-		repoUrl: authored.repoUrl !== undefined ? authored.repoUrl : base.repoUrl,
-		secondaryRepoUrl:
-			authored.secondaryRepoUrl !== undefined ? authored.secondaryRepoUrl : base.secondaryRepoUrl,
+		repoUrl: base.repoUrl,
+		companionRepoUrls: base.companionRepoUrls,
 		liveUrl: authored.liveUrl !== undefined ? authored.liveUrl : base.liveUrl,
 		highlights: authored.highlights !== undefined ? authored.highlights : base.highlights,
 		relationships:

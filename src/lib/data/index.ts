@@ -71,6 +71,7 @@ export interface SyncedSource {
 	linesRemovedRecentAll?: number;
 	// Repo identity and dependency-manifest fields (Phase 2 / Phase 6)
 	remote?: string;
+	companionRemotes?: string[];
 	runtime?: string[];
 	database?: string[];
 	framework?: string[];

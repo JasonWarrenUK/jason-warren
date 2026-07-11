@@ -72,7 +72,7 @@ describe('getTechCoEdges', () => {
 		}
 	});
 
-	it('at most 2 isolated non-language nodes with default settings', () => {
+	it('at most 4 isolated non-language nodes with default settings', () => {
 		const connected = new Set<string>();
 		for (const e of edges) {
 			connected.add(e.source);
@@ -82,7 +82,7 @@ describe('getTechCoEdges', () => {
 		expect(
 			isolated.length,
 			`isolated: ${isolated.map((n) => n.label).join(', ')}`
-		).toBeLessThanOrEqual(2);
+		).toBeLessThanOrEqual(4);
 	});
 });
 

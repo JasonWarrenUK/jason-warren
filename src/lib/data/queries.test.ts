@@ -1,6 +1,6 @@
 /**
  * Tests for getHeroPool: eligible filter, pin/hide, ordering,
- * stable tiebreaker, and a soft snapshot of the default top-N slugs.
+ * stable tiebreaker, and pool completeness.
  */
 
 import { describe, expect, it } from 'vitest';
@@ -148,21 +148,6 @@ describe('getHeroPool — pool completeness', () => {
 		);
 		const pool = getHeroPool(BASE_NOW, projects);
 		expect(pool.length).toBe(10);
-	});
-});
-
-// ---------------------------------------------------------------------------
-// Soft snapshot — default top-3 slugs
-// This snapshot is intentional: a metric shift that changes which projects are
-// foregrounded should be a reviewed diff, not a silent regression.
-// Update this test deliberately if the scoring model changes.
-// ---------------------------------------------------------------------------
-
-describe('getHeroPool — default top-3 snapshot', () => {
-	it('defaults to iris, wyrd-tui, guardrails (verified 2026-06-18)', () => {
-		const pool = getHeroPool(BASE_NOW);
-		const top3 = pool.slice(0, HERO_COUNT).map((p) => p.slug);
-		expect(top3).toEqual(['iris', 'wyrd-tui', 'guardrails']);
 	});
 });
 

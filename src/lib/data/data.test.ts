@@ -15,7 +15,21 @@ import { getEngineThreads } from './threads.js';
 import sourcesManifest from './sources.json';
 import overridesManifest from './overrides.json';
 import excludedManifest from './excluded.json';
-import type { ProjectSlug } from './types.js';
+import { defaultProjectFromManifest } from './defaults.js';
+import type { AuthoredProject, ProjectSlug } from './types.js';
+
+const authoredModules = import.meta.glob('./projects/*.ts', { eager: true });
+const authoredProjects = Object.values(authoredModules).map((module) => {
+	const exports = Object.values(module as Record<string, unknown>).filter(
+		(value) => value !== null && typeof value === 'object'
+	);
+
+	if (exports.length !== 1) {
+		throw new Error('Every project overlay must export exactly one object.');
+	}
+
+	return exports[0] as AuthoredProject;
+});
 
 // Slugs that have a hand-authored .ts file in src/lib/data/projects/.
 // Tests that assert on authored content (highlights, blurb quality, etc.) are
@@ -56,6 +70,13 @@ const sources = sourcesManifest.sources as Record<string, { languages?: string[]
 // not available at that path. Update sources.local.json if the SvelteKit repo
 // becomes available locally.
 const SCANNER_BLIND_LANGUAGES = new Set<string>(['TypeScript']);
+const EDITORIAL_DATA_TAGS = new Set([
+	'Document / JSON',
+	'Ephemeral / in-memory',
+	'Graph / Cypher',
+	'No persistence',
+	'pgvector'
+]);
 
 describe('project registry', () => {
 	it('has at least one project', () => {
@@ -143,6 +164,81 @@ describe('project registry', () => {
 			}
 		}
 		expect(offenders, `Duplicate (kind, label) tags:\n${offenders.join('\n')}`).toHaveLength(0);
+	});
+
+	it('authored overlays contain no repository URL fields', () => {
+		const offenders = authoredProjects
+			.filter(
+				(authored) =>
+					'repoUrl' in authored ||
+					'companionRepoUrls' in authored ||
+					'secondaryRepoUrl' in authored
+			)
+			.map((authored) => authored.slug);
+
+		expect(
+			offenders,
+			`Repository URLs must come from Drift: ${offenders.join(', ')}`
+		).toHaveLength(0);
+	});
+
+	it('authored names only exist when they differ from the generated name', () => {
+		const offenders: string[] = [];
+
+		for (const authored of authoredProjects) {
+			if (authored.name === undefined) continue;
+
+			const source =
+				sourcesManifest.sources[authored.slug as keyof typeof sourcesManifest.sources];
+			const generated = defaultProjectFromManifest(authored.slug, source);
+
+			if (authored.name === generated.name) offenders.push(authored.slug);
+		}
+
+		expect(
+			offenders,
+			`Authored names duplicated from generated names: ${offenders.join(', ')}`
+		).toHaveLength(0);
+	});
+
+	it('no authored tag duplicates a Drift-inferred tag', () => {
+		const offenders: string[] = [];
+
+		for (const authored of authoredProjects) {
+			const source =
+				sourcesManifest.sources[authored.slug as keyof typeof sourcesManifest.sources];
+			const generated = defaultProjectFromManifest(authored.slug, source);
+			const generatedTags = new Set(generated.tags.map((tag) => `${tag.kind}:${tag.label}`));
+
+			for (const tag of authored.tags ?? []) {
+				const key = `${tag.kind}:${tag.label}`;
+				if (generatedTags.has(key)) {
+					offenders.push(`${authored.slug} → ${key}`);
+				}
+			}
+		}
+
+		expect(
+			offenders,
+			`Authored tags duplicated from Drift:\n${offenders.join('\n')}`
+		).toHaveLength(0);
+	});
+
+	it('authored data tags are limited to editorial architecture labels', () => {
+		const offenders: string[] = [];
+
+		for (const authored of authoredProjects) {
+			for (const tag of authored.tags ?? []) {
+				if (tag.kind === 'data' && !EDITORIAL_DATA_TAGS.has(tag.label)) {
+					offenders.push(`${authored.slug} → ${tag.label}`);
+				}
+			}
+		}
+
+		expect(
+			offenders,
+			`Dependency-backed data tags must come from Drift:\n${offenders.join('\n')}`
+		).toHaveLength(0);
 	});
 
 	it('every curated language tag is a language the repo actually uses', () => {
