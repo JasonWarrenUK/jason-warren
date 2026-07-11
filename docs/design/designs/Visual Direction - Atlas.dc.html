@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,500;0,8..60,600;1,8..60,400&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body { background: #faf7f2; }
+  ::selection { background: rgba(46,93,140,0.16); }
+  a { color: inherit; }
+</style>
+</helmet>
+<div ref="{{ setRoot }}" data-theme="light" style="--d-surface:#faf7f2;--d-raised:#fffdf9;--d-sunken:#f1ece2;--d-text:#211c14;--d-subtle:#5a5245;--d-muted:#988d7b;--d-border:#e6dfd2;--d-border-strong:#d2c8b6;--d-primary:#2e5d8c;--d-primary-soft:#e9eff5;--d-accent:#b0512a;--d-grid:#e8e1d3;--d-edge-runtime:#c07a2b;--d-edge-framework:#7a63b8;--d-edge-data:#2e8378;--d-edge-ai:#bf5583;--d-edge-concept:#7e8f34;--d-edge-tool:#3d84ae;background:var(--d-surface);color:var(--d-text);font-family:'IBM Plex Sans',system-ui,sans-serif;min-height:100vh;transition:background 400ms cubic-bezier(.45,.05,.25,1),color 400ms cubic-bezier(.45,.05,.25,1);">
+
+  <!-- ===================== STICKY BAR ===================== -->
+  <div style="position:sticky;top:0;z-index:50;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:14px clamp(20px,5vw,64px);background:color-mix(in srgb, var(--d-surface) 84%, transparent);backdrop-filter:blur(10px);border-bottom:1px solid var(--d-border);">
+    <div style="display:flex;align-items:baseline;gap:14px;min-width:0;">
+      <span style="font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:600;letter-spacing:0.16em;color:var(--d-accent);white-space:nowrap;">3DE.0</span>
+      <span style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.16em;text-transform:uppercase;color:var(--d-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Visual Direction · Signed off</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;">
+      <a href="archive/Visual Direction - Instrument.dc.html" style="font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:500;letter-spacing:0.1em;text-transform:uppercase;color:var(--d-subtle);text-decoration:none;border:1px solid var(--d-border);border-radius:999px;padding:7px 13px;transition:border-color 240ms cubic-bezier(.45,.05,.25,1);" style-hover="border-color:var(--d-accent);color:var(--d-text)">Runner-up ↗</a>
+      <button type="button" onClick="{{ toggleTheme }}" style="display:inline-flex;align-items:center;gap:9px;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:500;letter-spacing:0.1em;text-transform:uppercase;color:var(--d-subtle);background:var(--d-raised);border:1px solid var(--d-border);border-radius:999px;padding:7px 13px;cursor:pointer;transition:border-color 240ms cubic-bezier(.45,.05,.25,1),color 240ms cubic-bezier(.45,.05,.25,1);" style-hover="border-color:var(--d-accent);color:var(--d-text)">
+        <span style="width:9px;height:9px;border-radius:999px;background:var(--d-accent);display:inline-block;"></span>
+        {{ themeLabel }}
+      </button>
+    </div>
+  </div>
+
+  <div style="max-width:1120px;margin:0 auto;padding:0 clamp(20px,5vw,64px);">
+
+    <!-- ===================== COVER ===================== -->
+    <section style="padding:clamp(56px,9vw,120px) 0 clamp(48px,7vw,88px);border-bottom:1px solid var(--d-border);">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:0.22em;text-transform:uppercase;color:var(--d-muted);margin-bottom:28px;">Decision document — signed off · July 2026</div>
+      <h1 style="font-family:'Source Serif 4',serif;font-weight:600;font-size:clamp(40px,7vw,80px);line-height:1.02;letter-spacing:-0.015em;margin:0 0 28px;max-width:18ch;">The work is a territory.</h1>
+      <p style="font-size:clamp(17px,2.1vw,22px);line-height:1.6;color:var(--d-subtle);max-width:56ch;margin:0 0 40px;">The same brief, resolved the other way: a cartographic, archival identity where projects are surveyed places, connections are plotted routes, and the whole site reads like a working atlas of one person's practice.</p>
+      <div style="display:flex;flex-wrap:wrap;gap:28px;font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:0.05em;color:var(--d-muted);">
+        <div><span style="color:var(--d-subtle);">SCOPE</span>&nbsp;&nbsp;mood · type · motion · graph</div>
+        <div><span style="color:var(--d-subtle);">THEMES</span>&nbsp;&nbsp;light + dark, equal weight</div>
+        <div><span style="color:var(--d-subtle);">STATUS&nbsp;&nbsp;</span>approved — implement from §07</div>
+      </div>
+    </section>
+
+    <!-- ===================== 01 THE READING ===================== -->
+    <section style="padding:clamp(56px,8vw,96px) 0;border-bottom:1px solid var(--d-border);">
+      <div style="display:grid;grid-template-columns:minmax(0,1fr);gap:40px;">
+        <div style="font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:0.2em;text-transform:uppercase;color:var(--d-accent);">01 — The reading</div>
+        <h2 style="font-family:'Source Serif 4',serif;font-weight:600;font-size:clamp(28px,4vw,44px);line-height:1.12;letter-spacing:-0.01em;margin:0;max-width:24ch;">A director who builds worlds, then charts them.</h2>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:28px;max-width:80ch;">
+          <p style="font-size:16px;line-height:1.7;color:var(--d-subtle);margin:0;">Read the projects as a body of work and the cartographic impulse is everywhere: an animated atlas of Anglo-Saxon kingdoms, theme <em style="font-style:italic;">territories</em>, extraction <em style="font-style:italic;">lineages</em>, a schedule view where time is literally displaced space. He doesn't just model relationships — he maps them.</p>
+          <p style="font-size:16px;line-height:1.7;color:var(--d-subtle);margin:0;">Atlas takes that at face value. The register is the working document of a surveyor: warm paper, ink, exact plotted marks. Warmth is the rarer claim among engineer portfolios — precision is preserved in the <span style="color:var(--d-text);">drawing conventions</span>, not the coldness of the palette.</p>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:8px;">
+          <span style="font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:0.14em;text-transform:uppercase;color:var(--d-text);border:1px solid var(--d-border-strong);border-radius:4px;padding:8px 14px;">Charted</span>
+          <span style="font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:0.14em;text-transform:uppercase;color:var(--d-text);border:1px solid var(--d-border-strong);border-radius:4px;padding:8px 14px;">Warm</span>
+          <span style="font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:0.14em;text-transform:uppercase;color:var(--d-text);border:1px solid var(--d-border-strong);border-radius:4px;padding:8px 14px;">Exact</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== 02 MOOD ===================== -->
+    <section style="padding:clamp(56px,8vw,96px) 0;border-bottom:1px solid var(--d-border);">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:0.2em;text-transform:uppercase;color:var(--d-accent);margin-bottom:20px;">02 — Mood</div>
+      <h2 style="font-family:'Source Serif 4',serif;font-weight:600;font-size:clamp(28px,4vw,44px);line-height:1.12;letter-spacing:-0.01em;margin:0 0 16px;max-width:24ch;">Three readings considered. Atlas holds.</h2>
+      <p style="font-size:16px;line-height:1.7;color:var(--d-subtle);max-width:60ch;margin:0 0 44px;">Signal was eliminated first; Instrument was the strong runner-up, explored in full and rejected on distinctiveness, not rigour.</p>
+
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:20px;">
+
+        <!-- Candidate A: Instrument -->
+        <div style="border:1px solid var(--d-border);border-radius:10px;overflow:hidden;background:var(--d-raised);">
+          <div style="height:150px;background:var(--d-sunken);position:relative;overflow:hidden;border-bottom:1px solid var(--d-border);">
+            <svg viewBox="0 0 300 150" style="width:100%;height:100%;display:block;">
+              <g stroke="var(--d-grid)" stroke-width="1">
+                <line x1="0" y1="37" x2="300" y2="37"/><line x1="0" y1="75" x2="300" y2="75"/><line x1="0" y1="113" x2="300" y2="113"/>
+                <line x1="75" y1="0" x2="75" y2="150"/><line x1="150" y1="0" x2="150" y2="150"/><line x1="225" y1="0" x2="225" y2="150"/>
+              </g>
+              <line x1="90" y1="52" x2="150" y2="75" stroke="var(--d-edge-framework)" stroke-width="1.5"/>
+              <line x1="150" y1="75" x2="210" y2="100" stroke="var(--d-edge-data)" stroke-width="1.5"/>
+              <line x1="150" y1="75" x2="205" y2="48" stroke="var(--d-primary)" stroke-width="2"/>
+              <circle cx="90" cy="52" r="7" fill="var(--d-edge-framework)"/>
+              <circle cx="210" cy="100" r="6" fill="var(--d-edge-data)"/>
+              <circle cx="205" cy="48" r="6" fill="var(--d-primary)"/>
+              <circle cx="150" cy="75" r="13" fill="none" stroke="var(--d-primary)" stroke-width="1.5"/>
+              <circle cx="150" cy="75" r="9" fill="var(--d-primary)"/>
+            </svg>
+          </div>
+          <div style="padding:20px;">
+            <div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:var(--d-muted);margin-bottom:6px;">A</div>
+            <h3 style="font-family:'Source Serif 4',serif;font-weight:600;font-size:22px;margin:0 0 10px;">Instrument</h3>
+            <p style="font-size:14.5px;line-height:1.6;color:var(--d-subtle);margin:0 0 14px;">Instrument-panel precision: hairlines, monospace metadata, restrained colour, an oscilloscope-grade graph. The strongest rival — its full argument is preserved in the <a href="archive/Visual Direction - Instrument.dc.html" style="color:var(--d-primary);">archived document</a>.</p>
+            <p style="font-size:13px;line-height:1.55;color:var(--d-muted);margin:0;"><span style="color:var(--d-edge-runtime);font-weight:500;">Risk:</span> austerity is a crowded register — cool greys and mono chrome sit close to every dev-tool brand of the last five years. Rigorous, but not necessarily <em style="font-style:italic;">his</em>.</p>
+          </div>
+        </div>
+
+        <!-- Candidate B: Atlas (chosen) -->
+        <div style="border:1.5px solid var(--d-accent);border-radius:10px;overflow:hidden;background:var(--d-raised);position:relative;">
+          <div style="position:absolute;top:14px;right:14px;font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:#fff;background:var(--d-accent);border-radius:4px;padding:4px 8px;">Chosen</div>
+          <div style="height:150px;background:var(--d-sunken);position:relative;overflow:hidden;border-bottom:1px solid var(--d-border);">
+            <svg viewBox="0 0 300 150" style="width:100%;height:100%;display:block;">
+              <g stroke="var(--d-grid)" stroke-width="1" stroke-dasharray="1 5">
+                <line x1="0" y1="40" x2="300" y2="40"/><line x1="0" y1="110" x2="300" y2="110"/>
+                <line x1="80" y1="0" x2="80" y2="150"/><line x1="220" y1="0" x2="220" y2="150"/>
+              </g>
+              <path d="M20 120 Q80 40 150 70 T280 50" fill="none" stroke="var(--d-edge-concept)" stroke-width="1.25" opacity="0.7"/>
+              <path d="M20 90 Q90 130 160 100 T285 110" fill="none" stroke="var(--d-edge-data)" stroke-width="1.25" opacity="0.7"/>
+              <circle cx="150" cy="70" r="5" fill="none" stroke="var(--d-accent)" stroke-width="1.5"/>
+              <circle cx="150" cy="70" r="1.6" fill="var(--d-accent)"/>
+              <circle cx="240" cy="97" r="4" fill="none" stroke="var(--d-primary)" stroke-width="1.5"/>
+              <circle cx="240" cy="97" r="1.4" fill="var(--d-primary)"/>
+              <text x="150" y="52" text-anchor="middle" font-family="Source Serif 4" font-style="italic" font-size="15" fill="var(--d-text)">Wyrd</text>
+            </svg>
+          </div>
+          <div style="padding:20px;">
+            <div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:var(--d-muted);margin-bottom:6px;">B</div>
+            <h3 style="font-family:'Source Serif 4',serif;font-weight:600;font-size:22px;margin:0 0 10px;">Atlas</h3>
+            <p style="font-size:14.5px;line-height:1.6;color:var(--d-subtle);margin:0 0 14px;">Cartographic and archival: paper-warm neutrals, ink text, a serif display, and the graph drawn as a survey — graticule, plotted routes, place-name labels.</p>
+            <p style="font-size:13px;line-height:1.55;color:var(--d-muted);margin:0;"><span style="color:var(--d-accent);font-weight:500;">Why:</span> it's the reading only Jason can own. Nobody else's portfolio is an atlas, because nobody else's work is territories.</p>
+          </div>
+        </div>
+
+        <!-- Candidate C: Signal -->
+        <div style="border:1px solid var(--d-border);border-radius:10px;overflow:hidden;background:var(--d-raised);opacity:0.75;">
+          <div style="height:150px;background:#16130e;position:relative;overflow:hidden;border-bottom:1px solid var(--d-border);">
+            <svg viewBox="0 0 300 150" style="width:100%;height:100%;display:block;">
+              <line x1="60" y1="40" x2="150" y2="75" stroke="#7aa7d4" stroke-width="3"/>
+              <line x1="150" y1="75" x2="240" y2="45" stroke="#d17ea6" stroke-width="3"/>
+              <line x1="150" y1="75" x2="120" y2="120" stroke="#55a89b" stroke-width="3"/>
+              <rect x="52" y="32" width="16" height="16" fill="#7aa7d4"/>
+              <rect x="232" y="37" width="16" height="16" fill="#d17ea6"/>
+              <rect x="112" y="112" width="16" height="16" fill="#55a89b"/>
+              <rect x="140" y="65" width="20" height="20" fill="#f0ebe1"/>
+            </svg>
+          </div>
+          <div style="padding:20px;">
+            <div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:var(--d-muted);margin-bottom:6px;">C</div>
+            <h3 style="font-family:'Source Serif 4',serif;font-weight:600;font-size:22px;margin:0 0 10px;">Signal</h3>
+            <p style="font-size:14.5px;line-height:1.6;color:var(--d-subtle);margin:0;">Brutalist graph-native. Agreed weakest in both documents: boldest, but tips into gimmick and taxes long-form legibility. Eliminated.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- The stance -->
+      <div style="margin-top:36px;border:1px solid var(--d-border);border-left:3px solid var(--d-accent);border-radius:8px;background:var(--d-primary-soft);padding:clamp(24px,4vw,40px);">
+        <div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.16em;text-transform:uppercase;color:var(--d-accent);margin-bottom:14px;">The stance → Atlas</div>
+        <p style="font-size:clamp(16px,1.9vw,19px);line-height:1.65;color:var(--d-text);max-width:70ch;margin:0;"><strong style="font-weight:600;">Atlas</strong>, because it's the reading that is <em style="font-style:italic;">specific to this body of work</em>. Instrument proves rigour but borrows a register any dev-tool brand can claim; Atlas claims one nobody else can — a director who builds worlds and then surveys them. Precision doesn't leave, it changes instrument: from the oscilloscope to the theodolite. <span style="color:var(--d-subtle);">The test for every element: would it look at home on a well-made survey sheet? If not, it's decoration.</span></p>
+      </div>
+    </section>
+
+    <!-- ===================== 03 TYPE ===================== -->
+    <section style="padding:clamp(56px,8vw,96px) 0;border-bottom:1px solid var(--d-border);">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:0.2em;text-transform:uppercase;color:var(--d-accent);margin-bottom:20px;">03 — Type</div>
+      <h2 style="font-family:'Source Serif 4',serif;font-weight:600;font-size:clamp(28px,4vw,44px);line-height:1.12;letter-spacing:-0.01em;margin:0 0 16px;max-width:24ch;">One new face, and it earns its dependency.</h2>
+      <p style="font-size:16px;line-height:1.7;color:var(--d-subtle);max-width:64ch;margin:0 0 40px;">Atlas needs a serif with archival authority, and none of the four installed packages is one — this is the single case where "something new, if clearly better" applies. <strong style="color:var(--d-text);font-weight:600;">Source Serif 4</strong> for display; IBM Plex Sans and JetBrains Mono stay from the installed set. Sora and Space Grotesk are retired.</p>
+
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:18px;margin-bottom:36px;">
+        <div style="border:1px solid var(--d-border);border-radius:10px;background:var(--d-raised);padding:26px;">
+          <div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:var(--d-muted);margin-bottom:18px;display:flex;justify-content:space-between;"><span>Display</span><span style="color:var(--d-accent);">Source Serif 4 · new</span></div>
+          <div style="font-family:'Source Serif 4',serif;font-weight:600;font-size:52px;line-height:1;margin-bottom:14px;">Aa Gg</div>
+          <div style="font-family:'Source Serif 4',serif;font-weight:500;font-size:20px;margin-bottom:16px;">The work is a territory.</div>
+          <p style="font-size:13px;line-height:1.55;color:var(--d-muted);margin:0;">Headings, hero, pull-quotes; italic for territory names in the graph. Transitional serif with large-optical sizes built in (opsz 8–60), so it holds at 80px and at 18px. Open licence, @fontsource-variable available — one dependency, one decision.</p>
+        </div>
+        <div style="border:1px solid var(--d-border);border-radius:10px;background:var(--d-raised);padding:26px;">
+          <div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:var(--d-muted);margin-bottom:18px;display:flex;justify-content:space-between;"><span>Body</span><span style="color:var(--d-primary);">IBM Plex Sans · installed</span></div>
+          <div style="font-family:'IBM Plex Sans',sans-serif;font-weight:600;font-size:52px;line-height:1;margin-bottom:14px;">Aa Gg</div>
+          <p style="font-family:'IBM Plex Sans',sans-serif;font-size:15px;line-height:1.65;color:var(--d-subtle);margin:0 0 12px;">Prose stays sans — an all-serif site would read period rather than working-document. The serif/sans split is the atlas convention itself: names in serif, apparatus in sans.</p>
+          <p style="font-size:13px;line-height:1.55;color:var(--d-muted);margin:0;">Weights 400/500/600. Body 1.65 line-height, max 64ch measure.</p>
+        </div>
+        <div style="border:1px solid var(--d-border);border-radius:10px;background:var(--d-raised);padding:26px;">
+          <div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:var(--d-muted);margin-bottom:18px;display:flex;justify-content:space-between;"><span>Mono</span><span style="color:var(--d-primary);">JetBrains Mono · installed</span></div>
+          <div style="font-family:'JetBrains Mono',monospace;font-weight:600;font-size:48px;line-height:1;margin-bottom:14px;">Aa Gg</div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:0.14em;text-transform:uppercase;color:var(--d-text);margin-bottom:14px;">54°58′N · SURVEYED 2026</div>
+          <p style="font-size:13px;line-height:1.55;color:var(--d-muted);margin:0;">Code, coordinates, legends, dates, status marks — the plate apparatus. Mono here is what keeps warm paper from drifting into nostalgia: the data is unmistakably modern.</p>
+        </div>
+      </div>
+
+      <!-- Code specimen -->
+      <div style="border:1px solid var(--d-border);border-radius:10px;background:var(--d-sunken);padding:22px 24px;overflow-x:auto;">
+        <div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:var(--d-muted);margin-bottom:14px;">Code — JetBrains Mono 400/500</div>
+        <pre style="margin:0;font-family:'JetBrains Mono',monospace;font-size:13.5px;line-height:1.7;color:var(--d-subtle);"><span style="color:var(--d-edge-framework);">type</span> <span style="color:var(--d-text);">Contribution</span> =
+  | { <span style="color:var(--d-edge-data);">role</span>: <span style="color:var(--d-accent);">'solo'</span> }
+  | { <span style="color:var(--d-edge-data);">role</span>: <span style="color:var(--d-accent);">'team'</span>; <span style="color:var(--d-edge-data);">contributionNote</span>: <span style="color:var(--d-primary);">string</span> };
+<span style="color:var(--d-muted);">// the type forces the note. no runtime surprises.</span></pre>
+      </div>
+    </section>
+
+    <!-- ===================== 04 MOTION ===================== -->
+    <section style="padding:clamp(56px,8vw,96px) 0;border-bottom:1px solid var(--d-border);">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:0.2em;text-transform:uppercase;color:var(--d-accent);margin-bottom:20px;">04 — Motion</div>
+      <h2 style="font-family:'Source Serif 4',serif;font-weight:600;font-size:clamp(28px,4vw,44px);line-height:1.12;letter-spacing:-0.01em;margin:0 0 16px;max-width:24ch;">Plates turn; they don't bounce.</h2>
+      <p style="font-size:16px;line-height:1.7;color:var(--d-subtle);max-width:64ch;margin:0 0 40px;">Atlas motion is slower and more symmetric than Instrument's — an ease-in-out, like a page turning or a survey table sliding into view. Same discipline: one curve, a four-step scale, a hard rule. <span style="color:var(--d-text);">Hover the chips to feel it.</span></p>
+
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:18px;margin-bottom:36px;">
+        <div style="border:1px solid var(--d-border);border-radius:10px;background:var(--d-raised);padding:24px;">
+          <div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:var(--d-muted);margin-bottom:6px;">Standard ease</div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--d-text);margin-bottom:20px;">cubic-bezier(.45, .05, .25, 1)</div>
+          <div style="position:relative;height:44px;border-radius:6px;background:var(--d-sunken);overflow:hidden;cursor:ew-resize;">
+            <div style="position:absolute;top:8px;left:8px;width:28px;height:28px;border-radius:6px;background:var(--d-accent);transition:transform 600ms cubic-bezier(.45,.05,.25,1);" style-hover="transform:translateX(calc(100% + 148px))"></div>
+          </div>
+          <p style="font-size:12.5px;line-height:1.55;color:var(--d-muted);margin:14px 0 0;">Gathers, travels, settles. Deliberate in, damped out — the weight of a physical plate, no overshoot.</p>
+        </div>
+        <div style="border:1px solid var(--d-border);border-radius:10px;background:var(--d-raised);padding:24px;">
+          <div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:var(--d-muted);margin-bottom:18px;">Duration scale — hover each</div>
+          <div style="display:flex;flex-direction:column;gap:10px;">
+            <div style="display:flex;align-items:center;gap:12px;"><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--d-subtle);width:104px;">micro 160ms</span><div style="flex:1;height:22px;background:var(--d-sunken);border-radius:5px;position:relative;overflow:hidden;"><div style="position:absolute;inset:3px auto 3px 3px;width:16px;border-radius:4px;background:var(--d-edge-tool);transition:transform 160ms cubic-bezier(.45,.05,.25,1);" style-hover="transform:translateX(180px)"></div></div></div>
+            <div style="display:flex;align-items:center;gap:12px;"><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--d-subtle);width:104px;">base 240ms</span><div style="flex:1;height:22px;background:var(--d-sunken);border-radius:5px;position:relative;overflow:hidden;"><div style="position:absolute;inset:3px auto 3px 3px;width:16px;border-radius:4px;background:var(--d-primary);transition:transform 240ms cubic-bezier(.45,.05,.25,1);" style-hover="transform:translateX(180px)"></div></div></div>
+            <div style="display:flex;align-items:center;gap:12px;"><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--d-subtle);width:104px;">deliberate 400ms</span><div style="flex:1;height:22px;background:var(--d-sunken);border-radius:5px;position:relative;overflow:hidden;"><div style="position:absolute;inset:3px auto 3px 3px;width:16px;border-radius:4px;background:var(--d-accent);transition:transform 400ms cubic-bezier(.45,.05,.25,1);" style-hover="transform:translateX(180px)"></div></div></div>
+            <div style="display:flex;align-items:center;gap:12px;"><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--d-subtle);width:104px;">plate 600ms</span><div style="flex:1;height:22px;background:var(--d-sunken);border-radius:5px;position:relative;overflow:hidden;"><div style="position:absolute;inset:3px auto 3px 3px;width:16px;border-radius:4px;background:var(--d-edge-framework);transition:transform 600ms cubic-bezier(.45,.05,.25,1);" style-hover="transform:translateX(180px)"></div></div></div>
+          </div>
+        </div>
+      </div>
+
+      <div style="border:1px solid var(--d-border);border-radius:10px;overflow:hidden;">
+        <div style="display:grid;grid-template-columns:1.1fr 1fr;gap:0;">
+          <div style="padding:20px 22px;border-right:1px solid var(--d-border);border-bottom:1px solid var(--d-border);background:var(--d-raised);"><div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:var(--d-edge-data);margin-bottom:12px;">Earns motion</div><p style="font-size:14px;line-height:1.6;color:var(--d-subtle);margin:0;">The same continuity rule as Instrument: graph relayout, theme flip, hover/dim, modal open, the graph settling on load. Atlas adds one: <strong style="color:var(--d-text);font-weight:600;">route drawing</strong> — a plotted edge may draw in along its path (once, on first reveal), because that's how a route is inked.</p></div>
+          <div style="padding:20px 22px;border-bottom:1px solid var(--d-border);background:var(--d-raised);"><div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:var(--d-muted);margin-bottom:12px;">Stays static</div><p style="font-size:14px;line-height:1.6;color:var(--d-subtle);margin:0;">Scroll reveals, decorative loops, text fades, parallax. A map does not fidget. If motion isn't carrying information, it's cut.</p></div>
+        </div>
+        <div style="padding:20px 22px;background:var(--d-primary-soft);">
+          <div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:var(--d-accent);margin-bottom:12px;">prefers-reduced-motion: reduce</div>
+          <p style="font-size:14px;line-height:1.6;color:var(--d-text);margin:0;max-width:82ch;">Identical mechanism to Instrument: a single <code style="font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--d-accent);">--motion-scale: 0</code> switch collapses every duration token to 0ms; transforms become instant opacity swaps; the force simulation ticks synchronously to steady state; route drawing renders fully inked.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== 05 GRAPH ===================== -->
+    <section style="padding:clamp(56px,8vw,96px) 0;border-bottom:1px solid var(--d-border);">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:0.2em;text-transform:uppercase;color:var(--d-accent);margin-bottom:20px;">05 — Graph signature <span style="color:var(--d-muted);">· the centrepiece</span></div>
+      <h2 style="font-family:'Source Serif 4',serif;font-weight:600;font-size:clamp(28px,4vw,44px);line-height:1.12;letter-spacing:-0.01em;margin:0 0 16px;max-width:22ch;">Draw it as a survey, not a simulation.</h2>
+      <p style="font-size:16px;line-height:1.7;color:var(--d-subtle);max-width:64ch;margin:0 0 40px;">The Atlas signature: a dotted graticule instead of blank canvas, nodes as surveyed marks (ring + centre point) rather than filled blobs, edges as plotted routes, and — the ownable move — <strong style="color:var(--d-text);font-weight:600;">theme territories drawn as soft tinted regions with italic serif names</strong>, like kingdoms on a historical map.</p>
+
+      <div style="border:1px solid var(--d-border);border-radius:12px;overflow:hidden;background:var(--d-sunken);margin-bottom:32px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 18px;border-bottom:1px solid var(--d-border);background:var(--d-raised);">
+          <span style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:var(--d-muted);">/map · relationships</span>
+          <span style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.1em;color:var(--d-subtle);">focus: WYRD</span>
+        </div>
+        <div style="position:relative;">
+          <svg viewBox="0 0 720 420" style="width:100%;height:auto;display:block;">
+            <!-- graticule -->
+            <g stroke="var(--d-grid)" stroke-width="1" stroke-dasharray="1 6">
+              <line x1="0" y1="84" x2="720" y2="84"/><line x1="0" y1="168" x2="720" y2="168"/><line x1="0" y1="252" x2="720" y2="252"/><line x1="0" y1="336" x2="720" y2="336"/>
+              <line x1="103" y1="0" x2="103" y2="420"/><line x1="206" y1="0" x2="206" y2="420"/><line x1="309" y1="0" x2="309" y2="420"/><line x1="412" y1="0" x2="412" y2="420"/><line x1="515" y1="0" x2="515" y2="420"/><line x1="618" y1="0" x2="618" y2="420"/>
+            </g>
+            <!-- territory hulls -->
+            <ellipse cx="300" cy="200" rx="185" ry="120" fill="var(--d-edge-data)" opacity="0.07"/>
+            <ellipse cx="300" cy="200" rx="185" ry="120" fill="none" stroke="var(--d-edge-data)" stroke-width="1" stroke-dasharray="3 5" opacity="0.5"/>
+            <ellipse cx="555" cy="235" rx="130" ry="105" fill="var(--d-edge-runtime)" opacity="0.07"/>
+            <ellipse cx="555" cy="235" rx="130" ry="105" fill="none" stroke="var(--d-edge-runtime)" stroke-width="1" stroke-dasharray="3 5" opacity="0.5"/>
+            <text x="215" y="112" font-family="Source Serif 4" font-style="italic" font-size="17" fill="var(--d-edge-data)" opacity="0.85">Terminal-native</text>
+            <text x="560" y="152" font-family="Source Serif 4" font-style="italic" font-size="17" fill="var(--d-edge-runtime)" opacity="0.85">Human history</text>
+            <!-- dimmed routes -->
+            <g opacity="0.2" fill="none" stroke-linecap="round">
+              <path d="M160 130 Q200 220 165 305" stroke="var(--d-edge-tool)" stroke-width="1.25" stroke-dasharray="4 4"/>
+              <path d="M610 300 Q560 280 500 300" stroke="var(--d-edge-concept)" stroke-width="1.25" stroke-dasharray="4 4"/>
+            </g>
+            <!-- focus routes -->
+            <g fill="none" stroke-linecap="round">
+              <path d="M340 210 Q290 180 245 160" stroke="var(--d-primary)" stroke-width="2"/>
+              <path d="M355 230 Q400 280 445 295" stroke="var(--d-edge-data)" stroke-width="1.5" stroke-dasharray="5 4"/>
+              <path d="M360 195 Q450 130 545 210" stroke="var(--d-edge-runtime)" stroke-width="1.5" stroke-dasharray="5 4"/>
+            </g>
+            <!-- dimmed nodes -->
+            <g opacity="0.35">
+              <circle cx="160" cy="130" r="8" fill="none" stroke="var(--d-edge-framework)" stroke-width="1.5"/><circle cx="160" cy="130" r="2.2" fill="var(--d-edge-framework)"/>
+              <circle cx="165" cy="305" r="6" fill="none" stroke="var(--d-edge-tool)" stroke-width="1.5"/><circle cx="165" cy="305" r="2" fill="var(--d-edge-tool)"/>
+              <circle cx="610" cy="300" r="7" fill="none" stroke="var(--d-edge-concept)" stroke-width="1.5"/><circle cx="610" cy="300" r="2" fill="var(--d-edge-concept)"/>
+            </g>
+            <!-- neighbour nodes -->
+            <circle cx="245" cy="160" r="9" fill="none" stroke="var(--d-primary)" stroke-width="1.75"/><circle cx="245" cy="160" r="2.6" fill="var(--d-primary)"/>
+            <circle cx="445" cy="295" r="8" fill="none" stroke="var(--d-edge-data)" stroke-width="1.75"/><circle cx="445" cy="295" r="2.4" fill="var(--d-edge-data)"/>
+            <circle cx="545" cy="210" r="8" fill="none" stroke="var(--d-edge-runtime)" stroke-width="1.75"/><circle cx="545" cy="210" r="2.4" fill="var(--d-edge-runtime)"/>
+            <!-- focus node: double ring survey mark -->
+            <circle cx="348" cy="212" r="16" fill="none" stroke="var(--d-accent)" stroke-width="1.75"/>
+            <circle cx="348" cy="212" r="9" fill="none" stroke="var(--d-accent)" stroke-width="1.25"/>
+            <circle cx="348" cy="212" r="3" fill="var(--d-accent)"/>
+            <!-- labels -->
+            <text x="348" y="252" text-anchor="middle" font-family="JetBrains Mono" font-size="12" letter-spacing="1.5" font-weight="600" fill="var(--d-text)">WYRD</text>
+            <text x="245" y="140" text-anchor="middle" font-family="JetBrains Mono" font-size="10" letter-spacing="1.2" fill="var(--d-subtle)">RIMEWARDEN</text>
+            <text x="445" y="325" text-anchor="middle" font-family="JetBrains Mono" font-size="10" letter-spacing="1.2" fill="var(--d-subtle)">CHIRPDB</text>
+            <text x="545" y="190" text-anchor="middle" font-family="JetBrains Mono" font-size="10" letter-spacing="1.2" fill="var(--d-subtle)">HISTORIA</text>
+            <!-- survey annotation -->
+            <g font-family="JetBrains Mono">
+              <line x1="362" y1="198" x2="430" y2="90" stroke="var(--d-border-strong)" stroke-width="1"/>
+              <circle cx="430" cy="90" r="2" fill="var(--d-border-strong)"/>
+              <text x="438" y="82" font-size="11" letter-spacing="1" font-weight="600" fill="var(--d-text)">WYRD · hub</text>
+              <text x="438" y="98" font-size="10" letter-spacing="0.5" fill="var(--d-muted)">wip · 3 routes · Go</text>
+            </g>
+          </svg>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:18px;">
+        <div style="border:1px solid var(--d-border);border-radius:10px;background:var(--d-raised);padding:22px;">
+          <h4 style="font-family:'Source Serif 4',serif;font-weight:600;font-size:18px;margin:0 0 10px;">Nodes</h4>
+          <p style="font-size:14px;line-height:1.6;color:var(--d-subtle);margin:0;">Survey marks: an open ring with a centre point, not a filled blob. Ring radius keeps the existing formula <code style="font-family:'JetBrains Mono';font-size:12px;color:var(--d-primary);">r = 8 + 17.5·√(w/max)</code>; stroke = status colour; hubs get a second outer ring. Recency maps to ring opacity 0.55→1.0.</p>
+        </div>
+        <div style="border:1px solid var(--d-border);border-radius:10px;background:var(--d-raised);padding:22px;">
+          <h4 style="font-family:'Source Serif 4',serif;font-weight:600;font-size:18px;margin:0 0 10px;">Edges — routes</h4>
+          <p style="font-size:14px;line-height:1.6;color:var(--d-subtle);margin:0;">Always curved (quadratic, slight bow) — routes, not wires. <strong style="color:var(--d-text);font-weight:600;">Extraction</strong> = solid 2px ink; <strong style="color:var(--d-text);font-weight:600;">related/theme</strong> = 1.5px dashed <code style="font-family:'JetBrains Mono';font-size:12px;color:var(--d-primary);">5 4</code>; lineage arrows become route arrowheads. Category colour from the existing edge tokens, unchanged — edges stay pure Reasonable Colors.</p>
+        </div>
+        <div style="border:1px solid var(--d-border);border-radius:10px;background:var(--d-raised);padding:22px;">
+          <h4 style="font-family:'Source Serif 4',serif;font-weight:600;font-size:18px;margin:0 0 10px;">Territories &amp; labels</h4>
+          <p style="font-size:14px;line-height:1.6;color:var(--d-subtle);margin:0;">Theme clusters get a convex-hull region: 7% tint fill, dashed 1px boundary, and an <em style="font-style:italic;">italic serif</em> territory name — the move that makes /map and ThemeTerritories unmistakably one system. Project labels stay mono micro-caps; standing set only, rest on hover.</p>
+        </div>
+        <div style="border:1px solid var(--d-border);border-radius:10px;background:var(--d-raised);padding:22px;">
+          <h4 style="font-family:'Source Serif 4',serif;font-weight:600;font-size:18px;margin:0 0 10px;">Canvas &amp; states</h4>
+          <p style="font-size:14px;line-height:1.6;color:var(--d-subtle);margin:0;">Dotted graticule on <code style="font-family:'JetBrains Mono';font-size:12px;color:var(--d-primary);">--color-surface-sunken</code>. Focus swaps the mark to the accent double-ring and raises a leader-line annotation. Dim-others reuses the existing tokens: node 0.28, edge 0.08, label 0.32.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== 06 COLOUR + THEME ===================== -->
+    <section style="padding:clamp(56px,8vw,96px) 0;border-bottom:1px solid var(--d-border);">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:0.2em;text-transform:uppercase;color:var(--d-accent);margin-bottom:20px;">06 — Colour &amp; theme</div>
+      <h2 style="font-family:'Source Serif 4',serif;font-weight:600;font-size:clamp(28px,4vw,44px);line-height:1.12;letter-spacing:-0.01em;margin:0 0 16px;max-width:24ch;">Paper and ink, in both themes.</h2>
+      <p style="font-size:16px;line-height:1.7;color:var(--d-subtle);max-width:64ch;margin:0 0 36px;">The bigger colour change of the two directions: neutrals warm to paper (light) and lamplit dark (dark); primary shifts from azure to an ink-blue; the accent becomes an oxide red — the colour of survey marks. Everything still routes through the semantic aliases, and every text pairing keeps the Reasonable Colors shade-difference rule (diff ≥3 for body, AA). <span style="color:var(--d-text);">Flip the toggle, top-right, to check the dark plate.</span></p>
+
+      <div style="display:flex;flex-wrap:wrap;gap:12px;">
+        <div style="flex:1;min-width:120px;border:1px solid var(--d-border);border-radius:8px;overflow:hidden;"><div style="height:64px;background:var(--d-primary);"></div><div style="padding:10px 12px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--d-subtle);">--color-primary · blue-4</div></div>
+        <div style="flex:1;min-width:120px;border:1px solid var(--d-border);border-radius:8px;overflow:hidden;"><div style="height:64px;background:var(--d-accent);"></div><div style="padding:10px 12px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--d-subtle);">--color-accent · cinnamon-4</div></div>
+        <div style="flex:1;min-width:120px;border:1px solid var(--d-border);border-radius:8px;overflow:hidden;"><div style="height:64px;background:var(--d-surface);border-bottom:1px solid var(--d-border);"></div><div style="padding:10px 12px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--d-subtle);">--color-surface · gray-1+12%</div></div>
+        <div style="flex:1;min-width:120px;border:1px solid var(--d-border);border-radius:8px;overflow:hidden;"><div style="height:64px;background:var(--d-sunken);border-bottom:1px solid var(--d-border);"></div><div style="padding:10px 12px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--d-subtle);">--color-surface-sunken</div></div>
+        <div style="flex:1;min-width:120px;border:1px solid var(--d-border);border-radius:8px;overflow:hidden;"><div style="height:64px;background:var(--d-text);"></div><div style="padding:10px 12px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--d-subtle);">--color-text · gray-6+12%</div></div>
+      </div>
+      <div style="margin-top:28px;border:1px solid var(--d-border);border-left:3px solid var(--d-edge-data);border-radius:8px;background:var(--d-raised);padding:clamp(20px,3vw,32px);">
+        <div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.16em;text-transform:uppercase;color:var(--d-edge-data);margin-bottom:12px;">Staying inside Reasonable Colors</div>
+        <p style="font-size:14.5px;line-height:1.65;color:var(--d-subtle);max-width:76ch;margin:0 0 12px;">No hand-picked neutrals. Every warm neutral is <strong style="color:var(--d-text);font-weight:600;">derived from its Reasonable Colors counterpart by one rule</strong>: an oklab <code style="font-family:'JetBrains Mono';font-size:12.5px;color:var(--d-primary);">color-mix</code> of the grey with the <em style="font-style:italic;">same-shade</em> cinnamon, at a single <code style="font-family:'JetBrains Mono';font-size:12.5px;color:var(--d-primary);">--warmth</code> ratio (12%). Because both inputs share a shade, the mix stays in that shade's lightness band — so the shade-difference contrast rule (diff 3 ≈ 4.5:1) keeps holding, and the whole ramp warms or cools from one knob.</p>
+        <p style="font-size:14.5px;line-height:1.65;color:var(--d-subtle);max-width:76ch;margin:0;">The chromatic tokens never leave RC at all: primary = <code style="font-family:'JetBrains Mono';font-size:12.5px;color:var(--d-primary);">--color-blue-4</code> (azure → blue is the ink shift), accent = <code style="font-family:'JetBrains Mono';font-size:12.5px;color:var(--d-accent);">--color-cinnamon-4</code> (oxide). Cinnamon is currently claimed by the interactive-fiction theme edge — reassign that edge to the unclaimed <code style="font-family:'JetBrains Mono';font-size:12.5px;color:var(--d-primary);">--color-red-4</code> so no edge shares a hue with the accent. The dark theme pays nothing new either: its surfaces are already hand-set hexes in tokens.css, and Atlas just applies the same mix rule to those existing values (<code style="font-family:'JetBrains Mono';font-size:12.5px;color:var(--d-primary);">color-mix(in oklab, #1a1b1e 88%, var(--color-cinnamon-6))</code>). And since derivation is now a rule rather than taste, assert it: a Vitest data test that resolves each text/surface pair and checks the WCAG ratio at build time, alongside the existing structural tests.</p>
+      </div>
+    </section>
+
+    <!-- ===================== 07 IMPLEMENTATION ===================== -->
+    <section style="padding:clamp(56px,8vw,96px) 0 clamp(72px,10vw,140px);">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:0.2em;text-transform:uppercase;color:var(--d-accent);margin-bottom:20px;">07 — Implementation</div>
+      <h2 style="font-family:'Source Serif 4',serif;font-weight:600;font-size:clamp(28px,4vw,44px);line-height:1.12;letter-spacing:-0.01em;margin:0 0 36px;max-width:24ch;">Enough to build from, no follow-up needed.</h2>
+
+      <div style="border:1px solid var(--d-border);border-radius:10px;background:var(--d-sunken);padding:24px;overflow-x:auto;">
+        <pre style="margin:0;font-family:'JetBrains Mono',monospace;font-size:13px;line-height:1.75;color:var(--d-subtle);"><span style="color:var(--d-muted);">/* tokens.css — Atlas values */
+</span><span style="color:var(--d-edge-data);">--font-display</span>: <span style="color:var(--d-accent);">'Source Serif 4 Variable'</span>, serif;   <span style="color:var(--d-muted);">/* new dep */
+</span><span style="color:var(--d-edge-data);">--font-sans</span>:    <span style="color:var(--d-accent);">'IBM Plex Sans'</span>, system-ui, sans-serif;
+<span style="color:var(--d-edge-data);">--font-mono</span>:    <span style="color:var(--d-accent);">'JetBrains Mono'</span>, monospace;
+
+<span style="color:var(--d-muted);">/* paper neutrals — derived, never hand-picked */
+</span><span style="color:var(--d-edge-data);">--warmth</span>: <span style="color:var(--d-primary);">12%</span>;  <span style="color:var(--d-muted);">/* the one knob */
+</span><span style="color:var(--d-edge-data);">--color-surface</span>:        color-mix(in oklab, var(--color-gray-1) calc(100% - var(--warmth)), var(--color-cinnamon-1));
+<span style="color:var(--d-edge-data);">--color-surface-sunken</span>: color-mix(in oklab, var(--color-gray-2) calc(100% - var(--warmth)), var(--color-cinnamon-2));
+<span style="color:var(--d-edge-data);">--color-border</span>:         color-mix(in oklab, var(--color-gray-3) calc(100% - var(--warmth)), var(--color-cinnamon-3));
+<span style="color:var(--d-edge-data);">--color-text</span>:           color-mix(in oklab, var(--color-gray-6) calc(100% - var(--warmth)), var(--color-cinnamon-6));
+
+<span style="color:var(--d-muted);">/* chromatic tokens — pure Reasonable Colors */
+</span><span style="color:var(--d-edge-data);">--color-primary</span>: var(--color-blue-4);     <span style="color:var(--d-muted);">/* ink */
+</span><span style="color:var(--d-edge-data);">--color-accent</span>:  var(--color-cinnamon-4);  <span style="color:var(--d-muted);">/* oxide; move IF theme edge → red-4 */
+
+</span><span style="color:var(--d-edge-data);">--ease-standard</span>: cubic-bezier(.45, .05, .25, 1);
+<span style="color:var(--d-edge-data);">--motion-scale</span>: <span style="color:var(--d-primary);">1</span>;  <span style="color:var(--d-muted);">/* → 0 under prefers-reduced-motion */
+</span><span style="color:var(--d-edge-data);">--dur-micro</span>: calc(160ms * var(--motion-scale));   <span style="color:var(--d-edge-data);">--dur-base</span>: calc(240ms * var(--motion-scale));
+<span style="color:var(--d-edge-data);">--dur-deliberate</span>: calc(400ms * var(--motion-scale)); <span style="color:var(--d-edge-data);">--dur-plate</span>: calc(600ms * var(--motion-scale));</pre>
+      </div>
+
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px;margin-top:20px;">
+        <div style="border:1px solid var(--d-border);border-radius:10px;background:var(--d-raised);padding:20px;"><div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:var(--d-edge-data);margin-bottom:10px;">Wire fonts</div><p style="font-size:13.5px;line-height:1.6;color:var(--d-subtle);margin:0;">Add <code style="font-family:'JetBrains Mono';font-size:12px;color:var(--d-primary);">@fontsource-variable/source-serif-4</code>; keep Plex Sans + JetBrains Mono; drop Sora and Space Grotesk.</p></div>
+        <div style="border:1px solid var(--d-border);border-radius:10px;background:var(--d-raised);padding:20px;"><div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:var(--d-edge-data);margin-bottom:10px;">Territory hulls</div><p style="font-size:13.5px;line-height:1.6;color:var(--d-subtle);margin:0;">Convex hull per theme cluster from node positions (d3-polygon <code style="font-family:'JetBrains Mono';font-size:12px;color:var(--d-primary);">polygonHull</code>, padded + rounded); 7% tint fill, dashed boundary, italic serif label at centroid.</p></div>
+        <div style="border:1px solid var(--d-border);border-radius:10px;background:var(--d-raised);padding:20px;"><div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:var(--d-edge-data);margin-bottom:10px;">Survey marks</div><p style="font-size:13.5px;line-height:1.6;color:var(--d-subtle);margin:0;">Node = <code style="font-family:'JetBrains Mono';font-size:12px;color:var(--d-primary);">&lt;circle&gt;</code> ring + centre dot in <code style="font-family:'JetBrains Mono';font-size:12px;color:var(--d-primary);">ProjectMap.svelte</code>; graticule <code style="font-family:'JetBrains Mono';font-size:12px;color:var(--d-primary);">&lt;g&gt;</code> behind edges; leader-line annotation on focus.</p></div>
+      </div>
+
+      <p style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.1em;color:var(--d-muted);margin:44px 0 0;">END · 3DE.0 — SIGNED OFF · runner-up: <a href="archive/Visual Direction - Instrument.dc.html" style="color:var(--d-primary);">INSTRUMENT (ARCHIVED)</a> · next: 3DE.1 typography</p>
+    </section>
+
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;defaultTheme&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;light&quot;,&quot;dark&quot;],&quot;default&quot;:&quot;light&quot;,&quot;tsType&quot;:&quot;'light' | 'dark'&quot;,&quot;section&quot;:&quot;Theme&quot;},&quot;accent&quot;:{&quot;editor&quot;:&quot;color&quot;,&quot;default&quot;:&quot;#b0512a&quot;,&quot;options&quot;:[&quot;#b0512a&quot;,&quot;#2e5d8c&quot;,&quot;#7e8f34&quot;],&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Theme&quot;}}">
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { theme: (props && props.defaultTheme) || 'light' };
+    this.palettes = {
+      light: {
+        '--d-surface': '#faf7f2', '--d-raised': '#fffdf9', '--d-sunken': '#f1ece2',
+        '--d-text': '#211c14', '--d-subtle': '#5a5245', '--d-muted': '#988d7b',
+        '--d-border': '#e6dfd2', '--d-border-strong': '#d2c8b6',
+        '--d-primary': '#2e5d8c', '--d-primary-soft': '#e9eff5', '--d-accent': '#b0512a',
+        '--d-grid': '#e8e1d3',
+        '--d-edge-runtime': '#c07a2b', '--d-edge-framework': '#7a63b8', '--d-edge-data': '#2e8378',
+        '--d-edge-ai': '#bf5583', '--d-edge-concept': '#7e8f34', '--d-edge-tool': '#3d84ae'
+      },
+      dark: {
+        '--d-surface': '#16130e', '--d-raised': '#201c15', '--d-sunken': '#100e0a',
+        '--d-text': '#f0ebe1', '--d-subtle': '#ada18c', '--d-muted': '#7a7060',
+        '--d-border': '#322c22', '--d-border-strong': '#48402f',
+        '--d-primary': '#7aa7d4', '--d-primary-soft': '#1c2432', '--d-accent': '#d97a4e',
+        '--d-grid': '#262015',
+        '--d-edge-runtime': '#d69a4f', '--d-edge-framework': '#a08cd9', '--d-edge-data': '#55a89b',
+        '--d-edge-ai': '#d17ea6', '--d-edge-concept': '#a4b25c', '--d-edge-tool': '#6aa7cc'
+      }
+    };
+  }
+
+  applyVars(theme) {
+    if (!this.root) return;
+    const p = this.palettes[theme];
+    for (const k in p) this.root.style.setProperty(k, p[k]);
+    if (this.props && this.props.accent) this.root.style.setProperty('--d-accent', this.props.accent);
+    this.root.setAttribute('data-theme', theme);
+  }
+
+  setRoot = (el) => {
+    this.root = el;
+    if (el) this.applyVars(this.state.theme);
+  };
+
+  toggleTheme = () => {
+    const t = this.state.theme === 'light' ? 'dark' : 'light';
+    this.setState({ theme: t });
+    this.applyVars(t);
+  };
+
+  componentDidUpdate(prevProps) {
+    if (prevProps && (prevProps.accent !== this.props.accent || prevProps.defaultTheme !== this.props.defaultTheme)) {
+      this.applyVars(this.state.theme);
+    }
+  }
+
+  renderVals() {
+    return {
+      setRoot: this.setRoot,
+      toggleTheme: this.toggleTheme,
+      themeLabel: this.state.theme === 'light' ? 'Light' : 'Dark'
+    };
+  }
+}
+</script>
+</body>
+</html>
