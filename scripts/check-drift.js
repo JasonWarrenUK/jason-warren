@@ -1098,10 +1098,12 @@ function loadManifests() {
 		try {
 			sourceTopology = JSON.parse(readFileSync(topologyPath, 'utf8')).projects ?? {};
 		} catch {
-			process.stderr.write(`Cannot parse ${topologyPath}\n`);
-			process.exit(1);
+			process.stderr.write(
+				`Cannot parse ${topologyPath}: continuing without source topology\n`
+			);
 		}
 	}
+	warnOnSharedCompanions(sourceTopology);
 
 	// Load per-machine HEAD-SHA cache (best-effort: missing/unreadable is silent).
 	const cache = loadCache();
@@ -1109,10 +1111,32 @@ function loadManifests() {
 	return { manifest, overrideEntries, localPaths, sourceTopology, cache, inProgress };
 }
 
+/**
+ * Warn (do not fail) when two different projects' topology entries claim the
+ * same companion source ID: the second project's cache would be silently
+ * invalidated by commits belonging to the first.
+ */
+function warnOnSharedCompanions(sourceTopology) {
+	const claimedBy = new Map();
+	for (const [slug, topology] of Object.entries(sourceTopology)) {
+		for (const companionId of topology.companions ?? []) {
+			const owner = claimedBy.get(companionId);
+			if (owner && owner !== slug) {
+				process.stderr.write(
+					`Warning: companion source "${companionId}" is claimed by both "${owner}" and "${slug}" in source-topology.json\n`
+				);
+			} else {
+				claimedBy.set(companionId, slug);
+			}
+		}
+	}
+}
+
 /** Resolve a portfolio slug to its primary and ordered companion source paths. */
 function resolveProjectSources(slug, sourceTopology, localPaths) {
 	const topology = sourceTopology[slug] ?? { primary: slug, companions: [] };
-	const sourceIds = [topology.primary, ...topology.companions];
+	const companions = topology.companions.filter((sourceId) => sourceId !== topology.primary);
+	const sourceIds = [topology.primary, ...companions];
 	const missing = sourceIds.filter((sourceId) => !localPaths[sourceId]);
 
 	if (missing.length > 0) {
@@ -1122,7 +1146,7 @@ function resolveProjectSources(slug, sourceTopology, localPaths) {
 	return {
 		missing: [],
 		primary: { sourceId: topology.primary, path: localPaths[topology.primary] },
-		companions: topology.companions.map((sourceId) => ({
+		companions: companions.map((sourceId) => ({
 			sourceId,
 			path: localPaths[sourceId]
 		}))

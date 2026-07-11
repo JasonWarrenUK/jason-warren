@@ -1493,6 +1493,55 @@ describe('drift sync', () => {
 		expect(readFileSync(join(dir, 'sources.json'), 'utf8')).toBe(before);
 	});
 
+	it('warns and continues instead of exiting when source-topology.json is malformed', () => {
+		writeFileSync(join(dir, 'source-topology.json'), '{ not valid json');
+
+		const result = runSyncWithConfig(dir, []);
+
+		expect(result.status, result.stderr).toBe(0);
+		expect(result.stderr).toContain('Cannot parse');
+		expect(result.stderr).toContain('continuing without source topology');
+		// Affected project falls back to companion-less sync rather than the
+		// whole run aborting.
+		const parsed = JSON.parse(readFileSync(join(dir, 'sources.json'), 'utf8'));
+		expect(parsed.sources[slug]).toBeDefined();
+	});
+
+	it('drops a companion source ID that matches its own project as primary', () => {
+		writeFileSync(
+			join(dir, 'source-topology.json'),
+			JSON.stringify({
+				projects: { [slug]: { primary: slug, companions: [slug, 'missing-ui'] } }
+			})
+		);
+
+		const result = runSyncWithConfig(dir, [slug]);
+
+		expect(result.status, result.stderr).toBe(0);
+		// Only the genuinely distinct companion should be reported missing;
+		// the self-reference must have been deduped rather than double-counted.
+		expect(result.stdout).toContain('no local path for source ID(s): missing-ui');
+		expect(result.stdout).not.toMatch(/missing-ui.*missing-ui/);
+	});
+
+	it('warns when two projects claim the same companion source ID', () => {
+		writeFileSync(
+			join(dir, 'source-topology.json'),
+			JSON.stringify({
+				projects: {
+					[slug]: { primary: slug, companions: ['shared-lib'] },
+					'other-project': { primary: 'other-project', companions: ['shared-lib'] }
+				}
+			})
+		);
+
+		const result = runSyncWithConfig(dir, []);
+
+		expect(result.status, result.stderr).toBe(0);
+		expect(result.stderr).toContain('shared-lib');
+		expect(result.stderr).toMatch(/claimed by both/);
+	});
+
 	it('dry-run stdout mentions the fields that a real sync would write', () => {
 		const dryResult = runSyncWithConfig(dir, ['--dry-run']);
 		expect(dryResult.status, dryResult.stderr).toBe(0);
