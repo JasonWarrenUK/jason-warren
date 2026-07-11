@@ -206,6 +206,7 @@
 		const times = projectNodes
 			.map((n) => (n.lastCommit ? Date.parse(n.lastCommit) : NaN))
 			.filter((t) => !Number.isNaN(t));
+		if (times.length === 0) return (): number => 0.5;
 		const min = Math.min(...times);
 		const max = Math.max(...times);
 		const span = max - min || 1;
@@ -586,7 +587,7 @@
 	// Dimming predicates
 	// ---------------------------------------------------------------------------
 
-	function effectiveHighlight(): string | null {
+	const effectiveHighlight = $derived.by((): string | null => {
 		if (activeMode === 'technologies') {
 			const tech = effectivePinnedTech;
 			if (tech === null) return null;
@@ -599,22 +600,22 @@
 		const node = projectPositions.get(slug);
 		if (node && nodeHidden(node)) return null;
 		return slug;
-	}
+	});
 
 	function nodeDimmed(node: MapNode): boolean {
-		const highlight = effectiveHighlight();
+		const highlight = effectiveHighlight;
 		if (highlight === null || node.slug === highlight) return false;
 		return !adjacency.get(highlight)?.has(node.slug);
 	}
 
 	function techNodeDimmed(node: TechMapNode): boolean {
-		const highlight = effectiveHighlight();
+		const highlight = effectiveHighlight;
 		if (highlight === null || node.label === highlight) return false;
 		return !adjacency.get(highlight)?.has(node.label);
 	}
 
 	function edgeDimmed(source: string, target: string): boolean {
-		const highlight = effectiveHighlight();
+		const highlight = effectiveHighlight;
 		return highlight !== null && source !== highlight && target !== highlight;
 	}
 
@@ -664,7 +665,7 @@
 	];
 
 	const focusAnnotation = $derived.by((): FocusAnnotation | null => {
-		const highlight = effectiveHighlight();
+		const highlight = effectiveHighlight;
 		if (highlight === null) return null;
 
 		if (activeMode === 'technologies') {
@@ -1075,7 +1076,7 @@
 				{#each projectNodes as node (node.slug)}
 					{@const r = radiusScale(node)}
 					{@const p = projectPos(node.slug)}
-					{@const isFocus = effectiveHighlight() === node.slug}
+					{@const isFocus = effectiveHighlight === node.slug}
 					{@const colour = isFocus ? 'var(--color-accent)' : statusColour(node.status)}
 					<a
 						class="map__node"
@@ -1135,7 +1136,7 @@
 				{#each techNodes as node (node.label)}
 					{@const r = techRadiusScale(node)}
 					{@const p = techPos(node.label)}
-					{@const isFocus = effectiveHighlight() === node.label}
+					{@const isFocus = effectiveHighlight === node.label}
 					{@const colour = isFocus ? 'var(--color-accent)' : techKindColour(node.kind)}
 					<a
 						class="map__node map__node--tech"

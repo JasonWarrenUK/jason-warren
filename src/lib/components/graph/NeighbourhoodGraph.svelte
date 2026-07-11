@@ -30,14 +30,16 @@
 	const neighbourRadius = 7;
 
 	const placed = $derived(
-		neighbours.map((neighbour, index) => {
-			const angle = (2 * Math.PI * index) / neighbours.length - Math.PI / 2;
-			return {
-				...neighbour,
-				x: cx + radiusX * Math.cos(angle),
-				y: cy + radiusY * Math.sin(angle)
-			};
-		})
+		neighbours.length === 0
+			? []
+			: neighbours.map((neighbour, index) => {
+					const angle = (2 * Math.PI * index) / neighbours.length - Math.PI / 2;
+					return {
+						...neighbour,
+						x: cx + radiusX * Math.cos(angle),
+						y: cy + radiusY * Math.sin(angle)
+					};
+				})
 	);
 
 	/** Quadratic control point, bowed perpendicular from the midpoint by 0.14x the edge length — same rule as ProjectMap's routes. */
