@@ -1,6 +1,13 @@
 <script lang="ts">
 	import { base } from '$app/paths';
 	import '../app.css';
+	import '@fontsource-variable/source-serif-4';
+	import '@fontsource/ibm-plex-sans/400.css';
+	import '@fontsource/ibm-plex-sans/500.css';
+	import '@fontsource/ibm-plex-sans/600.css';
+	import '@fontsource/jetbrains-mono/400.css';
+	import '@fontsource/jetbrains-mono/500.css';
+	import '@fontsource/jetbrains-mono/600.css';
 	import ThemeToggle from '$lib/components/ui/ThemeToggle.svelte';
 	import { navLinks } from '$lib/nav.js';
 	import { BLUESKY_URL, GITHUB_REPO_URL } from '$lib/config.js';

@@ -107,10 +107,9 @@
 	--layout-gap: 1.5rem;
 
 	/* --- Typography scale --- */
-	--font-sans:
-		system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji',
-		'Segoe UI Emoji';
-	--font-mono: 'Cascadia Code', 'Fira Code', 'Cascadia Mono', 'Consolas', monospace;
+	--font-display: 'Source Serif 4 Variable', 'Source Serif 4', serif;
+	--font-sans: 'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+	--font-mono: 'JetBrains Mono', 'Cascadia Code', 'Fira Code', Consolas, monospace;
 
 	--text-xs: 0.75rem;
 	--text-sm: 0.875rem;
