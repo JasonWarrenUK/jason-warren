@@ -144,7 +144,7 @@
 
 	.hero-rotation__title {
 		font-size: var(--text-3xl);
-		font-weight: 700;
+		font-weight: 600;
 		color: var(--color-text);
 	}
 
@@ -213,8 +213,9 @@
 	}
 
 	.hero-rotation__card-name {
-		font-size: var(--text-2xl);
-		font-weight: 700;
+		font-family: var(--font-display);
+		font-size: 24px;
+		font-weight: 600;
 		color: var(--color-text);
 		line-height: 1.2;
 		transition: color var(--transition-fast);
@@ -251,16 +252,16 @@
 		content: '→';
 		position: absolute;
 		left: 0;
-		color: var(--color-primary-text);
+		color: var(--color-accent);
 		font-weight: 600;
 	}
 
 	.hero-rotation__metrics {
 		display: flex;
 		gap: var(--space-6);
-		padding: var(--space-4) var(--space-5);
-		background-color: var(--color-surface);
-		border-radius: var(--radius-md);
+		padding: 14px 18px;
+		background-color: var(--color-surface-sunken);
+		border-radius: 6px;
 		border: 1px solid var(--color-border);
 	}
 
@@ -269,21 +270,23 @@
 		display: flex;
 		flex-direction: column;
 		align-items: flex-start;
-		gap: var(--space-1);
+		gap: 2px;
 	}
 
 	.hero-rotation__metric-value {
-		font-size: var(--text-2xl);
-		font-weight: 700;
-		color: var(--color-primary-text);
+		font-family: var(--font-mono);
+		font-size: 22px;
+		font-weight: 600;
+		color: var(--color-primary);
 		font-variant-numeric: tabular-nums;
 	}
 
 	.hero-rotation__metric-label {
-		font-size: var(--text-xs);
-		font-weight: 600;
+		font-family: var(--font-mono);
+		font-size: 10px;
+		font-weight: 500;
 		text-transform: uppercase;
-		letter-spacing: 0.06em;
+		letter-spacing: 0.08em;
 		color: var(--color-text-muted);
 	}
 

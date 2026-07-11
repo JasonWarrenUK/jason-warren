@@ -1,11 +1,29 @@
 <script lang="ts">
 	import { base } from '$app/paths';
+	import { page } from '$app/stores';
 	import '../app.css';
+	import '@fontsource-variable/source-serif-4';
+	import '@fontsource/ibm-plex-sans/400.css';
+	import '@fontsource/ibm-plex-sans/500.css';
+	import '@fontsource/ibm-plex-sans/600.css';
+	import '@fontsource/jetbrains-mono/400.css';
+	import '@fontsource/jetbrains-mono/500.css';
+	import '@fontsource/jetbrains-mono/600.css';
 	import ThemeToggle from '$lib/components/ui/ThemeToggle.svelte';
 	import { navLinks } from '$lib/nav.js';
 	import { BLUESKY_URL, GITHUB_REPO_URL } from '$lib/config.js';
 
 	let { children } = $props();
+
+	// Active nav item: the current route's top-level segment matches a
+	// link's path (e.g. /projects/iris still marks "Projects" active).
+	// $page.url.pathname is always absolute regardless of deployment base,
+	// so links.path (also absolute, e.g. '/map') compares directly — no
+	// need to prepend `base`, which SvelteKit may render as a relative '.'
+	// rather than an absolute prefix.
+	const activePath = $derived(
+		navLinks.find((link) => $page.url.pathname.startsWith(link.path))?.path ?? null
+	);
 
 	// Progressive enhancement: close the mobile menu after client-side navigation.
 	// Without JS the menu stays open until the user closes it — acceptable no-JS fallback.
@@ -36,7 +54,14 @@
 		<ul class="site-nav__links" role="list">
 			{#each navLinks as link (link.path)}
 				<li>
-					<a href="{base}{link.path}" class="site-nav__link">{link.label}</a>
+					<a
+						href="{base}{link.path}"
+						class="site-nav__link"
+						class:site-nav__link--active={activePath === link.path}
+						aria-current={activePath === link.path ? 'page' : undefined}
+					>
+						{link.label}
+					</a>
 				</li>
 			{/each}
 			<li>
@@ -144,7 +169,9 @@
 
 	.site-header {
 		border-bottom: 1px solid var(--color-border);
-		background-color: var(--color-surface-raised);
+		background-color: color-mix(in srgb, var(--color-surface-raised) 88%, transparent);
+		backdrop-filter: blur(10px);
+		-webkit-backdrop-filter: blur(10px);
 		position: sticky;
 		top: 0;
 		z-index: 100;
@@ -167,7 +194,6 @@
 		gap: var(--space-2);
 		text-decoration: none;
 		color: var(--color-text);
-		font-weight: 700;
 	}
 
 	.site-nav__initials {
@@ -176,17 +202,20 @@
 		justify-content: center;
 		width: 2rem;
 		height: 2rem;
-		border-radius: var(--radius-md);
-		background-color: var(--color-primary-text);
-		color: #fff;
-		font-size: var(--text-xs);
-		font-weight: 800;
-		letter-spacing: 0.05em;
+		border-radius: var(--radius-sm);
+		background-color: var(--color-primary);
+		color: var(--color-surface-raised);
+		font-family: var(--font-display);
+		font-size: 13px;
+		font-weight: 600;
+		letter-spacing: 0.04em;
 		flex-shrink: 0;
 	}
 
 	.site-nav__name {
-		font-size: var(--text-base);
+		font-family: var(--font-display);
+		font-size: 17px;
+		font-weight: 500;
 	}
 
 	/* ── Desktop nav row ── */
@@ -214,6 +243,15 @@
 	.site-nav__link:hover {
 		color: var(--color-text);
 		background-color: var(--color-surface);
+	}
+
+	.site-nav__link--active {
+		color: var(--color-text);
+		box-shadow: inset 0 -2px 0 var(--color-accent);
+	}
+
+	.site-nav__link--active:hover {
+		background-color: transparent;
 	}
 
 	.site-nav__link:focus-visible {

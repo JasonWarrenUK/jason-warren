@@ -2,7 +2,6 @@ import type { AuthoredProject } from '../types.js';
 
 export const lyraRose: AuthoredProject = {
 	slug: 'lyra-rose',
-	name: 'Lyra Rose',
 	tagline:
 		'A wordless, single-URL artwork: a drifting field of shards, each a fragment of a world built for someone.',
 	blurb: 'A wordless, single-URL artwork: a drifting field of shards.',
@@ -11,7 +10,6 @@ export const lyraRose: AuthoredProject = {
 	kind: 'toy',
 	contribution: { role: 'solo' },
 	status: 'wip',
-	repoUrl: 'https://github.com/JasonWarrenUK/lyra-rose',
 	highlights: [
 		'Pluggable renderer architecture for both surfaces and interiors from day one: adding a new surface or interior type is "write a new renderer," not modifying core opening logic.',
 		'Viewport-bounded layout discipline at every level: nothing scrolls anywhere in the system. Interior content that exceeds the viewport paginates, animates, or reflows within a contained region.',
@@ -22,12 +20,7 @@ export const lyraRose: AuthoredProject = {
 	],
 	relationships: [],
 	tags: [
-		{ label: 'TypeScript', kind: 'language' },
-		{ label: 'SvelteKit', kind: 'framework' },
-		{ label: 'Svelte 5', kind: 'framework' },
 		{ label: 'GSAP', kind: 'tool' },
 		{ label: 'Web Audio API', kind: 'tool' },
-		{ label: 'Supabase', kind: 'data' },
-		{ label: 'Bun', kind: 'runtime' }
 	]
 };

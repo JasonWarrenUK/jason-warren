@@ -185,9 +185,10 @@ interface TeamContribution {
 export type Contribution = SoloContribution | TeamContribution;
 
 /**
- * Looser type for authored overlay files. `collaboration` is optional here
- * so a note-only overlay can omit it and inherit the inferred default via
- * mergeContribution in defaults.ts. Used only on AuthoredProject.
+ * Editorial contribution context for authored overlays. Role is authoritative:
+ * lead, collaborator and solo describe responsibility rather than commit share,
+ * so they may intentionally disagree with inferContribution. `collaboration` is
+ * optional so an overlay can inherit the inferred default via mergeContribution.
  */
 export type AuthoredContribution =
 	| { role: 'solo'; collaboration?: Collaboration }
@@ -221,8 +222,6 @@ export interface AuthoredProject {
 	contribution?: AuthoredContribution;
 	tags?: TechTag[];
 	status?: ProjectStatus;
-	repoUrl?: string;
-	secondaryRepoUrl?: string;
 	liveUrl?: string;
 	highlights?: string[];
 	relationships?: ProjectRelationship[];
@@ -256,8 +255,8 @@ export interface Project {
 	tags: TechTag[];
 	status: ProjectStatus;
 	repoUrl: string;
-	/** URL of a companion repo (e.g. a separate frontend or backend repo for split products). */
-	secondaryRepoUrl?: string;
+	/** URLs of companion repos, preserving Drift's tracked topology order. */
+	companionRepoUrls: string[];
 	/** ISO date (YYYY-MM-DD) of the most recent commit, from the source drift manifest. */
 	lastCommit?: string;
 	/** ISO date (YYYY-MM-DD) of the first (root) commit, from the source drift manifest. Orders the timeline by inception. */

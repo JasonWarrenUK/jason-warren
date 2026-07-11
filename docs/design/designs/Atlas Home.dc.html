@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,500;0,8..60,600;1,8..60,400;1,8..60,500&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body { background: #faf7f2; }
+  ::selection { background: rgba(46,93,140,0.16); }
+  a { color: inherit; }
+</style>
+</helmet>
+<div ref="{{ setRoot }}" data-theme="light" style="--d-surface:#faf7f2;--d-raised:#fffdf9;--d-sunken:#f1ece2;--d-text:#211c14;--d-subtle:#5a5245;--d-muted:#988d7b;--d-border:#e6dfd2;--d-border-strong:#d2c8b6;--d-primary:#2e5d8c;--d-primary-soft:#e9eff5;--d-accent:#b0512a;--d-grid:#e8e1d3;--d-st-live-t:#1e6b47;--d-st-live-b:#e0eee3;--d-st-wip-t:#7a5416;--d-st-wip-b:#f3ead2;--d-st-fin-t:#2e5d8c;--d-st-fin-b:#e5ecf4;--d-st-pro-t:#5b4a9d;--d-st-pro-b:#ebe7f5;--d-st-arc-t:#6a6255;--d-st-arc-b:#ece7de;background:var(--d-surface);color:var(--d-text);font-family:'IBM Plex Sans',system-ui,sans-serif;min-height:100vh;transition:background 400ms cubic-bezier(.45,.05,.25,1),color 400ms cubic-bezier(.45,.05,.25,1);">
+
+  <!-- ============ SITE HEADER (from +layout.svelte) ============ -->
+  <header style="position:sticky;top:0;z-index:100;background:color-mix(in srgb, var(--d-raised) 88%, transparent);backdrop-filter:blur(10px);border-bottom:1px solid var(--d-border);">
+    <nav style="max-width:72rem;margin:0 auto;padding:0 clamp(16px,5vw,48px);height:56px;display:flex;align-items:center;justify-content:space-between;gap:24px;">
+      <a href="Atlas Home.dc.html" style="display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--d-text);">
+        <span style="display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:4px;background:var(--d-primary);color:#fdfbf7;font-family:'Source Serif 4',serif;font-size:13px;font-weight:600;letter-spacing:0.04em;flex-shrink:0;">JW</span>
+        <span style="font-family:'Source Serif 4',serif;font-size:17px;font-weight:500;">Jason Warren</span>
+      </a>
+      <div style="display:flex;align-items:center;gap:2px;">
+        <a href="#projects" style="padding:8px 12px;font-size:14px;font-weight:500;color:var(--d-subtle);text-decoration:none;border-radius:6px;transition:color 160ms cubic-bezier(.45,.05,.25,1),background 160ms cubic-bezier(.45,.05,.25,1);" style-hover="color:var(--d-text);background:var(--d-sunken)">Projects</a>
+        <a href="Atlas Map.dc.html" style="padding:8px 12px;font-size:14px;font-weight:500;color:var(--d-subtle);text-decoration:none;border-radius:6px;transition:color 160ms cubic-bezier(.45,.05,.25,1),background 160ms cubic-bezier(.45,.05,.25,1);" style-hover="color:var(--d-text);background:var(--d-sunken)">Map</a>
+        <a href="#timeline" style="padding:8px 12px;font-size:14px;font-weight:500;color:var(--d-subtle);text-decoration:none;border-radius:6px;transition:color 160ms cubic-bezier(.45,.05,.25,1),background 160ms cubic-bezier(.45,.05,.25,1);" style-hover="color:var(--d-text);background:var(--d-sunken)">Timeline</a>
+        <a href="#toolkit" style="padding:8px 12px;font-size:14px;font-weight:500;color:var(--d-subtle);text-decoration:none;border-radius:6px;transition:color 160ms cubic-bezier(.45,.05,.25,1),background 160ms cubic-bezier(.45,.05,.25,1);" style-hover="color:var(--d-text);background:var(--d-sunken)">Toolkit</a>
+        <a href="#about" style="padding:8px 12px;font-size:14px;font-weight:500;color:var(--d-subtle);text-decoration:none;border-radius:6px;transition:color 160ms cubic-bezier(.45,.05,.25,1),background 160ms cubic-bezier(.45,.05,.25,1);" style-hover="color:var(--d-text);background:var(--d-sunken)">About</a>
+        <a href="#hire" style="padding:8px 12px;font-size:14px;font-weight:500;color:var(--d-subtle);text-decoration:none;border-radius:6px;transition:color 160ms cubic-bezier(.45,.05,.25,1),background 160ms cubic-bezier(.45,.05,.25,1);" style-hover="color:var(--d-text);background:var(--d-sunken)">Hire</a>
+        <a href="#drift-engine" style="padding:8px 12px;font-size:14px;font-weight:500;color:var(--d-subtle);text-decoration:none;border-radius:6px;transition:color 160ms cubic-bezier(.45,.05,.25,1),background 160ms cubic-bezier(.45,.05,.25,1);" style-hover="color:var(--d-text);background:var(--d-sunken)">Drift Engine</a>
+        <button type="button" onClick="{{ toggleTheme }}" aria-label="Toggle theme" style="display:inline-flex;align-items:center;gap:8px;margin-left:8px;font-family:'JetBrains Mono',monospace;font-size:10.5px;font-weight:500;letter-spacing:0.1em;text-transform:uppercase;color:var(--d-subtle);background:var(--d-raised);border:1px solid var(--d-border);border-radius:999px;padding:6px 11px;cursor:pointer;transition:border-color 240ms cubic-bezier(.45,.05,.25,1);" style-hover="border-color:var(--d-accent);color:var(--d-text)">
+          <span style="width:8px;height:8px;border-radius:999px;background:var(--d-accent);display:inline-block;"></span>
+          {{ themeLabel }}
+        </button>
+      </div>
+    </nav>
+  </header>
+
+  <div style="max-width:72rem;margin:0 auto;padding:64px clamp(16px,5vw,48px) 0;">
+
+    <!-- ============ INTRO (from +page.svelte) ============ -->
+    <section style="display:flex;flex-direction:column;gap:12px;padding-bottom:48px;">
+      <h1 style="font-family:'Source Serif 4',serif;font-size:clamp(38px,5.5vw,58px);font-weight:600;line-height:1.05;letter-spacing:-0.015em;margin:0;">Jason Warren</h1>
+      <p style="font-size:clamp(16px,2vw,19px);color:var(--d-subtle);line-height:1.7;max-width:56rem;margin:8px 0 0;">I build data models that make complex things easy to use. The hard part is finding the representation that's faithful to the world and tractable for the application on top of it.</p>
+    </section>
+
+    <!-- ============ HERO BREADTH ============ -->
+    <section style="display:flex;flex-direction:column;gap:32px;padding:48px 0;border-top:1px solid var(--d-border);">
+      <div style="display:flex;flex-direction:column;gap:12px;">
+        <h2 style="font-family:'Source Serif 4',serif;font-size:clamp(26px,3.4vw,32px);font-weight:600;margin:0;">A wide toolkit</h2>
+        <p style="font-size:17px;color:var(--d-subtle);line-height:1.65;max-width:52rem;margin:0;">Go TUIs, Tauri desktop apps, Neo4j graph queries, FastAPI microservices. A spread this wide is usually a red flag; in my case it is the residue of chasing problems into whatever language they happened to live in.</p>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,20rem),1fr));gap:24px;">
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          <div style="font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.1em;color:var(--d-muted);">Languages</div>
+          <div style="display:flex;flex-wrap:wrap;gap:8px;">
+            <span style="font-size:13.5px;font-weight:500;padding:4px 12px;border-radius:999px;border:1px solid var(--d-border);background:var(--d-raised);color:var(--d-subtle);">TypeScript</span><span style="font-size:13.5px;font-weight:500;padding:4px 12px;border-radius:999px;border:1px solid var(--d-border);background:var(--d-raised);color:var(--d-subtle);">JavaScript</span><span style="font-size:13.5px;font-weight:500;padding:4px 12px;border-radius:999px;border:1px solid var(--d-border);background:var(--d-raised);color:var(--d-subtle);">Go</span><span style="font-size:13.5px;font-weight:500;padding:4px 12px;border-radius:999px;border:1px solid var(--d-border);background:var(--d-raised);color:var(--d-subtle);">C#</span><span style="font-size:13.5px;font-weight:500;padding:4px 12px;border-radius:999px;border:1px solid var(--d-border);background:var(--d-raised);color:var(--d-subtle);">Python</span><span style="font-size:13.5px;font-weight:500;padding:4px 12px;border-radius:999px;border:1px solid var(--d-border);background:var(--d-raised);color:var(--d-subtle);">Rust</span>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          <div style="font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.1em;color:var(--d-muted);">Frameworks</div>
+          <div style="display:flex;flex-wrap:wrap;gap:8px;">
+            <span style="font-size:13.5px;font-weight:500;padding:4px 12px;border-radius:999px;border:1px solid var(--d-border);background:var(--d-raised);color:var(--d-subtle);">SvelteKit</span><span style="font-size:13.5px;font-weight:500;padding:4px 12px;border-radius:999px;border:1px solid var(--d-border);background:var(--d-raised);color:var(--d-subtle);">Svelte 5</span><span style="font-size:13.5px;font-weight:500;padding:4px 12px;border-radius:999px;border:1px solid var(--d-border);background:var(--d-raised);color:var(--d-subtle);">React</span><span style="font-size:13.5px;font-weight:500;padding:4px 12px;border-radius:999px;border:1px solid var(--d-border);background:var(--d-raised);color:var(--d-subtle);">Tauri</span><span style="font-size:13.5px;font-weight:500;padding:4px 12px;border-radius:999px;border:1px solid var(--d-border);background:var(--d-raised);color:var(--d-subtle);">Express</span><span style="font-size:13.5px;font-weight:500;padding:4px 12px;border-radius:999px;border:1px solid var(--d-border);background:var(--d-raised);color:var(--d-subtle);">FastAPI</span>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          <div style="font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.1em;color:var(--d-muted);">Runtimes &amp; data</div>
+          <div style="display:flex;flex-wrap:wrap;gap:8px;">
+            <span style="font-size:13.5px;font-weight:500;padding:4px 12px;border-radius:999px;border:1px solid var(--d-border);background:var(--d-raised);color:var(--d-subtle);">Node.js</span><span style="font-size:13.5px;font-weight:500;padding:4px 12px;border-radius:999px;border:1px solid var(--d-border);background:var(--d-raised);color:var(--d-subtle);">Bun</span><span style="font-size:13.5px;font-weight:500;padding:4px 12px;border-radius:999px;border:1px solid var(--d-border);background:var(--d-raised);color:var(--d-subtle);">Neo4j</span><span style="font-size:13.5px;font-weight:500;padding:4px 12px;border-radius:999px;border:1px solid var(--d-border);background:var(--d-raised);color:var(--d-subtle);">PostgreSQL</span><span style="font-size:13.5px;font-weight:500;padding:4px 12px;border-radius:999px;border:1px solid var(--d-border);background:var(--d-raised);color:var(--d-subtle);">Supabase</span><span style="font-size:13.5px;font-weight:500;padding:4px 12px;border-radius:999px;border:1px solid var(--d-border);background:var(--d-raised);color:var(--d-subtle);">RxDB</span>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          <div style="font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.1em;color:var(--d-muted);">Tooling &amp; platforms</div>
+          <div style="display:flex;flex-wrap:wrap;gap:8px;">
+            <span style="font-size:13.5px;font-weight:500;padding:4px 12px;border-radius:999px;border:1px solid var(--d-border);background:var(--d-raised);color:var(--d-subtle);">Git</span><span style="font-size:13.5px;font-weight:500;padding:4px 12px;border-radius:999px;border:1px solid var(--d-border);background:var(--d-raised);color:var(--d-subtle);">Vitest</span><span style="font-size:13.5px;font-weight:500;padding:4px 12px;border-radius:999px;border:1px solid var(--d-border);background:var(--d-raised);color:var(--d-subtle);">GitHub Actions</span><span style="font-size:13.5px;font-weight:500;padding:4px 12px;border-radius:999px;border:1px solid var(--d-border);background:var(--d-raised);color:var(--d-subtle);">Docker</span><span style="font-size:13.5px;font-weight:500;padding:4px 12px;border-radius:999px;border:1px solid var(--d-border);background:var(--d-raised);color:var(--d-subtle);">Vercel</span><span style="font-size:13.5px;font-weight:500;padding:4px 12px;border-radius:999px;border:1px solid var(--d-border);background:var(--d-raised);color:var(--d-subtle);">Playwright</span>
+          </div>
+        </div>
+      </div>
+      <a href="#projects" style="align-self:flex-start;display:inline-flex;align-items:center;font-size:14px;font-weight:600;color:var(--d-primary);text-decoration:none;padding:8px 16px;border:1px solid var(--d-border-strong);border-radius:6px;background:var(--d-primary-soft);transition:border-color 160ms cubic-bezier(.45,.05,.25,1);" style-hover="border-color:var(--d-primary)">See all projects →</a>
+    </section>
+
+    <!-- ============ HERO ROTATION: LATELY ============ -->
+    <section style="display:flex;flex-direction:column;gap:32px;padding:48px 0;border-top:1px solid var(--d-border);">
+      <div style="display:flex;flex-direction:column;gap:12px;">
+        <div style="display:flex;align-items:baseline;gap:24px;">
+          <h2 style="font-family:'Source Serif 4',serif;font-size:clamp(26px,3.4vw,32px);font-weight:600;margin:0;">Lately</h2>
+          <button type="button" onClick="{{ dealAnother }}" style="font-size:14px;font-weight:600;color:var(--d-primary);background:none;border:none;padding:0;cursor:pointer;text-decoration:underline;text-underline-offset:3px;font-family:inherit;transition:opacity 160ms cubic-bezier(.45,.05,.25,1);" style-hover="opacity:0.75">Show another set</button>
+        </div>
+        <p style="font-size:17px;color:var(--d-subtle);line-height:1.65;max-width:52rem;margin:0;">What's had the most attention recently. Rotate through to see the rest of the active work.</p>
+      </div>
+
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,21rem),1fr));gap:24px;align-items:start;">
+        <sc-for list="{{ heroCards }}" as="card" hint-placeholder-count="3">
+          <article style="display:flex;flex-direction:column;background:var(--d-raised);border:1px solid var(--d-border);border-radius:10px;overflow:hidden;transition:border-color 160ms cubic-bezier(.45,.05,.25,1),box-shadow 160ms cubic-bezier(.45,.05,.25,1);" style-hover="border-color:var(--d-border-strong);box-shadow:0 4px 14px -4px rgba(60,45,20,0.14)">
+            <button type="button" onClick="{{ card.onToggle }}" style="display:block;width:100%;aspect-ratio:1200/630;overflow:hidden;border:none;border-bottom:1px solid var(--d-border);padding:0;cursor:pointer;background:repeating-linear-gradient(-45deg, var(--d-sunken), var(--d-sunken) 10px, var(--d-raised) 10px, var(--d-raised) 20px);position:relative;">
+              <span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:var(--d-muted);">og card · {{ card.slug }} · 1200×630</span>
+            </button>
+            <sc-if value="{{ card.isOpen }}" hint-placeholder-val="{{ false }}">
+              <div style="display:flex;flex-direction:column;gap:20px;padding:26px;">
+                <div style="display:flex;flex-direction:column;gap:12px;">
+                  <div><span style="display:inline-flex;align-items:center;font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;padding:3px 9px;border-radius:999px;color:{{ card.stT }};background:{{ card.stB }};">{{ card.statusLabel }}</span></div>
+                  <h3 style="font-family:'Source Serif 4',serif;font-size:24px;font-weight:600;margin:0;line-height:1.15;">{{ card.name }}</h3>
+                  <p style="font-size:15px;color:var(--d-subtle);line-height:1.6;margin:0;">{{ card.tagline }}</p>
+                </div>
+                <ul style="display:flex;flex-direction:column;gap:8px;padding:0;margin:0;list-style:none;">
+                  <sc-for list="{{ card.highlights }}" as="h" hint-placeholder-count="3">
+                    <li style="display:grid;grid-template-columns:16px 1fr;gap:10px;font-size:13.5px;color:var(--d-subtle);line-height:1.6;"><span style="color:var(--d-accent);font-weight:600;">→</span><span>{{ h }}</span></li>
+                  </sc-for>
+                </ul>
+                <div style="display:flex;gap:24px;padding:14px 18px;background:var(--d-sunken);border-radius:6px;border:1px solid var(--d-border);">
+                  <div style="flex:1;display:flex;flex-direction:column;gap:2px;"><span style="font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:600;color:var(--d-primary);">{{ card.commits }}</span><span style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:500;text-transform:uppercase;letter-spacing:0.08em;color:var(--d-muted);">commits</span></div>
+                  <div style="flex:1;display:flex;flex-direction:column;gap:2px;"><span style="font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:600;color:var(--d-primary);">{{ card.lines }}</span><span style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:500;text-transform:uppercase;letter-spacing:0.08em;color:var(--d-muted);">lines added</span></div>
+                </div>
+                <a href="{{ card.href }}" style="font-size:14px;font-weight:600;color:var(--d-primary);text-decoration:none;">Read case study →</a>
+                <div style="display:flex;flex-wrap:wrap;gap:6px;padding-top:4px;border-top:1px solid var(--d-border);margin-top:2px;padding-top:16px;">
+                  <sc-for list="{{ card.tags }}" as="t" hint-placeholder-count="3">
+                    <span style="font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:500;padding:3px 8px;border-radius:4px;border:1px solid var(--d-border);background:var(--d-sunken);color:var(--d-subtle);">{{ t }}</span>
+                  </sc-for>
+                </div>
+              </div>
+            </sc-if>
+            <sc-if value="{{ card.isClosed }}" hint-placeholder-val="{{ true }}">
+              <button type="button" onClick="{{ card.onToggle }}" style="display:flex;flex-direction:column;gap:12px;padding:20px;border:none;background:none;text-align:left;cursor:pointer;font-family:inherit;color:inherit;flex:1;">
+                <span style="font-size:14px;color:var(--d-subtle);line-height:1.55;">{{ card.blurb }}</span>
+                <span style="font-family:'JetBrains Mono',monospace;font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:var(--d-accent);margin-top:auto;">Expand +</span>
+              </button>
+            </sc-if>
+          </article>
+        </sc-for>
+      </div>
+    </section>
+
+    <!-- ============ ENGINE THREADS ============ -->
+    <section style="display:flex;flex-direction:column;gap:32px;padding:48px 0;border-top:1px solid var(--d-border);">
+      <div style="display:flex;flex-direction:column;gap:12px;">
+        <h2 style="font-family:'Source Serif 4',serif;font-size:clamp(26px,3.4vw,32px);font-weight:600;margin:0;">Libraries from the inside out</h2>
+        <p style="font-size:17px;color:var(--d-subtle);line-height:1.65;max-width:52rem;margin:0;">Each of these began as code buried inside one application. When the problem turned out to be more general than the app it lived in, I pulled the engine into its own library: still used by the original, now usable by anything that hits the same wall.</p>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:40px;">
+        <sc-for list="{{ threads }}" as="th" hint-placeholder-count="3">
+          <div style="display:flex;flex-direction:column;gap:16px;">
+            <div style="display:flex;align-items:center;gap:12px;">
+              <div style="flex:1;height:0;border-top:1.5px dashed var(--d-border-strong);"></div>
+              <span style="font-family:'JetBrains Mono',monospace;font-size:10.5px;font-weight:500;letter-spacing:0.14em;text-transform:uppercase;color:var(--d-muted);">extracted into</span>
+              <div style="flex:1;height:0;border-top:1.5px dashed var(--d-border-strong);"></div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr auto 1fr;gap:16px;align-items:stretch;">
+              <a href="{{ th.consumerHref }}" style="display:flex;flex-direction:column;gap:6px;padding:20px;background:var(--d-raised);border:1px solid var(--d-border);border-radius:8px;text-decoration:none;transition:border-color 160ms cubic-bezier(.45,.05,.25,1);" style-hover="border-color:var(--d-primary)">
+                <span style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:var(--d-muted);">Application</span>
+                <span style="font-family:'Source Serif 4',serif;font-size:20px;font-weight:600;color:var(--d-text);">{{ th.consumer }}</span>
+                <span style="font-size:13.5px;color:var(--d-subtle);line-height:1.5;">{{ th.consumerBlurb }}</span>
+              </a>
+              <div style="display:flex;align-items:center;color:var(--d-accent);">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"></path></svg>
+              </div>
+              <a href="{{ th.libraryHref }}" style="display:flex;flex-direction:column;gap:6px;padding:20px;background:var(--d-raised);border:1px solid var(--d-border);border-left:3px solid var(--d-accent);border-radius:8px;text-decoration:none;transition:border-color 160ms cubic-bezier(.45,.05,.25,1);" style-hover="border-color:var(--d-accent)">
+                <span style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:var(--d-accent);">Library</span>
+                <span style="font-family:'Source Serif 4',serif;font-size:20px;font-weight:600;color:var(--d-text);">{{ th.library }}</span>
+                <span style="font-size:13.5px;color:var(--d-subtle);line-height:1.5;">{{ th.libraryBlurb }}</span>
+              </a>
+            </div>
+            <p style="font-family:'Source Serif 4',serif;font-style:italic;font-size:15.5px;color:var(--d-subtle);line-height:1.6;margin:0;max-width:64ch;">{{ th.note }}</p>
+          </div>
+        </sc-for>
+      </div>
+    </section>
+
+    <!-- ============ THEMES TEASER ============ -->
+    <section style="display:flex;flex-direction:column;gap:32px;padding:48px 0 16px;border-top:1px solid var(--d-border);">
+      <div style="display:flex;flex-direction:column;gap:12px;">
+        <h2 style="font-family:'Source Serif 4',serif;font-size:clamp(26px,3.4vw,32px);font-weight:600;margin:0;">Themes the work returns to</h2>
+        <p style="font-size:17px;color:var(--d-subtle);line-height:1.65;max-width:52rem;margin:0;">The same 7 territories come up again and again, regardless of what I think I am sitting down to build: narrative engines, graph-native data, tools shaped around how people actually think.</p>
+      </div>
+      <ul style="display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,18rem),1fr));gap:12px;padding:0;margin:0;list-style:none;">
+        <sc-for list="{{ themeList }}" as="t" hint-placeholder-count="7">
+          <li style="display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding:14px 18px;background:var(--d-raised);border:1px solid var(--d-border);border-radius:8px;">
+            <span style="font-family:'Source Serif 4',serif;font-style:italic;font-size:16.5px;color:var(--d-text);">{{ t.name }}</span>
+            <span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--d-muted);">{{ t.count }}</span>
+          </li>
+        </sc-for>
+      </ul>
+      <a href="#toolkit" style="align-self:flex-start;display:inline-flex;align-items:center;font-size:14px;font-weight:600;color:var(--d-primary);text-decoration:none;padding:8px 16px;border:1px solid var(--d-border-strong);border-radius:6px;background:var(--d-primary-soft);transition:border-color 160ms cubic-bezier(.45,.05,.25,1);" style-hover="border-color:var(--d-primary)">Explore the toolkit →</a>
+    </section>
+  </div>
+
+  <!-- ============ FOOTER ============ -->
+  <footer style="border-top:1px solid var(--d-border);margin-top:64px;">
+    <div style="max-width:72rem;margin:0 auto;padding:32px clamp(16px,5vw,48px);">
+      <p style="font-size:13.5px;color:var(--d-muted);margin:0;">Built with <a href="#drift-engine" style="color:var(--d-primary);text-decoration:underline;text-underline-offset:3px;">SvelteKit 2 and Svelte 5</a>. Source on <a href="https://github.com/JasonWarrenUK" style="color:var(--d-primary);text-decoration:underline;text-underline-offset:3px;">GitHub</a>. Find me on <a href="https://bsky.app" style="color:var(--d-primary);text-decoration:underline;text-underline-offset:3px;">Bluesky</a>.</p>
+    </div>
+  </footer>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;defaultTheme&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;light&quot;,&quot;dark&quot;],&quot;default&quot;:&quot;light&quot;,&quot;tsType&quot;:&quot;'light' | 'dark'&quot;,&quot;section&quot;:&quot;Theme&quot;}}">
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { theme: (props && props.defaultTheme) || 'light', heroStart: 0, openSlug: 'wyrd-tui' };
+    this.palettes = {
+      light: {
+        '--d-surface': '#faf7f2', '--d-raised': '#fffdf9', '--d-sunken': '#f1ece2',
+        '--d-text': '#211c14', '--d-subtle': '#5a5245', '--d-muted': '#988d7b',
+        '--d-border': '#e6dfd2', '--d-border-strong': '#d2c8b6',
+        '--d-primary': '#2e5d8c', '--d-primary-soft': '#e9eff5', '--d-accent': '#b0512a',
+        '--d-grid': '#e8e1d3',
+        '--d-st-live-t': '#1e6b47', '--d-st-live-b': '#e0eee3',
+        '--d-st-wip-t': '#7a5416', '--d-st-wip-b': '#f3ead2',
+        '--d-st-fin-t': '#2e5d8c', '--d-st-fin-b': '#e5ecf4',
+        '--d-st-pro-t': '#5b4a9d', '--d-st-pro-b': '#ebe7f5',
+        '--d-st-arc-t': '#6a6255', '--d-st-arc-b': '#ece7de'
+      },
+      dark: {
+        '--d-surface': '#16130e', '--d-raised': '#201c15', '--d-sunken': '#100e0a',
+        '--d-text': '#f0ebe1', '--d-subtle': '#ada18c', '--d-muted': '#7a7060',
+        '--d-border': '#322c22', '--d-border-strong': '#48402f',
+        '--d-primary': '#7aa7d4', '--d-primary-soft': '#1c2432', '--d-accent': '#d97a4e',
+        '--d-grid': '#262015',
+        '--d-st-live-t': '#8fd0a8', '--d-st-live-b': '#1c2a20',
+        '--d-st-wip-t': '#dbb571', '--d-st-wip-b': '#2b2414',
+        '--d-st-fin-t': '#8fb2d8', '--d-st-fin-b': '#1b2431',
+        '--d-st-pro-t': '#b3a3e3', '--d-st-pro-b': '#241f33',
+        '--d-st-arc-t': '#a49a89', '--d-st-arc-b': '#242019'
+      }
+    };
+    // Real project data from src/lib/data/projects/*.ts + .drift-cache.json
+    this.pool = [
+      { slug: 'wyrd-tui', name: 'Wyrd', status: 'wip',
+        blurb: 'A terminal task manager that stores everything as a queryable property graph.',
+        tagline: 'An offline-first terminal productivity system where tasks, notes, and commitments are nodes in a flat-file property graph, with a custom Cypher-subset query engine and a three-way JSONC git merge driver.',
+        highlights: [
+          'Custom read-only Cypher subset: parser, evaluator, MATCH/WHERE/RETURN/ORDER BY, aggregations, bidirectional and variable-length traversals.',
+          'Three-way JSONC git merge driver (its own binary): scalars resolve last-write-wins by timestamp; arrays union.',
+          'Colour-blind-safe themes pairing glyph and colour signals; WCAG AA via Reasonable Colors.'
+        ],
+        commits: '306', lines: '+60,141', tags: ['Go', 'Bubble Tea', 'Graph / Cypher', '+4'] },
+      { slug: 'iris', name: 'Iris', status: 'finished',
+        blurb: 'Converts apprenticeship CSV data into compliant ILR XML, three ways.',
+        tagline: 'A three-interface toolkit that converts apprenticeship learner data from CSV into ESFA-compliant ILR XML, with semantic XSD validation.',
+        highlights: [
+          'Single TypeScript core drives three interfaces: OpenTUI terminal UI, direct CLI commands, and a Tauri 2 (Rust) native desktop app.',
+          'Schema-driven validation: parses the real ESFA XSD to build a validation registry with type resolution and cardinality checking.',
+          'Close to 1:1 source-to-test mapping with Vitest and Bun test; round-trip tests cover the full CSV → XML → re-parse cycle.'
+        ],
+        commits: '720', lines: '+133,289', tags: ['TypeScript', 'Bun', 'Tauri', '+6'] },
+      { slug: 'historia', name: 'Historia', status: 'prototype',
+        blurb: 'An animated atlas of Anglo-Saxon and Viking-era England.',
+        tagline: 'An interactive historical atlas rendering animated maps of Anglo-Saxon and Viking-era English kingdoms across time, with linked events, artefacts, and a timeline.',
+        highlights: [
+          'Real GIS map rendering with MapLibre GL; custom atlas-style.ts and a dedicated map-renderer.ts (~567 LOC).',
+          '~2,040 lines of hand-authored historical data: kingdoms, events, artefacts, geographic data.',
+          'TopoJSON preprocessing pipeline for optimised GIS data delivery.'
+        ],
+        commits: '8', lines: '+5,309', tags: ['TypeScript', 'SvelteKit', 'MapLibre GL', '+5'] },
+      { slug: 'riffle', name: 'Riffle', status: 'finished',
+        blurb: 'A reactive DendryNexus card-game engine for SvelteKit.',
+        tagline: 'A reactive DendryNexus game engine for SvelteKit: cards, decks, difficulty checks, quality systems, and arena topology, all built on Svelte 5 runes.',
+        highlights: [
+          'Card/deck/hand system: draw, play, discard across multiple hands with pinned cards and per-hand state.',
+          'Difficulty checks: broad and narrow curves with configurable scalers and human-readable labels.',
+          'Arena topology: concentric-circle spatial system (inner/middle/outer rings, 13 zones) with adjacency.'
+        ],
+        commits: '2', lines: '+1,269', tags: ['TypeScript', 'Svelte 5', 'DendryNexus', '+3'] },
+      { slug: 'nib', name: 'Nib', status: 'finished',
+        blurb: 'A minimal, copy-paste Ink runtime for SvelteKit with a clean injection seam.',
+        tagline: 'A minimal, copy-paste Ink runtime for SvelteKit: one onInit callback for game-specific wiring, a tick counter to bridge non-reactive inkjs to Svelte 5 runes.',
+        highlights: [
+          'Single onInit injection seam: game-specific BindExternalFunction calls and data registration in one callback, nowhere else.',
+          'tick counter bridges non-reactive inkjs to Svelte 5 runes: getVariable() re-evaluates on every continue().',
+          'Copy-paste distribution: two files, no package.json, designed to be owned and edited per project.'
+        ],
+        commits: '1', lines: '+343', tags: ['TypeScript', 'SvelteKit', 'Ink / inkjs', '+3'] },
+      { slug: 'schema-forge', name: 'Schema Forge', status: 'wip',
+        blurb: 'An XSD-driven schema system for validating data and generating XML.',
+        tagline: 'An XSD-driven schema system extracted from Iris: parses real XSDs into a validation registry that resolves types and enforces cardinality and constraints.',
+        highlights: [
+          'Parses the real ESFA XSD into a validation registry with type resolution.',
+          'Semantic validation beyond structural XML checks: cardinality and constraint enforcement.',
+          'Extracted from Iris once the general problem was clear; reusable by anything that speaks XSD.'
+        ],
+        commits: '4', lines: '+2,150', tags: ['TypeScript', 'Bun', 'XML / XSD', '+1'] }
+    ];
+    this.statusMeta = {
+      live: ['Live', 'var(--d-st-live-t)', 'var(--d-st-live-b)'],
+      wip: ['Active', 'var(--d-st-wip-t)', 'var(--d-st-wip-b)'],
+      finished: ['Complete', 'var(--d-st-fin-t)', 'var(--d-st-fin-b)'],
+      prototype: ['Prototype', 'var(--d-st-pro-t)', 'var(--d-st-pro-b)'],
+      archived: ['Archived', 'var(--d-st-arc-t)', 'var(--d-st-arc-b)']
+    };
+  }
+
+  applyVars(theme) {
+    if (!this.root) return;
+    const p = this.palettes[theme];
+    for (const k in p) this.root.style.setProperty(k, p[k]);
+    this.root.setAttribute('data-theme', theme);
+  }
+
+  setRoot = (el) => { this.root = el; if (el) this.applyVars(this.state.theme); };
+  toggleTheme = () => {
+    const t = this.state.theme === 'light' ? 'dark' : 'light';
+    this.setState({ theme: t });
+    this.applyVars(t);
+  };
+  dealAnother = () => this.setState((s) => ({ heroStart: (s.heroStart + 3) % this.pool.length, openSlug: null }));
+
+  renderVals() {
+    const count = 3;
+    const visible = Array.from({ length: count }, (_, i) => this.pool[(this.state.heroStart + i) % this.pool.length]);
+    const heroCards = visible.map((p) => {
+      const [statusLabel, stT, stB] = this.statusMeta[p.status];
+      const isOpen = this.state.openSlug === p.slug;
+      return {
+        slug: p.slug, name: p.name, blurb: p.blurb, tagline: p.tagline,
+        highlights: p.highlights, commits: p.commits, lines: p.lines, tags: p.tags,
+        statusLabel, stT, stB, isOpen, isClosed: !isOpen,
+        href: p.slug === 'iris' ? 'Atlas Project.dc.html' : '#project-' + p.slug,
+        onToggle: () => this.setState((s) => ({ openSlug: s.openSlug === p.slug ? null : p.slug }))
+      };
+    });
+    return {
+      setRoot: this.setRoot,
+      toggleTheme: this.toggleTheme,
+      themeLabel: this.state.theme === 'light' ? 'Light' : 'Dark',
+      dealAnother: this.dealAnother,
+      heroCards,
+      threads: [
+        { consumer: 'Flyt', consumerBlurb: 'A Norse interactive fiction about ritual insult-poetry duels.', consumerHref: '#project-flyt',
+          library: 'Riffle', libraryBlurb: 'A reactive DendryNexus card-game engine for SvelteKit.', libraryHref: '#project-riffle',
+          note: 'The reactive card engine outgrew the duel it was written for, so it became Riffle: the same StoryNexus mechanics with no Svelte UI of its own.' },
+        { consumer: 'The Work', consumerBlurb: 'A narrative game about defending a thesis in one overnight session.', consumerHref: '#project-the-work',
+          library: 'Nib', libraryBlurb: 'A minimal, copy-paste Ink runtime for SvelteKit with a clean injection seam.', libraryHref: '#project-nib',
+          note: "The Ink runtime was always separable from the game's content; once that was clear it moved into Nib, two files behind a single onInit seam." },
+        { consumer: 'Iris', consumerBlurb: 'Converts apprenticeship CSV data into compliant ILR XML, three ways.', consumerHref: 'Atlas Project.dc.html',
+          library: 'Schema Forge', libraryBlurb: 'An XSD-driven schema system for validating data and generating XML.', libraryHref: '#project-schema-forge',
+          note: 'The XSD parsing and validation core was the general problem hiding inside Iris; Schema Forge is that core on its own, reusable by anything that speaks XSD.' }
+      ],
+      themeList: [
+        { name: 'Interactive Fiction & Narrative Systems', count: '7' },
+        { name: 'Procedural & Generative Systems', count: '4' },
+        { name: 'History & the Past Made Navigable', count: '3' },
+        { name: 'Graph-Native Data', count: '5' },
+        { name: 'AI & Language Tooling', count: '7' },
+        { name: 'Terminal & Native Interfaces', count: '3' },
+        { name: 'Accessibility & Human-Centred Tools', count: '5' }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

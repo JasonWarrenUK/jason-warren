@@ -67,15 +67,15 @@
 	}
 
 	.page__name {
-		font-size: var(--text-5xl);
-		font-weight: 700;
+		font-size: clamp(38px, 5.5vw, 58px);
+		font-weight: 600;
 		line-height: 1.05;
 		color: var(--color-text);
-		letter-spacing: -0.02em;
+		letter-spacing: -0.015em;
 	}
 
 	.page__bio {
-		font-size: var(--text-lg);
+		font-size: clamp(16px, 2vw, 19px);
 		color: var(--color-text-subtle);
 		line-height: 1.7;
 		max-width: 56rem;

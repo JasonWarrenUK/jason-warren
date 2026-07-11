@@ -17,17 +17,22 @@
  */
 
 :root {
-	/* --- Primary (azure) --- */
-	--color-primary: var(--color-azure-4);
-	--color-primary-light: var(--color-azure-2);
-	--color-primary-bg: var(--color-azure-1);
-	--color-primary-text: var(--color-azure-6);
+	/* --- The one warmth knob: how far each derived neutral leans toward
+	   cinnamon. Same ratio at every shade, so the shade-difference contrast
+	   rule below keeps holding. --- */
+	--warmth: 12%;
 
-	/* --- Accent (emerald — for highlights and CTAs) --- */
-	--color-accent: var(--color-emerald-4);
-	--color-accent-light: var(--color-emerald-2);
-	--color-accent-bg: var(--color-emerald-1);
-	--color-accent-text: var(--color-emerald-6);
+	/* --- Primary (ink — the azure → blue shift for Atlas) --- */
+	--color-primary: var(--color-blue-4);
+	--color-primary-light: var(--color-blue-2);
+	--color-primary-bg: var(--color-blue-1);
+	--color-primary-text: var(--color-blue-6);
+
+	/* --- Accent (oxide — the colour of survey marks) --- */
+	--color-accent: var(--color-cinnamon-4);
+	--color-accent-light: var(--color-cinnamon-2);
+	--color-accent-bg: var(--color-cinnamon-1);
+	--color-accent-text: var(--color-cinnamon-6);
 
 	/* --- Status colours --- */
 	--color-live: var(--color-emerald-4);
@@ -77,8 +82,11 @@
 	--color-edge-concept: var(--color-chartreuse-4);
 	--color-edge-tool: var(--color-sky-4);
 
-	/* --- Map theme edges (one token per theme; unclaimed palettes only) --- */
-	--color-edge-theme-interactive-fiction: var(--color-cinnamon-4);
+	/* --- Map theme edges (one token per theme; unclaimed palettes only) ---
+	   interactive-fiction was cinnamon, now claimed by --color-accent (the
+	   Atlas survey-mark colour); reassigned to red so no edge shares a hue
+	   with the accent. --- */
+	--color-edge-theme-interactive-fiction: var(--color-red-4);
 	--color-edge-theme-procedural-generation: var(--color-cyan-4);
 	--color-edge-theme-human-history: var(--color-yellow-4);
 	--color-edge-theme-graph-native: var(--color-green-4);
@@ -90,16 +98,43 @@
 	--color-edge-lineage-leads-to: var(--color-lime-4);
 	--color-edge-lineage-replaced-by: var(--color-raspberry-4);
 
-	/* --- Surface and foreground --- */
-	--color-surface: var(--color-gray-1);
-	--color-surface-raised: #ffffff;
-	--color-surface-sunken: var(--color-gray-2);
-	--color-border: var(--color-gray-3);
-	--color-border-strong: var(--color-gray-4);
+	/* --- Surface and foreground: warm paper neutrals ---
+	   Each is an oklab mix of its Reasonable Colors grey with the
+	   same-shade cinnamon, at the --warmth ratio above. Because both
+	   inputs share a shade, the mix stays in that shade's lightness band,
+	   so the shade-difference contrast rule keeps holding
+	   (diff 2 ≈ 3:1, diff 3 ≈ 4.5:1, diff 4 ≈ 7:1). --- */
+	--color-surface: color-mix(
+		in oklab,
+		var(--color-gray-1) calc(100% - var(--warmth)),
+		var(--color-cinnamon-1)
+	);
+	--color-surface-raised: color-mix(in oklab, white calc(100% - var(--warmth)), var(--color-cinnamon-1));
+	--color-surface-sunken: color-mix(
+		in oklab,
+		var(--color-gray-2) calc(100% - var(--warmth)),
+		var(--color-cinnamon-2)
+	);
+	--color-border: color-mix(in oklab, var(--color-gray-3) calc(100% - var(--warmth)), var(--color-cinnamon-3));
+	--color-border-strong: color-mix(
+		in oklab,
+		var(--color-gray-4) calc(100% - var(--warmth)),
+		var(--color-cinnamon-4)
+	);
+	/* One step lighter than border, for the graph graticule. */
+	--color-grid: color-mix(in oklab, var(--color-gray-2) calc(100% - var(--warmth)), var(--color-cinnamon-3));
 
-	--color-text: var(--color-gray-6);
-	--color-text-subtle: var(--color-gray-5);
-	--color-text-muted: var(--color-gray-4);
+	--color-text: color-mix(in oklab, var(--color-gray-6) calc(100% - var(--warmth)), var(--color-cinnamon-6));
+	--color-text-subtle: color-mix(
+		in oklab,
+		var(--color-gray-5) calc(100% - var(--warmth)),
+		var(--color-cinnamon-5)
+	);
+	--color-text-muted: color-mix(
+		in oklab,
+		var(--color-gray-4) calc(100% - var(--warmth)),
+		var(--color-cinnamon-4)
+	);
 
 	/* --- Layout --- */
 	--layout-max-width: 72rem;
@@ -107,10 +142,9 @@
 	--layout-gap: 1.5rem;
 
 	/* --- Typography scale --- */
-	--font-sans:
-		system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji',
-		'Segoe UI Emoji';
-	--font-mono: 'Cascadia Code', 'Fira Code', 'Cascadia Mono', 'Consolas', monospace;
+	--font-display: 'Source Serif 4 Variable', 'Source Serif 4', serif;
+	--font-sans: 'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+	--font-mono: 'JetBrains Mono', 'Cascadia Code', 'Fira Code', Consolas, monospace;
 
 	--text-xs: 0.75rem;
 	--text-sm: 0.875rem;
@@ -121,6 +155,14 @@
 	--text-3xl: 1.875rem;
 	--text-4xl: 2.25rem;
 	--text-5xl: 3rem;
+
+	/* Apparatus sub-scale: the survey-instrument mono labels (badges, metrics
+	   captions) sit below --text-xs. Named separately rather than folded into
+	   the main scale since they're a deliberately finer grain used only by
+	   these small UI apparatus, not body content. */
+	--text-apparatus: 0.625rem;
+	--text-apparatus-lg: 0.6875rem;
+	--text-body-tight: 0.9375rem;
 
 	/* --- Spacing --- */
 	--space-1: 0.25rem;
@@ -137,9 +179,14 @@
 	--space-20: 5rem;
 	--space-24: 6rem;
 
+	/* Badge padding: shared by RoleBadge and StatusBadge, both pill-shaped
+	   mono labels with the same asymmetric vertical/horizontal padding. */
+	--space-badge: 0.1875rem 0.625rem;
+
 	/* --- Radii --- */
 	--radius-sm: 0.25rem;
 	--radius-md: 0.5rem;
+	--radius-panel: 0.375rem;
 	--radius-lg: 0.75rem;
 	--radius-xl: 1rem;
 	--radius-full: 9999px;
@@ -149,10 +196,25 @@
 	--shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.07), 0 2px 4px -2px rgb(0 0 0 / 0.07);
 	--shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.07), 0 4px 6px -4px rgb(0 0 0 / 0.07);
 
-	/* --- Transitions --- */
-	--transition-fast: 120ms ease;
-	--transition-base: 200ms ease;
-	--transition-slow: 350ms ease;
+	/* --- Motion ---
+	   One curve, one exit, a four-step scale, a hard rule: motion only for
+	   state changes needing continuity (graph relayout, theme flip,
+	   hover/dim, modal) — no scroll reveals, loops, or parallax. */
+	--ease-standard: cubic-bezier(0.45, 0.05, 0.25, 1); /* plate turn: gathers, travels, settles */
+	--ease-exit: cubic-bezier(0.4, 0, 1, 1);
+	--motion-scale: 1; /* -> 0 under prefers-reduced-motion */
+	--dur-micro: calc(160ms * var(--motion-scale)); /* hover feedback, chips */
+	--dur-base: calc(240ms * var(--motion-scale)); /* most transitions */
+	--dur-deliberate: calc(400ms * var(--motion-scale)); /* theme flip, dim-others */
+	--dur-plate: calc(600ms * var(--motion-scale)); /* graph relayout, modal */
+
+	/* --- Transitions (legacy names, aliased to the motion scale above) ---
+	   Existing components still reference these three; new work should use
+	   the duration and easing tokens above directly. Kept as aliases
+	   rather than migrating ~70 call sites in one pass. */
+	--transition-fast: var(--dur-micro) var(--ease-standard);
+	--transition-base: var(--dur-base) var(--ease-standard);
+	--transition-slow: var(--dur-deliberate) var(--ease-standard);
 
 	/*
 	 * --- Dim-others opacity, shared across the connection views ---
@@ -166,6 +228,21 @@
 }
 
 /*
+ * Reduced motion: a single defined fallback, not just "respect the query".
+ * Collapsing --motion-scale to 0 zeroes every duration token at once, so no
+ * component has to opt in by hand — anything animating off the duration and
+ * easing tokens above (including JS reading the custom property, e.g. the
+ * graph's first-reveal route inking) goes instant. reset.css also
+ * hard-zeroes CSS transition/animation durations as a blunt backstop for
+ * anything not yet on this token system.
+ */
+@media (prefers-reduced-motion: reduce) {
+	:root {
+		--motion-scale: 0;
+	}
+}
+
+/*
  * Dark theme — overrides semantic aliases only; never changes RC vars.
  * Two rules for the same token set:
  *   1. :root[data-theme='dark']      — explicit override via ThemeToggle
@@ -173,28 +250,33 @@
  */
 
 :root[data-theme='dark'] {
-	/* --- Surface and foreground --- */
-	--color-surface: #1a1b1e;
-	--color-surface-raised: #25262b;
-	--color-surface-sunken: #141517;
-	--color-border: var(--color-gray-5);
-	--color-border-strong: var(--color-gray-4);
+	/* --- Surface and foreground: lamplit dark, same warm-mix rule applied
+	   to the existing hand-set dark surfaces. The four base tones below are
+	   hand-picked hex rather than Reasonable Colors variables: RC's palette
+	   has no swatch this close to near-black lamplit ink, so these are a
+	   deliberate exception to "always derive from RC", not an oversight. --- */
+	--color-surface: color-mix(in oklab, #1a1b1e 88%, var(--color-cinnamon-6));
+	--color-surface-raised: color-mix(in oklab, #232429 88%, var(--color-cinnamon-6));
+	--color-surface-sunken: color-mix(in oklab, #141517 88%, var(--color-cinnamon-6));
+	--color-border: color-mix(in oklab, var(--color-gray-5) 88%, var(--color-cinnamon-5));
+	--color-border-strong: color-mix(in oklab, var(--color-gray-4) 88%, var(--color-cinnamon-4));
+	--color-grid: color-mix(in oklab, #201f1a 88%, var(--color-cinnamon-6));
 
-	--color-text: var(--color-gray-1);
-	--color-text-subtle: var(--color-gray-3);
-	--color-text-muted: var(--color-gray-4);
+	--color-text: color-mix(in oklab, var(--color-gray-1) 88%, var(--color-cinnamon-1));
+	--color-text-subtle: color-mix(in oklab, var(--color-gray-3) 88%, var(--color-cinnamon-3));
+	--color-text-muted: color-mix(in oklab, var(--color-gray-4) 88%, var(--color-cinnamon-4));
 
-	/* --- Primary (azure) --- */
-	--color-primary: var(--color-azure-3);
-	--color-primary-light: var(--color-azure-5);
+	/* --- Primary (ink) --- */
+	--color-primary: var(--color-blue-3);
+	--color-primary-light: var(--color-blue-5);
 	--color-primary-bg: #1c2333;
-	--color-primary-text: var(--color-azure-2);
+	--color-primary-text: var(--color-blue-2);
 
-	/* --- Accent (emerald) --- */
-	--color-accent: var(--color-emerald-3);
-	--color-accent-light: var(--color-emerald-5);
-	--color-accent-bg: #162820;
-	--color-accent-text: var(--color-emerald-2);
+	/* --- Accent (oxide) --- */
+	--color-accent: var(--color-cinnamon-3);
+	--color-accent-light: var(--color-cinnamon-5);
+	--color-accent-bg: #2a1c10;
+	--color-accent-text: var(--color-cinnamon-2);
 
 	/* --- Status colours --- */
 	/* Lift the base dot colours one shade brighter: the light-tuned -4 shades
@@ -244,7 +326,7 @@
 	--color-edge-tool: var(--color-sky-3);
 
 	/* --- Map theme edges --- */
-	--color-edge-theme-interactive-fiction: var(--color-cinnamon-3);
+	--color-edge-theme-interactive-fiction: var(--color-red-3);
 	--color-edge-theme-procedural-generation: var(--color-cyan-3);
 	--color-edge-theme-human-history: var(--color-yellow-3);
 	--color-edge-theme-graph-native: var(--color-green-3);
@@ -264,28 +346,34 @@
 
 @media (prefers-color-scheme: dark) {
 	:root:not([data-theme='light']) {
-		/* --- Surface and foreground --- */
-		--color-surface: #1a1b1e;
-		--color-surface-raised: #25262b;
-		--color-surface-sunken: #141517;
-		--color-border: var(--color-gray-5);
-		--color-border-strong: var(--color-gray-4);
+		/* --- Surface and foreground: lamplit dark, same warm-mix rule
+		   applied to the existing hand-set dark surfaces. The four base tones
+		   below are hand-picked hex rather than Reasonable Colors variables:
+		   RC's palette has no swatch this close to near-black lamplit ink, so
+		   these are a deliberate exception to "always derive from RC", not an
+		   oversight. --- */
+		--color-surface: color-mix(in oklab, #1a1b1e 88%, var(--color-cinnamon-6));
+		--color-surface-raised: color-mix(in oklab, #232429 88%, var(--color-cinnamon-6));
+		--color-surface-sunken: color-mix(in oklab, #141517 88%, var(--color-cinnamon-6));
+		--color-border: color-mix(in oklab, var(--color-gray-5) 88%, var(--color-cinnamon-5));
+		--color-border-strong: color-mix(in oklab, var(--color-gray-4) 88%, var(--color-cinnamon-4));
+		--color-grid: color-mix(in oklab, #201f1a 88%, var(--color-cinnamon-6));
 
-		--color-text: var(--color-gray-1);
-		--color-text-subtle: var(--color-gray-3);
-		--color-text-muted: var(--color-gray-4);
+		--color-text: color-mix(in oklab, var(--color-gray-1) 88%, var(--color-cinnamon-1));
+		--color-text-subtle: color-mix(in oklab, var(--color-gray-3) 88%, var(--color-cinnamon-3));
+		--color-text-muted: color-mix(in oklab, var(--color-gray-4) 88%, var(--color-cinnamon-4));
 
-		/* --- Primary (azure) --- */
-		--color-primary: var(--color-azure-3);
-		--color-primary-light: var(--color-azure-5);
+		/* --- Primary (ink) --- */
+		--color-primary: var(--color-blue-3);
+		--color-primary-light: var(--color-blue-5);
 		--color-primary-bg: #1c2333;
-		--color-primary-text: var(--color-azure-2);
+		--color-primary-text: var(--color-blue-2);
 
-		/* --- Accent (emerald) --- */
-		--color-accent: var(--color-emerald-3);
-		--color-accent-light: var(--color-emerald-5);
-		--color-accent-bg: #162820;
-		--color-accent-text: var(--color-emerald-2);
+		/* --- Accent (oxide) --- */
+		--color-accent: var(--color-cinnamon-3);
+		--color-accent-light: var(--color-cinnamon-5);
+		--color-accent-bg: #2a1c10;
+		--color-accent-text: var(--color-cinnamon-2);
 
 		/* --- Status colours --- */
 		--color-live: var(--color-emerald-3);
@@ -333,7 +421,7 @@
 		--color-edge-tool: var(--color-sky-3);
 
 		/* --- Map theme edges --- */
-		--color-edge-theme-interactive-fiction: var(--color-cinnamon-3);
+		--color-edge-theme-interactive-fiction: var(--color-red-3);
 		--color-edge-theme-procedural-generation: var(--color-cyan-3);
 		--color-edge-theme-human-history: var(--color-yellow-3);
 		--color-edge-theme-graph-native: var(--color-green-3);

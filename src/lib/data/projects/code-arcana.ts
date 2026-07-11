@@ -2,7 +2,6 @@ import type { AuthoredProject } from '../types.js';
 
 export const codeArcana: AuthoredProject = {
 	slug: 'code-arcana',
-	name: 'Code Arcana',
 	tagline:
 		'A tarot-based programming philosophy website: all 78 cards written as full essays, with a navigable 250-edge connection graph across suits and arcana.',
 	blurb: 'A tarot-based programming philosophy, 78 essays in a connection graph.',
@@ -11,7 +10,6 @@ export const codeArcana: AuthoredProject = {
 	kind: 'website',
 	contribution: { role: 'solo' },
 	status: 'finished',
-	repoUrl: 'https://github.com/JasonWarrenUK/code-arcana',
 	highlights: [
 		'All 78 cards written: 22 Major Arcana and 56 Minor Arcana across four suits (Cups/Wands/Swords/Pentacles).',
 		'Every card has a full essay, keywords, a one-line coding insight, and connections to related cards.',
@@ -21,10 +19,6 @@ export const codeArcana: AuthoredProject = {
 	],
 	relationships: [],
 	tags: [
-		{ label: 'TypeScript', kind: 'language' },
-		{ label: 'SvelteKit', kind: 'framework' },
-		{ label: 'Svelte 5', kind: 'framework' },
-		{ label: 'Deno', kind: 'runtime' },
 		{ label: 'Graph / D3', kind: 'tool' },
 		{ label: 'Document / JSON', kind: 'data' }
 	]

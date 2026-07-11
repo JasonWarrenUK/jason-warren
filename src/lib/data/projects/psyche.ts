@@ -2,7 +2,6 @@ import type { AuthoredProject } from '../types.js';
 
 export const psyche: AuthoredProject = {
 	slug: 'psyche',
-	name: 'Psyche',
 	tagline:
 		'A turn-based psychology RPG with no HP or stats: character is six personality attributes on 0-100 scales, each dysfunctional at both extremes.',
 	blurb: 'A turn-based psychology RPG defined entirely by personality attributes.',
@@ -11,7 +10,6 @@ export const psyche: AuthoredProject = {
 	kind: 'app',
 	contribution: { role: 'solo' },
 	status: 'archived',
-	repoUrl: 'https://github.com/fac-31/psyche',
 	highlights: [
 		'Six-attribute personality model (Self-Assurance, Compassion, Ambition, Drive, Discernment, Bravery): no HP, no stats, both extremes dysfunctional.',
 		'Quality-based-narrative storylet engine: filter by prerequisites, priority with randomised tie-breaking, apply effects, mark played.',
@@ -21,8 +19,6 @@ export const psyche: AuthoredProject = {
 	],
 	relationships: [],
 	tags: [
-		{ label: 'C#', kind: 'language' },
-		{ label: '.NET', kind: 'runtime' },
 		{ label: 'Document / JSON', kind: 'data' }
 	]
 };

@@ -2,7 +2,6 @@ import type { AuthoredProject } from '../types.js';
 
 export const babyNames: AuthoredProject = {
 	slug: 'baby-names',
-	name: 'Baby Names',
 	tagline:
 		'An AI-powered baby name finder that learns your taste: rate generated examples, then receive personalised suggestions that update as you narrow down.',
 	blurb: 'An AI name finder that learns your taste through a rating loop.',
@@ -11,7 +10,6 @@ export const babyNames: AuthoredProject = {
 	kind: 'toy',
 	contribution: { role: 'solo' },
 	status: 'finished',
-	repoUrl: 'https://github.com/JasonWarrenUK/baby-names',
 	highlights: [
 		'No local dataset: all names generated on demand via the Claude API.',
 		'Three-screen taste-learning loop: set preferences, rate generated examples, receive personalised results.',
@@ -21,10 +19,6 @@ export const babyNames: AuthoredProject = {
 	],
 	relationships: [],
 	tags: [
-		{ label: 'TypeScript', kind: 'language' },
-		{ label: 'SvelteKit', kind: 'framework' },
-		{ label: 'Svelte 5', kind: 'framework' },
-		{ label: 'Bun', kind: 'runtime' },
 		{ label: 'Claude API', kind: 'ai' }
 	]
 };

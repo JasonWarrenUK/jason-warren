@@ -11,7 +11,6 @@ export const wyrdTui: AuthoredProject = {
 	kind: 'tui',
 	contribution: { role: 'solo' },
 	status: 'wip',
-	repoUrl: 'https://github.com/JasonWarrenUK/wyrd',
 	highlights: [
 		'Custom read-only Cypher subset: parser, evaluator, MATCH/WHERE/RETURN/ORDER BY, aggregations, bidirectional and variable-length traversals, date variables with offset arithmetic.',
 		'Three-way JSONC git merge driver (its own binary): non-conflicting changes merge cleanly; scalars resolve last-write-wins by timestamp; arrays union.',
@@ -21,9 +20,6 @@ export const wyrdTui: AuthoredProject = {
 	],
 	relationships: [],
 	tags: [
-		{ label: 'Go', kind: 'language' },
-		{ label: 'Go', kind: 'runtime' },
-		{ label: 'Bubble Tea', kind: 'framework' },
 		{ label: 'Graph / Cypher', kind: 'data' },
 		{ label: 'Document / JSON', kind: 'data' },
 		{ label: 'Git', kind: 'tool' },

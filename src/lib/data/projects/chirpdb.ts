@@ -15,7 +15,6 @@ export const chirpdb: AuthoredProject = {
 		contributionNote: 'PLACEHOLDER'
 	},
 	status: 'wip',
-	repoUrl: 'https://github.com/ZigZag-Technology/CHIRPdb',
 	highlights: [
 		'Dual ingestion pipelines: GOV.UK URL scraping and PDF upload, both producing structured incident records.',
 		'SHA-256 deduplication prevents duplicate reports across ingestion runs.',
@@ -25,10 +24,6 @@ export const chirpdb: AuthoredProject = {
 	],
 	relationships: [],
 	tags: [
-		{ label: 'Python', kind: 'language' },
-		{ label: 'CPython', kind: 'runtime' },
-		{ label: 'FastAPI', kind: 'framework' },
-		{ label: 'Supabase', kind: 'data' },
 		{ label: 'pgvector', kind: 'data' },
 		{ label: 'Docker', kind: 'tool' }
 	]

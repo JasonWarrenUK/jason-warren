@@ -1,0 +1,17 @@
+{
+	"$schema": "./source-topology.schema.json",
+	"projects": {
+		"beacons": {
+			"primary": "beacons",
+			"companions": ["beacons-frontend-v2"]
+		},
+		"craft-and-graft": {
+			"primary": "craft-and-graft",
+			"companions": ["craft-and-graft-api"]
+		},
+		"sakura": {
+			"primary": "sakura",
+			"companions": ["sakura-front"]
+		}
+	}
+}

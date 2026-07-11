@@ -1,4 +1,35 @@
 #!/usr/bin/env node
+const MANIFEST_SCAN_EXCLUSIONS = new Set([
+	'.git',
+	'node_modules',
+	'build',
+	'dist',
+	'.svelte-kit',
+	'.next'
+]);
+
+function findManifests(repoPath, fileNames, maxDepth = 3) {
+	const matches = [];
+
+	function visit(directory, depth) {
+		if (depth > maxDepth) return;
+
+		for (const entry of readdirSync(directory, { withFileTypes: true })) {
+			if (entry.isDirectory()) {
+				if (!MANIFEST_SCAN_EXCLUSIONS.has(entry.name)) {
+					visit(join(directory, entry.name), depth + 1);
+				}
+				continue;
+			}
+
+			if (fileNames.has(entry.name)) matches.push(join(directory, entry.name));
+		}
+	}
+
+	visit(repoPath, 0);
+	return matches.sort();
+}
+
 /**
  * Portfolio drift checker.
  *
@@ -63,6 +94,7 @@ try {
 // ---------------------------------------------------------------------------
 
 const sourcesPath = config.paths.sources;
+const topologyPath = config.paths.topology;
 const localPath = config.paths.local;
 const overridesPath = config.paths.overrides;
 const excludedPath = config.paths.excluded;
@@ -451,53 +483,91 @@ function detectDependencies(repoPath) {
 	const framework = [];
 	const database = [];
 
+	const hasBunLock =
+		existsSync(join(repoPath, 'bun.lock')) ||
+		existsSync(join(repoPath, 'bun.lockb')) ||
+		existsSync(join(repoPath, 'bunfig.toml'));
+	const hasDenoLock =
+		existsSync(join(repoPath, 'deno.json')) || existsSync(join(repoPath, 'deno.lock'));
+
+	if (hasBunLock) runtime.push('bun');
+	else if (hasDenoLock) runtime.push('deno');
+
 	// -----------------------------------------------------------------------
-	// package.json: JS/TS ecosystem
+	// package.json: JS/TS ecosystem, including monorepo workspaces
+	// -----------------------------------------------------------------------
+	const packageManifests = findManifests(repoPath, new Set(['package.json']));
+	if (packageManifests.length > 0 && runtime.length === 0) runtime.push('node');
+
+	for (const packagePath of packageManifests) {
+		try {
+			const pkg = JSON.parse(readFileSync(packagePath, 'utf8'));
+			const allDeps = { ...(pkg.dependencies ?? {}), ...(pkg.devDependencies ?? {}) };
+
+			if ('@sveltejs/kit' in allDeps) framework.push('@sveltejs/kit');
+			else if ('svelte' in allDeps) framework.push('svelte');
+			const svelteVersion = allDeps.svelte;
+			if (
+				typeof svelteVersion === 'string' &&
+				svelteVersion.match(/\d+/)?.[0] === '5'
+			) {
+				framework.push('svelte-5');
+			}
+			if ('next' in allDeps) framework.push('next');
+			if ('react' in allDeps) framework.push('react');
+			if ('vite' in allDeps) framework.push('vite');
+			if ('express' in allDeps) framework.push('express');
+			if ('inkjs' in allDeps) framework.push('inkjs');
+			if ('@deno/svelte-adapter' in allDeps && !runtime.includes('deno')) {
+				runtime.push('deno');
+			}
+			if ('@opentui/core' in allDeps) framework.push('@opentui/core');
+			if ('@tauri-apps/api' in allDeps || 'tauri' in allDeps) framework.push('tauri');
+			const tailwindVersion = allDeps.tailwindcss ?? allDeps['@tailwindcss/vite'];
+			if (typeof tailwindVersion === 'string') {
+				framework.push(
+					tailwindVersion.match(/\d+/)?.[0] === '4' ? 'tailwindcss-4' : 'tailwindcss'
+				);
+			}
+
+			if ('pg' in allDeps) database.push('pg');
+			else if ('postgres' in allDeps) database.push('postgres');
+			if ('@supabase/supabase-js' in allDeps) {
+				database.push('@supabase/supabase-js', 'supabase-postgres');
+			}
+			if ('neo4j-driver' in allDeps) database.push('neo4j-driver');
+			if ('mongodb' in allDeps) database.push('mongodb');
+			if ('rxdb' in allDeps) database.push('rxdb');
+			if ('graphql' in allDeps) database.push('graphql');
+			if ('@sqlite.org/sqlite-wasm' in allDeps) database.push('@sqlite.org/sqlite-wasm');
+		} catch {
+			// Ignore malformed package manifests and continue scanning siblings.
+		}
+	}
+
+	// -----------------------------------------------------------------------
+	// Deno import maps and JSONC configuration
 	// -----------------------------------------------------------------------
 	try {
-		const pkgPath = join(repoPath, 'package.json');
-		const pkg = JSON.parse(readFileSync(pkgPath, 'utf8'));
-		const allDeps = {
-			...(pkg.dependencies ?? {}),
-			...(pkg.devDependencies ?? {})
-		};
-
-		// Runtime detection: lock-file presence wins over package.json alone.
-		// Check lock files first; fall back to package.json existence for Node.
-		const hasBunLock =
-			existsSync(join(repoPath, 'bun.lock')) ||
-			existsSync(join(repoPath, 'bun.lockb')) ||
-			existsSync(join(repoPath, 'bunfig.toml'));
-		const hasDenoLock =
-			existsSync(join(repoPath, 'deno.json')) || existsSync(join(repoPath, 'deno.lock'));
-		if (hasBunLock) runtime.push('bun');
-		else if (hasDenoLock) runtime.push('deno');
-		else runtime.push('node'); // package.json present, no bun/deno markers
-
-		// Framework detection from deps
-		// SvelteKit wins over bare Svelte if both present
-		if ('@sveltejs/kit' in allDeps) {
-			framework.push('@sveltejs/kit');
-		} else if ('svelte' in allDeps) {
-			framework.push('svelte');
+		const denoConfigPath = ['deno.json', 'deno.jsonc']
+			.map((file) => join(repoPath, file))
+			.find((file) => existsSync(file));
+		if (denoConfigPath) {
+			const denoConfig = readFileSync(denoConfigPath, 'utf8');
+			if (/@oak\/oak|deno\.land\/x\/oak/i.test(denoConfig)) framework.push('oak');
+			if (/npm:@sveltejs\/kit/i.test(denoConfig)) framework.push('@sveltejs/kit');
+			if (/npm:svelte@(?:\^|~)?5/i.test(denoConfig)) framework.push('svelte-5');
+			if (/npm:vite@/i.test(denoConfig)) framework.push('vite');
+			if (/npm:(?:@tailwindcss\/vite|tailwindcss)@(?:\^|~)?4/i.test(denoConfig)) {
+				framework.push('tailwindcss-4');
+			}
+			if (/neo4j-driver/i.test(denoConfig)) database.push('neo4j-driver');
+			if (/@supabase\/supabase-js/i.test(denoConfig)) {
+				database.push('@supabase/supabase-js', 'supabase-postgres');
+			}
 		}
-		if ('next' in allDeps) framework.push('next');
-		else if ('react' in allDeps && !('@sveltejs/kit' in allDeps) && !('svelte' in allDeps)) {
-			framework.push('react');
-		}
-		if ('express' in allDeps) framework.push('express');
-		if ('@opentui/core' in allDeps) framework.push('@opentui/core');
-		if ('@tauri-apps/api' in allDeps || 'tauri' in allDeps) framework.push('tauri');
-
-		// Database detection from deps
-		if ('pg' in allDeps) database.push('pg');
-		else if ('postgres' in allDeps) database.push('postgres');
-		if ('@supabase/supabase-js' in allDeps) database.push('@supabase/supabase-js');
-		if ('neo4j-driver' in allDeps) database.push('neo4j-driver');
-		if ('mongodb' in allDeps) database.push('mongodb');
-		if ('rxdb' in allDeps) database.push('rxdb');
 	} catch {
-		// No package.json or malformed JSON — continue to other manifest types.
+		// Ignore unreadable Deno configuration.
 	}
 
 	// -----------------------------------------------------------------------
@@ -506,41 +576,33 @@ function detectDependencies(repoPath) {
 	try {
 		if (existsSync(join(repoPath, 'go.mod'))) {
 			if (!runtime.includes('go')) runtime.push('go');
+			const goModule = readFileSync(join(repoPath, 'go.mod'), 'utf8');
+			if (/charm\.land\/bubbletea/i.test(goModule)) framework.push('bubble-tea');
 		}
 	} catch {
 		// Ignore
 	}
 
 	// -----------------------------------------------------------------------
-	// Python: pyproject.toml or requirements.txt
+	// Python: pyproject.toml or requirements.txt, including nested services
 	// -----------------------------------------------------------------------
 	try {
-		const hasPyproject = existsSync(join(repoPath, 'pyproject.toml'));
-		const hasRequirements = existsSync(join(repoPath, 'requirements.txt'));
-		if (hasPyproject || hasRequirements) {
+		const pythonManifests = findManifests(
+			repoPath,
+			new Set(['pyproject.toml', 'requirements.txt'])
+		);
+		if (pythonManifests.length > 0) {
 			if (!runtime.includes('python')) runtime.push('python');
-
-			// Framework detection from pyproject.toml dependencies
-			if (hasPyproject) {
-				const pyproject = readFileSync(join(repoPath, 'pyproject.toml'), 'utf8');
-				if (/fastapi/i.test(pyproject)) framework.push('fastapi');
-				else if (/flask/i.test(pyproject)) framework.push('flask');
-				else if (/django/i.test(pyproject)) framework.push('django');
-
-				// Database detection
-				if (/psycopg2|psycopg/i.test(pyproject)) database.push('psycopg');
-				if (/sqlalchemy/i.test(pyproject)) database.push('sqlalchemy');
-			}
-			if (hasRequirements) {
-				const req = readFileSync(join(repoPath, 'requirements.txt'), 'utf8');
-				if (!framework.some((f) => ['fastapi', 'flask', 'django'].includes(f))) {
-					if (/fastapi/i.test(req)) framework.push('fastapi');
-					else if (/flask/i.test(req)) framework.push('flask');
-					else if (/django/i.test(req)) framework.push('django');
+			for (const manifestPath of pythonManifests) {
+				const manifestText = readFileSync(manifestPath, 'utf8');
+				if (/fastapi/i.test(manifestText)) framework.push('fastapi');
+				else if (/flask/i.test(manifestText)) framework.push('flask');
+				else if (/django/i.test(manifestText)) framework.push('django');
+				if (/psycopg2|psycopg/i.test(manifestText)) database.push('psycopg');
+				if (/sqlalchemy/i.test(manifestText)) database.push('sqlalchemy');
+				if (/\bsupabase\b/i.test(manifestText)) {
+					database.push('supabase-py', 'supabase-postgres');
 				}
-				if (!database.includes('psycopg') && /psycopg/i.test(req)) database.push('psycopg');
-				if (!database.includes('sqlalchemy') && /sqlalchemy/i.test(req))
-					database.push('sqlalchemy');
 			}
 		}
 	} catch {
@@ -560,6 +622,30 @@ function detectDependencies(repoPath) {
 		}
 	} catch {
 		// Ignore
+	}
+
+	// -----------------------------------------------------------------------
+	// .NET: root project file
+	// -----------------------------------------------------------------------
+	try {
+		const projectFile = readdirSync(repoPath).find((file) => file.endsWith('.csproj'));
+		if (projectFile) {
+			const project = readFileSync(join(repoPath, projectFile), 'utf8');
+			const target = project.match(
+				/<TargetFramework>net(\d+)(?:\.\d+)?<\/TargetFramework>/i
+			);
+
+			if (target) runtime.push(`dotnet-${target[1]}`);
+			else runtime.push('dotnet');
+
+			if (/Microsoft\.NET\.Sdk\.Web/i.test(project)) framework.push('aspnet-core');
+			if (/Microsoft\.EntityFrameworkCore/i.test(project)) {
+				database.push('entity-framework-core');
+			}
+			if (/Npgsql/i.test(project)) database.push('npgsql');
+		}
+	} catch {
+		// No readable root .NET project.
 	}
 
 	return { runtime, framework, database };
@@ -583,6 +669,36 @@ function normaliseRemote(rawRemote) {
 	// HTTPS form: https://github.com/org/repo.git
 	if (trimmed.startsWith('https://')) return trimmed.replace(/\.git$/, '');
 	return null;
+}
+
+async function detectSourceSignals(repoPath, ref, listing) {
+	const runtime = [];
+	const framework = [];
+
+	if (listing?.split('\n').some((file) => file.endsWith('.svelte.ts'))) {
+		framework.push('svelte-5');
+	}
+
+	const sourceSearch = await git(
+		[
+			'grep',
+			'-E',
+			'Bun\\.|from ["\x27]inkjs["\x27]|from ["\x27]@sveltejs/kit',
+			ref,
+			'--',
+			'*.ts',
+			'*.js',
+			'*.svelte'
+		],
+		repoPath
+	);
+	const source = sourceSearch.ok ? sourceSearch.out : '';
+
+	if (/Bun\./.test(source)) runtime.push('bun');
+	if (/from ["']inkjs["']/.test(source)) framework.push('inkjs');
+	if (/from ["']@sveltejs\/kit/.test(source)) framework.push('@sveltejs/kit');
+
+	return { runtime, framework };
 }
 
 /**
@@ -645,11 +761,15 @@ async function getFingerprint(repoPath, resolvedRef) {
 
 	const lastCommit = lcR.ok ? lcR.out : null;
 	const remote = normaliseRemote(remoteR.ok ? remoteR.out : null);
-	const { runtime, framework, database } = detectDependencies(repoPath);
+	const dependencies = detectDependencies(repoPath);
 
 	// detectLanguages uses the ref-aware listing; countLinesOfCode reads blobs
 	// from the ref via git cat-file --batch (no working-tree readFileSync).
 	const languages = detectLanguages(listing);
+	const sourceSignals = await detectSourceSignals(repoPath, ref, listing);
+	const runtime = [...new Set([...dependencies.runtime, ...sourceSignals.runtime])];
+	const framework = [...new Set([...dependencies.framework, ...sourceSignals.framework])];
+	const { database } = dependencies;
 	const linesOfCode = await countLinesOfCode(repoPath, listing, ref);
 
 	return {
@@ -973,10 +1093,88 @@ function loadManifests() {
 		);
 	}
 
+	let sourceTopology = {};
+	if (existsSync(topologyPath)) {
+		try {
+			sourceTopology = JSON.parse(readFileSync(topologyPath, 'utf8')).projects ?? {};
+		} catch {
+			process.stderr.write(
+				`Cannot parse ${topologyPath}: continuing without source topology\n`
+			);
+		}
+	}
+	warnOnSharedCompanions(sourceTopology);
+
 	// Load per-machine HEAD-SHA cache (best-effort: missing/unreadable is silent).
 	const cache = loadCache();
 
-	return { manifest, overrideEntries, localPaths, cache, inProgress };
+	return { manifest, overrideEntries, localPaths, sourceTopology, cache, inProgress };
+}
+
+/**
+ * Warn (do not fail) when two different projects' topology entries claim the
+ * same companion source ID: the second project's cache would be silently
+ * invalidated by commits belonging to the first.
+ */
+function warnOnSharedCompanions(sourceTopology) {
+	const claimedBy = new Map();
+	for (const [slug, topology] of Object.entries(sourceTopology)) {
+		for (const companionId of topology.companions ?? []) {
+			const owner = claimedBy.get(companionId);
+			if (owner && owner !== slug) {
+				process.stderr.write(
+					`Warning: companion source "${companionId}" is claimed by both "${owner}" and "${slug}" in source-topology.json\n`
+				);
+			} else {
+				claimedBy.set(companionId, slug);
+			}
+		}
+	}
+}
+
+/** Resolve a portfolio slug to its primary and ordered companion source paths. */
+function resolveProjectSources(slug, sourceTopology, localPaths) {
+	const topology = sourceTopology[slug] ?? { primary: slug, companions: [] };
+	const companions = topology.companions.filter((sourceId) => sourceId !== topology.primary);
+	const sourceIds = [topology.primary, ...companions];
+	const missing = sourceIds.filter((sourceId) => !localPaths[sourceId]);
+
+	if (missing.length > 0) {
+		return { missing, primary: null, companions: [] };
+	}
+
+	return {
+		missing: [],
+		primary: { sourceId: topology.primary, path: localPaths[topology.primary] },
+		companions: companions.map((sourceId) => ({
+			sourceId,
+			path: localPaths[sourceId]
+		}))
+	};
+}
+
+function orderedUnion(...values) {
+	return [...new Set(values.flatMap((value) => value ?? []))];
+}
+
+/** Merge repository-derived stack metadata while retaining primary metrics. */
+function mergeCompanionFingerprints(primary, companions) {
+	const companionRemotes = companions
+		.map((fingerprint) => fingerprint.remote)
+		.filter((remote) => remote != null);
+	const languages = orderedUnion(primary.languages, ...companions.map((item) => item.languages));
+	const runtime = orderedUnion(primary.runtime, ...companions.map((item) => item.runtime));
+	const framework = orderedUnion(primary.framework, ...companions.map((item) => item.framework));
+	const database = orderedUnion(primary.database, ...companions.map((item) => item.database));
+
+	return {
+		...primary,
+		...(companionRemotes.length > 0 && { companionRemotes }),
+		...(languages.length > 0 && { languages }),
+		...(runtime.length > 0 && { runtime }),
+		...(framework.length > 0 && { framework }),
+		...(database.length > 0 && { database })
+	};
 }
 
 // ---------------------------------------------------------------------------
@@ -1004,7 +1202,7 @@ function loadManifests() {
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
 
 async function computeDrift(
-	{ manifest, overrideEntries, localPaths, cache, inProgress = {} },
+	{ manifest, overrideEntries, localPaths, sourceTopology = {}, cache, inProgress = {} },
 	{ full = false, onProgress = null, useCache = false } = {}
 ) {
 	const { excludedRepoNames } = loadExcluded();
@@ -1032,23 +1230,49 @@ async function computeDrift(
 			const i = cursor++;
 			const [slug, saved] = entries[i];
 
-			const repoPath = localPaths[slug];
-			if (!repoPath) {
+			const projectSources = resolveProjectSources(slug, sourceTopology, localPaths);
+			if (projectSources.missing.length > 0) {
 				results[i] = {
 					slug,
-					missing: { slug, reason: 'no local path in sources.local.json' }
+					missing: {
+						slug,
+						reason: `no local path for source ID(s): ${projectSources.missing.join(', ')}`
+					}
 				};
 				completed++;
 				onProgress?.({ index: completed, total, slug });
 				continue;
 			}
 
-			// Resolve the default branch once per entry. The resolved ref is shared
-			// between the cache fast-path SHA comparison and getFingerprint so we
-			// never resolve the branch twice and the cache key always matches the
-			// measured ref (not bare HEAD).
-			const resolvedRef = await defaultBranch(repoPath);
-			const { ref, fellBack } = resolvedRef;
+			const sourceEntries = [projectSources.primary, ...projectSources.companions];
+			const resolvedSources = await Promise.all(
+				sourceEntries.map(async (source) => ({
+					...source,
+					resolvedRef: await defaultBranch(source.path)
+				}))
+			);
+			const liveHeadResults = await Promise.all(
+				resolvedSources.map((source) =>
+					git(['rev-parse', '--short', source.resolvedRef.ref], source.path)
+				)
+			);
+			const unresolvedIndex = liveHeadResults.findIndex((result) => !result.ok || !result.out);
+			if (unresolvedIndex !== -1) {
+				const unresolved = resolvedSources[unresolvedIndex];
+				results[i] = {
+					slug,
+					missing: {
+						slug,
+						reason: `path not found or not a git repo: ${unresolved.path}`
+					}
+				};
+				completed++;
+				onProgress?.({ index: completed, total, slug });
+				continue;
+			}
+			const liveHeads = liveHeadResults.map((result) => result.out);
+			const repoPath = projectSources.primary.path;
+			const fellBack = resolvedSources[0].resolvedRef.fellBack;
 
 			// Ref+TTL cache check: skip full fingerprint when the measured ref's
 			// tip SHA is unchanged and the cached entry is fresh enough.
@@ -1058,10 +1282,11 @@ async function computeDrift(
 			if (useCache) {
 				const entry = updatedCache[slug];
 				if (entry && entry.fingerprint) {
-					// Fast SHA check against the RESOLVED ref (not bare HEAD) so the
-					// cache key stays coherent when the default branch is not checked out.
-					const liveHeadR = await git(['rev-parse', '--short', ref], repoPath);
-					if (liveHeadR.ok && liveHeadR.out === entry.head) {
+					const cachedHeads = entry.heads ?? (entry.head ? [entry.head] : []);
+					if (
+						cachedHeads.length === liveHeads.length &&
+						cachedHeads.every((head, index) => head === liveHeads[index])
+					) {
 						const age = nowMs - Date.parse(entry.syncedAt);
 						if (age < CACHE_TTL_MS) {
 							current = entry.fingerprint;
@@ -1072,11 +1297,16 @@ async function computeDrift(
 			}
 
 			if (!current) {
-				// Pass the pre-resolved ref to avoid a redundant defaultBranch() call.
-				current = await getFingerprint(repoPath, resolvedRef);
+				const fingerprints = await Promise.all(
+					resolvedSources.map((source) => getFingerprint(source.path, source.resolvedRef))
+				);
+				if (fingerprints.every((fingerprint) => fingerprint !== null)) {
+					const [primaryFingerprint, ...companionFingerprints] = fingerprints;
+					current = mergeCompanionFingerprints(primaryFingerprint, companionFingerprints);
+				}
 				// Update cache for next run — only for valid fingerprints.
 				if (current) {
-					updatedCache[slug] = { head: current.head, fingerprint: current, syncedAt: nowISO };
+					updatedCache[slug] = { heads: liveHeads, fingerprint: current, syncedAt: nowISO };
 				}
 			}
 
@@ -1840,10 +2070,8 @@ function runReport({ result, manifest, palette, json, full, useGum }) {
 // ---------------------------------------------------------------------------
 
 function runUpdate({ result, manifest, palette, useGum, args = [], dryRun = false }) {
-	const { fresh } = result;
+	const { fresh, missing } = result;
 	const { GREEN, YELLOW, RED, RESET, DIM } = palette;
-
-	if (Object.keys(fresh).length === 0) return;
 
 	// Per-repo scoping: if slug args were provided, restrict to those slugs only.
 	// Unknown slugs get a soft warning (not an abort) so a typo doesn't block a batch.
@@ -1852,8 +2080,10 @@ function runUpdate({ result, manifest, palette, useGum, args = [], dryRun = fals
 	if (isScoped) {
 		for (const slug of args) {
 			if (!fresh[slug]) {
+				const missingEntry = missing.find((entry) => entry.slug === slug);
+				const reason = missingEntry ? `: ${missingEntry.reason}` : '';
 				process.stdout.write(
-					`${YELLOW}Warning: '${slug}' is not resolvable on this machine — skipped.${RESET}\n`
+					`${YELLOW}Warning: '${slug}' is not resolvable on this machine — skipped${reason}.${RESET}\n`
 				);
 			}
 		}
@@ -1865,6 +2095,8 @@ function runUpdate({ result, manifest, palette, useGum, args = [], dryRun = fals
 			return;
 		}
 	}
+
+	if (Object.keys(fresh).length === 0) return;
 
 	// Dry-run: show a faithful field-level preview for each scoped repo using the
 	// same merge logic as the real write, then return without writing.

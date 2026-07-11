@@ -3,7 +3,6 @@ import type { AuthoredProject } from '../types.js';
 export const kamino: AuthoredProject = {
 	hide: true,
 	slug: 'kamino',
-	name: 'Kamino',
 	tagline:
 		'A universal project template for apprenticeship work: Claude Code config, git hooks for KSB evidence extraction, docs scaffolding, and a /project/init command that wires everything up.',
 	blurb: 'A universal project template wiring up Claude Code and KSB evidence.',
@@ -12,7 +11,6 @@ export const kamino: AuthoredProject = {
 	kind: 'tool',
 	contribution: { role: 'solo' },
 	status: 'finished',
-	repoUrl: 'https://github.com/JasonWarrenUK/kamino',
 	highlights: [
 		'Post-commit hook auto-extracts KSB portfolio evidence from commit messages.',
 		'post-commit-docs hook reminds to sync documentation when source changes.',
@@ -22,8 +20,6 @@ export const kamino: AuthoredProject = {
 	],
 	relationships: [],
 	tags: [
-		{ label: 'Shell', kind: 'language' },
-		{ label: 'POSIX shell', kind: 'runtime' },
 		{ label: 'Claude Code', kind: 'ai' },
 		{ label: 'Developer Tooling', kind: 'concept' },
 		{ label: 'No persistence', kind: 'data' }

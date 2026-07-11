@@ -2,7 +2,6 @@ import type { AuthoredProject } from '../types.js';
 
 export const topGirls: AuthoredProject = {
 	slug: 'top-girls',
-	name: 'Top Girls',
 	tagline:
 		'A Top Trumps card game for 32 Gilmore Girls characters, with a play loop against the CPU and a sortable gallery. Built with Svelte 5 runes and Atropos card-tilt effects.',
 	blurb: 'A Top Trumps card game for 32 Gilmore Girls characters.',
@@ -11,7 +10,6 @@ export const topGirls: AuthoredProject = {
 	kind: 'game',
 	contribution: { role: 'solo' },
 	status: 'finished',
-	repoUrl: 'https://github.com/JasonWarrenUK/top-girls',
 	highlights: [
 		'Idiomatic Svelte 5 runes throughout: $state, $derived. No redundant lifecycle flags.',
 		'Atropos 3D card-tilt effect integrated and documented to its four-div DOM structure requirement.',
@@ -21,10 +19,7 @@ export const topGirls: AuthoredProject = {
 	],
 	relationships: [],
 	tags: [
-		{ label: 'TypeScript', kind: 'language' },
-		{ label: 'Svelte 5', kind: 'framework' },
 		{ label: 'Vite', kind: 'tool' },
-		{ label: 'Bun', kind: 'runtime' },
 		{ label: 'Document / JSON', kind: 'data' }
 	]
 };

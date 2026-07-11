@@ -1115,6 +1115,16 @@ function makeSyncSandbox(slug = 'sync-test-repo'): { dir: string; slug: string }
 	git(['config', 'user.email', 'test@example.com']);
 	git(['config', 'user.name', 'Test']);
 	writeFileSync(join(repoPath, 'readme.md'), '# test\n');
+	writeFileSync(
+		join(repoPath, 'package.json'),
+		JSON.stringify({
+			devDependencies: {
+				svelte: '^5.45.6',
+				'@sveltejs/kit': '^2.49.1',
+				'@tailwindcss/vite': '^4.3.1'
+			}
+		})
+	);
 	git(['add', '-A']);
 	git(['commit', '-m', 'init', '--no-gpg-sign']);
 
@@ -1208,8 +1218,328 @@ describe('drift sync', () => {
 		expect(entry.commits).toBe(1);
 		// head must have been updated from the dummy SHA.
 		expect(entry.head).not.toBe('deadbeef00000000000000000000000000000000');
+		expect(entry.framework).toEqual(['@sveltejs/kit', 'svelte-5', 'tailwindcss-4']);
 		// lastSyncedAt is set on the manifest root (not per-entry).
 		expect(parsed.lastSyncedAt).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+	});
+
+	it('detects Tailwind 3 without mistaking the minor version for Tailwind 4', () => {
+		writeFileSync(
+			join(dir, 'repo', 'package.json'),
+			JSON.stringify({
+				dependencies: { next: '^14.1.0', react: '^18.2.0' },
+				devDependencies: { tailwindcss: '^3.4.1', vite: '^5.0.0' }
+			})
+		);
+
+		const result = runSyncWithConfig(dir, []);
+
+		expect(result.status, result.stderr).toBe(0);
+		const parsed = JSON.parse(readFileSync(join(dir, 'sources.json'), 'utf8'));
+		expect(parsed.sources[slug].framework).toEqual([
+			'next',
+			'react',
+			'vite',
+			'tailwindcss'
+		]);
+	});
+
+	it('detects Deno from a root lock file without package.json', () => {
+		rmSync(join(dir, 'repo', 'package.json'));
+		writeFileSync(join(dir, 'repo', 'deno.lock'), '{}\n');
+		writeFileSync(
+			join(dir, 'repo', 'deno.jsonc'),
+			`{
+	// Import evidence may live in commented JSONC.
+	"imports": {
+		"oak": "jsr:@oak/oak",
+		"svelte": "npm:svelte@5",
+		"@sveltejs/kit": "npm:@sveltejs/kit@^2.22.0",
+		"vite": "npm:vite@^7.0.0",
+		"tailwindcss": "npm:tailwindcss@4",
+		"neo4j": "npm:neo4j-driver@^5.27.0",
+		"supabase": "jsr:@supabase/supabase-js@2"
+	}
+}\n`
+		);
+
+		const result = runSyncWithConfig(dir, []);
+
+		expect(result.status, result.stderr).toBe(0);
+		const parsed = JSON.parse(readFileSync(join(dir, 'sources.json'), 'utf8'));
+		const entry = parsed.sources[slug];
+		expect(entry.runtime).toEqual(['deno']);
+		expect(entry.framework).toEqual([
+			'oak',
+			'@sveltejs/kit',
+			'svelte-5',
+			'vite',
+			'tailwindcss-4'
+		]);
+		expect(entry.database).toEqual([
+			'neo4j-driver',
+			'@supabase/supabase-js',
+			'supabase-postgres'
+		]);
+	});
+
+	it('detects Supabase and its PostgreSQL foundation from a package dependency', () => {
+		writeFileSync(
+			join(dir, 'repo', 'package.json'),
+			JSON.stringify({
+				dependencies: {
+					'@supabase/supabase-js': '^2.49.8',
+					graphql: '^16.8.0',
+					'@deno/svelte-adapter': '^0.1.1'
+				}
+			})
+		);
+
+		const result = runSyncWithConfig(dir, []);
+
+		expect(result.status, result.stderr).toBe(0);
+		const parsed = JSON.parse(readFileSync(join(dir, 'sources.json'), 'utf8'));
+		expect(parsed.sources[slug].runtime).toEqual(['node', 'deno']);
+		expect(parsed.sources[slug].database).toEqual([
+			'@supabase/supabase-js',
+			'supabase-postgres',
+			'graphql'
+		]);
+	});
+
+	it('detects Bubble Tea from go.mod', () => {
+		rmSync(join(dir, 'repo', 'package.json'));
+		writeFileSync(
+			join(dir, 'repo', 'go.mod'),
+			'module example.com/test\n\nrequire charm.land/bubbletea/v2 v2.0.2\n'
+		);
+
+		const result = runSyncWithConfig(dir, []);
+
+		expect(result.status, result.stderr).toBe(0);
+		const parsed = JSON.parse(readFileSync(join(dir, 'sources.json'), 'utf8'));
+		expect(parsed.sources[slug].runtime).toEqual(['go']);
+		expect(parsed.sources[slug].framework).toEqual(['bubble-tea']);
+	});
+
+	it('detects Bun, Ink and Svelte 5 from committed source signals', () => {
+		rmSync(join(dir, 'repo', 'package.json'));
+		writeFileSync(
+			join(dir, 'repo', 'engine.svelte.ts'),
+			`import { Story } from 'inkjs';\nexport const story = new Story('');\n`
+		);
+		writeFileSync(
+			join(dir, 'repo', 'files.ts'),
+			`export const source = Bun.file('input.json');\n`
+		);
+		const gitEnv = makeGitEnv();
+		spawnSync('git', ['add', '-A'], { cwd: join(dir, 'repo'), env: gitEnv, encoding: 'utf8' });
+		spawnSync('git', ['commit', '-m', 'add source signals', '--no-gpg-sign'], {
+			cwd: join(dir, 'repo'),
+			env: gitEnv,
+			encoding: 'utf8'
+		});
+
+		const result = runSyncWithConfig(dir, []);
+
+		expect(result.status, result.stderr).toBe(0);
+		const parsed = JSON.parse(readFileSync(join(dir, 'sources.json'), 'utf8'));
+		expect(parsed.sources[slug].runtime).toEqual(['bun']);
+		expect(parsed.sources[slug].framework).toEqual(['svelte-5', 'inkjs']);
+	});
+
+	it('detects .NET runtime, web framework and database packages from a root project', () => {
+		rmSync(join(dir, 'repo', 'package.json'));
+		writeFileSync(
+			join(dir, 'repo', 'app.csproj'),
+			`<Project Sdk="Microsoft.NET.Sdk.Web">
+	<PropertyGroup><TargetFramework>net8.0</TargetFramework></PropertyGroup>
+	<ItemGroup>
+		<PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="8.0.2" />
+		<PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="8.0.2" />
+	</ItemGroup>
+</Project>\n`
+		);
+
+		const result = runSyncWithConfig(dir, []);
+
+		expect(result.status, result.stderr).toBe(0);
+		const parsed = JSON.parse(readFileSync(join(dir, 'sources.json'), 'utf8'));
+		const entry = parsed.sources[slug];
+		expect(entry.runtime).toEqual(['dotnet-8']);
+		expect(entry.framework).toEqual(['aspnet-core']);
+		expect(entry.database).toEqual(['entity-framework-core', 'npgsql']);
+	});
+
+	it('detects nested package and Python manifests in a monorepo', () => {
+		mkdirSync(join(dir, 'repo', 'apps', 'web'), { recursive: true });
+		mkdirSync(join(dir, 'repo', 'services', 'api'), { recursive: true });
+		writeFileSync(join(dir, 'repo', 'bun.lock'), '');
+		writeFileSync(
+			join(dir, 'repo', 'apps', 'web', 'package.json'),
+			JSON.stringify({
+				dependencies: {
+					svelte: '^5.55.2',
+					'@sveltejs/kit': '^2.57.0',
+					'@sqlite.org/sqlite-wasm': '^3.53.0'
+				}
+			})
+		);
+		writeFileSync(
+			join(dir, 'repo', 'services', 'api', 'requirements.txt'),
+			'fastapi==0.104.1\nsupabase==2.28.2\n'
+		);
+
+		const result = runSyncWithConfig(dir, []);
+
+		expect(result.status, result.stderr).toBe(0);
+		const parsed = JSON.parse(readFileSync(join(dir, 'sources.json'), 'utf8'));
+		const entry = parsed.sources[slug];
+		expect(entry.runtime).toEqual(['bun', 'python']);
+		expect(entry.framework).toEqual(
+			expect.arrayContaining(['@sveltejs/kit', 'svelte-5', 'fastapi'])
+		);
+		expect(entry.database).toEqual([
+			'@sqlite.org/sqlite-wasm',
+			'supabase-py',
+			'supabase-postgres'
+		]);
+	});
+
+	it('merges companion stack and remotes while retaining primary metrics', () => {
+		const primaryPath = join(dir, 'repo');
+		const companionPath = join(dir, 'companion');
+		mkdirSync(companionPath);
+		const gitEnv = makeGitEnv();
+		const companionGit = (args: string[]) =>
+			spawnSync('git', args, { cwd: companionPath, env: gitEnv, encoding: 'utf8' });
+
+		spawnSync('git', ['remote', 'add', 'origin', 'https://github.com/example/backend.git'], {
+			cwd: primaryPath,
+			encoding: 'utf8'
+		});
+		companionGit(['init', '-b', 'main']);
+		companionGit(['config', 'user.email', 'test@example.com']);
+		companionGit(['config', 'user.name', 'Test']);
+		companionGit(['remote', 'add', 'origin', 'https://github.com/example/frontend.git']);
+		writeFileSync(join(companionPath, 'index.js'), 'export const companion = true;\n');
+		writeFileSync(
+			join(companionPath, 'package.json'),
+			JSON.stringify({ dependencies: { react: '^19.0.0' } })
+		);
+		writeFileSync(join(companionPath, 'deno.lock'), '{}\n');
+		companionGit(['add', '-A']);
+		companionGit(['commit', '-m', 'init', '--no-gpg-sign']);
+
+		writeFileSync(
+			join(dir, 'sources.local.json'),
+			JSON.stringify({ paths: { [slug]: primaryPath, 'companion-ui': companionPath } }, null, '\t')
+		);
+		writeFileSync(
+			join(dir, 'source-topology.json'),
+			JSON.stringify({
+				projects: { [slug]: { primary: slug, companions: ['companion-ui'] } }
+			})
+		);
+
+		const result = runSyncWithConfig(dir, []);
+
+		expect(result.status, result.stderr).toBe(0);
+		const parsed = JSON.parse(readFileSync(join(dir, 'sources.json'), 'utf8'));
+		const entry = parsed.sources[slug];
+		expect(entry.commits).toBe(1);
+		expect(entry.remote).toBe('https://github.com/example/backend');
+		expect(entry.companionRemotes).toEqual(['https://github.com/example/frontend']);
+		expect(entry.languages).toEqual(expect.arrayContaining(['JavaScript']));
+		expect(entry.runtime).toEqual(expect.arrayContaining(['node', 'deno']));
+		expect(entry.framework).toEqual(
+			expect.arrayContaining(['@sveltejs/kit', 'svelte-5', 'tailwindcss-4', 'react'])
+		);
+
+		const configPath = makeDriftConfig(dir);
+		const runCachedReport = () =>
+			spawnSync('bun', ['run', checkDriftPath, '--json', '--no-color'], {
+				cwd: repoRoot,
+				env: { ...process.env, DRIFT_CONFIG: configPath },
+				encoding: 'utf8',
+				timeout: 30_000
+			});
+		const firstReport = runCachedReport();
+		expect(firstReport.status, firstReport.stderr).toBe(0);
+		const firstCache = JSON.parse(readFileSync(join(dir, '.drift-cache.json'), 'utf8'));
+		expect(firstCache[slug].heads).toHaveLength(2);
+
+		writeFileSync(join(companionPath, 'cache-change.js'), 'export const changed = true;\n');
+		companionGit(['add', '-A']);
+		companionGit(['commit', '-m', 'companion change', '--no-gpg-sign']);
+		const secondReport = runCachedReport();
+		expect(secondReport.status, secondReport.stderr).toBe(0);
+		const secondCache = JSON.parse(readFileSync(join(dir, '.drift-cache.json'), 'utf8'));
+		expect(secondCache[slug].heads[0]).toBe(firstCache[slug].heads[0]);
+		expect(secondCache[slug].heads[1]).not.toBe(firstCache[slug].heads[1]);
+	});
+
+	it('does not write when a configured companion path is missing', () => {
+		writeFileSync(
+			join(dir, 'source-topology.json'),
+			JSON.stringify({ projects: { [slug]: { primary: slug, companions: ['missing-ui'] } } })
+		);
+		const before = readFileSync(join(dir, 'sources.json'), 'utf8');
+
+		const result = runSyncWithConfig(dir, [slug]);
+
+		expect(result.status).toBe(0);
+		expect(result.stdout).toContain(`no local path for source ID(s): missing-ui`);
+		expect(readFileSync(join(dir, 'sources.json'), 'utf8')).toBe(before);
+	});
+
+	it('warns and continues instead of exiting when source-topology.json is malformed', () => {
+		writeFileSync(join(dir, 'source-topology.json'), '{ not valid json');
+
+		const result = runSyncWithConfig(dir, []);
+
+		expect(result.status, result.stderr).toBe(0);
+		expect(result.stderr).toContain('Cannot parse');
+		expect(result.stderr).toContain('continuing without source topology');
+		// Affected project falls back to companion-less sync rather than the
+		// whole run aborting.
+		const parsed = JSON.parse(readFileSync(join(dir, 'sources.json'), 'utf8'));
+		expect(parsed.sources[slug]).toBeDefined();
+	});
+
+	it('drops a companion source ID that matches its own project as primary', () => {
+		writeFileSync(
+			join(dir, 'source-topology.json'),
+			JSON.stringify({
+				projects: { [slug]: { primary: slug, companions: [slug, 'missing-ui'] } }
+			})
+		);
+
+		const result = runSyncWithConfig(dir, [slug]);
+
+		expect(result.status, result.stderr).toBe(0);
+		// Only the genuinely distinct companion should be reported missing;
+		// the self-reference must have been deduped rather than double-counted.
+		expect(result.stdout).toContain('no local path for source ID(s): missing-ui');
+		expect(result.stdout).not.toMatch(/missing-ui.*missing-ui/);
+	});
+
+	it('warns when two projects claim the same companion source ID', () => {
+		writeFileSync(
+			join(dir, 'source-topology.json'),
+			JSON.stringify({
+				projects: {
+					[slug]: { primary: slug, companions: ['shared-lib'] },
+					'other-project': { primary: 'other-project', companions: ['shared-lib'] }
+				}
+			})
+		);
+
+		const result = runSyncWithConfig(dir, []);
+
+		expect(result.status, result.stderr).toBe(0);
+		expect(result.stderr).toContain('shared-lib');
+		expect(result.stderr).toMatch(/claimed by both/);
 	});
 
 	it('dry-run stdout mentions the fields that a real sync would write', () => {

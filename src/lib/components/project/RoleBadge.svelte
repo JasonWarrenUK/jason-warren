@@ -22,11 +22,12 @@
 	.role-badge {
 		display: inline-flex;
 		align-items: center;
-		font-size: var(--text-xs);
+		font-family: var(--font-mono);
+		font-size: var(--text-apparatus);
 		font-weight: 600;
-		letter-spacing: 0.04em;
+		letter-spacing: 0.08em;
 		text-transform: uppercase;
-		padding: 2px var(--space-2);
+		padding: var(--space-badge);
 		border-radius: var(--radius-full);
 		white-space: nowrap;
 	}

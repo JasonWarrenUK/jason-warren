@@ -2,7 +2,6 @@ import type { AuthoredProject } from '../types.js';
 
 export const grumble: AuthoredProject = {
 	slug: 'grumble',
-	name: 'Grumble',
 	tagline:
 		'A Gin Rummy scorer with deadwood calculation, undercut detection, runtime rule presets, and match history across multiple games.',
 	blurb: 'A Gin Rummy scorer with deadwood calculation and runtime rule presets.',
@@ -11,7 +10,6 @@ export const grumble: AuthoredProject = {
 	kind: 'tool',
 	contribution: { role: 'solo' },
 	status: 'finished',
-	repoUrl: 'https://github.com/JasonWarrenUK/grumble',
 	highlights: [
 		'Pure, framework-free scoring library in src/lib/scoring/ with comprehensive unit tests via bun:test.',
 		'Full Gin Rummy ruleset: deadwood calculation, gin/big-gin/undercut bonuses, line bonuses, game bonuses, multi-game match history.',
@@ -21,10 +19,6 @@ export const grumble: AuthoredProject = {
 	],
 	relationships: [],
 	tags: [
-		{ label: 'TypeScript', kind: 'language' },
-		{ label: 'SvelteKit', kind: 'framework' },
-		{ label: 'Svelte 5', kind: 'framework' },
-		{ label: 'Bun', kind: 'runtime' },
 		{ label: 'Ephemeral / in-memory', kind: 'data' }
 	]
 };

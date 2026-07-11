@@ -2,7 +2,6 @@ import type { AuthoredProject } from '../types.js';
 
 export const thingsWeDo: AuthoredProject = {
 	slug: 'things-we-do',
-	name: 'Things We Do',
 	tagline:
 		'An installable PWA for managing tasks and emotional wellbeing through mood tracking and personalised coping-strategy toolkits.',
 	blurb: 'A PWA for managing tasks and wellbeing through mood tracking.',
@@ -16,7 +15,6 @@ export const thingsWeDo: AuthoredProject = {
 			'Built the next-actions feature end-to-end on a FAC-30 cohort mental-health tracker; designed the insights charts including the 3D Plotly wellbeing visualisation; implemented ephemeral categories with modal confirmations; initialised the RxDB offline-first storage layer.'
 	},
 	status: 'archived',
-	repoUrl: 'https://github.com/fac30/things-we-do',
 	highlights: [
 		'Next-actions feature end-to-end: creation, immediate selection, view, and deletion.',
 		'3D mood visualisation via Plotly.js: interactive, animated wellbeing data.',
@@ -26,13 +24,7 @@ export const thingsWeDo: AuthoredProject = {
 	],
 	relationships: [],
 	tags: [
-		{ label: 'TypeScript', kind: 'language' },
-		{ label: 'Bun', kind: 'runtime' },
-		{ label: 'React', kind: 'framework' },
-		{ label: 'Next.js', kind: 'framework' },
-		{ label: 'RxDB', kind: 'data' },
 		{ label: 'Plotly.js', kind: 'tool' },
 		{ label: 'PWA', kind: 'concept' },
-		{ label: 'Tailwind CSS', kind: 'framework' }
 	]
 };

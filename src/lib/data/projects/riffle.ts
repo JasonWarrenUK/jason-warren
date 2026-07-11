@@ -2,7 +2,6 @@ import type { AuthoredProject } from '../types.js';
 
 export const riffle: AuthoredProject = {
 	slug: 'riffle',
-	name: 'Riffle',
 	tagline:
 		'A reactive DendryNexus game engine for SvelteKit: cards, decks, difficulty checks, quality systems, and arena topology, all built on Svelte 5 runes.',
 	blurb: 'A reactive DendryNexus card-game engine for SvelteKit.',
@@ -11,7 +10,6 @@ export const riffle: AuthoredProject = {
 	kind: 'library',
 	contribution: { role: 'solo' },
 	status: 'finished',
-	repoUrl: 'https://github.com/JasonWarrenUK/riffle',
 	highlights: [
 		'Card/deck/hand system: draw, play, discard across multiple hands with pinned cards, max hand sizes, and per-hand state.',
 		'Difficulty checks: broad and narrow curves with configurable scalers, human-readable labels (almost impossible → straightforward), roll tracking.',
@@ -27,9 +25,6 @@ export const riffle: AuthoredProject = {
 		}
 	],
 	tags: [
-		{ label: 'TypeScript', kind: 'language' },
-		{ label: 'Node.js', kind: 'runtime' },
-		{ label: 'Svelte 5', kind: 'framework' },
 		{ label: 'DendryNexus', kind: 'tool' },
 		{ label: 'Interactive Fiction', kind: 'concept' },
 		{ label: 'No persistence', kind: 'data' }

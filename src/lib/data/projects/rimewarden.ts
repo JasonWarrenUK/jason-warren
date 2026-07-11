@@ -2,7 +2,6 @@ import type { AuthoredProject } from '../types.js';
 
 export const rimewarden: AuthoredProject = {
 	slug: 'rimewarden',
-	name: 'Rimewarden',
 	tagline:
 		'A Svelte 5 campaign tracker for Frosthaven that renders your scenario-progression graph as a generated D2 diagram.',
 	blurb: 'A Frosthaven campaign tracker that draws your progress as a diagram.',
@@ -11,7 +10,6 @@ export const rimewarden: AuthoredProject = {
 	kind: 'tool',
 	contribution: { role: 'solo' },
 	status: 'prototype',
-	repoUrl: 'https://github.com/JasonWarrenUK/rimewarden',
 	highlights: [
 		'Svelte 5 runes class-based CampaignManager store ($state/$derived) with localStorage persistence and JSON import/export.',
 		'D2 diagram generation from campaign data: programmatically builds a styled scenario-progression graph with completed/pending/unknown node classes.',
@@ -21,12 +19,7 @@ export const rimewarden: AuthoredProject = {
 	],
 	relationships: [],
 	tags: [
-		{ label: 'TypeScript', kind: 'language' },
-		{ label: 'Svelte 5', kind: 'framework' },
-		{ label: 'SvelteKit', kind: 'framework' },
-		{ label: 'Bun', kind: 'runtime' },
 		{ label: 'D2', kind: 'tool' },
-		{ label: 'Tailwind CSS', kind: 'framework' },
 		{ label: 'Document / JSON', kind: 'data' }
 	]
 };

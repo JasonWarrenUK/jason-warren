@@ -175,8 +175,10 @@
 	}
 
 	.themes__name {
+		font-family: var(--font-display);
+		font-style: italic;
 		font-size: var(--text-xl);
-		font-weight: 700;
+		font-weight: 600;
 		color: var(--color-text);
 		line-height: 1.25;
 	}
@@ -276,8 +278,9 @@
 	}
 
 	.themes-teaser__title {
+		font-family: var(--font-display);
 		font-size: var(--text-3xl);
-		font-weight: 700;
+		font-weight: 600;
 		color: var(--color-text);
 	}
 
@@ -297,34 +300,27 @@
 
 	.themes-teaser__item {
 		display: flex;
-		align-items: center;
+		align-items: baseline;
 		justify-content: space-between;
 		gap: var(--space-3);
-		padding: var(--space-3) var(--space-4);
+		padding: 14px 18px;
 		background-color: var(--color-surface-raised);
 		border: 1px solid var(--color-border);
-		border-radius: var(--radius-md);
+		border-radius: 8px;
 	}
 
 	.themes-teaser__name {
-		font-size: var(--text-sm);
-		font-weight: 600;
+		font-family: var(--font-display);
+		font-style: italic;
+		font-size: 16.5px;
 		color: var(--color-text);
 	}
 
 	.themes-teaser__count {
-		display: inline-flex;
-		align-items: center;
-		justify-content: center;
-		min-width: 1.6rem;
-		height: 1.6rem;
-		padding: 0 var(--space-2);
-		font-size: var(--text-xs);
-		font-weight: 700;
+		font-family: var(--font-mono);
+		font-size: 12px;
 		font-variant-numeric: tabular-nums;
-		color: var(--color-primary-text);
-		background-color: var(--color-primary-bg);
-		border-radius: var(--radius-full);
+		color: var(--color-text-muted);
 	}
 
 	.themes-teaser__cta {

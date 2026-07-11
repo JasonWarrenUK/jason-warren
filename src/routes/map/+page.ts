@@ -8,6 +8,7 @@ import {
 	getHubSlugs
 } from '$lib/data/graph.js';
 import { getTechNodes, getTechCoEdges, computeTechLayout } from '$lib/data/tech-graph.js';
+import { themes } from '$lib/data/themes.js';
 
 export function load() {
 	const graph = getProjectGraph();
@@ -60,6 +61,14 @@ export function load() {
 			};
 		});
 
+	// Territory membership for the relationships-mode hulls: id/name/slugs
+	// only — the hull itself is computed client-side from live node positions.
+	const territories = themes.map((theme) => ({
+		id: theme.id,
+		name: theme.name,
+		slugs: theme.slugs
+	}));
+
 	return {
 		relationshipsNodes: toNodes(relationshipsLayout),
 		stackNodes: toNodes(stackLayout),
@@ -68,6 +77,7 @@ export function load() {
 		sharedEdges,
 		themeEdges,
 		techCoEdges,
+		territories,
 		size: relationshipsLayout.width
 	};
 }

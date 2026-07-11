@@ -66,7 +66,7 @@
 
 	.hero-breadth__title {
 		font-size: var(--text-3xl);
-		font-weight: 700;
+		font-weight: 600;
 		color: var(--color-text);
 	}
 
@@ -156,10 +156,11 @@
 	}
 
 	.hero-breadth__group-label {
-		font-size: var(--text-xs);
-		font-weight: 700;
+		font-family: var(--font-mono);
+		font-size: 11px;
+		font-weight: 600;
 		text-transform: uppercase;
-		letter-spacing: 0.08em;
+		letter-spacing: 0.1em;
 		color: var(--color-text-muted);
 	}
 

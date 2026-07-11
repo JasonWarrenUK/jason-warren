@@ -1,0 +1,26 @@
+{
+	"$schema": "http://json-schema.org/draft-07/schema#",
+	"title": "Drift source topology",
+	"type": "object",
+	"required": ["projects"],
+	"additionalProperties": false,
+	"properties": {
+		"$schema": { "type": "string" },
+		"projects": {
+			"type": "object",
+			"additionalProperties": {
+				"type": "object",
+				"required": ["primary", "companions"],
+				"additionalProperties": false,
+				"properties": {
+					"primary": { "type": "string", "minLength": 1 },
+					"companions": {
+						"type": "array",
+						"items": { "type": "string", "minLength": 1 },
+						"uniqueItems": true
+					}
+				}
+			}
+		}
+	}
+}

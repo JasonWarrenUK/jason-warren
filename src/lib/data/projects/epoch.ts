@@ -2,7 +2,6 @@ import type { AuthoredProject } from '../types.js';
 
 export const epoch: AuthoredProject = {
 	slug: 'epoch',
-	name: 'Epoch',
 	tagline:
 		'Create a fictional character and see history through their eyes: a personal Wikipedia-sourced timeline of every real event they would have lived through.',
 	blurb: "See history through a fictional character's eyes, sourced from Wikipedia.",
@@ -11,7 +10,6 @@ export const epoch: AuthoredProject = {
 	kind: 'app',
 	contribution: { role: 'solo' },
 	status: 'finished',
-	repoUrl: 'https://github.com/JasonWarrenUK/epoch',
 	highlights: [
 		'Significance-ranking pipeline scores events using Wikidata sitelink counts, entity-type detection, named-event prefixes, and link density.',
 		'Aggressive content filtering strips sports results, malformed markup, and citation fragments before events are shown.',
@@ -21,14 +19,9 @@ export const epoch: AuthoredProject = {
 	],
 	relationships: [],
 	tags: [
-		{ label: 'JavaScript', kind: 'language' },
-		{ label: 'SvelteKit', kind: 'framework' },
-		{ label: 'Svelte 5', kind: 'framework' },
-		{ label: 'Tailwind CSS', kind: 'framework' },
 		{ label: 'Wikipedia API', kind: 'tool' },
 		{ label: 'Vitest', kind: 'tool' },
 		{ label: 'Vercel', kind: 'tool' },
-		{ label: 'Node.js', kind: 'runtime' },
 		{ label: 'Document / JSON', kind: 'data' }
 	]
 };

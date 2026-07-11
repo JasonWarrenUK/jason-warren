@@ -242,6 +242,22 @@ describe('defaultProjectFromManifest', () => {
 		expect(project.repoUrl).toBe('https://github.com/SomeOrg/some-repo');
 	});
 
+	it('derives every companion repository URL in topology order', () => {
+		const project = defaultProjectFromManifest('multi-repo', {
+			remote: 'https://github.com/example/backend',
+			companionRemotes: [
+				'https://github.com/example/frontend',
+				'https://github.com/example/shared'
+			]
+		});
+
+		expect(project.repoUrl).toBe('https://github.com/example/backend');
+		expect(project.companionRepoUrls).toEqual([
+			'https://github.com/example/frontend',
+			'https://github.com/example/shared'
+		]);
+	});
+
 	it('falls back to a GitHub URL constructed from the slug when remote is absent', () => {
 		const project = defaultProjectFromManifest('my-project', {});
 		expect(project.repoUrl).toBe('https://github.com/JasonWarrenUK/my-project');
@@ -259,6 +275,26 @@ describe('defaultProjectFromManifest', () => {
 
 describe('mergeAuthored', () => {
 	const base = defaultProjectFromManifest('test-slug', { languages: ['TypeScript'] });
+
+	it('preserves an authored role when commit-share inference disagrees', () => {
+		const inferred = defaultProjectFromManifest('team-project', {
+			commits: 100,
+			commitsMine: 80
+		});
+		const authored: AuthoredProject = {
+			slug: 'team-project',
+			contribution: {
+				role: 'collaborator',
+				collaboration: { team: 'Project team' },
+				contributionNote: 'Held a supporting technical role.'
+			}
+		};
+
+		expect(inferred.contribution.role).toBe('lead');
+		const merged = mergeAuthored(inferred, authored);
+		expect(merged.contribution.role).toBe('collaborator');
+		expect(merged.contribution.collaboration.team).toBe('Project team');
+	});
 
 	it('returns base unchanged when authored is undefined', () => {
 		const result = mergeAuthored(base, undefined);

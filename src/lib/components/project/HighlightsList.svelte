@@ -25,6 +25,7 @@
 	}
 
 	.highlights__heading {
+		font-family: var(--font-display);
 		font-size: var(--text-xl);
 		font-weight: 600;
 		color: var(--color-text);
@@ -38,16 +39,16 @@
 
 	.highlights__item {
 		display: grid;
-		grid-template-columns: 1.25rem 1fr;
+		grid-template-columns: var(--space-5) 1fr;
 		gap: var(--space-3);
-		font-size: var(--text-base);
+		font-size: var(--text-body-tight);
 		color: var(--color-text-subtle);
 		line-height: 1.6;
 	}
 
 	.highlights__item::before {
 		content: '→';
-		color: var(--color-primary);
+		color: var(--color-accent);
 		font-weight: 600;
 		margin-top: 0.1em;
 	}

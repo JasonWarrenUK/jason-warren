@@ -79,24 +79,16 @@
 		flex-direction: column;
 		background-color: var(--color-surface-raised);
 		border: 1px solid var(--color-border);
-		border-radius: var(--radius-lg);
+		border-radius: 10px;
 		overflow: hidden;
 		transition:
-			border-color var(--transition-fast),
-			box-shadow var(--transition-fast),
-			transform var(--transition-fast);
+			border-color var(--dur-base) var(--ease-standard),
+			box-shadow var(--dur-base) var(--ease-standard);
 	}
 
 	.ecard:hover {
-		border-color: var(--color-primary-light);
-		box-shadow: var(--shadow-md);
-		transform: translateY(-2px);
-	}
-
-	@media (prefers-reduced-motion: reduce) {
-		.ecard:hover {
-			transform: none;
-		}
+		border-color: var(--color-border-strong);
+		box-shadow: 0 4px 14px -4px rgba(60, 45, 20, 0.14);
 	}
 
 	/* Collapsed face: the whole tile is one expand control. */
@@ -154,11 +146,12 @@
 	}
 
 	.ecard__expand {
-		font-size: var(--text-xs);
-		font-weight: 700;
+		font-family: var(--font-mono);
+		font-size: 10.5px;
+		font-weight: 600;
 		text-transform: uppercase;
-		letter-spacing: 0.06em;
-		color: var(--color-primary-text);
+		letter-spacing: 0.08em;
+		color: var(--color-accent);
 		margin-top: auto;
 	}
 
