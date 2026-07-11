@@ -197,8 +197,8 @@
 
 	/* --- Transitions (legacy names, aliased to the motion scale above) ---
 	   Existing components still reference these three; new work should use
-	   the --dur-*/--ease-* tokens directly. Kept as aliases rather than
-	   migrating ~70 call sites in one pass. */
+	   the duration and easing tokens above directly. Kept as aliases
+	   rather than migrating ~70 call sites in one pass. */
 	--transition-fast: var(--dur-micro) var(--ease-standard);
 	--transition-base: var(--dur-base) var(--ease-standard);
 	--transition-slow: var(--dur-deliberate) var(--ease-standard);
@@ -216,12 +216,12 @@
 
 /*
  * Reduced motion: a single defined fallback, not just "respect the query".
- * Collapsing --motion-scale to 0 zeroes every --dur-* token at once, so no
- * component has to opt in by hand — anything animating off --dur-*/--ease-*
- * (including JS reading the custom property, e.g. the graph's first-reveal
- * route inking) goes instant. reset.css also hard-zeroes CSS transition/
- * animation durations as a blunt backstop for anything not yet on this
- * token system.
+ * Collapsing --motion-scale to 0 zeroes every duration token at once, so no
+ * component has to opt in by hand — anything animating off the duration and
+ * easing tokens above (including JS reading the custom property, e.g. the
+ * graph's first-reveal route inking) goes instant. reset.css also
+ * hard-zeroes CSS transition/animation durations as a blunt backstop for
+ * anything not yet on this token system.
  */
 @media (prefers-reduced-motion: reduce) {
 	:root {
