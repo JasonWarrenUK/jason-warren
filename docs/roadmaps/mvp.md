@@ -169,7 +169,8 @@ _None._
 
 <a name="m5-todo"><h4>To Do (Milestone 5)</h4></a>
 
-_None._
+- [ ] 5DR.18. `drift relate <slug> --extracted-from | --powers | --related <target>` verb: writes a `ProjectRelationship` into the slug's `.ts` overlay (creating it via `createOverlayIfAbsent` if needed); target validated against real project slugs; mirrors the `flag`/`author`/`pin` overlay-splice pattern — **depends on 5DR.6**
+- [ ] 5DR.19. `drift link <source-tag> --leads-to | --replaced-by <target-tag>` verb: writes a `TechRelationship` into `tech-relationships.ts`; source/target validated against real tag labels (mirrors the existing data-test contract on `tech-relationships.ts`) — **depends on 5DR.6**
 
 <a name="m5-blocked"><h4>Blocked (Milestone 5)</h4></a>
 
@@ -328,6 +329,8 @@ flowchart TD
 	5DR.15["`*5DR.15*<br/>**Drift**<br/>author verb`"]:::done
 	5DR.16["`*5DR.16*<br/>**Drift**<br/>pin verb`"]:::done
 	5DR.17["`*5DR.17*<br/>**Drift**<br/>flag verb`"]:::done
+	5DR.18["`*5DR.18*<br/>**Drift**<br/>relate verb`"]:::open
+	5DR.19["`*5DR.19*<br/>**Drift**<br/>link verb`"]:::open
 
 	%% M5 — deps
 	5DR.0 --> 5DR.1
@@ -344,12 +347,16 @@ flowchart TD
 	5DR.6 --> 5DR.16
 	5DR.16 --> 5DR.17
 	5DR.14 --> 5DR.6
+	5DR.6 --> 5DR.18
+	5DR.6 --> 5DR.19
 
 	%% M5 track completers → m5
 	5DR.11 --> m5
 	5DR.13 --> m5
 	5DR.15 --> m5
 	5DR.17 --> m5
+	5DR.18 --> m5
+	5DR.19 --> m5
 
 	%% M6 — inbound from M3 and M5
 	m3 --> 5DR.8

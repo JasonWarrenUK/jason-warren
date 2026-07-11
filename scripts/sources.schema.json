@@ -124,6 +124,11 @@
 					"type": "string",
 					"description": "HTTPS URL of the primary git remote (git remote get-url origin), normalised from any SSH form. Used as the default repoUrl for un-authored projects."
 				},
+				"companionRemotes": {
+					"type": "array",
+					"items": { "type": "string" },
+					"description": "HTTPS URLs of companion repositories, in tracked topology order."
+				},
 				"runtime": {
 					"type": "array",
 					"items": { "type": "string" },

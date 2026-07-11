@@ -45,7 +45,7 @@ const DEFAULTS = {
 	/**
 	 * Optional per-file path overrides, keyed by logical name.
 	 * Each value may be absolute or repo-relative.
-	 * Logical names: sources, local, overrides, excluded, cache, projects, inProgress.
+	 * Logical names: sources, topology, local, overrides, excluded, cache, projects, inProgress.
 	 */
 	files: {},
 
@@ -152,6 +152,7 @@ function buildConfig(user) {
 
 	const paths = {
 		sources: resolveDataPath(dataDirAbs, merged.files, 'sources', 'sources.json'),
+		topology: resolveDataPath(dataDirAbs, merged.files, 'topology', 'source-topology.json'),
 		local: resolveDataPath(dataDirAbs, merged.files, 'local', 'sources.local.json'),
 		overrides: resolveDataPath(dataDirAbs, merged.files, 'overrides', 'overrides.json'),
 		excluded: resolveDataPath(dataDirAbs, merged.files, 'excluded', 'excluded.json'),
@@ -239,7 +240,7 @@ export async function loadConfig() {
  *
  * @typedef {Object} DriftUserConfig
  * @property {string} [dataDir] - Path to the data directory (repo-relative or absolute). Default: 'src/lib/data'.
- * @property {Record<string,string>} [files] - Per-file path overrides (logical name → path). Logical names: sources, local, overrides, excluded, cache, projects, inProgress.
+ * @property {Record<string,string>} [files] - Per-file path overrides (logical name → path). Logical names: sources, topology, local, overrides, excluded, cache, projects, inProgress.
  * @property {string} [scanRoot] - Root directory scanned for un-tracked git repos. Default: ~/Code.
  * @property {number} [scanDepth] - Maximum recursion depth for the scan. Default: 3.
  * @property {DriftAuthorConfig} [author] - Git author identity config.
@@ -252,7 +253,7 @@ export async function loadConfig() {
  *
  * @typedef {Object} DriftResolvedConfig
  * @property {string} repoRoot - Absolute path to the repository root.
- * @property {{ sources: string, local: string, overrides: string, excluded: string, cache: string, projects: string, inProgress: string }} paths - Absolute paths to each data file/directory.
+ * @property {{ sources: string, topology: string, local: string, overrides: string, excluded: string, cache: string, projects: string, inProgress: string }} paths - Absolute paths to each data file/directory.
  * @property {string} scanRoot - Absolute root for the git-repo scan.
  * @property {number} scanDepth - Maximum scan depth.
  * @property {Required<DriftAuthorConfig>} author - Resolved author config.

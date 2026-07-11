@@ -115,9 +115,11 @@ export const RUNTIME_TAGS = {
 	bun: { label: 'Bun', kind: 'runtime' },
 	deno: { label: 'Deno', kind: 'runtime' },
 	node: { label: 'Node.js', kind: 'runtime' },
-	python: { label: 'Python', kind: 'runtime' },
+	python: { label: 'Python runtime', kind: 'runtime' },
 	go: { label: 'Go', kind: 'runtime' },
 	dotnet: { label: '.NET', kind: 'runtime' },
+	'dotnet-8': { label: '.NET 8', kind: 'runtime' },
+	'dotnet-9': { label: '.NET 9', kind: 'runtime' },
 	shell: { label: 'Shell', kind: 'runtime' }
 };
 
@@ -127,14 +129,22 @@ export const RUNTIME_TAGS = {
 // ---------------------------------------------------------------------------
 
 export const FRAMEWORK_TAGS = {
+	'aspnet-core': { label: 'ASP.NET Core', kind: 'framework' },
+	tailwindcss: { label: 'Tailwind CSS', kind: 'framework' },
+	'tailwindcss-4': { label: 'Tailwind CSS v4', kind: 'framework' },
 	svelte: { label: 'Svelte', kind: 'framework' },
+	'svelte-5': { label: 'Svelte 5', kind: 'framework' },
 	'@sveltejs/kit': { label: 'SvelteKit', kind: 'framework' },
 	react: { label: 'React', kind: 'framework' },
 	next: { label: 'Next.js', kind: 'framework' },
+	vite: { label: 'Vite', kind: 'framework' },
 	express: { label: 'Express', kind: 'framework' },
 	fastapi: { label: 'FastAPI', kind: 'framework' },
 	flask: { label: 'Flask', kind: 'framework' },
 	django: { label: 'Django', kind: 'framework' },
+	oak: { label: 'Oak', kind: 'framework' },
+	'bubble-tea': { label: 'Bubble Tea', kind: 'framework' },
+	inkjs: { label: 'Ink / inkjs', kind: 'framework' },
 	'@opentui/core': { label: 'OpenTUI', kind: 'framework' },
 	'@tauri-apps/api': { label: 'Tauri', kind: 'framework' },
 	tauri: { label: 'Tauri', kind: 'framework' }
@@ -146,6 +156,12 @@ export const FRAMEWORK_TAGS = {
 // ---------------------------------------------------------------------------
 
 export const DATABASE_TAGS = {
+	'@sqlite.org/sqlite-wasm': { label: 'SQLite', kind: 'data' },
+	graphql: { label: 'GraphQL', kind: 'data' },
+	'supabase-py': { label: 'Supabase', kind: 'data' },
+	'supabase-postgres': { label: 'PostgreSQL', kind: 'data' },
+	'entity-framework-core': { label: 'Entity Framework Core', kind: 'data' },
+	npgsql: { label: 'PostgreSQL', kind: 'data' },
 	pg: { label: 'PostgreSQL', kind: 'data' },
 	postgres: { label: 'PostgreSQL', kind: 'data' },
 	'@supabase/supabase-js': { label: 'Supabase', kind: 'data' },

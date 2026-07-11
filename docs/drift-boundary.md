@@ -65,7 +65,7 @@ The integration layer:
 ## Data flow
 
 ```
-git repos on disk
+primary and companion git repos on disk
       │
       ▼
   [Engine]
@@ -97,6 +97,13 @@ git repos on disk
 
 The engine writes `SyncedSource` records (one per slug) into `sources.json`. This is the
 only output the integration layer depends on.
+
+Repository relationships are declared in the tracked `source-topology.json` file. Local
+absolute paths only resolve the source IDs from that topology. Metrics, dates, contribution
+inference, `head`, and `remote` come from the primary repository. Languages, runtimes,
+frameworks, and databases are merged as an ordered union across the primary and every
+companion. `companionRemotes` preserves topology order for portfolio links. Cache entries
+include every source HEAD, so a companion-only commit invalidates the project fingerprint.
 
 **Canonical contract:** `scripts/sources.schema.json` (`$defs/SyncedSource`) — a JSON Schema
 draft-07 definition with `additionalProperties: false`. The engine validates every assembled
