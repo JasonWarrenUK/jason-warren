@@ -67,11 +67,15 @@
 
 		<p class="page__tagline">{data.project.tagline}</p>
 
-		<div class="page__links">
-			<ExternalLink href={data.project.repoUrl} label="Repository" variant="repo" />
-			{#if data.project.secondaryRepoUrl}
-				<ExternalLink href={data.project.secondaryRepoUrl} label="Companion repo" variant="repo" />
-			{/if}
+			<div class="page__links">
+				<ExternalLink href={data.project.repoUrl} label="Repository" variant="repo" />
+				{#each data.project.companionRepoUrls as companionRepoUrl, index}
+					<ExternalLink
+						href={companionRepoUrl}
+						label={index === 0 ? 'Companion repo' : `Companion repo ${index + 1}`}
+						variant="repo"
+					/>
+				{/each}
 			{#if data.project.liveUrl}
 				<ExternalLink href={data.project.liveUrl} label="Live site" variant="live" />
 			{/if}
@@ -181,9 +185,9 @@
 	}
 
 	.page__title {
-		font-size: var(--text-4xl);
-		font-weight: 700;
-		line-height: 1.1;
+		font-size: clamp(34px, 4.5vw, 44px);
+		font-weight: 600;
+		line-height: 1.05;
 	}
 
 	.page__badges {

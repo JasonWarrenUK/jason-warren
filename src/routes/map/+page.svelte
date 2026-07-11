@@ -51,9 +51,9 @@
 	}
 
 	.page__header h1 {
-		font-size: var(--text-4xl);
-		font-weight: 700;
-		line-height: 1.1;
+		font-size: clamp(30px, 4.5vw, 42px);
+		font-weight: 600;
+		line-height: 1.05;
 	}
 
 	.page__intro {

@@ -64,6 +64,7 @@
 	}
 
 	.metrics__heading {
+		font-family: var(--font-display);
 		font-size: var(--text-xl);
 		font-weight: 600;
 		color: var(--color-text);
@@ -78,31 +79,34 @@
 	.metrics__item {
 		display: flex;
 		flex-direction: column;
-		gap: var(--space-1);
-		padding: var(--space-4);
+		gap: 4px;
+		padding: 16px;
 		background-color: var(--color-surface-raised);
 		border: 1px solid var(--color-border);
-		border-radius: var(--radius-md);
+		border-radius: 6px;
 	}
 
 	.metrics__label {
-		font-size: var(--text-xs);
-		font-weight: 600;
+		font-family: var(--font-mono);
+		font-size: 10px;
+		font-weight: 500;
 		text-transform: uppercase;
-		letter-spacing: 0.06em;
+		letter-spacing: 0.08em;
 		color: var(--color-text-muted);
 	}
 
 	.metrics__value {
-		font-size: var(--text-2xl);
-		font-weight: 700;
-		color: var(--color-primary-text);
+		font-family: var(--font-mono);
+		font-size: 24px;
+		font-weight: 600;
+		color: var(--color-primary);
 		font-variant-numeric: tabular-nums;
 	}
 
 	.metrics__context {
 		margin: 0;
-		font-size: var(--text-xs);
+		font-family: var(--font-mono);
+		font-size: 11px;
 		color: var(--color-text-muted);
 		font-variant-numeric: tabular-nums;
 	}

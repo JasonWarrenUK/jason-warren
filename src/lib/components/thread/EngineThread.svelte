@@ -83,8 +83,9 @@
 	}
 
 	.threads__title {
+		font-family: var(--font-display);
 		font-size: var(--text-3xl);
-		font-weight: 700;
+		font-weight: 600;
 		color: var(--color-text);
 	}
 
@@ -115,15 +116,16 @@
 
 	.threads__connector-line {
 		flex: 1;
-		height: 1px;
-		background-color: var(--color-border);
+		height: 0;
+		border-top: 1.5px dashed var(--color-border-strong);
 	}
 
 	.threads__connector-label {
-		font-size: var(--text-xs);
-		font-weight: 600;
+		font-family: var(--font-mono);
+		font-size: 10.5px;
+		font-weight: 500;
 		text-transform: uppercase;
-		letter-spacing: 0.08em;
+		letter-spacing: 0.14em;
 		color: var(--color-text-muted);
 		white-space: nowrap;
 	}
@@ -147,9 +149,9 @@
 	}
 
 	.threads__arrow {
-		width: 1.5rem;
-		height: 1.5rem;
-		color: var(--color-text-muted);
+		width: 22px;
+		height: 22px;
+		color: var(--color-accent);
 		flex-shrink: 0;
 		align-self: center;
 	}
@@ -158,66 +160,60 @@
 		display: flex;
 		flex-direction: column;
 		gap: var(--space-2);
-		padding: var(--space-5) var(--space-6);
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-lg);
-		text-decoration: none;
-		transition:
-			border-color var(--transition-fast),
-			background-color var(--transition-fast);
-	}
-
-	.threads__card--consumer {
+		padding: 20px;
 		background-color: var(--color-surface-raised);
+		border: 1px solid var(--color-border);
+		border-radius: 8px;
+		text-decoration: none;
+		transition: border-color var(--dur-micro) var(--ease-standard);
 	}
 
 	.threads__card--library {
-		background-color: var(--color-primary-bg);
-		border-color: var(--color-primary-light);
-	}
-
-	.threads__card:hover {
-		border-color: var(--color-primary);
+		border-left: 3px solid var(--color-accent);
 	}
 
 	.threads__card--consumer:hover {
-		background-color: var(--color-surface-raised);
+		border-color: var(--color-primary);
 	}
 
 	.threads__card--library:hover {
-		background-color: var(--color-primary-bg);
+		border-color: var(--color-accent);
 	}
 
 	.threads__card-kind {
-		font-size: var(--text-xs);
-		font-weight: 700;
+		font-family: var(--font-mono);
+		font-size: 10px;
+		font-weight: 600;
 		text-transform: uppercase;
-		letter-spacing: 0.08em;
+		letter-spacing: 0.12em;
 		color: var(--color-text-muted);
 	}
 
 	.threads__card--library .threads__card-kind {
-		color: var(--color-primary-text);
+		color: var(--color-accent);
 	}
 
 	.threads__card-name {
-		font-size: var(--text-xl);
-		font-weight: 700;
+		font-family: var(--font-display);
+		font-size: 20px;
+		font-weight: 600;
 		color: var(--color-text);
 		line-height: 1.2;
 	}
 
 	.threads__card-tagline {
-		font-size: var(--text-sm);
+		font-size: 13.5px;
 		color: var(--color-text-subtle);
 		line-height: 1.5;
 	}
 
 	.threads__note {
-		font-size: var(--text-sm);
-		color: var(--color-text-muted);
+		font-family: var(--font-display);
 		font-style: italic;
+		font-size: 15.5px;
+		color: var(--color-text-subtle);
+		line-height: 1.6;
 		margin: 0;
-		padding: 0 var(--space-2);
+		max-width: 64ch;
 	}
 </style>
