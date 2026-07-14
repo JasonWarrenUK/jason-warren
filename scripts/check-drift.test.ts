@@ -947,6 +947,99 @@ describe('drift relate', () => {
 		expect(readFileSync(join(dir, 'tech-relationships.ts'), 'utf8')).toBe(before);
 	});
 
+	it('tech mode resolves label casing to the canonical tag labels', () => {
+		writeFileSync(
+			join(dir, 'tech-relationships.ts'),
+			[
+				"import type { TechRelationship } from './types.js';",
+				'',
+				'export const techRelationships: TechRelationship[] = [];',
+				''
+			].join('\n')
+		);
+
+		const result = runVerbInSandbox(configPath, ['relate', 'tech', 'ink', 'leads-to', 'INKJS']);
+		expect(result.status, result.stderr).toBe(0);
+		expect(result.stdout).toMatch(/Using 'Ink' for 'ink'/);
+		expect(result.stdout).toMatch(/Using 'inkjs' for 'INKJS'/);
+
+		const modified = readFileSync(join(dir, 'tech-relationships.ts'), 'utf8');
+		expect(modified).toContain('source: "Ink"');
+		expect(modified).toContain('target: "inkjs"');
+		expect(modified).not.toContain('"INKJS"');
+	});
+
+	it('tech mode is idempotent across label casings', () => {
+		writeFileSync(
+			join(dir, 'tech-relationships.ts'),
+			[
+				"import type { TechRelationship } from './types.js';",
+				'',
+				'export const techRelationships: TechRelationship[] = [];',
+				''
+			].join('\n')
+		);
+		runVerbInSandbox(configPath, ['relate', 'tech', 'Deno', 'leads-to', 'Oak']);
+		const before = readFileSync(join(dir, 'tech-relationships.ts'), 'utf8');
+
+		const result = runVerbInSandbox(configPath, ['relate', 'tech', 'deno', 'leads-to', 'oak']);
+		expect(result.status, result.stderr).toBe(0);
+		expect(result.stdout).toMatch(/already/i);
+		expect(readFileSync(join(dir, 'tech-relationships.ts'), 'utf8')).toBe(before);
+	});
+
+	it('tech mode removes an edge located with different casing', () => {
+		writeFileSync(
+			join(dir, 'tech-relationships.ts'),
+			[
+				"import type { TechRelationship } from './types.js';",
+				'',
+				'export const techRelationships: TechRelationship[] = [',
+				'\t{',
+				"\t\tkind: 'leads-to',",
+				"\t\tsource: 'Deno',",
+				"\t\ttarget: 'Oak'",
+				'\t}',
+				'];',
+				''
+			].join('\n')
+		);
+
+		const result = runVerbInSandbox(configPath, [
+			'relate',
+			'tech',
+			'deno',
+			'leads-to',
+			'oak',
+			'--remove'
+		]);
+		expect(result.status, result.stderr).toBe(0);
+		expect(result.stdout).toMatch(/removed/i);
+		expect(readFileSync(join(dir, 'tech-relationships.ts'), 'utf8')).not.toContain("'Deno'");
+	});
+
+	it('tech mode exits 1 on an unknown label when adding', () => {
+		writeFileSync(
+			join(dir, 'tech-relationships.ts'),
+			[
+				"import type { TechRelationship } from './types.js';",
+				'',
+				'export const techRelationships: TechRelationship[] = [];',
+				''
+			].join('\n')
+		);
+
+		const result = runVerbInSandbox(configPath, ['relate', 'tech', 'Deno', 'leads-to', 'Oka']);
+		expect(result.status).toBe(1);
+		expect(result.stderr).toMatch(/unknown tech label 'Oka'/i);
+	});
+
+	it('tech mode rejects a self-edge spelled with different casings', () => {
+		const result = runVerbInSandbox(configPath, ['relate', 'tech', 'Deno', 'leads-to', 'deno']);
+		expect(result.status).toBe(1);
+		expect(result.stderr).toMatch(/cannot relate to itself/i);
+	});
+
 	it('tech mode exits 1 when tech-relationships.ts is missing', () => {
 		const result = runVerbInSandbox(configPath, ['relate', 'tech', 'Deno', 'leads-to', 'Oak']);
 		expect(result.status).toBe(1);

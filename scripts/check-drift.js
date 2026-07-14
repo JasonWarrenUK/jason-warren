@@ -3749,6 +3749,9 @@ async function relateProject({
 /**
  * Locates the (kind, source, target) element within the tech-relationships
  * array. Shared by the add-flow's idempotence check and the remove/edit paths.
+ * Labels match case-insensitively (kind stays exact): input is resolved to
+ * canonical casing before writes, but an already-authored edge with stray
+ * casing must still be locatable so remove/edit can clean it up.
  *
  * @param {import('typescript')} ts
  * @param {import('typescript').SourceFile} sf
@@ -3758,15 +3761,79 @@ async function relateProject({
  * @param {string} targetLabel
  */
 function findTechRelationship(ts, sf, arrayLit, kind, sourceLabel, targetLabel) {
+	const sourceKey = sourceLabel.toLowerCase();
+	const targetKey = targetLabel.toLowerCase();
 	return findRelationshipElement(
 		ts,
 		sf,
 		arrayLit,
 		(_ts, _sf, el) =>
 			readRelationshipField(ts, sf, el, 'kind') === kind &&
-			readRelationshipField(ts, sf, el, 'source') === sourceLabel &&
-			readRelationshipField(ts, sf, el, 'target') === targetLabel
+			readRelationshipField(ts, sf, el, 'source')?.toLowerCase() === sourceKey &&
+			readRelationshipField(ts, sf, el, 'target')?.toLowerCase() === targetKey
 	);
+}
+
+/**
+ * Builds the canonical tech-label universe for `drift relate tech`: every
+ * label the tag taxonomy can infer plus every overlay-authored tag label,
+ * the same universe tech-relationships.test.ts validates edges against.
+ * Returned as a Map from lowercased label to canonical casing (taxonomy
+ * entries first on collision) so case-insensitive input always resolves to
+ * the label the site actually renders.
+ *
+ * @returns {Promise<Map<string, string>>}
+ */
+async function buildTechLabelIndex() {
+	const byLower = new Map();
+	const add = (label) => {
+		const key = label.toLowerCase();
+		if (!byLower.has(key)) byLower.set(key, label);
+	};
+	for (const tags of [LANGUAGE_TAGS, RUNTIME_TAGS, FRAMEWORK_TAGS, DATABASE_TAGS]) {
+		for (const tag of Object.values(tags)) add(tag.label);
+	}
+	for (const overlay of await loadOverlays()) {
+		if (!Array.isArray(overlay.tags)) continue;
+		for (const tag of overlay.tags) {
+			if (tag && typeof tag.label === 'string') add(tag.label);
+		}
+	}
+	return byLower;
+}
+
+/**
+ * Resolves a user-typed tech label against the canonical label index,
+ * case-insensitively. A hit returns the canonical casing, noting the
+ * correction when the input differed. A miss is a hard error when `strict`
+ * (the add path must never write a label no surface can resolve); remove and
+ * edit pass the input through verbatim instead, so a stale edge whose label
+ * is no longer a real tag can still be located and cleaned up.
+ *
+ * @param {string} input
+ * @param {Map<string, string>} byLower
+ * @param {object} palette
+ * @param {boolean} strict
+ * @returns {string}
+ */
+function resolveTechLabel(input, byLower, palette, strict) {
+	const { RED, DIM, RESET } = palette;
+	const canonical = byLower.get(input.toLowerCase());
+	if (canonical !== undefined) {
+		if (canonical !== input) {
+			process.stdout.write(`${DIM}Using '${canonical}' for '${input}'.${RESET}\n`);
+		}
+		return canonical;
+	}
+	if (!strict) return input;
+	const needle = input.toLowerCase();
+	const near = [...byLower.values()].filter((l) => l.toLowerCase().includes(needle)).slice(0, 5);
+	process.stderr.write(
+		`${RED}Error: unknown tech label '${input}'. Labels must match a project tag (case-insensitive).` +
+			(near.length > 0 ? ` Did you mean: ${near.join(', ')}?` : '') +
+			`${RESET}\n`
+	);
+	process.exit(1);
 }
 
 /**
@@ -3976,6 +4043,7 @@ async function runRelate({ args, values, palette }) {
 		'    kind: extracted-from | powers | related\n' +
 		'  drift relate tech <source-label> <kind> <target-label> [--note "..."]\n' +
 		'    kind: leads-to | replaced-by\n' +
+		'    labels are case-insensitive and written in canonical tag casing\n' +
 		'  Add --remove to delete the located edge instead of adding it.\n' +
 		'  Add --edit with --kind and/or --note to change an existing edge in place\n' +
 		'    (the positional <kind>/<source>/<target> locate WHICH edge; --kind is the new value).';
@@ -4054,14 +4122,19 @@ async function runRelate({ args, values, palette }) {
 		);
 		process.exit(1);
 	}
-	if (source === target) {
+	// Labels resolve case-insensitively against the canonical tag universe;
+	// only the add path insists on a known label (see resolveTechLabel).
+	const labelIndex = await buildTechLabelIndex();
+	const sourceLabel = resolveTechLabel(source, labelIndex, palette, opMode === 'add');
+	const targetLabel = resolveTechLabel(target, labelIndex, palette, opMode === 'add');
+	if (sourceLabel.toLowerCase() === targetLabel.toLowerCase()) {
 		process.stderr.write(`${RED}Error: a technology cannot relate to itself.${RESET}\n`);
 		process.exit(1);
 	}
 	await relateTech({
-		sourceLabel: source,
+		sourceLabel,
 		kind,
-		targetLabel: target,
+		targetLabel,
 		note,
 		palette,
 		opMode,
