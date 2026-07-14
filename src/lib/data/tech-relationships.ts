@@ -67,5 +67,16 @@ export const techRelationships: TechRelationship[] = [
 		source: 'Svelte 5',
 		target: 'SvelteKit',
 		note: "SvelteKit is Svelte 5's own full-stack framework; picking up the component model brought its meta-framework with it."
-	}
+	},
+	{ kind: 'replaced-by', source: 'OpenTUI', target: 'Bubble Tea' },
+	{ kind: 'replaced-by', source: '.NET 8', target: '.NET 9' },
+	{ kind: 'leads-to', source: 'CSS', target: 'Tailwind CSS' },
+	{ kind: 'leads-to', source: 'JavaScript', target: 'React' },
+	{ kind: 'leads-to', source: 'JavaScript', target: 'Svelte 5' },
+	{ kind: 'leads-to', source: 'TypeScript', target: 'React' },
+	{ kind: 'leads-to', source: 'TypeScript', target: 'Svelte 5' },
+	{ kind: 'leads-to', source: 'Ink', target: 'JavaScript' },
+	{ kind: 'leads-to', source: 'Ink', target: 'inkjs' },
+	{ kind: 'leads-to', source: 'JavaScript', target: 'inkjs' },
+	{ kind: 'leads-to', source: 'Go', target: 'Bubble Tea' }
 ];

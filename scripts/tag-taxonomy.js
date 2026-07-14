@@ -65,7 +65,10 @@ export const EXTENSION_LANGUAGE = {
 	sql: 'SQL',
 	vue: 'Vue',
 	svelte: 'Svelte',
-	astro: 'Astro'
+	astro: 'Astro',
+	ink: 'Ink',
+	r: 'R',
+	rmd: 'R'
 };
 
 // ---------------------------------------------------------------------------
@@ -99,7 +102,8 @@ export const LANGUAGE_TAGS = {
 	Zig: { label: 'Zig', kind: 'language' },
 	OCaml: { label: 'OCaml', kind: 'language' },
 	R: { label: 'R', kind: 'language' },
-	Julia: { label: 'Julia', kind: 'language' }
+	Julia: { label: 'Julia', kind: 'language' },
+	Ink: { label: 'Ink', kind: 'language' }
 };
 
 // ---------------------------------------------------------------------------
@@ -120,7 +124,8 @@ export const RUNTIME_TAGS = {
 	dotnet: { label: '.NET', kind: 'runtime' },
 	'dotnet-8': { label: '.NET 8', kind: 'runtime' },
 	'dotnet-9': { label: '.NET 9', kind: 'runtime' },
-	shell: { label: 'Shell', kind: 'runtime' }
+	shell: { label: 'Shell', kind: 'runtime' },
+	inkjs: { label: 'inkjs', kind: 'runtime' }
 };
 
 // ---------------------------------------------------------------------------
@@ -144,7 +149,6 @@ export const FRAMEWORK_TAGS = {
 	django: { label: 'Django', kind: 'framework' },
 	oak: { label: 'Oak', kind: 'framework' },
 	'bubble-tea': { label: 'Bubble Tea', kind: 'framework' },
-	inkjs: { label: 'Ink / inkjs', kind: 'framework' },
 	'@opentui/core': { label: 'OpenTUI', kind: 'framework' },
 	'@tauri-apps/api': { label: 'Tauri', kind: 'framework' },
 	tauri: { label: 'Tauri', kind: 'framework' }

@@ -5,11 +5,12 @@
 	import type { TagKind } from '$lib/data/types.js';
 	import type { TechAdoption } from '$lib/data/adoption.js';
 	import { techRelationships } from '$lib/data/tech-relationships.js';
-	import { techKindColour, edgeTypeColour } from '$lib/components/graph/graph-style.js';
+	import { techKindColour, edgeTypeColour, edgeTypeLabel } from '$lib/components/graph/graph-style.js';
 	import { encodeTechLabel, decodeTechLabel } from '$lib/url-state.js';
 	import { writeParam } from '$lib/url-write.js';
 	import { projectsByTagHref, techViewHref } from '$lib/selection.js';
 	import SelectionModal from '$lib/components/ui/SelectionModal.svelte';
+	import { computeAdoptionLayout, type LayoutGeometry, type PlacedNode } from './adoption-layout.js';
 
 	interface Props {
 		items: TechAdoption[];
@@ -22,144 +23,36 @@
 	// Colour by tag kind — single-sourced in graph-style.ts via techKindColour.
 
 	// --- Geometry -----------------------------------------------------------
-	// A horizontal time axis with greedy lane-packing: each technology sits at
-	// its adoption date on the x-axis, then drops into the first lane whose last
-	// label has cleared, so nothing overlaps and the layout is deterministic.
-	const width = 920;
-	const leftPad = 28;
-	const rightPad = 28;
-	const topPad = 28;
-	const axisGap = 28; // space under the lanes for the year axis
-	const laneHeight = 30;
-	const charWidth = 7.2; // rough advance for the 13px label font
-	const labelGap = 10; // min horizontal gap between two labels in a lane
-	const maxRadius = 4 + 8 * 0.9; // upper bound of the dot radius (projectCount caps at 8)
+	// A horizontal time axis rendered as a git-branch graph: each lineage-
+	// connected technology is a rail running from its adoption date until it
+	// was replaced (or to the right edge, fading, when still in use), with
+	// branch/merge connectors for the lineage edges. Technologies with no
+	// lineage pack into a dot strip below. See adoption-layout.ts for the
+	// algorithm.
+	const GEO: LayoutGeometry = {
+		width: 920,
+		leftPad: 28,
+		rightPad: 28,
+		topPad: 28,
+		axisGap: 28, // space under the chart for the year axis
+		railLaneHeight: 26,
+		stripLaneHeight: 30,
+		stripGap: 16, // breathing room between the rails and the strip
+		elbowRun: 14, // horizontal approach a branch connector reserves
+		cornerRadius: 8,
+		charWidth: 7.2, // rough advance for the 13px label font
+		labelGap: 10 // min horizontal gap between two labels in a lane
+	};
 
-	function dayValue(iso: string): number {
-		const [y, m, d] = iso.split('-').map(Number);
-		return Date.UTC(y, m - 1, d) / 86_400_000;
-	}
+	const layout = $derived.by(() => computeAdoptionLayout(items, techRelationships, GEO));
 
-	/**
-	 * Builds an SVG quadratic-bezier path from `from` to `to`, bowed upward
-	 * (away from the axis) so overlapping lineage arcs stay legible rather than
-	 * stacking as straight lines. The end point is trimmed back along the
-	 * straight from→to line by `trimEnd` so the arrowhead marker clears the
-	 * target dot: an approximation, since the true curve tangent at the
-	 * endpoint differs slightly, but close enough for a decorative arc.
-	 */
-	function arcPath(
-		from: { x: number; y: number },
-		to: { x: number; y: number },
-		trimEnd: number
-	): string {
-		const dx = to.x - from.x;
-		const dy = to.y - from.y;
-		const dist = Math.hypot(dx, dy) || 1;
-
-		const lift = Math.min(24, dist * 0.18);
-		const cx = (from.x + to.x) / 2;
-		const cy = (from.y + to.y) / 2 - lift;
-
-		const t = Math.max(0, (dist - trimEnd) / dist);
-		const ex = from.x + dx * t;
-		const ey = from.y + dy * t;
-
-		return `M ${from.x} ${from.y} Q ${cx} ${cy} ${ex} ${ey}`;
-	}
-
-	interface PlacedItem extends TechAdoption {
-		x: number;
-		y: number;
-		radius: number;
-	}
-
-	interface YearTick {
-		year: number;
-		x: number;
-	}
-
-	interface Layout {
-		placed: PlacedItem[];
-		ticks: YearTick[];
-		height: number;
-		axisY: number;
-	}
-
-	const layout = $derived.by<Layout>(() => {
-		if (items.length === 0) {
-			return { placed: [], ticks: [], height: topPad * 2, axisY: topPad };
-		}
-
-		const plotLeft = leftPad;
-		// Reserve room on the right for the widest right-anchored label (plus the
-		// largest dot and its gap) so no label ever clips at the viewBox edge.
-		const maxLabelWidth = Math.max(...items.map((item) => item.label.length)) * charWidth;
-		const plotRight = width - rightPad - maxLabelWidth - maxRadius - 6;
-		const plotWidth = plotRight - plotLeft;
-
-		const days = items.map((item) => dayValue(item.firstDate));
-		const minDay = Math.min(...days);
-		const maxDay = Math.max(...days);
-		const span = maxDay - minDay || 1;
-
-		const xFor = (iso: string): number => plotLeft + ((dayValue(iso) - minDay) / span) * plotWidth;
-
-		// Greedy lane packing. items arrive sorted by date ascending, so a single
-		// left-to-right pass keeps each lane's running right-edge accurate.
-		const laneRight: number[] = [];
-		const placed: PlacedItem[] = items.map((item) => {
-			const x = xFor(item.firstDate);
-			const radius = 4 + Math.min(item.projectCount, 8) * 0.9;
-			const labelRight = x + radius + 6 + item.label.length * charWidth;
-
-			let lane = laneRight.findIndex((right) => x - radius > right + labelGap);
-			if (lane === -1) {
-				lane = laneRight.length;
-				laneRight.push(labelRight);
-			} else {
-				laneRight[lane] = labelRight;
-			}
-
-			return { ...item, x, y: topPad + lane * laneHeight, radius };
-		});
-
-		const laneCount = laneRight.length;
-		const axisY = topPad + laneCount * laneHeight + axisGap / 2;
-		const height = axisY + axisGap;
-
-		const firstYear = Number(items[0].firstDate.slice(0, 4));
-		const lastYear = Number(items[items.length - 1].firstDate.slice(0, 4));
-		const ticks: YearTick[] = [];
-		for (let year = firstYear; year <= lastYear; year++) {
-			ticks.push({ year, x: xFor(`${year}-01-01`) });
-		}
-
-		return { placed, ticks, height, axisY };
-	});
-
-	// --- Lineage arcs ---------------------------------------------------------
-	// Authored tech-relationship edges resolved against this chart's placed
-	// items. A relationship whose source or target isn't rendered here (rare,
-	// but not impossible if a tech is filtered from the adoption list) is
-	// silently dropped rather than partially drawn.
-	const placedByLabel = $derived(new Map(layout.placed.map((p) => [p.label, p])));
-
-	interface LineageArc {
-		rel: (typeof techRelationships)[number];
-		from: PlacedItem;
-		to: PlacedItem;
-	}
-
-	const lineageArcs = $derived.by((): LineageArc[] => {
-		const arcs: LineageArc[] = [];
-		for (const rel of techRelationships) {
-			const from = placedByLabel.get(rel.source);
-			const to = placedByLabel.get(rel.target);
-			if (from && to) arcs.push({ rel, from, to });
-		}
-		return arcs;
-	});
+	// Width of the still-in-use fade at the right end of an unreplaced rail.
+	const railFadeWidth = 56;
+	// Where fading rails actually end (the layout's plot-right edge); the fade
+	// gradient anchors to it. Falls back to the viewBox edge when nothing fades.
+	const railFadeEnd = $derived(
+		layout.placed.find((p) => p.railFades)?.railEndX ?? GEO.width - GEO.rightPad
+	);
 
 	// --- Highlight ----------------------------------------------------------
 	// Tracks the hovered or focused technology label. Drives --active / --dim
@@ -189,6 +82,29 @@
 		selected = item;
 	}
 
+	// Lineage lines for the modal: every authored relationship touching the
+	// selected tech, phrased from its point of view, with the authored note
+	// (the "why") when one exists. Reads the full techRelationships list, not
+	// the reduced connector set — the modal is where implied links belong.
+	interface LineageLine {
+		text: string;
+		note?: string;
+	}
+
+	const selectedLineage = $derived.by((): LineageLine[] => {
+		if (!selected) return [];
+		const label = selected.label;
+		const phrase = (rel: (typeof techRelationships)[number]): string => {
+			if (rel.kind === 'replaced-by') {
+				return rel.source === label ? `Replaced by ${rel.target}` : `Replaced ${rel.source}`;
+			}
+			return rel.source === label ? `Led to ${rel.target}` : `Followed ${rel.source}`;
+		};
+		return techRelationships
+			.filter((rel) => rel.source === label || rel.target === label)
+			.map((rel) => ({ text: phrase(rel), note: rel.note }));
+	});
+
 	function pinSelected(): void {
 		if (!selected) return;
 		// Toggle: clicking the already-pinned tech clears the pin.
@@ -198,7 +114,7 @@
 
 	// Returns the accessible description for an item — shared between the
 	// SVG <title> tooltip and the aria-label so the two never drift.
-	function describe(item: PlacedItem): string {
+	function describe(item: PlacedNode): string {
 		const origin = item.dateSource === 'derived' ? ` in ${item.firstProjectName}` : '';
 		const plural = item.projectCount === 1 ? '' : 's';
 		return `${item.label}: first used ${item.firstYear}${origin}, now in ${item.projectCount} project${plural}`;
@@ -239,6 +155,13 @@
 		{ kind: 'runtime', label: 'Runtime' }
 	];
 	const presentKinds = $derived(kindLegend.filter((k) => items.some((i) => i.kind === k.kind)));
+
+	// Edge-type legend: only the lineage kinds actually drawn on this chart
+	// (mirrors presentKinds, keyed off the layout's connectors instead of items).
+	const LINEAGE_KINDS = ['leads-to', 'replaced-by'] as const;
+	const presentLineageKinds = $derived(
+		LINEAGE_KINDS.filter((kind) => layout.connectors.some((c) => c.kind === kind))
+	);
 </script>
 
 <figure class="adoption" bind:this={figureEl}>
@@ -246,59 +169,75 @@
 		class="adoption__svg"
 		class:adoption__svg--animate={animate}
 		class:adoption__svg--revealed={revealed}
-		viewBox="0 0 {width} {layout.height}"
+		viewBox="0 0 {GEO.width} {layout.height}"
 		role="group"
 		aria-label="Timeline of when each technology first entered the work, earliest on the left"
 	>
 		<defs>
-			<marker
-				id="adoption-arrow-leads-to"
-				viewBox="0 0 10 10"
-				refX="9"
-				refY="5"
-				markerWidth="6"
-				markerHeight="6"
-				orient="auto-start-reverse"
+			<!-- Still-in-use rails fade out where they meet the right plot edge.
+			     One shared user-space gradient drives an alpha mask applied per
+			     fading rail, so it works regardless of each rail's stroke colour
+			     (spreadMethod "pad" keeps everything left of the fade fully
+			     opaque). -->
+			<linearGradient
+				id="adoption-rail-fade-gradient"
+				gradientUnits="userSpaceOnUse"
+				x1={railFadeEnd - railFadeWidth}
+				y1="0"
+				x2={railFadeEnd}
+				y2="0"
 			>
-				<path d="M0 0 L10 5 L0 10 z" fill="var(--color-edge-lineage-leads-to)" />
-			</marker>
-			<marker
-				id="adoption-arrow-replaced-by"
-				viewBox="0 0 10 10"
-				refX="9"
-				refY="5"
-				markerWidth="6"
-				markerHeight="6"
-				orient="auto-start-reverse"
-			>
-				<path d="M0 0 L10 5 L0 10 z" fill="var(--color-edge-lineage-replaced-by)" />
-			</marker>
+				<stop offset="0" stop-color="white" />
+				<stop offset="1" stop-color="white" stop-opacity="0" />
+			</linearGradient>
+			<mask id="adoption-rail-fade" maskUnits="userSpaceOnUse">
+				<rect x="0" y="0" width={GEO.width} height={layout.height} fill="url(#adoption-rail-fade-gradient)" />
+			</mask>
 		</defs>
 
 		<!-- Year axis. -->
 		<g class="adoption__axis" aria-hidden="true">
 			<line
 				class="adoption__axis-line"
-				x1={leftPad}
+				x1={GEO.leftPad}
 				y1={layout.axisY}
-				x2={width - rightPad}
+				x2={GEO.width - GEO.rightPad}
 				y2={layout.axisY}
 			/>
 			{#each layout.ticks as tick (tick.year)}
-				<line class="adoption__tick" x1={tick.x} y1={topPad - 8} x2={tick.x} y2={layout.axisY} />
+				<line
+					class="adoption__tick"
+					x1={tick.x}
+					y1={GEO.topPad - 8}
+					x2={tick.x}
+					y2={layout.axisY}
+				/>
 				<text class="adoption__tick-label" x={tick.x} y={layout.axisY + 18}>{tick.year}</text>
 			{/each}
 		</g>
 
-		<!-- Lineage arcs: authored "leads-to" / "replaced-by" relationships between
-		     technologies, rendered behind the dots for a subtle connective layer. -->
+		<!-- Strip separator: a whisper of a line between the lineage rails and
+		     the no-lineage dot strip below them. -->
+		{#if layout.stripLaneCount > 0 && layout.railLaneCount > 0}
+			<line
+				class="adoption__strip-divider"
+				aria-hidden="true"
+				x1={GEO.leftPad}
+				y1={layout.stripTop - GEO.stripGap / 2}
+				x2={GEO.width - GEO.rightPad}
+				y2={layout.stripTop - GEO.stripGap / 2}
+			/>
+		{/if}
+
+		<!-- Lineage connectors: branch ("leads-to") and merge ("replaced-by")
+		     elbows between rails, rendered behind rails and dots. Direction is
+		     carried by time (left to right), so there are no arrowheads. -->
 		<g class="adoption__lineage" aria-hidden="true">
-			{#each lineageArcs as { rel, from, to } (`${rel.kind}:${rel.source}-${rel.target}`)}
+			{#each layout.connectors as c (`${c.kind}:${c.source}-${c.target}`)}
 				<path
-					class="adoption__arc adoption__arc--{rel.kind}"
-					d={arcPath(from, to, to.radius + 3)}
-					style="stroke: {edgeTypeColour(rel.kind)}"
-					marker-end="url(#adoption-arrow-{rel.kind})"
+					class="adoption__connector"
+					d={c.path}
+					style="stroke: {edgeTypeColour(c.kind)}"
 				/>
 			{/each}
 		</g>
@@ -312,33 +251,56 @@
 					class:adoption__item--dim={effectiveLabel !== null && effectiveLabel !== item.label}
 					class:adoption__item--pinned={pinnedLabel === item.label}
 					style="--reveal-delay: {Math.min(index * 28, 700)}ms; color: {techKindColour(item.kind)}"
-					role="button"
-					tabindex="0"
-					aria-pressed={pinnedLabel === item.label}
-					aria-label="{describe(item)}. {pinnedLabel === item.label
-						? 'Pinned. Activate to unpin'
-						: 'Activate to pin'}"
-					onclick={() => openModal(item)}
-					onkeydown={(e) => {
-						if (e.key === 'Enter' || e.key === ' ') {
-							e.preventDefault();
-							openModal(item);
-						}
-					}}
+					role="presentation"
 					onpointerenter={() => (activeLabel = item.label)}
 					onpointerleave={() => (activeLabel = null)}
-					onfocus={() => (activeLabel = item.label)}
-					onblur={() => (activeLabel = null)}
 				>
 					<title>{describe(item)}</title>
+					<!-- The rail: this tech's lifespan, from adoption until replaced
+					     (ends at its successor's dot) or the present (fades out at the
+					     right edge). Strip items carry no rail. Rendered before the dot
+					     so the dot always sits on top of its own rail head. -->
+					{#if item.section === 'rail' && item.railEndX !== null}
+						<line
+							class="adoption__rail"
+							x1={item.x}
+							y1={item.y}
+							x2={item.railEndX}
+							y2={item.y}
+							mask={item.railFades ? 'url(#adoption-rail-fade)' : undefined}
+						/>
+					{/if}
+					<!-- Only the dot opens the pin modal — the label is a passive
+					     caption. Interactive handlers and ARIA live here, not on the
+					     wrapping <g>, so clicking/tabbing to the label text does nothing. -->
 					<circle
 						class="adoption__dot"
 						class:adoption__dot--derived={item.dateSource === 'derived'}
 						cx={item.x}
 						cy={item.y}
 						r={item.radius}
+						role="button"
+						tabindex="0"
+						aria-pressed={pinnedLabel === item.label}
+						aria-label="{describe(item)}. {pinnedLabel === item.label
+							? 'Pinned. Activate to unpin'
+							: 'Activate to pin'}"
+						onclick={() => openModal(item)}
+						onkeydown={(e) => {
+							if (e.key === 'Enter' || e.key === ' ') {
+								e.preventDefault();
+								openModal(item);
+							}
+						}}
+						onfocus={() => (activeLabel = item.label)}
+						onblur={() => (activeLabel = null)}
 					/>
-					<text class="adoption__label" x={item.x + item.radius + 6} y={item.y + 4}>
+					<text
+						class="adoption__label"
+						aria-hidden="true"
+						x={item.x + item.radius + 6}
+						y={item.y + 4}
+					>
 						{item.label}
 					</text>
 				</g>
@@ -374,6 +336,18 @@
 			<span class="adoption__swatch adoption__swatch--derived"></span>
 			Estimated from project history
 		</span>
+		{#each presentLineageKinds as kind (kind)}
+			<span class="adoption__legend-item">
+				<span
+					class="adoption__legend-edge"
+					style="border-color: {edgeTypeColour(kind)}"
+				></span>
+				{edgeTypeLabel(kind)}
+			</span>
+		{/each}
+		<span class="adoption__legend-note">
+			A line runs until the technology was replaced; fading lines are still in use.
+		</span>
 		{#if provisional}
 			<span class="adoption__provisional">
 				Dates are approximate; uncurated technologies are estimated from project history.
@@ -391,6 +365,18 @@
 				: ''}, across {selected.projectCount}
 			{selected.projectCount === 1 ? 'project' : 'projects'}.
 		</p>
+		{#if selectedLineage.length > 0}
+			<ul class="adoption-modal__lineage">
+				{#each selectedLineage as line (line.text)}
+					<li>
+						<span class="adoption-modal__lineage-what">{line.text}</span>
+						{#if line.note}
+							<span class="adoption-modal__lineage-note">{line.note}</span>
+						{/if}
+					</li>
+				{/each}
+			</ul>
+		{/if}
 		<button type="button" class="modal-action modal-action--primary" onclick={pinSelected}>
 			{isPinned ? 'Unpin' : 'Pin this technology'}
 		</button>
@@ -435,12 +421,18 @@
 		fill: currentColor;
 		stroke: var(--color-surface);
 		stroke-width: 1.5;
+		cursor: pointer;
 		transition:
 			transform var(--transition-fast),
 			fill-opacity var(--transition-fast),
 			stroke var(--transition-fast);
 		transform-box: fill-box;
 		transform-origin: center;
+	}
+
+	.adoption__dot:focus-visible {
+		outline: 2px solid var(--color-primary);
+		outline-offset: 2px;
 	}
 
 	/* Derived dots render hollow (outlined) to distinguish from curated authored dates. */
@@ -450,16 +442,45 @@
 		stroke-width: 2;
 	}
 
-	.adoption__arc {
+	/* Rails: each tech's lifespan line, coloured by kind via the item group's
+	   currentColor. Quiet by default so the dots and labels stay the loudest
+	   layer; the fade mask on still-in-use rails is applied inline. */
+	.adoption__rail {
+		stroke: currentColor;
+		stroke-width: 2;
+		stroke-opacity: 0.4;
+		transition:
+			stroke-opacity var(--transition-fast),
+			stroke-width var(--transition-fast);
+	}
+
+	/* Connectors: branch and merge elbows between rails. */
+	.adoption__connector {
 		fill: none;
 		stroke-width: 1.5;
-		stroke-opacity: 0.55;
+		stroke-opacity: 0.7;
+	}
+
+	/* Divider between the lineage rails and the no-lineage dot strip. */
+	.adoption__strip-divider {
+		stroke: var(--color-border);
+		stroke-width: 1;
+		stroke-dasharray: 2 6;
+		opacity: 0.6;
 	}
 
 	.adoption__label {
 		font-size: 13px;
 		font-weight: 600;
 		fill: var(--color-text-subtle);
+		/* Halo: vertical connectors legitimately pass through label zones; the
+		   surface-coloured stroke keeps the text legible over them. */
+		paint-order: stroke;
+		stroke: var(--color-surface);
+		stroke-width: 3px;
+		stroke-linejoin: round;
+		/* Decorative caption only — the dot owns the interaction, not the label. */
+		pointer-events: none;
 		transition:
 			fill var(--transition-fast),
 			opacity var(--transition-fast);
@@ -490,6 +511,16 @@
 
 	.adoption__item--dim .adoption__label {
 		opacity: var(--dim-label);
+	}
+
+	/* Rail highlight rides the same active/dim channels as the dot. */
+	.adoption__item--active .adoption__rail {
+		stroke-opacity: 0.85;
+		stroke-width: 3;
+	}
+
+	.adoption__item--dim .adoption__rail {
+		stroke-opacity: calc(0.4 * var(--dim-node));
 	}
 
 	/* Pinned tech: persistent highlight on dot stroke so the selection reads as
@@ -565,6 +596,16 @@
 		border: 2px solid var(--color-primary);
 	}
 
+	/* Edge-type swatch: a short line rather than a dot, echoing the lineage
+	   connector strokes it stands for. Colour comes from edgeTypeColour per kind. */
+	.adoption__legend-edge {
+		display: inline-block;
+		width: 1.25rem;
+		height: 0;
+		border-top: 2px solid;
+		flex-shrink: 0;
+	}
+
 	.adoption__legend-note {
 		color: var(--color-text-muted);
 	}
@@ -582,6 +623,32 @@
 		color: var(--color-text-subtle);
 		margin: 0;
 		line-height: 1.5;
+	}
+
+	/* Modal lineage: the authored relationship lines with their "why" notes. */
+	.adoption-modal__lineage {
+		list-style: none;
+		margin: 0;
+		padding: 0;
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-2);
+		font-size: var(--text-sm);
+	}
+
+	.adoption-modal__lineage li {
+		line-height: 1.4;
+	}
+
+	.adoption-modal__lineage-what {
+		font-weight: 600;
+		color: var(--color-text);
+	}
+
+	.adoption-modal__lineage-note {
+		display: block;
+		color: var(--color-text-muted);
+		font-size: var(--text-xs);
 	}
 
 	/* Visually hidden, available to screen readers. */
@@ -611,7 +678,8 @@
 
 		/* Kill highlight transitions too — state still applies instantly. */
 		.adoption__dot,
-		.adoption__label {
+		.adoption__label,
+		.adoption__rail {
 			transition: none;
 		}
 	}

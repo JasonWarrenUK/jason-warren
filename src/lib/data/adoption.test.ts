@@ -35,23 +35,32 @@ describe('getTechAdoption', () => {
 		}
 	});
 
-	it('derived entries use the earliest firstCommit across projects carrying the tag', () => {
+	/**
+	 * The date a project would contribute for a given tag label: its own
+	 * introduction date (techFirstSeen) when known, else the project's repo
+	 * inception (firstCommit). Mirrors adoption.ts's per-tag read exactly.
+	 */
+	function projectDateFor(project: (typeof projects)[number], label: string): string | undefined {
+		return project.techFirstSeen?.[label] ?? project.firstCommit;
+	}
+
+	it('derived entries use the earliest per-tag date across projects carrying the tag', () => {
 		for (const item of adoption) {
 			if (item.dateSource !== 'derived') continue;
 			const dates = projects
 				.filter((p) => p.tags.some((t) => t.label === item.label))
-				.map((p) => p.firstCommit)
+				.map((p) => projectDateFor(p, item.label))
 				.filter((d): d is string => d !== undefined);
 			const earliest = [...dates].sort()[0];
 			expect(item.firstDate).toBe(earliest);
 		}
 	});
 
-	/** Earliest firstCommit among projects carrying the label, or undefined. */
+	/** Earliest per-tag date among projects carrying the label, or undefined. */
 	function earliestDerived(label: string): string | undefined {
 		const dates = projects
 			.filter((p) => p.tags.some((t) => t.label === label))
-			.map((p) => p.firstCommit)
+			.map((p) => projectDateFor(p, label))
 			.filter((d): d is string => d !== undefined)
 			.sort();
 		return dates[0];
@@ -87,7 +96,7 @@ describe('getTechAdoption', () => {
 
 	it('pre-repo floors surface on the timeline (Ink, HTML, CSS)', () => {
 		const byLabel = new Map(adoption.map((item) => [item.label, item]));
-		for (const label of ['Ink / inkjs', 'HTML', 'CSS']) {
+		for (const label of ['Ink', 'HTML', 'CSS']) {
 			const item = byLabel.get(label);
 			expect(item, `${label} missing from adoption timeline`).toBeDefined();
 			expect(item?.dateSource).toBe('curated');
@@ -111,7 +120,13 @@ describe('getTechAdoption', () => {
 			expect(project).toBeDefined();
 			expect(project?.tags.some((t) => t.label === item.label)).toBe(true);
 			if (item.dateSource === 'derived') {
-				expect(project?.firstCommit).toBe(item.firstDate);
+				// A derived date is per-tag: it comes from the tag's own
+				// introduction date (techFirstSeen) when the project has one for
+				// this label, and only falls back to the project's repo-inception
+				// date (firstCommit) otherwise. The two legitimately differ when a
+				// tech entered a long-lived repo well after the repo started.
+				const expected = project?.techFirstSeen?.[item.label] ?? project?.firstCommit;
+				expect(expected).toBe(item.firstDate);
 			}
 		}
 	});

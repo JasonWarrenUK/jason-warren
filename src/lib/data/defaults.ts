@@ -126,6 +126,38 @@ export function inferTags(manifest: SyncedSource): TechTag[] {
 	return tags;
 }
 
+/**
+ * Re-keys the manifest's identity-keyed `techFirstSeen` (e.g. `'svelte-5'`) to
+ * the tag-label-keyed form the app reads (e.g. `'Svelte 5'`), via the same
+ * RUNTIME_TAGS/FRAMEWORK_TAGS/LANGUAGE_TAGS lookups inferTags uses. Kept as a
+ * sibling rather than folded into inferTags so inferTags's existing
+ * TechTag[]-returning signature (and its test coverage) stays untouched.
+ *
+ * When two identities map to the same label (rare — e.g. a project detected
+ * via both a lockfile and a package.json entry for the same tech), the
+ * earlier date wins.
+ */
+export function inferTechFirstSeen(manifest: SyncedSource): Record<string, string> {
+	const dates: Record<string, string> = {};
+	const identityDates = manifest.techFirstSeen ?? {};
+
+	function apply(identity: string, tag: TechTag | undefined): void {
+		if (!tag) return;
+		const date = identityDates[identity];
+		if (date === undefined) return;
+		const existing = dates[tag.label];
+		if (existing === undefined || date < existing) {
+			dates[tag.label] = date;
+		}
+	}
+
+	for (const rt of manifest.runtime ?? []) apply(rt, RUNTIME_TAGS[rt] as TechTag);
+	for (const fw of manifest.framework ?? []) apply(fw, FRAMEWORK_TAGS[fw] as TechTag);
+	for (const db of manifest.database ?? []) apply(db, DATABASE_TAGS[db] as TechTag);
+
+	return dates;
+}
+
 // ---------------------------------------------------------------------------
 // Contribution inference
 // ---------------------------------------------------------------------------

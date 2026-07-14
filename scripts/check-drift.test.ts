@@ -15,7 +15,7 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, cpSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, cpSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
@@ -44,6 +44,42 @@ describe('DRIFT_SKIP_FIELDS structural contract', () => {
 		const desc: string = schema.$defs?.SyncedSource?.properties?.measuredRef?.description ?? '';
 		// The description must mention skip/exclude/drift to be self-documenting.
 		expect(desc.toLowerCase()).toMatch(/exclud|skip|drift/);
+	});
+});
+
+// ---------------------------------------------------------------------------
+// Project slug shape — mirrors check-drift.js's validateProjectSlug/runRelate
+// regex (`/^[a-z0-9]+(-[a-z0-9]+)*$/`). check-drift.js is a CLI script with
+// no exports, so this can't import the function directly; the regex is
+// duplicated here as the single source of truth's OWN contract check, and
+// the "drift relate" describe block below exercises the wired-up behaviour
+// end-to-end via the real CLI ('exits 1 on a malformed project slug').
+// If this regex and the one in check-drift.js ever diverge, this test and
+// the CLI-level test will disagree, surfacing the drift.
+// ---------------------------------------------------------------------------
+
+describe('project slug shape (validateProjectSlug / runRelate contract)', () => {
+	const SLUG_PATTERN = /^[a-z0-9]+(-[a-z0-9]+)*$/;
+
+	it.each([
+		['my-project', true],
+		['nib', true],
+		['a1-b2-c3', true],
+		['already-hyphenated-many-times', true]
+	])('%s is valid: %s', (value, expected) => {
+		expect(SLUG_PATTERN.test(value)).toBe(expected);
+	});
+
+	it.each([
+		['Bad-Slug', false], // uppercase
+		['bad_slug', false], // underscore
+		['-leading-hyphen', false],
+		['trailing-hyphen-', false],
+		['double--hyphen', false],
+		['', false], // empty
+		['has space', false]
+	])('%s is invalid: %s', (value, expected) => {
+		expect(SLUG_PATTERN.test(value)).toBe(expected);
 	});
 });
 
@@ -701,6 +737,742 @@ describe('drift flag', () => {
 });
 
 // ---------------------------------------------------------------------------
+// drift relate tests
+// ---------------------------------------------------------------------------
+
+describe('drift relate', () => {
+	let dir: string;
+	let configPath: string;
+
+	beforeEach(() => {
+		({ dir, configPath } = makeOverlaySandbox());
+	});
+
+	afterEach(() => {
+		rmSync(dir, { recursive: true, force: true });
+	});
+
+	// ---- project mode -----------------------------------------------------
+
+	it('project mode creates the overlay and appends a relationship when absent', () => {
+		const result = runVerbInSandbox(configPath, [
+			'relate',
+			'project',
+			'lonely',
+			'powers',
+			'nib',
+			'--note',
+			'Feeds nib somehow.'
+		]);
+		expect(result.status, result.stderr).toBe(0);
+		expect(result.stdout).toMatch(/related/i);
+
+		const source = readFileSync(join(dir, 'projects', 'lonely.ts'), 'utf8');
+		expect(source).toContain('kind: "powers"');
+		expect(source).toContain('target: "nib"');
+		expect(source).toContain('Feeds nib somehow.');
+	});
+
+	it('project mode appends to a populated relationships array, leaving the existing entry intact', () => {
+		const overlayPath = join(dir, 'projects', 'nib.ts');
+		writeFileSync(
+			overlayPath,
+			[
+				"import type { AuthoredProject } from '../types.js';",
+				'',
+				'export const nib: AuthoredProject = {',
+				"\tslug: 'nib',",
+				'\thighlights: [],',
+				'\trelationships: [',
+				'\t\t{',
+				"\t\t\tkind: 'powers',",
+				"\t\t\ttarget: 'the-work',",
+				"\t\t\tnote: 'Existing note.'",
+				'\t\t}',
+				'\t],',
+				'\ttags: []',
+				'};',
+				''
+			].join('\n')
+		);
+
+		const result = runVerbInSandbox(configPath, ['relate', 'project', 'nib', 'related', 'lonely']);
+		expect(result.status, result.stderr).toBe(0);
+
+		const modified = readFileSync(overlayPath, 'utf8');
+		expect(modified).toContain('target: "the-work"');
+		expect(modified).toContain('Existing note.');
+		expect(modified).toContain('kind: "related"');
+		expect(modified).toContain('target: "lonely"');
+	});
+
+	it('project mode inserts a relationships property when the overlay has none', () => {
+		const overlayPath = join(dir, 'projects', 'no-relationships.ts');
+		writeFileSync(
+			overlayPath,
+			[
+				"import type { AuthoredProject } from '../types.js';",
+				'',
+				'export const noRelationships: AuthoredProject = {',
+				"\tslug: 'no-relationships',",
+				'\thighlights: [],',
+				'\ttags: []',
+				'};',
+				''
+			].join('\n')
+		);
+
+		const result = runVerbInSandbox(configPath, [
+			'relate',
+			'project',
+			'no-relationships',
+			'related',
+			'lonely'
+		]);
+		expect(result.status, result.stderr).toBe(0);
+
+		const modified = readFileSync(overlayPath, 'utf8');
+		expect(modified).toContain('relationships');
+		expect(modified).toContain('target: "lonely"');
+	});
+
+	it('project mode is idempotent on an identical (kind, target) pair', () => {
+		runVerbInSandbox(configPath, ['relate', 'project', 'nib', 'powers', 'the-work']);
+		const before = readFileSync(join(dir, 'projects', 'nib.ts'), 'utf8');
+
+		const result = runVerbInSandbox(configPath, ['relate', 'project', 'nib', 'powers', 'the-work']);
+		expect(result.status, result.stderr).toBe(0);
+		expect(result.stdout).toMatch(/already/i);
+		expect(readFileSync(join(dir, 'projects', 'nib.ts'), 'utf8')).toBe(before);
+	});
+
+	it('prints the reciprocal reminder after a "powers" write', () => {
+		const result = runVerbInSandbox(configPath, ['relate', 'project', 'nib', 'powers', 'the-work']);
+		expect(result.status, result.stderr).toBe(0);
+		expect(result.stdout).toMatch(/extracted-from nib/);
+	});
+
+	it('prints the reciprocal reminder after an "extracted-from" write', () => {
+		const result = runVerbInSandbox(configPath, [
+			'relate',
+			'project',
+			'the-work',
+			'extracted-from',
+			'nib'
+		]);
+		expect(result.status, result.stderr).toBe(0);
+		expect(result.stdout).toMatch(/powers the-work/);
+	});
+
+	it('does not print a reciprocal reminder for a "related" write', () => {
+		const result = runVerbInSandbox(configPath, ['relate', 'project', 'nib', 'related', 'lonely']);
+		expect(result.status, result.stderr).toBe(0);
+		expect(result.stdout).not.toMatch(/Reciprocal/);
+	});
+
+	// ---- tech mode ----------------------------------------------------------
+
+	it('tech mode appends a relationship to the exported array', () => {
+		writeFileSync(
+			join(dir, 'tech-relationships.ts'),
+			[
+				"import type { TechRelationship } from './types.js';",
+				'',
+				'export const techRelationships: TechRelationship[] = [];',
+				''
+			].join('\n')
+		);
+
+		const result = runVerbInSandbox(configPath, [
+			'relate',
+			'tech',
+			'Ink',
+			'leads-to',
+			'inkjs',
+			'--note',
+			'Ink needs a runtime.'
+		]);
+		expect(result.status, result.stderr).toBe(0);
+
+		const modified = readFileSync(join(dir, 'tech-relationships.ts'), 'utf8');
+		expect(modified).toContain('kind: "leads-to"');
+		expect(modified).toContain('source: "Ink"');
+		expect(modified).toContain('target: "inkjs"');
+		expect(modified).toContain('Ink needs a runtime.');
+	});
+
+	it('tech mode appends to a populated array, leaving existing entries intact', () => {
+		writeFileSync(
+			join(dir, 'tech-relationships.ts'),
+			[
+				"import type { TechRelationship } from './types.js';",
+				'',
+				'export const techRelationships: TechRelationship[] = [',
+				'\t{',
+				"\t\tkind: 'replaced-by',",
+				"\t\tsource: 'Node.js',",
+				"\t\ttarget: 'Bun'",
+				'\t}',
+				'];',
+				''
+			].join('\n')
+		);
+
+		const result = runVerbInSandbox(configPath, ['relate', 'tech', 'Deno', 'leads-to', 'Oak']);
+		expect(result.status, result.stderr).toBe(0);
+
+		const modified = readFileSync(join(dir, 'tech-relationships.ts'), 'utf8');
+		expect(modified).toContain('source: "Node.js"');
+		expect(modified).toContain('target: "Bun"');
+		expect(modified).toContain('source: "Deno"');
+		expect(modified).toContain('target: "Oak"');
+	});
+
+	it('tech mode is idempotent on an identical (kind, source, target) triple', () => {
+		writeFileSync(
+			join(dir, 'tech-relationships.ts'),
+			[
+				"import type { TechRelationship } from './types.js';",
+				'',
+				'export const techRelationships: TechRelationship[] = [];',
+				''
+			].join('\n')
+		);
+		runVerbInSandbox(configPath, ['relate', 'tech', 'Deno', 'leads-to', 'Oak']);
+		const before = readFileSync(join(dir, 'tech-relationships.ts'), 'utf8');
+
+		const result = runVerbInSandbox(configPath, ['relate', 'tech', 'Deno', 'leads-to', 'Oak']);
+		expect(result.status, result.stderr).toBe(0);
+		expect(result.stdout).toMatch(/already/i);
+		expect(readFileSync(join(dir, 'tech-relationships.ts'), 'utf8')).toBe(before);
+	});
+
+	it('tech mode exits 1 when tech-relationships.ts is missing', () => {
+		const result = runVerbInSandbox(configPath, ['relate', 'tech', 'Deno', 'leads-to', 'Oak']);
+		expect(result.status).toBe(1);
+		expect(result.stderr).toMatch(/not found/i);
+	});
+
+	// ---- validation -----------------------------------------------------------
+
+	it('exits 1 when the mode is neither "project" nor "tech"', () => {
+		const result = runVerbInSandbox(configPath, ['relate', 'bogus', 'nib', 'powers', 'the-work']);
+		expect(result.status).toBe(1);
+		expect(result.stderr).toMatch(/project.*tech/i);
+	});
+
+	it('exits 1 on a missing argument', () => {
+		const result = runVerbInSandbox(configPath, ['relate', 'project', 'nib', 'powers']);
+		expect(result.status).toBe(1);
+		expect(result.stderr).toMatch(/missing arguments/i);
+	});
+
+	it('exits 1 on an invalid project relationship kind', () => {
+		const result = runVerbInSandbox(configPath, [
+			'relate',
+			'project',
+			'nib',
+			'bogus-kind',
+			'the-work'
+		]);
+		expect(result.status).toBe(1);
+		expect(result.stderr).toMatch(/invalid kind/i);
+	});
+
+	it('exits 1 on an invalid tech relationship kind', () => {
+		const result = runVerbInSandbox(configPath, ['relate', 'tech', 'Deno', 'bogus-kind', 'Oak']);
+		expect(result.status).toBe(1);
+		expect(result.stderr).toMatch(/invalid kind/i);
+	});
+
+	it('exits 1 on a project self-edge', () => {
+		const result = runVerbInSandbox(configPath, ['relate', 'project', 'nib', 'related', 'nib']);
+		expect(result.status).toBe(1);
+		expect(result.stderr).toMatch(/cannot relate to itself/i);
+	});
+
+	it('exits 1 on a tech self-edge', () => {
+		const result = runVerbInSandbox(configPath, ['relate', 'tech', 'Deno', 'leads-to', 'Deno']);
+		expect(result.status).toBe(1);
+		expect(result.stderr).toMatch(/cannot relate to itself/i);
+	});
+
+	it('exits 1 on a malformed project slug', () => {
+		const result = runVerbInSandbox(configPath, [
+			'relate',
+			'project',
+			'Bad/Slug',
+			'powers',
+			'the-work'
+		]);
+		expect(result.status).toBe(1);
+		expect(result.stderr).toMatch(/kebab-case/i);
+	});
+
+	it('the modified overlay has balanced braces after a project-mode write', () => {
+		runVerbInSandbox(configPath, ['relate', 'project', 'balanced', 'powers', 'the-work']);
+		const source = readFileSync(join(dir, 'projects', 'balanced.ts'), 'utf8');
+		const openBraces = (source.match(/\{/g) ?? []).length;
+		const closeBraces = (source.match(/\}/g) ?? []).length;
+		expect(openBraces).toBe(closeBraces);
+	});
+
+	// ---- project mode: --remove ----------------------------------------------
+
+	function writeNibWithRelationships(
+		dir: string,
+		relationships: string[]
+	): string {
+		const overlayPath = join(dir, 'projects', 'nib.ts');
+		writeFileSync(
+			overlayPath,
+			[
+				"import type { AuthoredProject } from '../types.js';",
+				'',
+				'export const nib: AuthoredProject = {',
+				"\tslug: 'nib',",
+				'\thighlights: [],',
+				'\trelationships: [',
+				...relationships,
+				'\t],',
+				'\ttags: []',
+				'};',
+				''
+			].join('\n')
+		);
+		return overlayPath;
+	}
+
+	it('--remove deletes an existing project edge, leaving siblings intact', () => {
+		const overlayPath = writeNibWithRelationships(dir, [
+			"\t\t{ kind: 'powers', target: 'the-work', note: 'Existing note.' },",
+			"\t\t{ kind: 'related', target: 'flyt' },"
+		]);
+
+		const result = runVerbInSandbox(configPath, [
+			'relate',
+			'project',
+			'nib',
+			'powers',
+			'the-work',
+			'--remove'
+		]);
+		expect(result.status, result.stderr).toBe(0);
+		expect(result.stdout).toMatch(/removed/i);
+
+		const modified = readFileSync(overlayPath, 'utf8');
+		expect(modified).not.toContain('the-work');
+		expect(modified).toContain('target: "flyt"');
+		const openBraces = (modified.match(/\{/g) ?? []).length;
+		const closeBraces = (modified.match(/\}/g) ?? []).length;
+		expect(openBraces).toBe(closeBraces);
+	});
+
+	it('--remove on the first of several edges leaves the rest intact', () => {
+		const overlayPath = writeNibWithRelationships(dir, [
+			"\t\t{ kind: 'powers', target: 'the-work' },",
+			"\t\t{ kind: 'related', target: 'flyt' },",
+			"\t\t{ kind: 'related', target: 'lonely' },"
+		]);
+
+		const result = runVerbInSandbox(configPath, [
+			'relate',
+			'project',
+			'nib',
+			'powers',
+			'the-work',
+			'--remove'
+		]);
+		expect(result.status, result.stderr).toBe(0);
+
+		const modified = readFileSync(overlayPath, 'utf8');
+		expect(modified).not.toContain('the-work');
+		expect(modified).toContain('target: "flyt"');
+		expect(modified).toContain('target: "lonely"');
+		const openBraces = (modified.match(/\{/g) ?? []).length;
+		const closeBraces = (modified.match(/\}/g) ?? []).length;
+		expect(openBraces).toBe(closeBraces);
+	});
+
+	it('--remove on the last remaining edge leaves relationships: []', () => {
+		const overlayPath = writeNibWithRelationships(dir, [
+			"\t\t{ kind: 'powers', target: 'the-work' },"
+		]);
+
+		const result = runVerbInSandbox(configPath, [
+			'relate',
+			'project',
+			'nib',
+			'powers',
+			'the-work',
+			'--remove'
+		]);
+		expect(result.status, result.stderr).toBe(0);
+
+		const modified = readFileSync(overlayPath, 'utf8');
+		expect(modified).not.toContain('the-work');
+		expect(modified).toMatch(/relationships:\s*\[\]/);
+		const openBraces = (modified.match(/\{/g) ?? []).length;
+		const closeBraces = (modified.match(/\}/g) ?? []).length;
+		expect(openBraces).toBe(closeBraces);
+	});
+
+	it('--remove on a nonexistent edge is a soft no-op', () => {
+		const overlayPath = writeNibWithRelationships(dir, [
+			"\t\t{ kind: 'powers', target: 'the-work' },"
+		]);
+		const before = readFileSync(overlayPath, 'utf8');
+
+		const result = runVerbInSandbox(configPath, [
+			'relate',
+			'project',
+			'nib',
+			'related',
+			'flyt',
+			'--remove'
+		]);
+		expect(result.status, result.stderr).toBe(0);
+		expect(result.stdout).toMatch(/not found|nothing to remove/i);
+		expect(readFileSync(overlayPath, 'utf8')).toBe(before);
+	});
+
+	it('--remove on a slug with no overlay is a soft no-op and does not create one', () => {
+		const result = runVerbInSandbox(configPath, [
+			'relate',
+			'project',
+			'ghost-project',
+			'powers',
+			'the-work',
+			'--remove'
+		]);
+		expect(result.status, result.stderr).toBe(0);
+		expect(result.stdout).toMatch(/nothing to remove/i);
+		expect(existsSync(join(dir, 'projects', 'ghost-project.ts'))).toBe(false);
+	});
+
+	it('--remove prints the reciprocal reminder for "powers"', () => {
+		writeNibWithRelationships(dir, ["\t\t{ kind: 'powers', target: 'the-work' },"]);
+		const result = runVerbInSandbox(configPath, [
+			'relate',
+			'project',
+			'nib',
+			'powers',
+			'the-work',
+			'--remove'
+		]);
+		expect(result.status, result.stderr).toBe(0);
+		expect(result.stdout).toMatch(/extracted-from nib.*--remove/);
+	});
+
+	it('--remove does not print a reciprocal reminder for "related"', () => {
+		writeNibWithRelationships(dir, ["\t\t{ kind: 'related', target: 'flyt' },"]);
+		const result = runVerbInSandbox(configPath, [
+			'relate',
+			'project',
+			'nib',
+			'related',
+			'flyt',
+			'--remove'
+		]);
+		expect(result.status, result.stderr).toBe(0);
+		expect(result.stdout).not.toMatch(/Reciprocal/);
+	});
+
+	// ---- project mode: --edit -------------------------------------------------
+
+	it('--edit --note changes only the note, leaving kind and siblings intact', () => {
+		const overlayPath = writeNibWithRelationships(dir, [
+			"\t\t{ kind: 'powers', target: 'the-work', note: 'Old note.' },",
+			"\t\t{ kind: 'related', target: 'flyt' },"
+		]);
+
+		const result = runVerbInSandbox(configPath, [
+			'relate',
+			'project',
+			'nib',
+			'powers',
+			'the-work',
+			'--edit',
+			'--note',
+			'New note.'
+		]);
+		expect(result.status, result.stderr).toBe(0);
+		expect(result.stdout).toMatch(/edited/i);
+
+		const modified = readFileSync(overlayPath, 'utf8');
+		expect(modified).toContain('kind: "powers"');
+		expect(modified).toContain('New note.');
+		expect(modified).not.toContain('Old note.');
+		expect(modified).toContain('target: "flyt"');
+	});
+
+	it('--edit --kind changes only the kind, leaving the note intact', () => {
+		const overlayPath = writeNibWithRelationships(dir, [
+			"\t\t{ kind: 'powers', target: 'the-work', note: 'Keep me.' },"
+		]);
+
+		const result = runVerbInSandbox(configPath, [
+			'relate',
+			'project',
+			'nib',
+			'powers',
+			'the-work',
+			'--edit',
+			'--kind',
+			'related'
+		]);
+		expect(result.status, result.stderr).toBe(0);
+
+		const modified = readFileSync(overlayPath, 'utf8');
+		expect(modified).toContain('kind: "related"');
+		expect(modified).not.toContain('kind: "powers"');
+		expect(modified).toContain('Keep me.');
+	});
+
+	it('--edit on a nonexistent edge exits 1', () => {
+		const overlayPath = writeNibWithRelationships(dir, [
+			"\t\t{ kind: 'powers', target: 'the-work' },"
+		]);
+		const before = readFileSync(overlayPath, 'utf8');
+
+		const result = runVerbInSandbox(configPath, [
+			'relate',
+			'project',
+			'nib',
+			'related',
+			'flyt',
+			'--edit',
+			'--note',
+			'x'
+		]);
+		expect(result.status).toBe(1);
+		expect(result.stderr).toMatch(/not found/i);
+		expect(readFileSync(overlayPath, 'utf8')).toBe(before);
+	});
+
+	it('--edit prints the reciprocal reminder when the kind changes to/from powers or extracted-from', () => {
+		writeNibWithRelationships(dir, ["\t\t{ kind: 'powers', target: 'the-work' },"]);
+		const result = runVerbInSandbox(configPath, [
+			'relate',
+			'project',
+			'nib',
+			'powers',
+			'the-work',
+			'--edit',
+			'--kind',
+			'related'
+		]);
+		expect(result.status, result.stderr).toBe(0);
+		expect(result.stdout).toMatch(/Reciprocal/);
+	});
+
+	it('--edit does not print a reciprocal reminder for a note-only change', () => {
+		writeNibWithRelationships(dir, ["\t\t{ kind: 'related', target: 'flyt' },"]);
+		const result = runVerbInSandbox(configPath, [
+			'relate',
+			'project',
+			'nib',
+			'related',
+			'flyt',
+			'--edit',
+			'--note',
+			'a new note'
+		]);
+		expect(result.status, result.stderr).toBe(0);
+		expect(result.stdout).not.toMatch(/Reciprocal/);
+	});
+
+	// ---- validation: --remove / --edit -----------------------------------------
+
+	it('exits 1 when --remove and --edit are both given', () => {
+		writeNibWithRelationships(dir, ["\t\t{ kind: 'powers', target: 'the-work' },"]);
+		const result = runVerbInSandbox(configPath, [
+			'relate',
+			'project',
+			'nib',
+			'powers',
+			'the-work',
+			'--remove',
+			'--edit'
+		]);
+		expect(result.status).toBe(1);
+		expect(result.stderr).toMatch(/mutually exclusive/i);
+	});
+
+	it('exits 1 when --edit is given with neither --kind nor --note', () => {
+		writeNibWithRelationships(dir, ["\t\t{ kind: 'powers', target: 'the-work' },"]);
+		const result = runVerbInSandbox(configPath, [
+			'relate',
+			'project',
+			'nib',
+			'powers',
+			'the-work',
+			'--edit'
+		]);
+		expect(result.status).toBe(1);
+		expect(result.stderr).toMatch(/nothing to change/i);
+	});
+
+	it('exits 1 on an invalid --kind for --edit', () => {
+		writeNibWithRelationships(dir, ["\t\t{ kind: 'powers', target: 'the-work' },"]);
+		const result = runVerbInSandbox(configPath, [
+			'relate',
+			'project',
+			'nib',
+			'powers',
+			'the-work',
+			'--edit',
+			'--kind',
+			'bogus-kind'
+		]);
+		expect(result.status).toBe(1);
+		expect(result.stderr).toMatch(/invalid --kind/i);
+	});
+
+	// ---- tech mode: --remove / --edit -------------------------------------------
+
+	function writeTechRelationships(dir: string, entries: string[]): string {
+		const path = join(dir, 'tech-relationships.ts');
+		writeFileSync(
+			path,
+			[
+				"import type { TechRelationship } from './types.js';",
+				'',
+				'export const techRelationships: TechRelationship[] = [',
+				...entries,
+				'];',
+				''
+			].join('\n')
+		);
+		return path;
+	}
+
+	it('tech mode --remove deletes an existing edge, leaving siblings intact', () => {
+		const path = writeTechRelationships(dir, [
+			"\t{ kind: 'leads-to', source: 'Deno', target: 'Oak', note: 'Note.' },",
+			"\t{ kind: 'replaced-by', source: 'Node.js', target: 'Bun' },"
+		]);
+
+		const result = runVerbInSandbox(configPath, [
+			'relate',
+			'tech',
+			'Deno',
+			'leads-to',
+			'Oak',
+			'--remove'
+		]);
+		expect(result.status, result.stderr).toBe(0);
+		expect(result.stdout).toMatch(/removed/i);
+
+		const modified = readFileSync(path, 'utf8');
+		expect(modified).not.toContain("source: \"Deno\"");
+		expect(modified).toContain('source: "Node.js"');
+		const openBraces = (modified.match(/\{/g) ?? []).length;
+		const closeBraces = (modified.match(/\}/g) ?? []).length;
+		expect(openBraces).toBe(closeBraces);
+	});
+
+	it('tech mode --remove on a nonexistent edge is a soft no-op', () => {
+		const path = writeTechRelationships(dir, [
+			"\t{ kind: 'leads-to', source: 'Deno', target: 'Oak' },"
+		]);
+		const before = readFileSync(path, 'utf8');
+
+		const result = runVerbInSandbox(configPath, [
+			'relate',
+			'tech',
+			'Deno',
+			'replaced-by',
+			'Oak',
+			'--remove'
+		]);
+		expect(result.status, result.stderr).toBe(0);
+		expect(result.stdout).toMatch(/not found|nothing to remove/i);
+		expect(readFileSync(path, 'utf8')).toBe(before);
+	});
+
+	it('tech mode --edit --note changes only the note', () => {
+		const path = writeTechRelationships(dir, [
+			"\t{ kind: 'leads-to', source: 'Deno', target: 'Oak', note: 'Old.' },"
+		]);
+
+		const result = runVerbInSandbox(configPath, [
+			'relate',
+			'tech',
+			'Deno',
+			'leads-to',
+			'Oak',
+			'--edit',
+			'--note',
+			'New.'
+		]);
+		expect(result.status, result.stderr).toBe(0);
+
+		const modified = readFileSync(path, 'utf8');
+		expect(modified).toContain('kind: "leads-to"');
+		expect(modified).toContain('New.');
+		expect(modified).not.toContain('Old.');
+	});
+
+	it('tech mode --edit --kind changes only the kind', () => {
+		const path = writeTechRelationships(dir, [
+			"\t{ kind: 'leads-to', source: 'Deno', target: 'Oak' },"
+		]);
+
+		const result = runVerbInSandbox(configPath, [
+			'relate',
+			'tech',
+			'Deno',
+			'leads-to',
+			'Oak',
+			'--edit',
+			'--kind',
+			'replaced-by'
+		]);
+		expect(result.status, result.stderr).toBe(0);
+
+		const modified = readFileSync(path, 'utf8');
+		expect(modified).toContain('kind: "replaced-by"');
+		expect(modified).not.toContain('kind: "leads-to"');
+	});
+
+	it('tech mode --edit on a nonexistent edge exits 1', () => {
+		const path = writeTechRelationships(dir, [
+			"\t{ kind: 'leads-to', source: 'Deno', target: 'Oak' },"
+		]);
+		const before = readFileSync(path, 'utf8');
+
+		const result = runVerbInSandbox(configPath, [
+			'relate',
+			'tech',
+			'Deno',
+			'replaced-by',
+			'Oak',
+			'--edit',
+			'--note',
+			'x'
+		]);
+		expect(result.status).toBe(1);
+		expect(result.stderr).toMatch(/not found/i);
+		expect(readFileSync(path, 'utf8')).toBe(before);
+	});
+
+	it('tech mode --remove never prints a reciprocal reminder', () => {
+		writeTechRelationships(dir, ["\t{ kind: 'leads-to', source: 'Deno', target: 'Oak' },"]);
+		const result = runVerbInSandbox(configPath, [
+			'relate',
+			'tech',
+			'Deno',
+			'leads-to',
+			'Oak',
+			'--remove'
+		]);
+		expect(result.status, result.stderr).toBe(0);
+		expect(result.stdout).not.toMatch(/Reciprocal/);
+	});
+});
+
+// ---------------------------------------------------------------------------
 // drift audit tests
 // ---------------------------------------------------------------------------
 
@@ -1244,6 +2016,39 @@ describe('drift sync', () => {
 		]);
 	});
 
+	it('collapses bare svelte into svelte-5 when a non-SvelteKit repo is on Svelte 5', () => {
+		writeFileSync(
+			join(dir, 'repo', 'package.json'),
+			JSON.stringify({
+				dependencies: { svelte: '^5.1.0' },
+				devDependencies: { vite: '^5.0.0' }
+			})
+		);
+
+		const result = runSyncWithConfig(dir, []);
+
+		expect(result.status, result.stderr).toBe(0);
+		const parsed = JSON.parse(readFileSync(join(dir, 'sources.json'), 'utf8'));
+		// Bare 'svelte' would otherwise sit alongside 'svelte-5' as a redundant
+		// adoption-timeline node for the same non-Kit Svelte 5 project.
+		expect(parsed.sources[slug].framework).toEqual(['svelte-5', 'vite']);
+	});
+
+	it('keeps bare svelte when the version signal is not 5', () => {
+		writeFileSync(
+			join(dir, 'repo', 'package.json'),
+			JSON.stringify({
+				dependencies: { svelte: '^4.2.0' }
+			})
+		);
+
+		const result = runSyncWithConfig(dir, []);
+
+		expect(result.status, result.stderr).toBe(0);
+		const parsed = JSON.parse(readFileSync(join(dir, 'sources.json'), 'utf8'));
+		expect(parsed.sources[slug].framework).toEqual(['svelte']);
+	});
+
 	it('detects Deno from a root lock file without package.json', () => {
 		rmSync(join(dir, 'repo', 'package.json'));
 		writeFileSync(join(dir, 'repo', 'deno.lock'), '{}\n');
@@ -1344,8 +2149,161 @@ describe('drift sync', () => {
 
 		expect(result.status, result.stderr).toBe(0);
 		const parsed = JSON.parse(readFileSync(join(dir, 'sources.json'), 'utf8'));
-		expect(parsed.sources[slug].runtime).toEqual(['bun']);
-		expect(parsed.sources[slug].framework).toEqual(['svelte-5', 'inkjs']);
+		expect(parsed.sources[slug].runtime).toEqual(['bun', 'inkjs']);
+		expect(parsed.sources[slug].framework).toEqual(['svelte-5']);
+	});
+
+	it('source-grep-only signals (inkjs) are absent from techFirstSeen', () => {
+		rmSync(join(dir, 'repo', 'package.json'));
+		writeFileSync(
+			join(dir, 'repo', 'engine.svelte.ts'),
+			`import { Story } from 'inkjs';\nexport const story = new Story('');\n`
+		);
+		const gitEnv = makeGitEnv();
+		spawnSync('git', ['add', '-A'], { cwd: join(dir, 'repo'), env: gitEnv, encoding: 'utf8' });
+		spawnSync('git', ['commit', '-m', 'add source signals', '--no-gpg-sign'], {
+			cwd: join(dir, 'repo'),
+			env: gitEnv,
+			encoding: 'utf8'
+		});
+
+		const result = runSyncWithConfig(dir, []);
+
+		expect(result.status, result.stderr).toBe(0);
+		const parsed = JSON.parse(readFileSync(join(dir, 'sources.json'), 'utf8'));
+		expect(parsed.sources[slug].runtime).toContain('inkjs');
+		expect(parsed.sources[slug].techFirstSeen?.inkjs).toBeUndefined();
+	});
+
+	it('dates a dependency to the commit that introduced it, not the repo\'s inception', () => {
+		// makeSyncSandbox's init commit (package.json with svelte/@sveltejs/kit/
+		// @tailwindcss/vite) is dated 2000-01-01 by makeGitEnv. Add react in a
+		// LATER commit, dated explicitly, to prove techFirstSeen decouples from
+		// firstCommit — the core regression for the-work's Svelte 5 bug.
+		const repoPath = join(dir, 'repo');
+		const laterEnv = { ...makeGitEnv(), GIT_AUTHOR_DATE: '2025-05-01T00:00:00+00:00', GIT_COMMITTER_DATE: '2025-05-01T00:00:00+00:00' };
+		writeFileSync(
+			join(repoPath, 'package.json'),
+			JSON.stringify({
+				devDependencies: {
+					svelte: '^5.45.6',
+					'@sveltejs/kit': '^2.49.1',
+					'@tailwindcss/vite': '^4.3.1',
+					react: '^18.2.0'
+				}
+			})
+		);
+		spawnSync('git', ['add', '-A'], { cwd: repoPath, env: laterEnv, encoding: 'utf8' });
+		spawnSync('git', ['commit', '-m', 'add react', '--no-gpg-sign'], {
+			cwd: repoPath,
+			env: laterEnv,
+			encoding: 'utf8'
+		});
+
+		const result = runSyncWithConfig(dir, []);
+
+		expect(result.status, result.stderr).toBe(0);
+		const parsed = JSON.parse(readFileSync(join(dir, 'sources.json'), 'utf8'));
+		const entry = parsed.sources[slug];
+		expect(entry.firstCommit).toBe('2000-01-01');
+		expect(entry.techFirstSeen.react).toBe('2025-05-01');
+		// svelte/@sveltejs/kit/tailwindcss-4 entered at the repo's init commit —
+		// decoupled from firstCommit only in that it's independently derived,
+		// not necessarily a different value.
+		expect(entry.techFirstSeen['svelte-5']).toBe('2000-01-01');
+		expect(entry.techFirstSeen['@sveltejs/kit']).toBe('2000-01-01');
+	});
+
+	it('dates a version-qualified migration to the migration commit, not the first dependency of any version', () => {
+		// makeSyncSandbox's own init commit already carries svelte ^5.45.6, which
+		// would make any later "reintroduction" of the v5 pattern read as its
+		// FIRST appearance in history (git log -G reports every commit where a
+		// pattern's match count changes, so toggling v5 -> v4 -> v5 within one
+		// repo's history is not equivalent to a real one-way migration and would
+		// wrongly assert the original date). Build a wholly fresh repo instead,
+		// so the v4 commit genuinely is the first svelte dependency ever
+		// committed, and the v5 commit genuinely is its only migration.
+		const repoPath = join(dir, 'repo');
+		rmSync(join(repoPath, '.git'), { recursive: true, force: true });
+		const v4Env = { ...makeGitEnv(), GIT_AUTHOR_DATE: '2022-01-01T00:00:00+00:00', GIT_COMMITTER_DATE: '2022-01-01T00:00:00+00:00' };
+		spawnSync('git', ['init', '-b', 'main'], { cwd: repoPath, env: v4Env, encoding: 'utf8' });
+		spawnSync('git', ['config', 'user.email', 'test@example.com'], { cwd: repoPath, env: v4Env, encoding: 'utf8' });
+		spawnSync('git', ['config', 'user.name', 'Test'], { cwd: repoPath, env: v4Env, encoding: 'utf8' });
+		writeFileSync(
+			join(repoPath, 'package.json'),
+			JSON.stringify({ devDependencies: { svelte: '^4.2.0' } })
+		);
+		spawnSync('git', ['add', '-A'], { cwd: repoPath, env: v4Env, encoding: 'utf8' });
+		spawnSync('git', ['commit', '-m', 'init on svelte 4', '--no-gpg-sign'], {
+			cwd: repoPath,
+			env: v4Env,
+			encoding: 'utf8'
+		});
+
+		const v5Env = { ...makeGitEnv(), GIT_AUTHOR_DATE: '2025-05-01T00:00:00+00:00', GIT_COMMITTER_DATE: '2025-05-01T00:00:00+00:00' };
+		writeFileSync(
+			join(repoPath, 'package.json'),
+			JSON.stringify({ devDependencies: { svelte: '^5.45.6' } })
+		);
+		spawnSync('git', ['add', '-A'], { cwd: repoPath, env: v5Env, encoding: 'utf8' });
+		spawnSync('git', ['commit', '-m', 'migrate to svelte 5', '--no-gpg-sign'], {
+			cwd: repoPath,
+			env: v5Env,
+			encoding: 'utf8'
+		});
+
+		const result = runSyncWithConfig(dir, []);
+
+		expect(result.status, result.stderr).toBe(0);
+		const parsed = JSON.parse(readFileSync(join(dir, 'sources.json'), 'utf8'));
+		// The migration commit's date, not the repo's 2022-01-01 inception
+		// (which only ever had svelte 4).
+		expect(parsed.sources[slug].firstCommit).toBe('2022-01-01');
+		expect(parsed.sources[slug].techFirstSeen['svelte-5']).toBe('2025-05-01');
+	});
+
+	it('monorepo: takes the earliest date across workspaces for the same identity', () => {
+		const repoPath = join(dir, 'repo');
+		mkdirSync(join(repoPath, 'apps', 'web'), { recursive: true });
+		const earlyEnv = { ...makeGitEnv(), GIT_AUTHOR_DATE: '2021-01-01T00:00:00+00:00', GIT_COMMITTER_DATE: '2021-01-01T00:00:00+00:00' };
+		writeFileSync(
+			join(repoPath, 'apps', 'web', 'package.json'),
+			JSON.stringify({ dependencies: { vite: '^5.0.0' } })
+		);
+		spawnSync('git', ['add', '-A'], { cwd: repoPath, env: earlyEnv, encoding: 'utf8' });
+		spawnSync('git', ['commit', '-m', 'add nested vite earlier', '--no-gpg-sign'], {
+			cwd: repoPath,
+			env: earlyEnv,
+			encoding: 'utf8'
+		});
+
+		// Root package.json (from makeSyncSandbox) does not have vite; add it now,
+		// later than the nested workspace's vite commit above.
+		const laterEnv = { ...makeGitEnv(), GIT_AUTHOR_DATE: '2024-01-01T00:00:00+00:00', GIT_COMMITTER_DATE: '2024-01-01T00:00:00+00:00' };
+		writeFileSync(
+			join(repoPath, 'package.json'),
+			JSON.stringify({
+				devDependencies: {
+					svelte: '^5.45.6',
+					'@sveltejs/kit': '^2.49.1',
+					'@tailwindcss/vite': '^4.3.1',
+					vite: '^5.0.0'
+				}
+			})
+		);
+		spawnSync('git', ['add', '-A'], { cwd: repoPath, env: laterEnv, encoding: 'utf8' });
+		spawnSync('git', ['commit', '-m', 'add root vite later', '--no-gpg-sign'], {
+			cwd: repoPath,
+			env: laterEnv,
+			encoding: 'utf8'
+		});
+
+		const result = runSyncWithConfig(dir, []);
+
+		expect(result.status, result.stderr).toBe(0);
+		const parsed = JSON.parse(readFileSync(join(dir, 'sources.json'), 'utf8'));
+		// Earliest across both manifests wins, not the root (later) one.
+		expect(parsed.sources[slug].techFirstSeen.vite).toBe('2021-01-01');
 	});
 
 	it('detects .NET runtime, web framework and database packages from a root project', () => {

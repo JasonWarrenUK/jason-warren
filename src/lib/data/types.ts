@@ -261,6 +261,13 @@ export interface Project {
 	lastCommit?: string;
 	/** ISO date (YYYY-MM-DD) of the first (root) commit, from the source drift manifest. Orders the timeline by inception. */
 	firstCommit?: string;
+	/**
+	 * First-introduced date (YYYY-MM-DD) per tech-tag label, e.g. `{ 'Svelte 5': '2025-03-01' }`.
+	 * Distinct from firstCommit: a tag can enter a long-lived repo years after
+	 * the repo started, so the toolkit adoption timeline prefers this per-tag
+	 * date and falls back to firstCommit for any label absent here.
+	 */
+	techFirstSeen?: Record<string, string>;
 	liveUrl?: string;
 	/** 3–5 technically interesting things about this project. */
 	highlights: string[];

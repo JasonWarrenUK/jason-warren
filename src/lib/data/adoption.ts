@@ -44,38 +44,28 @@ export interface TechAdoption {
 export const CURATED_FIRST_USED: Record<string, string> = {
 	// Languages
 	JavaScript: '2021-09-15',
-	TypeScript: '2022-09-15',
-	Python: '2022-06-15',
 	Shell: '2023-06-15',
-	'C#': '2024-08-15',
-	Rust: '2025-08-15',
-	Go: '2025-12-15',
 	// Markup & styling (pre-repo history: first used years before any tracked repo)
 	HTML: '2020-06-15',
 	CSS: '2020-06-15',
+	// Ink predates every tracked repo; inkjs (the runtime) has no curated floor
+	// and only appears once a repo derives a date for it.
+	Ink: '2019-06-15',
 	// Runtimes
 	'Node.js': '2021-09-15',
 	CPython: '2022-06-15',
 	'POSIX shell': '2023-06-15',
-	Bun: '2024-05-15',
-	'.NET 8': '2024-08-15',
 	Deno: '2025-07-15',
 	// Frameworks
-	React: '2022-09-15',
 	Express: '2022-11-15',
-	'Next.js': '2023-03-15',
-	'Tailwind CSS': '2023-06-15',
-	Vite: '2024-02-15',
-	SvelteKit: '2024-04-15',
-	FastAPI: '2024-06-15',
-	'ASP.NET Core': '2024-08-15',
-	'Svelte 5': '2024-10-15',
 	'Tailwind CSS v4': '2025-01-15',
-	Oak: '2025-07-15',
-	Tauri: '2025-09-15',
-	OpenTUI: '2025-10-15',
-	'Bubble Tea': '2025-12-15',
-	'Ink / inkjs': '2019-06-15'
+	Oak: '2025-07-15'
+	// Bun, SvelteKit, Svelte 5: no curated floor. Per-tech dating (techFirstSeen)
+	// now derives these honestly from when they actually entered the-work's
+	// history, which is later than these techs' old repo-inception-based
+	// curated guesses — a curated floor earlier than the true date would
+	// silently override the honest derived date and reintroduce the same
+	// back-dating bug techFirstSeen exists to fix.
 };
 
 /**
@@ -103,7 +93,6 @@ export function getTechAdoption(opts?: { kinds?: TagKind[] }): TechAdoption[] {
 	const byLabel = new Map<string, AdoptionAccumulator>();
 
 	for (const project of projects) {
-		const date = project.firstCommit;
 		// Dedupe labels within a project so a tag listed under two in-scope kinds
 		// (e.g. both language and framework) counts the project once.
 		const seenInProject = new Set<string>();
@@ -111,6 +100,12 @@ export function getTechAdoption(opts?: { kinds?: TagKind[] }): TechAdoption[] {
 			if (!kinds.has(tag.kind)) continue;
 			if (seenInProject.has(tag.label)) continue;
 			seenInProject.add(tag.label);
+
+			// Prefer the tag's own introduction date over the repo's inception —
+			// a tech can enter a long-lived repo years after the repo started
+			// (e.g. migrating to Svelte 5 partway through a project's life), and
+			// dating every tag to the repo's birth silently back-dates it.
+			const date = project.techFirstSeen?.[tag.label] ?? project.firstCommit;
 
 			const existing = byLabel.get(tag.label);
 			if (existing) {
