@@ -139,6 +139,38 @@ export interface TechRelationship {
 	note?: string;
 }
 
+/** Aggregate surfaces a tech tag can be hidden from (per-project chips are never hidden here). */
+export type TechSurface =
+	/** The adoption timeline on /toolkit. */
+	| 'toolkit'
+	/** The tech constellation on the map. */
+	| 'map'
+	/** The hero stack groups. */
+	| 'stack'
+	/** drift's relate pickers and label index. */
+	| 'relate';
+
+/**
+ * Authored per-tech data, keyed by exact tag label (validated against real
+ * labels by a data test, like TechRelationship endpoints). Managed by
+ * `drift tech`.
+ */
+export interface TechOverlay {
+	/** Exact tech tag label, e.g. "Tailwind CSS v4". */
+	label: string;
+	/**
+	 * First-used floor date (ISO YYYY-MM-DD, mid-month approximation). A floor,
+	 * not a trump: a derived date at or before it wins (see adoption.ts).
+	 */
+	firstUsed?: string;
+	/** One authored sentence about the tech, shown in the toolkit modal. */
+	note?: string;
+	/** Overrides the taxonomy/authored kind everywhere tags are assembled. */
+	kind?: TagKind;
+	/** Aggregate surfaces this label is hidden from. */
+	hiddenFrom?: TechSurface[];
+}
+
 // ---------------------------------------------------------------------------
 // Contribution — discriminated on role
 //
