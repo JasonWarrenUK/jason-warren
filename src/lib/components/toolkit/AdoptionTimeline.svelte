@@ -215,6 +215,15 @@
 			</mask>
 		</defs>
 
+		<!-- Graticule: the survey sheet's grid, behind everything. Verticals at
+		     each year band start (the ticks); a light dotted rule the way a plotted
+		     chart is ruled, not a solid gridline. -->
+		<g class="adoption__graticule" aria-hidden="true">
+			{#each layout.ticks as tick (tick.year)}
+				<line x1={tick.x} y1={GEO.topPad - 8} x2={tick.x} y2={layout.axisY} />
+			{/each}
+		</g>
+
 		<!-- Year axis. -->
 		<g class="adoption__axis" aria-hidden="true">
 			<line
@@ -225,13 +234,8 @@
 				y2={layout.axisY}
 			/>
 			{#each layout.ticks as tick (tick.year)}
-				<line
-					class="adoption__tick"
-					x1={tick.x}
-					y1={GEO.topPad - 8}
-					x2={tick.x}
-					y2={layout.axisY}
-				/>
+				<!-- Vertical rule is drawn once by the graticule; the axis carries
+				     only the baseline and the year labels. -->
 				<text class="adoption__tick-label" x={tick.x} y={layout.axisY + 18}>{tick.year}</text>
 			{/each}
 		</g>
@@ -303,12 +307,14 @@
 							/>
 						{/each}
 					{/if}
-					<!-- Only the dot opens the pin modal — the label is a passive
-					     caption. Interactive handlers and ARIA live here, not on the
-					     wrapping <g>, so clicking/tabbing to the label text does nothing. -->
+					<!-- Survey mark: an open ring plus a centre point (Atlas), not a
+					     filled blob. Ring radius encodes project count; the centre
+					     point is solid for a curated (authored) date, hollow/absent
+					     for a derived estimate. The ring carries the interaction and
+					     ARIA — clicking/tabbing to the label text does nothing. -->
 					<circle
-						class="adoption__dot"
-						class:adoption__dot--derived={item.dateSource === 'derived'}
+						class="adoption__ring"
+						class:adoption__ring--derived={item.dateSource === 'derived'}
 						cx={item.x}
 						cy={item.y}
 						r={item.radius}
@@ -328,6 +334,9 @@
 						onfocus={() => (activeLabel = item.label)}
 						onblur={() => (activeLabel = null)}
 					/>
+					{#if item.dateSource === 'curated'}
+						<circle class="adoption__centre" cx={item.x} cy={item.y} r="2.8" />
+					{/if}
 					<text
 						class="adoption__label"
 						aria-hidden="true"
@@ -434,6 +443,16 @@
 	.adoption__svg {
 		width: 100%;
 		height: auto;
+		/* The survey sheet: warm sunken paper the graticule is ruled on. */
+		background: var(--color-surface-sunken);
+	}
+
+	/* Graticule: the survey grid — a light dotted rule at each year band, the
+	   way a plotted chart is ruled rather than a solid gridline. */
+	.adoption__graticule line {
+		stroke: var(--color-grid);
+		stroke-width: 1;
+		stroke-dasharray: 1 6;
 	}
 
 	.adoption__axis-line {
@@ -441,42 +460,48 @@
 		stroke-width: 1.5;
 	}
 
-	.adoption__tick {
-		stroke: var(--color-border);
-		stroke-width: 1;
-		opacity: 0.5;
-	}
-
 	.adoption__tick-label {
-		font-size: 13px;
-		font-weight: 700;
+		font-family: var(--font-mono);
+		font-size: 11px;
+		font-weight: 500;
+		letter-spacing: 0.06em;
 		fill: var(--color-text-muted);
 		text-anchor: middle;
 	}
 
-	.adoption__dot {
-		fill: currentColor;
-		stroke: var(--color-surface);
-		stroke-width: 1.5;
+	/* Survey marks: an open ring plus a centre point, not a filled blob. Ring
+	   radius encodes project count; the ring stroke takes the item group's
+	   kind colour via currentColor. */
+	.adoption__ring {
+		fill: none;
+		stroke: currentColor;
+		stroke-width: 1.75;
 		cursor: pointer;
 		transition:
-			transform var(--transition-fast),
-			fill-opacity var(--transition-fast),
-			stroke var(--transition-fast);
+			transform var(--dur-micro) var(--ease-standard),
+			stroke var(--dur-base) var(--ease-standard),
+			stroke-opacity var(--dur-micro) var(--ease-standard);
 		transform-box: fill-box;
 		transform-origin: center;
 	}
 
-	.adoption__dot:focus-visible {
+	.adoption__ring:focus-visible {
 		outline: 2px solid var(--color-primary);
 		outline-offset: 2px;
 	}
 
-	/* Derived dots render hollow (outlined) to distinguish from curated authored dates. */
-	.adoption__dot--derived {
-		fill: var(--color-surface);
-		stroke: currentColor;
-		stroke-width: 2;
+	/* Derived (estimated-from-history) marks get a dashed ring and no centre
+	   point, so a curated date reads as a firmly plotted mark and an estimate
+	   as a provisional one — the atlas dashed-route convention. */
+	.adoption__ring--derived {
+		stroke-dasharray: 3 3;
+	}
+
+	/* Centre point: solid, kind-coloured, marking a curated (authored) date.
+	   Derived estimates omit it, so the ring alone reads as "estimated". */
+	.adoption__centre {
+		fill: currentColor;
+		pointer-events: none;
 	}
 
 	/* Rails: each tech's lifespan line, coloured by kind via the item group's
@@ -513,44 +538,51 @@
 		opacity: 0.6;
 	}
 
+	/* Labels: JetBrains Mono micro-caps, the atlas apparatus convention. */
 	.adoption__label {
-		font-size: 13px;
-		font-weight: 600;
+		font-family: var(--font-mono);
+		font-size: 10.5px;
+		font-weight: 400;
+		letter-spacing: 0.06em;
+		text-transform: uppercase;
 		fill: var(--color-text-subtle);
 		/* Halo: vertical connectors legitimately pass through label zones; the
 		   surface-coloured stroke keeps the text legible over them. */
 		paint-order: stroke;
-		stroke: var(--color-surface);
+		stroke: var(--color-surface-sunken);
 		stroke-width: 3px;
 		stroke-linejoin: round;
-		/* Decorative caption only — the dot owns the interaction, not the label. */
+		/* Decorative caption only — the ring owns the interaction, not the label. */
 		pointer-events: none;
 		transition:
-			fill var(--transition-fast),
-			opacity var(--transition-fast);
+			fill var(--dur-micro) var(--ease-standard),
+			opacity var(--dur-micro) var(--ease-standard);
 	}
 
-	/* Highlight: lift the active tech and dim the rest. Drives dot and label
-	   only — the reveal animation owns opacity/transform on .adoption__item,
-	   so the two never contend for the same property. */
-	.adoption__item--active .adoption__dot {
+	/* Highlight: lift the active tech and dim the rest. Drives the survey mark
+	   and label only — the reveal animation owns opacity/transform on
+	   .adoption__item, so the two never contend for the same property. Focus
+	   swaps the ring to the accent, the map's survey-mark focus idiom. */
+	.adoption__item--active .adoption__ring {
 		transform: scale(1.18);
-		stroke: var(--color-text);
+		stroke: var(--color-accent);
+	}
+
+	.adoption__item--active .adoption__centre {
+		fill: var(--color-accent);
 	}
 
 	.adoption__item--active .adoption__label {
-		fill: var(--color-primary-text);
-		font-weight: 700;
+		fill: var(--color-text);
+		font-weight: 500;
 	}
 
-	.adoption__item--dim .adoption__dot {
-		fill-opacity: var(--dim-node);
-	}
-
-	/* Derived hollow dots need fill-opacity on the stroke channel instead. */
-	.adoption__item--dim .adoption__dot--derived {
-		fill-opacity: 1;
+	.adoption__item--dim .adoption__ring {
 		stroke-opacity: var(--dim-node);
+	}
+
+	.adoption__item--dim .adoption__centre {
+		fill-opacity: var(--dim-node);
 	}
 
 	.adoption__item--dim .adoption__label {
@@ -567,17 +599,21 @@
 		stroke-opacity: calc(0.4 * var(--dim-node));
 	}
 
-	/* Pinned tech: persistent highlight on dot stroke so the selection reads as
-	   "locked". Deliberately targets children only — never opacity/transform on
+	/* Pinned tech: persistent accent ring so the selection reads as "locked".
+	   Deliberately targets children only — never opacity/transform on
 	   .adoption__item, which is owned by the reveal animation. */
-	.adoption__item--pinned .adoption__dot {
-		stroke: var(--color-text);
+	.adoption__item--pinned .adoption__ring {
+		stroke: var(--color-accent);
 		stroke-width: 2.5;
 	}
 
+	.adoption__item--pinned .adoption__centre {
+		fill: var(--color-accent);
+	}
+
 	.adoption__item--pinned .adoption__label {
-		fill: var(--color-primary-text);
-		font-weight: 700;
+		fill: var(--color-text);
+		font-weight: 500;
 	}
 
 	/* Reveal: only active once JS has added the animate class. Default (no JS,
@@ -636,7 +672,7 @@
 	}
 
 	.adoption__swatch--derived {
-		background: var(--color-surface);
+		background: var(--color-surface-sunken);
 		border: 2px solid var(--color-primary);
 	}
 
@@ -729,7 +765,8 @@
 		}
 
 		/* Kill highlight transitions too — state still applies instantly. */
-		.adoption__dot,
+		.adoption__ring,
+		.adoption__centre,
 		.adoption__label,
 		.adoption__rail,
 		.adoption__connector {

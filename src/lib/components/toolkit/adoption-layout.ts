@@ -132,6 +132,20 @@ function dayValue(iso: string): number {
 	return Date.UTC(y, m - 1, d) / 86_400_000;
 }
 
+// Survey-mark ring radius from a tech's project count. A square-root scale so
+// ring AREA tracks count (the honest encoding) and the busy techs stay
+// distinct instead of all pinning to the cap; tuned to a larger maximum than
+// the old linear formula (which maxed at 11.2). Single-sourced so measure()'s
+// radius and its right-margin reservation agree.
+const NODE_BASE_RADIUS = 4;
+const NODE_RADIUS_SCALE = 3.1;
+const NODE_PROJECT_CAP = 27;
+const NODE_MAX_RADIUS = NODE_BASE_RADIUS + NODE_RADIUS_SCALE * Math.sqrt(NODE_PROJECT_CAP);
+
+function nodeRadius(projectCount: number): number {
+	return NODE_BASE_RADIUS + NODE_RADIUS_SCALE * Math.sqrt(Math.min(projectCount, NODE_PROJECT_CAP));
+}
+
 interface NodeGeom {
 	label: string;
 	x: number;
@@ -222,10 +236,10 @@ function measure(
 ): { geomByLabel: Map<string, NodeGeom>; xFor: (iso: string) => number; plotRight: number } {
 	const plotLeft = geo.leftPad;
 	// Reserve room on the right for the widest right-anchored label (plus the
-	// largest dot and its gap) so no label ever clips at the viewBox edge.
+	// largest survey-mark ring and its gap) so no label ever clips at the
+	// viewBox edge.
 	const maxLabelWidth = Math.max(...items.map((item) => item.label.length)) * geo.charWidth;
-	const maxRadius = 4 + 8 * 0.9; // projectCount caps at 8
-	const plotRight = geo.width - geo.rightPad - maxLabelWidth - maxRadius - 6;
+	const plotRight = geo.width - geo.rightPad - maxLabelWidth - NODE_MAX_RADIUS - 6;
 
 	// Density-sized year bands replace a single linear time→pixel map: each
 	// year owns a pixel band whose width reflects its technology count. Within
@@ -250,7 +264,7 @@ function measure(
 	const geomByLabel = new Map<string, NodeGeom>();
 	for (const item of items) {
 		const x = xFor(item.firstDate);
-		const radius = 4 + Math.min(item.projectCount, 8) * 0.9;
+		const radius = nodeRadius(item.projectCount);
 		const labelRight = x + radius + 6 + item.label.length * geo.charWidth;
 		geomByLabel.set(item.label, { label: item.label, x, radius, labelRight });
 	}
