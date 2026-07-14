@@ -115,15 +115,39 @@ describe('getTechAdoption', () => {
 		}
 	});
 
-	it('orders HTML before CSS despite an alphabetical tie on the same curated date', () => {
-		// HTML and CSS share a curated floor date; HTML leads-to CSS in
-		// tech-relationships.ts, so lineage must win over the alphabetical
-		// fallback ('C' < 'H') or the adoption-timeline layout can place CSS's
-		// rail above its own parent's.
-		expect(CURATED_FIRST_USED.HTML).toBe(CURATED_FIRST_USED.CSS);
+	it('orders a lineage parent before its child, including on a same-date tie', () => {
+		// HTML leads-to CSS in tech-relationships.ts, so HTML must sort before
+		// CSS whatever their dates — lineage order, never the alphabetical
+		// fallback ('C' < 'H') — or the adoption-timeline layout can place a
+		// child's rail above its own parent's.
 		const htmlIndex = adoption.findIndex((item) => item.label === 'HTML');
 		const cssIndex = adoption.findIndex((item) => item.label === 'CSS');
+		expect(htmlIndex).toBeGreaterThanOrEqual(0);
+		expect(cssIndex).toBeGreaterThanOrEqual(0);
 		expect(htmlIndex).toBeLessThan(cssIndex);
+
+		// The tie-break specifically: when a lineage-linked pair shares an exact
+		// date, the parent still wins over the alphabetical fallback. Assert it
+		// on any such live pair so the guarantee holds if the authored dates
+		// ever converge again.
+		const sameDatePairs = adoption.flatMap((a, i) =>
+			adoption.slice(i + 1).map((b) => [a, b] as const)
+		);
+		for (const [a, b] of sameDatePairs) {
+			if (a.firstDate !== b.firstDate) continue;
+			const aBeforeB = adoption.indexOf(a) < adoption.indexOf(b);
+			// If they are lineage-linked, the source must be the earlier one.
+			const link = techRelationships.find(
+				(r) =>
+					(r.source === a.label && r.target === b.label) ||
+					(r.source === b.label && r.target === a.label)
+			);
+			if (!link) continue;
+			const parentFirst = aBeforeB ? link.source === a.label : link.source === b.label;
+			expect(parentFirst, `${link.source}→${link.target} same-date pair ordered child-first`).toBe(
+				true
+			);
+		}
 	});
 
 	it('projectCount matches the number of projects using the tag (within scope)', () => {

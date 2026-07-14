@@ -514,7 +514,22 @@ const REFINE_RAIL_PIERCED = 10;
 // additionally breaks span-neutral ties toward FEWER of them, so a swap that
 // rights an edge's flow direction at no other cost is accepted.
 const REFINE_UPWARD_TIEBREAK = 5;
-const REFINE_LANE_SPAN = 1;
+// Span is what the eye reads as tangle: a child far from its parent means a
+// long connector sweeping across intervening rails. Weighted well below a
+// genuine crossing or dot puncture, but high enough that the search actively
+// compacts subtrees toward their parents rather than treating distance as
+// nearly free (at weight 1 a 5-lane span cost less than a single pierced
+// rail, so nothing pulled children up).
+const REFINE_LANE_SPAN = 20;
+// A curve-fallback edge (one that can host neither an elbow nor a branch-
+// drop — same-date pairs, or a replaced-by whose successor moved lanes) reads
+// worse per lane than a clean elbow of the same length, so its span is priced
+// above REFINE_LANE_SPAN. A SCORED term, not a hard guard: an absolute veto
+// on any curve-length increase blocks otherwise-large compactions (e.g.
+// hoisting React's subtree above Node's, which shortens six edges but
+// lengthens one Svelte curve). The weight keeps the search from lengthening
+// curves gratuitously while letting a clear net win through.
+const REFINE_CURVE_SPAN = 30;
 const REFINE_MAX_PASSES = 25;
 
 /**
@@ -529,9 +544,12 @@ const REFINE_MAX_PASSES = 25;
  * Each edge is scored on its IDEAL route (the same elbow-else-branch-drop
  * predicate routing applies, before occupancy nudges): a vertical corridor
  * at the elbow's x when the parent rail can host one, else at the parent's
- * dot, plus a horizontal run along the child's lane. Strict improvement with
- * a fixed pair order keeps the pass deterministic and never worse than its
- * input; family blocks are ≲15 rows, so the quadratic sweep is trivial.
+ * dot, plus a horizontal run along the child's lane. Three move families are
+ * tried each pass — pairwise row swaps, and contiguous-range relocations
+ * (which subsume single-row rotations and, at size > 1, relocate a whole
+ * subtree block in one step). Strict improvement with a fixed move order
+ * keeps the pass deterministic and never worse than its input; family blocks
+ * are ≲15 rows, so even the O(n^3) range enumeration is trivial.
  */
 function refineLaneOrder(
 	families: string[][],
@@ -561,20 +579,17 @@ function refineLaneOrder(
 		}
 
 		/**
-		 * Scores the current lane order, plus two hard-guard metrics a swap
-		 * must never worsen: `upward` (edges whose child sits above its
-		 * parent — lineage flows downwards on this chart, and assignLanes
-		 * anchors prefer below) and `curveSpan` (total lane distance of edges
-		 * that can host neither an elbow nor a branch-drop, e.g. same-date
-		 * pairs — those degrade to brackets or curves whose readability
-		 * collapses with distance). Guarding rather than weighting keeps the
-		 * search from ever trading flow direction or curve adjacency for
-		 * geometry savings, which weight tuning proved unable to guarantee.
+		 * Scores the current lane order. `score` folds in span, curve-fallback
+		 * span, dot punctures, connector crossings and pierced rails; the
+		 * separate `upward` count (edges whose child sits above its parent —
+		 * lineage flows downwards, and assignLanes anchors prefer below) is the
+		 * one hard guard a move may never worsen. Curve span used to be a hard
+		 * guard too, but an absolute veto blocked large net compactions that
+		 * lengthen a single curve; it is now a heavily-weighted score term.
 		 */
-		const evaluate = (): { score: number; upward: number; curveSpan: number } => {
+		const evaluate = (): { score: number; upward: number } => {
 			let score = 0;
 			let upward = 0;
-			let curveSpan = 0;
 			const runs: IdealRun[] = [];
 			for (const edge of familyEdges) {
 				const parentLane = laneOf.get(edge.source)!;
@@ -590,7 +605,8 @@ function refineLaneOrder(
 					corridor - geo.cornerRadius >= parent.x + parent.radius + 2 &&
 					corridor <= railEnds.get(edge.source)!.railEndX;
 				if (!elbowFits && arriveX - parent.x < geo.cornerRadius + 2) {
-					curveSpan += Math.abs(parentLane - childLane);
+					// Curve fallback: priced above a clean elbow of equal length.
+					score += REFINE_CURVE_SPAN * Math.abs(parentLane - childLane);
 					continue;
 				}
 				runs.push({
@@ -623,7 +639,7 @@ function refineLaneOrder(
 					}
 				}
 			}
-			return { score: score + REFINE_UPWARD_TIEBREAK * upward, upward, curveSpan };
+			return { score: score + REFINE_UPWARD_TIEBREAK * upward, upward };
 		};
 
 		const swapRows = (a: number, b: number): void => {
@@ -634,15 +650,30 @@ function refineLaneOrder(
 			}
 		};
 
-		/** Moves row `from` to position `to`, shifting the rows between by one. */
-		const rotateRows = (from: number, to: number): void => {
-			if (from === to) return;
-			const step = from < to ? -1 : 1;
+		/**
+		 * Lifts the contiguous lane range [lo, hi] out and reinserts it so its
+		 * first row lands at `dest`, sliding the displaced rows to fill the
+		 * gap. A length-1 range is a single-row rotation; a multi-row range
+		 * relocates a whole subtree block as a unit — the move a sequence of
+		 * single-row steps cannot reach without passing through a
+		 * higher-cost intermediate, which the strict-improvement guard forbids.
+		 * `dest` is the target lane of the range's first row, expressed in the
+		 * pre-move numbering; a no-op when it lands the range where it started.
+		 */
+		const moveRange = (lo: number, hi: number, dest: number): void => {
+			const size = hi - lo + 1;
+			if (dest === lo) return;
 			for (const label of family) {
 				const lane = laneOf.get(label)!;
-				if (lane === from) laneOf.set(label, to);
-				else if (from < to ? lane > from && lane <= to : lane >= to && lane < from) {
-					laneOf.set(label, lane + step);
+				if (lane >= lo && lane <= hi) {
+					// Moving row: shift by the whole displacement.
+					laneOf.set(label, lane + (dest - lo));
+				} else if (dest < lo && lane >= dest && lane < lo) {
+					// Rows the block jumped over on the way up slide down by size.
+					laneOf.set(label, lane + size);
+				} else if (dest > lo && lane > hi && lane < dest + size) {
+					// Rows the block jumped over on the way down slide up by size.
+					laneOf.set(label, lane - size);
 				}
 			}
 		};
@@ -650,10 +681,7 @@ function refineLaneOrder(
 		const accepts = (
 			candidate: ReturnType<typeof evaluate>,
 			current: ReturnType<typeof evaluate>
-		): boolean =>
-			candidate.score < current.score &&
-			candidate.upward <= current.upward &&
-			candidate.curveSpan <= current.curveSpan;
+		): boolean => candidate.score < current.score && candidate.upward <= current.upward;
 
 		let current = evaluate();
 		for (let pass = 0; pass < REFINE_MAX_PASSES; pass++) {
@@ -670,20 +698,32 @@ function refineLaneOrder(
 					}
 				}
 			}
-			// Rotations reach arrangements pairwise swaps cannot: sliding one
-			// row across several others in a single accepted move (a whole
-			// chain shuffling up by one lane, say). Adjacent rotations are
-			// identical to swaps and already tried above.
-			for (let from = blockStart; from <= blockEnd; from++) {
-				for (let to = blockStart; to <= blockEnd; to++) {
-					if (Math.abs(from - to) <= 1) continue;
-					rotateRows(from, to);
-					const candidate = evaluate();
-					if (accepts(candidate, current)) {
-						current = candidate;
-						improved = true;
-					} else {
-						rotateRows(to, from);
+			// Contiguous-range relocations: for every range [lo, hi] and every
+			// destination, try lifting the range out and reinserting it. This
+			// subsumes single-row rotation (size-1 ranges) and, crucially,
+			// relocates a multi-row subtree block in one accepted step — e.g.
+			// hoisting React's whole framework subtree above Node.js's runtime
+			// subtree, which no single-row move reaches because every
+			// intermediate step raises total span. The valid destinations for
+			// a range are the positions outside it; a rejected move is undone
+			// by the inverse relocation. Blocks are ≲15 rows, so the O(n^3)
+			// enumeration is negligible.
+			for (let lo = blockStart; lo <= blockEnd; lo++) {
+				for (let hi = lo; hi <= blockEnd; hi++) {
+					const size = hi - lo + 1;
+					if (size > blockEnd - blockStart) continue; // whole-block move is a no-op
+					for (let dest = blockStart; dest <= blockEnd - size + 1; dest++) {
+						if (dest >= lo && dest <= hi) continue; // lands within itself → no-op
+						moveRange(lo, hi, dest);
+						const candidate = evaluate();
+						if (accepts(candidate, current)) {
+							current = candidate;
+							improved = true;
+						} else {
+							// Undo: the range now occupies [dest, dest+size-1]; move
+							// it back so its first row returns to `lo`.
+							moveRange(dest, dest + size - 1, lo);
+						}
 					}
 				}
 			}

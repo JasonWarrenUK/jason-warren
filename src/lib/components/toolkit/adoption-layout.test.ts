@@ -259,36 +259,40 @@ describe('computeAdoptionLayout', () => {
 		}
 	});
 
-	it('nudges the corridor off a same-date sibling dot in an intermediate lane', () => {
-		// Sigma shares Alpha's date and sits in the lane between Alpha and
-		// Gamma, so a corridor at Alpha.x would slice through Sigma's dot. The
-		// route must move right onto Alpha's rail instead (Alpha's rail runs to
-		// Beta, leaving room), clearing Sigma's dot.
-		const items: TechAdoption[] = [
-			tech('Alpha', 'language', '2020-01-01'),
-			tech('Sigma', 'language', '2020-01-01'),
-			tech('Beta', 'language', '2021-01-01'),
-			tech('Gamma', 'framework', '2024-01-01')
-		];
-		const edges: TechRelationship[] = [
-			{ kind: 'replaced-by', source: 'Alpha', target: 'Beta' },
-			{ kind: 'leads-to', source: 'Alpha', target: 'Sigma' },
-			{ kind: 'leads-to', source: 'Alpha', target: 'Gamma' }
-		];
-		const result = computeAdoptionLayout(items, edges, GEO);
-		const byLabel = new Map(result.placed.map((p) => [p.label, p]));
-		const alpha = byLabel.get('Alpha')!;
-		const sigma = byLabel.get('Sigma')!;
-		const gamma = byLabel.get('Gamma')!;
-		expect(sigma.lane).toBeGreaterThan(alpha.lane);
-		expect(sigma.lane).toBeLessThan(gamma.lane);
+	it('never routes a corridor through an intermediate lane dot', () => {
+		// The corridor-nudge guarantee, asserted as a layout-wide invariant
+		// rather than pinned to one arrangement: however the refinement pass
+		// orders lanes, no connector's vertical corridor (branch-drop, elbow,
+		// or vertical-arrival) may pass within a dot's exclusion zone in a lane
+		// strictly between its endpoints. Uses the realistic fixture so the
+		// same-date JavaScript/Node.js collision (the real motivator) is in
+		// play. Labels are exempt — the component's halo handles those.
+		const result = computeAdoptionLayout(FIXTURE_ITEMS, FIXTURE_EDGES, GEO);
+		const rail = result.placed.filter((p) => p.section === 'rail');
+		const byLabel = new Map(rail.map((p) => [p.label, p]));
 
-		const connector = result.connectors.find((c) => c.target === 'Gamma')!;
-		expect(connector.variant).toBe('elbow');
-		// The elbow's corner x (first Q) is the corridor; it must clear the
-		// sibling dot's exclusion zone.
-		const corridorX = Number(connector.path.match(/Q ([\d.]+)/)![1]);
-		expect(corridorX).toBeGreaterThan(sigma.x + sigma.radius + 3);
+		const corridorX = (c: (typeof result.connectors)[number]): number | null => {
+			if (c.variant === 'elbow') return Number(c.path.match(/Q ([\d.]+)/)![1]);
+			if (c.variant === 'branch-drop') return Number(c.path.match(/M ([\d.]+)/)![1]);
+			if (c.variant === 'vertical-arrival') return byLabel.get(c.target)!.x;
+			return null; // handover / bracket / s-curve / gutter have no straight corridor
+		};
+
+		for (const c of result.connectors) {
+			const cx = corridorX(c);
+			if (cx === null) continue;
+			const source = byLabel.get(c.source)!;
+			const target = byLabel.get(c.target)!;
+			const lo = Math.min(source.lane, target.lane);
+			const hi = Math.max(source.lane, target.lane);
+			for (const node of rail) {
+				if (node.lane <= lo || node.lane >= hi) continue;
+				expect(
+					Math.abs(cx - node.x) > node.radius + 3,
+					`${c.variant} ${c.source}→${c.target} corridor at ${cx} slices ${node.label} (x=${node.x})`
+				).toBe(true);
+			}
+		}
 	});
 
 	it('clears an earlier occupant of the child lane before running along it', () => {
