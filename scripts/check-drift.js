@@ -3940,7 +3940,7 @@ function findTechRelationship(ts, sf, arrayLit, kind, sourceLabel, targetLabel) 
  *
  * @returns {Promise<Map<string, string>>}
  */
-async function buildTechLabelIndex() {
+async function buildTechLabelIndex(options = {}) {
 	const byLower = new Map();
 	const add = (label) => {
 		const key = label.toLowerCase();
@@ -3953,6 +3953,14 @@ async function buildTechLabelIndex() {
 		if (!Array.isArray(overlay.tags)) continue;
 		for (const tag of overlay.tags) {
 			if (tag && typeof tag.label === 'string') add(tag.label);
+		}
+	}
+	// Labels authored as hidden from the relate surface stay out of pickers
+	// and strict resolution; `drift tech` passes includeRelateHidden so its
+	// own list/set/unhide keep seeing them.
+	if (!options.includeRelateHidden) {
+		for (const overlay of await readTechOverlaysFile()) {
+			if (overlay.hiddenFrom?.includes('relate')) byLower.delete(overlay.label.toLowerCase());
 		}
 	}
 	return byLower;
@@ -4297,6 +4305,318 @@ async function runRelate({ args, values, palette }) {
 		newKind,
 		newNote: opMode === 'edit' ? note : undefined
 	});
+}
+
+// ---------------------------------------------------------------------------
+// tech verb (5DR.19)
+//
+// Authored per-tech overlays (tech-overlays.ts): first-used floor date,
+// modal note, kind override and per-surface visibility.
+//
+//   drift tech list [<label>]
+//   drift tech set <label> [--first-used YYYY-MM-DD] [--note "..."] [--kind <tag-kind>]
+//   drift tech hide <label> [--from toolkit,map,stack,relate]
+//   drift tech unhide <label> [--from ... | --all]
+//
+// Write-isolation: writes ONLY tech-overlays.ts. `list` writes nothing.
+// ---------------------------------------------------------------------------
+
+const TECH_TAG_KINDS = new Set([
+	'language',
+	'framework',
+	'data',
+	'ai',
+	'concept',
+	'tool',
+	'runtime'
+]);
+const TECH_SURFACES = ['toolkit', 'map', 'stack', 'relate'];
+
+/**
+ * Parses a --from value ("toolkit,map") into a validated surface list, in
+ * canonical TECH_SURFACES order. undefined input means "all surfaces".
+ * Exits 1 on an unknown surface token.
+ *
+ * @param {string | undefined} fromValue
+ * @param {object} palette
+ * @returns {string[]}
+ */
+function parseSurfaces(fromValue, palette) {
+	const { RED, RESET } = palette;
+	if (fromValue === undefined) return [...TECH_SURFACES];
+	const tokens = fromValue
+		.split(',')
+		.map((t) => t.trim())
+		.filter((t) => t.length > 0);
+	for (const token of tokens) {
+		if (!TECH_SURFACES.includes(token)) {
+			process.stderr.write(
+				`${RED}Error: unknown surface '${token}'. Use any of: ${TECH_SURFACES.join(', ')}.${RESET}\n`
+			);
+			process.exit(1);
+		}
+	}
+	return TECH_SURFACES.filter((s) => tokens.includes(s));
+}
+
+/**
+ * Parses tech-overlays.ts for mutation, exiting 1 when the file or its
+ * exported array cannot be found (the file ships with the repo; a missing
+ * one is a broken checkout, mirroring relateTech's stance).
+ */
+async function loadTechOverlaysForEdit(palette) {
+	const { RED, RESET } = palette;
+	const relPath = techOverlaysPath.replace(config.repoRoot + '/', '');
+	if (!existsSync(techOverlaysPath)) {
+		process.stderr.write(`${RED}Error: ${relPath} not found.${RESET}\n`);
+		process.exit(1);
+	}
+	const ts = (await import('typescript')).default;
+	const text = readFileSync(techOverlaysPath, 'utf8');
+	const sf = ts.createSourceFile(
+		techOverlaysPath,
+		text,
+		ts.ScriptTarget.Latest,
+		true,
+		ts.ScriptKind.TS
+	);
+	const arrayLit = findExportedLiteral(ts, sf, ts.isArrayLiteralExpression);
+	if (!arrayLit) {
+		process.stderr.write(
+			`${RED}Error: could not locate the exported array literal in ${relPath}.${RESET}\n`
+		);
+		process.exit(1);
+	}
+	return { ts, text, sf, arrayLit, relPath };
+}
+
+/** Writes spliced tech-overlays.ts source and prettier-formats it. */
+function writeTechOverlays(splicedText) {
+	writeFileSync(techOverlaysPath, splicedText, 'utf8');
+	spawnSync('npx', ['prettier', '--write', techOverlaysPath], { stdio: 'ignore' });
+}
+
+/**
+ * Sets one property on the overlay record for `label`, re-parsing afterwards
+ * so consecutive field updates never splice against stale positions. Creates
+ * the record when absent.
+ *
+ * @param {string} label  Canonical label (already resolved).
+ * @param {string} propName
+ * @param {string} valueSrc  Value SOURCE text, e.g. JSON.stringify(value).
+ * @param {object} palette
+ * @returns {Promise<boolean>} true when the file changed.
+ */
+async function setTechOverlayProperty(label, propName, valueSrc, palette) {
+	const { ts, text, sf, arrayLit } = await loadTechOverlaysForEdit(palette);
+	const found = findElementByStringField(ts, sf, arrayLit, 'label', label, {
+		caseInsensitive: true
+	});
+	if (found === null) {
+		const elementSrc = `{ label: ${JSON.stringify(label)}, ${propName}: ${valueSrc} }`;
+		writeTechOverlays(spliceElementIntoArray(text, sf, arrayLit, elementSrc));
+		return true;
+	}
+	const { text: splicedText, changed } = spliceObjectProperty(
+		text,
+		sf,
+		ts,
+		found.element,
+		propName,
+		valueSrc
+	);
+	if (changed) writeTechOverlays(splicedText);
+	return changed;
+}
+
+/**
+ * Mode dispatcher for `drift tech`. See the section banner for the grammar.
+ *
+ * @param {{ args: string[], values: object, palette: object }} options
+ */
+async function runTech({ args, values, palette }) {
+	const { GREEN, RED, YELLOW, BOLD, DIM, RESET } = palette;
+	const usage =
+		'Usage:\n' +
+		'  drift tech list [<label>]\n' +
+		'  drift tech set <label> [--first-used YYYY-MM-DD] [--note "..."] [--kind <tag-kind>]\n' +
+		'  drift tech hide <label> [--from toolkit,map,stack,relate]\n' +
+		'  drift tech unhide <label> [--from ... | --all]\n' +
+		'  Labels are case-insensitive and resolve to canonical tag casing.';
+
+	const [action, labelInput] = args;
+
+	if (action === 'list' || action === undefined) {
+		const labelIndex = await buildTechLabelIndex({ includeRelateHidden: true });
+		const overlays = await readTechOverlaysFile();
+		const overlayByLower = new Map(overlays.map((o) => [o.label.toLowerCase(), o]));
+
+		const describeOverlay = (overlay) => {
+			const parts = [];
+			if (overlay.firstUsed !== undefined) parts.push(`first used ${overlay.firstUsed}`);
+			if (overlay.kind !== undefined) parts.push(`kind → ${overlay.kind}`);
+			if (overlay.note !== undefined) parts.push('note ✓');
+			if (overlay.hiddenFrom !== undefined && overlay.hiddenFrom.length > 0) {
+				parts.push(`hidden: ${overlay.hiddenFrom.join(', ')}`);
+			}
+			return parts;
+		};
+
+		if (labelInput !== undefined) {
+			const canonical = labelIndex.get(labelInput.toLowerCase());
+			if (canonical === undefined) {
+				process.stderr.write(`${RED}Error: unknown tech label '${labelInput}'.${RESET}\n`);
+				process.exit(1);
+			}
+			const overlay = overlayByLower.get(canonical.toLowerCase());
+			process.stdout.write(`${BOLD}${canonical}${RESET}\n`);
+			if (overlay === undefined) {
+				process.stdout.write(`${DIM}No authored overlay.${RESET}\n`);
+			} else {
+				if (overlay.firstUsed !== undefined) {
+					process.stdout.write(`first used  ${overlay.firstUsed}\n`);
+				}
+				if (overlay.kind !== undefined) process.stdout.write(`kind        ${overlay.kind}\n`);
+				if (overlay.note !== undefined) process.stdout.write(`note        ${overlay.note}\n`);
+				if (overlay.hiddenFrom !== undefined && overlay.hiddenFrom.length > 0) {
+					process.stdout.write(`hidden from ${overlay.hiddenFrom.join(', ')}\n`);
+				}
+			}
+			return;
+		}
+
+		const canonicalLabels = [...labelIndex.values()].sort((a, b) => a.localeCompare(b));
+		for (const label of canonicalLabels) {
+			const overlay = overlayByLower.get(label.toLowerCase());
+			const annotation = overlay === undefined ? '' : `  ${DIM}${describeOverlay(overlay).join(' · ')}${RESET}`;
+			process.stdout.write(`${label}${annotation}\n`);
+		}
+		process.stdout.write(`${DIM}${canonicalLabels.length} labels.${RESET}\n`);
+		return;
+	}
+
+	if (action !== 'set' && action !== 'hide' && action !== 'unhide') {
+		process.stderr.write(`${RED}Error: unknown tech action '${action}'.\n${usage}${RESET}\n`);
+		process.exit(1);
+	}
+	if (labelInput === undefined) {
+		process.stderr.write(`${RED}Error: missing label.\n${usage}${RESET}\n`);
+		process.exit(1);
+	}
+
+	// hide/unhide/set all resolve case-insensitively; only unhide tolerates an
+	// unknown label (stale records must stay cleanable).
+	const labelIndex = await buildTechLabelIndex({ includeRelateHidden: true });
+	const label = resolveTechLabel(labelInput, labelIndex, palette, action !== 'unhide');
+
+	if (action === 'set') {
+		const firstUsed = values['first-used'];
+		const note = values.note?.trim() || undefined;
+		const kind = values.kind?.trim() || undefined;
+		if (firstUsed === undefined && note === undefined && kind === undefined) {
+			process.stderr.write(
+				`${RED}Error: tech set needs --first-used, --note and/or --kind — nothing to change.${RESET}\n`
+			);
+			process.exit(1);
+		}
+		if (firstUsed !== undefined) {
+			const month = Number(firstUsed.slice(5, 7));
+			if (!/^\d{4}-\d{2}-\d{2}$/.test(firstUsed) || month < 1 || month > 12) {
+				process.stderr.write(
+					`${RED}Error: --first-used must be an ISO date (YYYY-MM-DD), got '${firstUsed}'.${RESET}\n`
+				);
+				process.exit(1);
+			}
+		}
+		if (kind !== undefined && !TECH_TAG_KINDS.has(kind)) {
+			process.stderr.write(
+				`${RED}Error: invalid --kind '${kind}'. Use one of: ${[...TECH_TAG_KINDS].join(', ')}.${RESET}\n`
+			);
+			process.exit(1);
+		}
+
+		let changed = false;
+		if (firstUsed !== undefined) {
+			changed = (await setTechOverlayProperty(label, 'firstUsed', JSON.stringify(firstUsed), palette)) || changed;
+		}
+		if (note !== undefined) {
+			changed = (await setTechOverlayProperty(label, 'note', JSON.stringify(note), palette)) || changed;
+		}
+		if (kind !== undefined) {
+			changed = (await setTechOverlayProperty(label, 'kind', JSON.stringify(kind), palette)) || changed;
+		}
+		if (changed) {
+			process.stdout.write(
+				`${GREEN}${BOLD}Set:${RESET} overlay for '${label}'.\n${DIM}Rebuild the site to apply.${RESET}\n`
+			);
+		} else {
+			process.stdout.write(`${YELLOW}Overlay for '${label}' already holds those values — nothing to do.${RESET}\n`);
+		}
+		return;
+	}
+
+	// hide / unhide
+	const requested = parseSurfaces(values.all ? undefined : values.from, palette);
+	const { ts, text, sf, arrayLit } = await loadTechOverlaysForEdit(palette);
+	const found = findElementByStringField(ts, sf, arrayLit, 'label', label, {
+		caseInsensitive: true
+	});
+	const current =
+		found === null ? [] : (readArrayField(ts, sf, found.element, 'hiddenFrom') ?? []);
+
+	if (action === 'hide') {
+		const next = TECH_SURFACES.filter((s) => current.includes(s) || requested.includes(s));
+		if (next.length === current.length) {
+			process.stdout.write(
+				`${YELLOW}'${label}' is already hidden from ${requested.join(', ')} — nothing to do.${RESET}\n`
+			);
+			return;
+		}
+		const valueSrc = JSON.stringify(next);
+		if (found === null) {
+			const elementSrc = `{ label: ${JSON.stringify(label)}, hiddenFrom: ${valueSrc} }`;
+			writeTechOverlays(spliceElementIntoArray(text, sf, arrayLit, elementSrc));
+		} else {
+			const { text: splicedText } = spliceObjectProperty(text, sf, ts, found.element, 'hiddenFrom', valueSrc);
+			writeTechOverlays(splicedText);
+		}
+		process.stdout.write(
+			`${GREEN}${BOLD}Hidden:${RESET} '${label}' from ${next.join(', ')}.\n${DIM}Rebuild the site to apply.${RESET}\n`
+		);
+		return;
+	}
+
+	// unhide
+	if (found === null || current.length === 0) {
+		process.stdout.write(`${YELLOW}'${label}' is not hidden anywhere — nothing to do.${RESET}\n`);
+		return;
+	}
+	const next = current.filter((s) => !requested.includes(s));
+	if (next.length === current.length) {
+		process.stdout.write(
+			`${YELLOW}'${label}' is not hidden from ${requested.join(', ')} — nothing to do.${RESET}\n`
+		);
+		return;
+	}
+	// An emptied hiddenFrom drops the property; a record reduced to a bare
+	// label drops entirely (it authors nothing).
+	const hasOtherFields = ['firstUsed', 'note', 'kind'].some(
+		(field) => readRelationshipField(ts, sf, found.element, field) !== undefined
+	);
+	let splicedText;
+	if (next.length > 0) {
+		({ text: splicedText } = spliceObjectProperty(text, sf, ts, found.element, 'hiddenFrom', JSON.stringify(next)));
+	} else if (hasOtherFields) {
+		splicedText = spliceRemoveObjectProperty(text, sf, ts, found.element, 'hiddenFrom');
+	} else {
+		splicedText = spliceRemoveElement(text, sf, arrayLit, found.index);
+	}
+	writeTechOverlays(splicedText);
+	const remaining = next.length > 0 ? ` (still hidden from ${next.join(', ')})` : '';
+	process.stdout.write(
+		`${GREEN}${BOLD}Unhidden:${RESET} '${label}' from ${current.filter((s) => requested.includes(s)).join(', ')}${remaining}.\n` +
+			`${DIM}Rebuild the site to apply.${RESET}\n`
+	);
 }
 
 // ---------------------------------------------------------------------------
@@ -4877,6 +5197,7 @@ Compare synced fingerprints against current git state and surface new repos.
 - \`drift flag <slug> --pin | --hide\`
 - \`drift relate project <source-slug> <kind> <target-slug> [--note "..."]\`
 - \`drift relate tech <source-label> <kind> <target-label> [--note "..."]\`
+- \`drift tech list|set|hide|unhide <label> [...]\`
 - \`drift audit [--json]\`
 - \`drift init\`
 
@@ -4892,6 +5213,7 @@ Compare synced fingerprints against current git state and surface new repos.
 - \`author\` · scaffold src/lib/data/projects/\<slug\>.ts from a template, then open in \$EDITOR
 - \`flag\` · set pin: true or hide: true in the slug's overlay (creating it if absent)
 - \`relate\` · author a project↔project or tech↔tech relationship edge
+- \`tech\` · author per-tech overlays: first-used date, modal note, kind override, surface visibility
 - \`audit\` · score every authored overlay against the content-depth rubric and report per-entry tiers
 - \`init\` · scaffold drift.config.ts and sources.local.json for this machine
 
@@ -5116,6 +5438,31 @@ drift flag lyra-rose --pin
 drift flag kitchen-gremlin --hide
 \`\`\``,
 
+	tech: `# drift tech · author per-tech overlays and visibility
+
+Manages \`src/lib/data/tech-overlays.ts\`, the single authoring surface for
+per-tech data, via the same TypeScript-compiler splices \`relate\` uses.
+Labels are case-insensitive and resolve to canonical tag casing.
+
+- \`drift tech list [<label>]\` · every canonical tag label with its overlay
+  state (first-used date, note, kind override, hidden surfaces); with a
+  label, full detail for one tech. Writes nothing.
+- \`drift tech set <label> [--first-used YYYY-MM-DD] [--note "..."] [--kind <tag-kind>]\`
+  · upserts overlay fields. \`--first-used\` is a FLOOR date (a derived date
+  at or before it wins on the timeline); \`--note\` shows in the toolkit
+  modal; \`--kind\` overrides the tag's kind everywhere. At least one flag
+  is required.
+- \`drift tech hide <label> [--from toolkit,map,stack,relate]\` · hides the
+  label from the given aggregate surfaces (all four when \`--from\` is
+  omitted). Project detail chips are never hidden — that would misrepresent
+  individual projects.
+- \`drift tech unhide <label> [--from ... | --all]\` · reverses hide; a
+  record reduced to a bare label is removed entirely. Tolerates unknown
+  labels so stale records stay cleanable.
+
+Write-isolation: writes ONLY tech-overlays.ts.
+`,
+
 	relate: `# drift relate · author a relationship edge
 
 Appends a relationship to a .ts file by splicing into it with the TypeScript
@@ -5258,6 +5605,7 @@ ${BOLD}Usage:${RESET}
   drift flag <slug> --pin | --hide
   drift relate project <source-slug> <kind> <target-slug> [--note "..."]
   drift relate tech <source-label> <kind> <target-label> [--note "..."]
+  drift tech list|set|hide|unhide <label> [...]
   drift audit [--json]
   drift init
 
@@ -5272,6 +5620,7 @@ ${BOLD}Verbs:${RESET}
   author      Scaffold projects/<slug>.ts from a template, then open in $EDITOR.
   flag        Set pin: true or hide: true in the slug's overlay (creating it if absent).
   relate      Author a project↔project or tech↔tech relationship edge.
+  tech        Author per-tech overlays: date, note, kind override, visibility.
   audit       Score every authored overlay against the content-depth rubric.
   init        Scaffold drift.config.ts and sources.local.json for this machine.
 
@@ -5400,6 +5749,21 @@ Rebuild the site to apply.${RESET}
            drift flag <slug> --hide
   Example: drift flag iris --pin
            drift flag kitchen-gremlin --hide`,
+
+		tech: `${BOLD}drift tech${RESET} - author per-tech overlays and visibility
+
+${BOLD}Usage:${RESET}
+  drift tech list [<label>]
+  drift tech set <label> [--first-used YYYY-MM-DD] [--note "..."] [--kind <tag-kind>]
+  drift tech hide <label> [--from toolkit,map,stack,relate]
+  drift tech unhide <label> [--from ... | --all]
+
+Manages src/lib/data/tech-overlays.ts: first-used floor dates, the note
+shown in the toolkit modal, kind overrides and per-surface visibility.
+Labels are case-insensitive and resolve to canonical tag casing. hide
+without --from hides from all four surfaces; project detail chips are
+never hidden. Writes ONLY tech-overlays.ts.
+`,
 
 		relate: `${BOLD}drift relate${RESET} - author a relationship edge
 
@@ -6184,7 +6548,11 @@ async function main() {
 				// for the new note). Mutually exclusive with --remove.
 				remove: { type: 'boolean', default: false },
 				edit: { type: 'boolean', default: false },
-				kind: { type: 'string' }
+				kind: { type: 'string' },
+				// `drift tech`: authored first-used floor date and surface scoping.
+				'first-used': { type: 'string' },
+				from: { type: 'string' },
+				all: { type: 'boolean', default: false }
 			}
 		}));
 	} catch (err) {
@@ -6204,6 +6572,7 @@ async function main() {
 		'author',
 		'flag',
 		'relate',
+		'tech',
 		'audit',
 		'init',
 		'help'
@@ -6244,6 +6613,10 @@ async function main() {
 	}
 	if (verb === 'relate') {
 		await runRelate({ args, values, palette, useGum });
+		return;
+	}
+	if (verb === 'tech') {
+		await runTech({ args, values, palette });
 		return;
 	}
 	if (verb === 'audit') {

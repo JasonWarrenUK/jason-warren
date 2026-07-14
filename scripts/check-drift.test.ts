@@ -387,6 +387,161 @@ function runVerbInSandbox(configPath: string, args: string[]) {
 }
 
 // ---------------------------------------------------------------------------
+// drift tech tests
+// ---------------------------------------------------------------------------
+
+const EMPTY_TECH_OVERLAYS = [
+	"import type { TechOverlay } from './types.js';",
+	'',
+	'export const techOverlays: TechOverlay[] = [];',
+	''
+].join('\n');
+
+describe('drift tech', () => {
+	let dir: string;
+	let configPath: string;
+
+	beforeEach(() => {
+		({ dir, configPath } = makeOverlaySandbox());
+		writeFileSync(join(dir, 'tech-overlays.ts'), EMPTY_TECH_OVERLAYS);
+	});
+
+	afterEach(() => {
+		rmSync(dir, { recursive: true, force: true });
+	});
+
+	it('set creates a record with the given fields, resolving label casing', () => {
+		const result = runVerbInSandbox(configPath, [
+			'tech',
+			'set',
+			'ink',
+			'--first-used',
+			'2019-06-15',
+			'--note',
+			'Where it all began.'
+		]);
+		expect(result.status, result.stderr).toBe(0);
+		expect(result.stdout).toMatch(/Using 'Ink' for 'ink'/);
+
+		const source = readFileSync(join(dir, 'tech-overlays.ts'), 'utf8');
+		expect(source).toContain('label: "Ink"');
+		expect(source).toContain('firstUsed: "2019-06-15"');
+		expect(source).toContain('Where it all began.');
+	});
+
+	it('set updates one field leaving the others intact, and is idempotent', () => {
+		runVerbInSandbox(configPath, ['tech', 'set', 'Ink', '--note', 'Original note.']);
+		runVerbInSandbox(configPath, ['tech', 'set', 'Ink', '--first-used', '2019-06-15']);
+		const source = readFileSync(join(dir, 'tech-overlays.ts'), 'utf8');
+		expect(source).toContain('Original note.');
+		expect(source).toContain('firstUsed: "2019-06-15"');
+
+		const repeat = runVerbInSandbox(configPath, ['tech', 'set', 'Ink', '--first-used', '2019-06-15']);
+		expect(repeat.status, repeat.stderr).toBe(0);
+		expect(repeat.stdout).toMatch(/already/i);
+		expect(readFileSync(join(dir, 'tech-overlays.ts'), 'utf8')).toBe(source);
+	});
+
+	it('set with no field flags exits 1', () => {
+		const result = runVerbInSandbox(configPath, ['tech', 'set', 'Ink']);
+		expect(result.status).toBe(1);
+		expect(result.stderr).toMatch(/nothing to change/i);
+	});
+
+	it('set rejects an unknown label and a malformed date', () => {
+		const unknown = runVerbInSandbox(configPath, ['tech', 'set', 'Bogus', '--note', 'x']);
+		expect(unknown.status).toBe(1);
+		expect(unknown.stderr).toMatch(/unknown tech label 'Bogus'/i);
+
+		const badDate = runVerbInSandbox(configPath, ['tech', 'set', 'Ink', '--first-used', '2019-13-01']);
+		expect(badDate.status).toBe(1);
+		expect(badDate.stderr).toMatch(/ISO date/i);
+	});
+
+	it('hide defaults to all four surfaces; unhide peels them back', () => {
+		const hide = runVerbInSandbox(configPath, ['tech', 'hide', 'Ink']);
+		expect(hide.status, hide.stderr).toBe(0);
+		expect(readFileSync(join(dir, 'tech-overlays.ts'), 'utf8')).toContain(
+			'hiddenFrom: ["toolkit", "map", "stack", "relate"]'
+		);
+
+		const unhide = runVerbInSandbox(configPath, ['tech', 'unhide', 'Ink', '--from', 'map,stack']);
+		expect(unhide.status, unhide.stderr).toBe(0);
+		expect(readFileSync(join(dir, 'tech-overlays.ts'), 'utf8')).toContain(
+			'hiddenFrom: ["toolkit", "relate"]'
+		);
+	});
+
+	it('hide is idempotent per surface and unions new surfaces in', () => {
+		runVerbInSandbox(configPath, ['tech', 'hide', 'Ink', '--from', 'toolkit']);
+		const before = readFileSync(join(dir, 'tech-overlays.ts'), 'utf8');
+		const repeat = runVerbInSandbox(configPath, ['tech', 'hide', 'Ink', '--from', 'toolkit']);
+		expect(repeat.stdout).toMatch(/already hidden/i);
+		expect(readFileSync(join(dir, 'tech-overlays.ts'), 'utf8')).toBe(before);
+
+		runVerbInSandbox(configPath, ['tech', 'hide', 'Ink', '--from', 'relate']);
+		expect(readFileSync(join(dir, 'tech-overlays.ts'), 'utf8')).toContain(
+			'hiddenFrom: ["toolkit", "relate"]'
+		);
+	});
+
+	it('unhide --all removes a bare record entirely', () => {
+		runVerbInSandbox(configPath, ['tech', 'hide', 'Ink']);
+		const result = runVerbInSandbox(configPath, ['tech', 'unhide', 'Ink', '--all']);
+		expect(result.status, result.stderr).toBe(0);
+		const source = readFileSync(join(dir, 'tech-overlays.ts'), 'utf8');
+		expect(source).not.toContain('Ink');
+	});
+
+	it('unhide of a label hidden nowhere is a soft no-op', () => {
+		const result = runVerbInSandbox(configPath, ['tech', 'unhide', 'Ink']);
+		expect(result.status, result.stderr).toBe(0);
+		expect(result.stdout).toMatch(/not hidden anywhere/i);
+	});
+
+	it('rejects an unknown surface token', () => {
+		const result = runVerbInSandbox(configPath, ['tech', 'hide', 'Ink', '--from', 'toolbox']);
+		expect(result.status).toBe(1);
+		expect(result.stderr).toMatch(/unknown surface 'toolbox'/i);
+	});
+
+	it('a relate-hidden label disappears from relate resolution but stays visible to tech', () => {
+		writeFileSync(
+			join(dir, 'tech-relationships.ts'),
+			[
+				"import type { TechRelationship } from './types.js';",
+				'',
+				'export const techRelationships: TechRelationship[] = [];',
+				''
+			].join('\n')
+		);
+		runVerbInSandbox(configPath, ['tech', 'hide', 'Ink', '--from', 'relate']);
+
+		const relate = runVerbInSandbox(configPath, ['relate', 'tech', 'Ink', 'leads-to', 'inkjs']);
+		expect(relate.status).toBe(1);
+		expect(relate.stderr).toMatch(/unknown tech label 'Ink'/i);
+
+		const detail = runVerbInSandbox(configPath, ['tech', 'list', 'Ink']);
+		expect(detail.status, detail.stderr).toBe(0);
+		expect(detail.stdout).toMatch(/hidden from relate/i);
+	});
+
+	it('mutating actions exit 1 when tech-overlays.ts is missing; write isolation holds', () => {
+		rmSync(join(dir, 'tech-overlays.ts'));
+		const result = runVerbInSandbox(configPath, ['tech', 'hide', 'Ink']);
+		expect(result.status).toBe(1);
+		expect(result.stderr).toMatch(/not found/i);
+
+		// Re-seed and confirm a tech write touches nothing else.
+		writeFileSync(join(dir, 'tech-overlays.ts'), EMPTY_TECH_OVERLAYS);
+		const sentinel = "export const sentinel = { slug: 'sentinel' };\n";
+		writeFileSync(join(dir, 'projects', 'sentinel.ts'), sentinel);
+		runVerbInSandbox(configPath, ['tech', 'set', 'Ink', '--note', 'n']);
+		expect(readFileSync(join(dir, 'projects', 'sentinel.ts'), 'utf8')).toBe(sentinel);
+	});
+});
+
+// ---------------------------------------------------------------------------
 // drift author tests
 // ---------------------------------------------------------------------------
 
