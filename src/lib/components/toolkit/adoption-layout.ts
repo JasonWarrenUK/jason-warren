@@ -360,7 +360,10 @@ function topologicalWithinFamily(
  *   2. Otherwise the nearest free lane in the family block to its anchor (the
  *      leads-to parent, or the replaced-by predecessor when succession was
  *      rejected), the anchor's own lane included, ties preferring below.
- *   3. Family roots with no placed anchor open a new lane.
+ *   3. When every existing lane is taken, an anchored member INSERTS a fresh
+ *      lane directly below its anchor (shifting later lanes down) so children
+ *      never strand at the block's bottom; only anchorless family roots
+ *      append a new lane at the end.
  *
  * Lane occupancy is a single claimRight scalar per lane — valid because rails
  * within a family arrive date-ascending, so occupants append left-to-right.
@@ -376,6 +379,22 @@ function assignLanes(
 	const laneOf = new Map<string, number>();
 	const inherited = new Set<string>();
 	const claimRight: number[] = [];
+	// Occupants per lane, parallel to claimRight — the insertion walk below
+	// needs to know WHO holds a lane, not just how far its claim extends.
+	const laneMembers: string[][] = [];
+	// Placement parentage (succession predecessor or anchor), recorded as
+	// each member lands. Drives the descendant walk that keeps an anchor's
+	// already-placed subtree contiguous when a new lane is inserted.
+	const placedUnder = new Map<string, string>();
+
+	const isPlacedUnder = (label: string, ancestor: string): boolean => {
+		let current: string | undefined = placedUnder.get(label);
+		while (current !== undefined) {
+			if (current === ancestor) return true;
+			current = placedUnder.get(current);
+		}
+		return false;
+	};
 
 	const byDateThenLabel = (a: string, b: string): number =>
 		itemDates.get(a)!.localeCompare(itemDates.get(b)!) || a.localeCompare(b);
@@ -407,6 +426,8 @@ function assignLanes(
 					laneOf.set(label, lane);
 					inherited.add(label);
 					claimRight[lane] = claim;
+					laneMembers[lane].push(label);
+					placedUnder.set(label, predecessor);
 					continue;
 				}
 			}
@@ -437,13 +458,45 @@ function assignLanes(
 					if (lane !== -1) break;
 				}
 			}
+			if (lane === -1 && anchor !== undefined) {
+				// Every existing lane near the anchor is taken — usually by
+				// fading rails, which hold their lanes to the plot edge and
+				// never free up. Rather than appending at the block's bottom
+				// (stranding the child far from its parent, the geometry that
+				// made CSS's Tailwind chain vault half the chart), insert a
+				// fresh lane just below the anchor's existing subtree: start
+				// at the anchor's next lane and walk past every lane held
+				// entirely by nodes already placed under this anchor, so
+				// siblings stack in arrival order instead of last-in-first.
+				// Only this family's lanes exist at or beyond the insertion
+				// point (the block is the tail of claimRight while it is
+				// being built), so shifting them down cannot disturb earlier
+				// families.
+				let insertAt = laneOf.get(anchor)! + 1;
+				while (
+					insertAt < claimRight.length &&
+					laneMembers[insertAt].length > 0 &&
+					laneMembers[insertAt].every((member) => isPlacedUnder(member, anchor))
+				) {
+					insertAt += 1;
+				}
+				for (const [placedLabel, placedLane] of laneOf) {
+					if (placedLane >= insertAt) laneOf.set(placedLabel, placedLane + 1);
+				}
+				claimRight.splice(insertAt, 0, 0);
+				laneMembers.splice(insertAt, 0, []);
+				lane = insertAt;
+			}
 			if (lane === -1) {
 				lane = claimRight.length;
 				claimRight.push(0);
+				laneMembers.push([]);
 			}
 
 			laneOf.set(label, lane);
 			claimRight[lane] = claim;
+			laneMembers[lane].push(label);
+			if (anchor !== undefined) placedUnder.set(label, anchor);
 		}
 	}
 

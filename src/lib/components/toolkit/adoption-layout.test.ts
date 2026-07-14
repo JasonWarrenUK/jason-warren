@@ -408,6 +408,40 @@ describe('computeAdoptionLayout', () => {
 		expect(connector.path).not.toContain('C');
 	});
 
+	it('keeps a long-labelled succession chain beside its lineage parent', () => {
+		// Mirrors the CSS → Tailwind CSS v3 → Tailwind CSS v4 shape: CSSish's
+		// SIBLING branches all fade (holding their lanes to the plot edge), a
+		// late child of CSSish arrives with a label too long for its successor
+		// to inherit the lane, and the successor follows three months later.
+		// Without anchor-adjacent lane insertion both late nodes strand at the
+		// block's bottom and their connectors vault the sibling rails; sibling
+		// branches are NOT part of CSSish's subtree, so insertion must land
+		// directly below CSSish, ahead of them.
+		const items: TechAdoption[] = [
+			tech('Rootish', 'language', '2019-06-01'),
+			tech('CSSish', 'language', '2020-01-01'),
+			tech('Blocker One', 'framework', '2020-06-01'),
+			tech('Blocker Two', 'framework', '2021-01-01'),
+			tech('Tailwindish v3', 'framework', '2024-10-01'),
+			tech('Tailwindish v4', 'framework', '2025-01-01')
+		];
+		const edges: TechRelationship[] = [
+			{ kind: 'leads-to', source: 'Rootish', target: 'CSSish' },
+			{ kind: 'leads-to', source: 'Rootish', target: 'Blocker One' },
+			{ kind: 'leads-to', source: 'Rootish', target: 'Blocker Two' },
+			{ kind: 'leads-to', source: 'CSSish', target: 'Tailwindish v3' },
+			{ kind: 'replaced-by', source: 'Tailwindish v3', target: 'Tailwindish v4' }
+		];
+		const result = computeAdoptionLayout(items, edges, GEO);
+		const byLabel = new Map(result.placed.map((p) => [p.label, p]));
+
+		// The late child sits directly below its anchor, and its successor
+		// directly below it (succession itself is rejected: the v3 label
+		// overlaps the v4 dot at a three-month gap).
+		expect(byLabel.get('Tailwindish v3')!.lane).toBe(byLabel.get('CSSish')!.lane + 1);
+		expect(byLabel.get('Tailwindish v4')!.lane).toBe(byLabel.get('Tailwindish v3')!.lane + 1);
+	});
+
 	it('untangles interleaved parent-child chains within a family', () => {
 		// Greedy assignment dates Kid2 before GKid1, so the two chains come
 		// out interleaved (Root, Kid1, Kid2, GKid1, GKid2) with each
