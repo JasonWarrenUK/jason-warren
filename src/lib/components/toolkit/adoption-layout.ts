@@ -709,6 +709,7 @@ function routeEdges(
 	laneOf: Map<string, number>,
 	inherited: Set<string>,
 	itemDates: Map<string, string>,
+	occupantsByLane: Map<number, RailOccupant[]>,
 	geo: LayoutGeometry
 ): RoutedEdge[] {
 	// Designated horizontal-arrival edge per child.
@@ -739,8 +740,6 @@ function routeEdges(
 		const designated = leadsTo[0] ?? replacedBy[0];
 		if (designated) horizontalFor.set(child, designated);
 	}
-
-	const occupantsByLane = indexOccupants(pointOf, laneOf);
 
 	const routed: RoutedEdge[] = [];
 	for (const edge of edges) {
@@ -824,7 +823,86 @@ function emitConnector(routed: RoutedEdge, pointOf: Map<string, RailPoint>, geo:
 	return { kind: edge.kind, source: edge.source, target: edge.target, variant, path };
 }
 
-/** Builds one connector per surviving edge: route, then emit. */
+/** Minimum x separation between two unrelated vertical corridor runs. */
+const CORRIDOR_SEPARATION = 6;
+
+/**
+ * Spreads near-coincident vertical corridor runs apart so unrelated
+ * connectors never read as one line. Runs sharing a source are exempt: a
+ * parent's branch fan (and a same-corridor elbow pair from one rail) is
+ * deliberately collinear. Only elbows move — leftwards, in 4px steps —
+ * because a vertical-arrival must land on its child's dot and a branch-drop
+ * is pinned to its parent's x. A shift is abandoned (and the overlap
+ * accepted) when it would break the elbow's departure clearance, puncture a
+ * dot the route was pushed clear of, or still conflict after three steps.
+ */
+function deOverlapCorridors(
+	routed: RoutedEdge[],
+	pointOf: Map<string, RailPoint>,
+	laneOf: Map<string, number>,
+	occupantsByLane: Map<number, RailOccupant[]>,
+	geo: LayoutGeometry
+): void {
+	interface Run {
+		routed: RoutedEdge;
+		yLo: number;
+		yHi: number;
+	}
+	const runs: Run[] = [];
+	for (const r of routed) {
+		if (r.corridorX === null) continue;
+		const parent = pointOf.get(r.edge.source)!;
+		const child = pointOf.get(r.edge.target)!;
+		runs.push({ routed: r, yLo: Math.min(parent.y, child.y), yHi: Math.max(parent.y, child.y) });
+	}
+	runs.sort(
+		(a, b) =>
+			a.routed.corridorX! - b.routed.corridorX! ||
+			a.routed.edge.target.localeCompare(b.routed.edge.target) ||
+			a.routed.edge.source.localeCompare(b.routed.edge.source)
+	);
+
+	const accepted: Run[] = [];
+	const conflicts = (x: number, run: Run): boolean =>
+		accepted.some(
+			(other) =>
+				other.routed.edge.source !== run.routed.edge.source &&
+				Math.abs(other.routed.corridorX! - x) < CORRIDOR_SEPARATION &&
+				other.yLo < run.yHi &&
+				run.yLo < other.yHi
+		);
+	const puncturesDot = (x: number, run: Run): boolean => {
+		const parentLane = laneOf.get(run.routed.edge.source)!;
+		const childLane = laneOf.get(run.routed.edge.target)!;
+		const lo = Math.min(parentLane, childLane);
+		const hi = Math.max(parentLane, childLane);
+		for (let lane = lo + 1; lane < hi; lane++) {
+			for (const occupant of occupantsByLane.get(lane) ?? []) {
+				if (Math.abs(x - occupant.x) <= occupant.radius + 3) return true;
+			}
+		}
+		return false;
+	};
+
+	for (const run of runs) {
+		if (run.routed.variant === 'elbow' && conflicts(run.routed.corridorX!, run)) {
+			const parent = pointOf.get(run.routed.edge.source)!;
+			const leftBound = parent.x + parent.radius + 2 + geo.cornerRadius;
+			for (let shift = 4; shift <= 12; shift += 4) {
+				const candidate = run.routed.corridorX! - shift;
+				if (candidate < leftBound) break;
+				if (puncturesDot(candidate, run)) break;
+				if (!conflicts(candidate, run)) {
+					run.routed.corridorX = candidate;
+					break;
+				}
+			}
+		}
+		accepted.push(run);
+	}
+}
+
+/** Builds one connector per surviving edge: route, adjust, then emit. */
 function buildConnectors(
 	edges: ResolvedEdge[],
 	pointOf: Map<string, RailPoint>,
@@ -833,7 +911,9 @@ function buildConnectors(
 	itemDates: Map<string, string>,
 	geo: LayoutGeometry
 ): Connector[] {
-	const routed = routeEdges(edges, pointOf, laneOf, inherited, itemDates, geo);
+	const occupantsByLane = indexOccupants(pointOf, laneOf);
+	const routed = routeEdges(edges, pointOf, laneOf, inherited, itemDates, occupantsByLane, geo);
+	deOverlapCorridors(routed, pointOf, laneOf, occupantsByLane, geo);
 	return routed.map((r) => emitConnector(r, pointOf, geo));
 }
 

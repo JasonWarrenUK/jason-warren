@@ -321,6 +321,31 @@ describe('computeAdoptionLayout', () => {
 		expect(corridorX).toBeGreaterThan(muLabelRight);
 	});
 
+	it('spreads near-coincident corridors from unrelated parents apart', () => {
+		// Chi and Psi adopt three days apart, so their elbow corridors land
+		// within ~2px of each other while their vertical spans overlap (lanes
+		// 0→2 and 1→3). Unrelated runs that close must be pushed apart or the
+		// two lineages read as one line.
+		const items: TechAdoption[] = [
+			tech('Rho', 'language', '2020-01-01'),
+			tech('Tau', 'language', '2021-01-01'),
+			tech('Chi', 'framework', '2024-01-01'),
+			tech('Psi', 'framework', '2024-01-04')
+		];
+		const edges: TechRelationship[] = [
+			{ kind: 'leads-to', source: 'Rho', target: 'Tau' },
+			{ kind: 'leads-to', source: 'Rho', target: 'Chi' },
+			{ kind: 'leads-to', source: 'Tau', target: 'Psi' }
+		];
+		const result = computeAdoptionLayout(items, edges, GEO);
+		const corridorOf = (target: string): number => {
+			const connector = result.connectors.find((c) => c.target === target)!;
+			expect(connector.variant).toBe('elbow');
+			return Number(connector.path.match(/Q ([\d.]+)/)![1]);
+		};
+		expect(Math.abs(corridorOf('Chi') - corridorOf('Psi'))).toBeGreaterThanOrEqual(6);
+	});
+
 	it('never places two same-lane nodes with overlapping label spans', () => {
 		const result = computeAdoptionLayout(FIXTURE_ITEMS, FIXTURE_EDGES, GEO);
 		// Rail lanes and strip lanes are numbered independently (PlacedNode.lane
