@@ -307,14 +307,23 @@
 							/>
 						{/each}
 					{/if}
-					<!-- Survey mark: an open ring plus a centre point (Atlas), not a
-					     filled blob. Ring radius encodes project count; the centre
-					     point is solid for a curated (authored) date, hollow/absent
-					     for a derived estimate. The ring carries the interaction and
-					     ARIA — clicking/tabbing to the label text does nothing. -->
+					<!-- Survey mark: an open ring plus a solid centre point (Atlas),
+					     not a filled blob, matching the map. Ring radius encodes
+					     project count. A curated (authored) date earns the map's hub
+					     treatment — a second, quieter outer ring — marking it as a
+					     firmly plotted point; a derived estimate is the plain single
+					     ring. Both keep a solid centre. The main ring carries the
+					     interaction and ARIA — the label text does nothing. -->
+					{#if item.dateSource === 'curated'}
+						<circle
+							class="adoption__ring adoption__ring--hub"
+							cx={item.x}
+							cy={item.y}
+							r={item.radius + 7}
+						/>
+					{/if}
 					<circle
 						class="adoption__ring"
-						class:adoption__ring--derived={item.dateSource === 'derived'}
 						cx={item.x}
 						cy={item.y}
 						r={item.radius}
@@ -334,9 +343,7 @@
 						onfocus={() => (activeLabel = item.label)}
 						onblur={() => (activeLabel = null)}
 					/>
-					{#if item.dateSource === 'curated'}
-						<circle class="adoption__centre" cx={item.x} cy={item.y} r="2.8" />
-					{/if}
+					<circle class="adoption__centre" cx={item.x} cy={item.y} r="2.8" />
 					<text
 						class="adoption__label"
 						aria-hidden="true"
@@ -469,13 +476,15 @@
 		text-anchor: middle;
 	}
 
-	/* Survey marks: an open ring plus a centre point, not a filled blob. Ring
-	   radius encodes project count; the ring stroke takes the item group's
-	   kind colour via currentColor. */
+	/* Survey marks: an open ring plus a centre point, not a filled blob, as on
+	   the map. The ring takes the item group's kind colour via currentColor but
+	   at reduced opacity so kind reads quietly (the map's calm register); the
+	   solid centre point carries the full kind colour for a crisp plotted dot. */
 	.adoption__ring {
 		fill: none;
 		stroke: currentColor;
 		stroke-width: 1.75;
+		stroke-opacity: 0.7;
 		cursor: pointer;
 		transition:
 			transform var(--dur-micro) var(--ease-standard),
@@ -490,15 +499,16 @@
 		outline-offset: 2px;
 	}
 
-	/* Derived (estimated-from-history) marks get a dashed ring and no centre
-	   point, so a curated date reads as a firmly plotted mark and an estimate
-	   as a provisional one — the atlas dashed-route convention. */
-	.adoption__ring--derived {
-		stroke-dasharray: 3 3;
+	/* Hub ring: the map's second outer ring, marking a curated (firmly plotted)
+	   date. Thinner and quieter than the main ring so it reads as an accent. */
+	.adoption__ring--hub {
+		stroke-width: 1.25;
+		stroke-opacity: 0.4;
+		pointer-events: none;
 	}
 
-	/* Centre point: solid, kind-coloured, marking a curated (authored) date.
-	   Derived estimates omit it, so the ring alone reads as "estimated". */
+	/* Centre point: solid, full kind colour — the plotted mark at the ring's
+	   centre. Present on every node (curated and derived alike). */
 	.adoption__centre {
 		fill: currentColor;
 		pointer-events: none;
@@ -566,6 +576,7 @@
 	.adoption__item--active .adoption__ring {
 		transform: scale(1.18);
 		stroke: var(--color-accent);
+		stroke-opacity: 1;
 	}
 
 	.adoption__item--active .adoption__centre {
