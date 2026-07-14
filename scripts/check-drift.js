@@ -616,11 +616,10 @@ function detectDependencies(repoPath) {
 				detections.push({ identity: 'svelte', file: packagePath, kind: 'pickaxe', needle: 'svelte' });
 			}
 			const svelteVersion = allDeps.svelte;
-			if (
-				typeof svelteVersion === 'string' &&
-				svelteVersion.match(/\d+/)?.[0] === '5'
-			) {
-				framework.push('svelte-5');
+			const svelteMajor =
+				typeof svelteVersion === 'string' ? svelteVersion.match(/\d+/)?.[0] : undefined;
+			if (svelteMajor !== undefined) {
+				framework.push(`svelte-${svelteMajor}`);
 				// Regex pickaxe on the version string, not a plain -S on the package
 				// name, so a 4→5 migration dates to the migration commit, not the
 				// repo's first-ever svelte dependency (which may be an older major).
@@ -629,10 +628,10 @@ function detectDependencies(repoPath) {
 				// The POSIX class also tolerates both prettier-formatted ("key": "value")
 				// and compact (no space) JSON, unlike assuming a literal single space.
 				detections.push({
-					identity: 'svelte-5',
+					identity: `svelte-${svelteMajor}`,
 					file: packagePath,
 					kind: 'regex',
-					needle: '"svelte":[[:space:]]*"[\\^~]?5'
+					needle: `"svelte":[[:space:]]*"[\\^~]?${svelteMajor}`
 				});
 			}
 			if ('next' in allDeps) {
@@ -685,24 +684,31 @@ function detectDependencies(repoPath) {
 				const needle = '@tauri-apps/api' in allDeps ? '@tauri-apps/api' : 'tauri';
 				detections.push({ identity: 'tauri', file: packagePath, kind: 'pickaxe', needle });
 			}
+			// Per-major identity, mirroring the .csproj-driven dotnet-N scheme:
+			// each Tailwind major carries its own adoption date, so a mid-project
+			// migration shows on the timeline. The versionless identity survives
+			// only as a fallback for unparseable ranges; majors without a
+			// taxonomy entry drop silently, per the taxonomy's own contract.
 			const tailwindVersion = allDeps.tailwindcss ?? allDeps['@tailwindcss/vite'];
 			if (typeof tailwindVersion === 'string') {
-				const isV4 = tailwindVersion.match(/\d+/)?.[0] === '4';
-				framework.push(isV4 ? 'tailwindcss-4' : 'tailwindcss');
+				const tailwindMajor = tailwindVersion.match(/\d+/)?.[0];
+				framework.push(
+					tailwindMajor === undefined ? 'tailwindcss' : `tailwindcss-${tailwindMajor}`
+				);
 				detections.push(
-					isV4
+					tailwindMajor === undefined
 						? {
-								identity: 'tailwindcss-4',
-								file: packagePath,
-								kind: 'regex',
-								// [[:space:]]* not \s* — see the svelte-5 needle above.
-								needle: '"(tailwindcss|@tailwindcss/vite)":[[:space:]]*"[\\^~]?4'
-							}
-						: {
 								identity: 'tailwindcss',
 								file: packagePath,
 								kind: 'pickaxe',
 								needle: 'tailwindcss'
+							}
+						: {
+								identity: `tailwindcss-${tailwindMajor}`,
+								file: packagePath,
+								kind: 'regex',
+								// [[:space:]]* not \s* — see the svelte needle above.
+								needle: `"(tailwindcss|@tailwindcss/vite)":[[:space:]]*"[\\^~]?${tailwindMajor}`
 							}
 				);
 			}
@@ -749,13 +755,14 @@ function detectDependencies(repoPath) {
 					needle: 'npm:@sveltejs/kit'
 				});
 			}
-			if (/npm:svelte@(?:\^|~)?5/i.test(denoConfig)) {
-				framework.push('svelte-5');
+			const denoSvelte = denoConfig.match(/npm:svelte@(?:\^|~)?(\d+)/i);
+			if (denoSvelte) {
+				framework.push(`svelte-${denoSvelte[1]}`);
 				detections.push({
-					identity: 'svelte-5',
+					identity: `svelte-${denoSvelte[1]}`,
 					file: denoConfigPath,
 					kind: 'regex',
-					needle: 'npm:svelte@[\\^~]?5'
+					needle: `npm:svelte@[\\^~]?${denoSvelte[1]}`
 				});
 			}
 			if (/npm:vite@/i.test(denoConfig)) {
@@ -767,13 +774,14 @@ function detectDependencies(repoPath) {
 					needle: 'npm:vite@'
 				});
 			}
-			if (/npm:(?:@tailwindcss\/vite|tailwindcss)@(?:\^|~)?4/i.test(denoConfig)) {
-				framework.push('tailwindcss-4');
+			const denoTailwind = denoConfig.match(/npm:(?:@tailwindcss\/vite|tailwindcss)@(?:\^|~)?(\d+)/i);
+			if (denoTailwind) {
+				framework.push(`tailwindcss-${denoTailwind[1]}`);
 				detections.push({
-					identity: 'tailwindcss-4',
+					identity: `tailwindcss-${denoTailwind[1]}`,
 					file: denoConfigPath,
 					kind: 'regex',
-					needle: 'npm:(@tailwindcss/vite|tailwindcss)@[\\^~]?4'
+					needle: `npm:(@tailwindcss/vite|tailwindcss)@[\\^~]?${denoTailwind[1]}`
 				});
 			}
 			if (/neo4j-driver/i.test(denoConfig)) database.push('neo4j-driver');
@@ -1122,12 +1130,17 @@ async function getFingerprint(repoPath, resolvedRef, slug) {
 	]);
 	const runtime = [...new Set([...dependencies.runtime, ...sourceSignals.runtime])];
 	const mergedFramework = [...new Set([...dependencies.framework, ...sourceSignals.framework])];
-	// A non-SvelteKit Svelte 5 project (bare `svelte` + version-derived `svelte-5`)
-	// otherwise renders as two adoption-timeline nodes for the same thing. Once the
-	// version signal has fired, the bare identity is redundant — drop it.
-	const framework = mergedFramework.includes('svelte-5')
-		? mergedFramework.filter((f) => f !== 'svelte')
-		: mergedFramework;
+	// A project carrying both a bare identity and its version-derived sibling
+	// (bare `svelte` + `svelte-5`, bare `tailwindcss` + `tailwindcss-4` from a
+	// hybrid npm/Deno setup) otherwise renders as two adoption-timeline nodes
+	// for the same thing. Once any version signal has fired, the bare identity
+	// is redundant — drop it.
+	const hasVersioned = (base) => mergedFramework.some((f) => f.startsWith(`${base}-`));
+	const framework = mergedFramework.filter(
+		(f) =>
+			!(f === 'svelte' && hasVersioned('svelte')) &&
+			!(f === 'tailwindcss' && hasVersioned('tailwindcss'))
+	);
 	const { database } = dependencies;
 	const linesOfCode = await countLinesOfCode(repoPath, listing, ref);
 

@@ -2088,7 +2088,7 @@ describe('drift sync', () => {
 		expect(parsed.lastSyncedAt).toMatch(/^\d{4}-\d{2}-\d{2}$/);
 	});
 
-	it('detects Tailwind 3 without mistaking the minor version for Tailwind 4', () => {
+	it('detects Tailwind 3 as its own per-major identity, not Tailwind 4', () => {
 		writeFileSync(
 			join(dir, 'repo', 'package.json'),
 			JSON.stringify({
@@ -2105,8 +2105,23 @@ describe('drift sync', () => {
 			'next',
 			'react',
 			'vite',
-			'tailwindcss'
+			'tailwindcss-3'
 		]);
+	});
+
+	it('falls back to the versionless tailwind identity for unparseable ranges', () => {
+		writeFileSync(
+			join(dir, 'repo', 'package.json'),
+			JSON.stringify({
+				devDependencies: { tailwindcss: 'latest' }
+			})
+		);
+
+		const result = runSyncWithConfig(dir, []);
+
+		expect(result.status, result.stderr).toBe(0);
+		const parsed = JSON.parse(readFileSync(join(dir, 'sources.json'), 'utf8'));
+		expect(parsed.sources[slug].framework).toEqual(['tailwindcss']);
 	});
 
 	it('collapses bare svelte into svelte-5 when a non-SvelteKit repo is on Svelte 5', () => {
@@ -2127,7 +2142,7 @@ describe('drift sync', () => {
 		expect(parsed.sources[slug].framework).toEqual(['svelte-5', 'vite']);
 	});
 
-	it('keeps bare svelte when the version signal is not 5', () => {
+	it('detects other svelte majors as their own per-major identities', () => {
 		writeFileSync(
 			join(dir, 'repo', 'package.json'),
 			JSON.stringify({
@@ -2139,7 +2154,7 @@ describe('drift sync', () => {
 
 		expect(result.status, result.stderr).toBe(0);
 		const parsed = JSON.parse(readFileSync(join(dir, 'sources.json'), 'utf8'));
-		expect(parsed.sources[slug].framework).toEqual(['svelte']);
+		expect(parsed.sources[slug].framework).toEqual(['svelte-4']);
 	});
 
 	it('detects Deno from a root lock file without package.json', () => {

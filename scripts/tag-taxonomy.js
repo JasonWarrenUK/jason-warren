@@ -135,9 +135,14 @@ export const RUNTIME_TAGS = {
 
 export const FRAMEWORK_TAGS = {
 	'aspnet-core': { label: 'ASP.NET Core', kind: 'framework' },
+	// Versionless labels are fallbacks for unparseable ranges only; the sync
+	// engine emits per-major identities (tailwindcss-N, svelte-N) so each
+	// major carries its own adoption date, mirroring the dotnet-N scheme.
 	tailwindcss: { label: 'Tailwind CSS', kind: 'framework' },
+	'tailwindcss-3': { label: 'Tailwind CSS v3', kind: 'framework' },
 	'tailwindcss-4': { label: 'Tailwind CSS v4', kind: 'framework' },
 	svelte: { label: 'Svelte', kind: 'framework' },
+	'svelte-4': { label: 'Svelte 4', kind: 'framework' },
 	'svelte-5': { label: 'Svelte 5', kind: 'framework' },
 	'@sveltejs/kit': { label: 'SvelteKit', kind: 'framework' },
 	react: { label: 'React', kind: 'framework' },
