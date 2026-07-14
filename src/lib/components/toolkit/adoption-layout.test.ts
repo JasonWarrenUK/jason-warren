@@ -321,29 +321,84 @@ describe('computeAdoptionLayout', () => {
 		expect(corridorX).toBeGreaterThan(muLabelRight);
 	});
 
-	it('spreads near-coincident corridors from unrelated parents apart', () => {
-		// Chi and Psi adopt three days apart, so their elbow corridors land
-		// within ~2px of each other while their vertical spans overlap (lanes
-		// 0→2 and 1→3). Unrelated runs that close must be pushed apart or the
-		// two lineages read as one line.
-		const items: TechAdoption[] = [
+	it('keeps unrelated corridors either 6px apart or vertically disjoint', () => {
+		// The de-overlap contract: two vertical corridor runs from different
+		// parents must never read as one line — either the layout separates
+		// them in x (corridor shift) or they no longer share any vertical
+		// extent (lane refinement). Checked over both a deliberately tight
+		// fixture (Chi and Psi adopt three days apart, so their raw corridors
+		// land within ~2px) and the realistic fixture.
+		const tight: TechAdoption[] = [
 			tech('Rho', 'language', '2020-01-01'),
 			tech('Tau', 'language', '2021-01-01'),
 			tech('Chi', 'framework', '2024-01-01'),
 			tech('Psi', 'framework', '2024-01-04')
 		];
-		const edges: TechRelationship[] = [
+		const tightEdges: TechRelationship[] = [
 			{ kind: 'leads-to', source: 'Rho', target: 'Tau' },
 			{ kind: 'leads-to', source: 'Rho', target: 'Chi' },
 			{ kind: 'leads-to', source: 'Tau', target: 'Psi' }
 		];
-		const result = computeAdoptionLayout(items, edges, GEO);
-		const corridorOf = (target: string): number => {
-			const connector = result.connectors.find((c) => c.target === target)!;
-			expect(connector.variant).toBe('elbow');
-			return Number(connector.path.match(/Q ([\d.]+)/)![1]);
+
+		const corridorRuns = (
+			result: ReturnType<typeof computeAdoptionLayout>
+		): { source: string; x: number; yLo: number; yHi: number }[] => {
+			const byLabel = new Map(result.placed.map((p) => [p.label, p]));
+			const runs: { source: string; x: number; yLo: number; yHi: number }[] = [];
+			for (const c of result.connectors) {
+				let x: number | null = null;
+				if (c.variant === 'elbow') x = Number(c.path.match(/Q ([\d.]+)/)![1]);
+				else if (c.variant === 'branch-drop') x = Number(c.path.match(/M ([\d.]+)/)![1]);
+				else if (c.variant === 'vertical-arrival') x = byLabel.get(c.target)!.x;
+				if (x === null) continue;
+				const a = byLabel.get(c.source)!;
+				const b = byLabel.get(c.target)!;
+				runs.push({ source: c.source, x, yLo: Math.min(a.y, b.y), yHi: Math.max(a.y, b.y) });
+			}
+			return runs;
 		};
-		expect(Math.abs(corridorOf('Chi') - corridorOf('Psi'))).toBeGreaterThanOrEqual(6);
+
+		for (const result of [
+			computeAdoptionLayout(tight, tightEdges, GEO),
+			computeAdoptionLayout(FIXTURE_ITEMS, FIXTURE_EDGES, GEO)
+		]) {
+			const runs = corridorRuns(result);
+			for (let i = 0; i < runs.length; i++) {
+				for (let j = i + 1; j < runs.length; j++) {
+					const a = runs[i];
+					const b = runs[j];
+					if (a.source === b.source) continue;
+					const coincident = Math.abs(a.x - b.x) < 6;
+					const overlap = a.yLo < b.yHi && b.yLo < a.yHi;
+					expect(coincident && overlap).toBe(false);
+				}
+			}
+		}
+	});
+
+	it('untangles interleaved parent-child chains within a family', () => {
+		// Greedy assignment dates Kid2 before GKid1, so the two chains come
+		// out interleaved (Root, Kid1, Kid2, GKid1, GKid2) with each
+		// grandchild's connector vaulting over the other chain's rail. The
+		// refinement pass must reorder rows so each grandchild sits directly
+		// under its own parent.
+		const items: TechAdoption[] = [
+			tech('Root', 'language', '2020-01-01'),
+			tech('Kid1', 'framework', '2020-06-01'),
+			tech('Kid2', 'framework', '2020-09-01'),
+			tech('GKid1', 'framework', '2023-01-01'),
+			tech('GKid2', 'framework', '2023-06-01')
+		];
+		const edges: TechRelationship[] = [
+			{ kind: 'leads-to', source: 'Root', target: 'Kid1' },
+			{ kind: 'leads-to', source: 'Root', target: 'Kid2' },
+			{ kind: 'leads-to', source: 'Kid1', target: 'GKid1' },
+			{ kind: 'leads-to', source: 'Kid2', target: 'GKid2' }
+		];
+		const result = computeAdoptionLayout(items, edges, GEO);
+		const byLabel = new Map(result.placed.map((p) => [p.label, p]));
+		expect(byLabel.get('GKid1')!.lane).toBe(byLabel.get('Kid1')!.lane + 1);
+		expect(byLabel.get('GKid2')!.lane).toBe(byLabel.get('Kid2')!.lane + 1);
 	});
 
 	it('never places two same-lane nodes with overlapping label spans', () => {

@@ -449,6 +449,157 @@ function assignLanes(
 	return { laneOf, inherited, laneCount: claimRight.length };
 }
 
+// Integer weights for the lane-refinement objective, worst offence first.
+// Rails pierced by a corridor are deliberately cheap: connectors crossing
+// quiet rails is normal git-graph reading. What ruins the chart is a dot
+// sliced by a vertical, two connectors properly crossing, or long spans.
+const REFINE_DOT_PUNCTURE = 800;
+const REFINE_CONNECTOR_CROSSING = 300;
+const REFINE_RAIL_PIERCED = 10;
+const REFINE_LANE_SPAN = 1;
+const REFINE_MAX_PASSES = 25;
+
+/**
+ * Crossing-minimising refinement of assignLanes's greedy order: permutes
+ * whole lanes (rows) within each family's contiguous block, accepting a swap
+ * only when it strictly lowers a weighted count of dot punctures, connector
+ * crossings, pierced rails and total lane span. Whole-row moves are safe by
+ * construction — same-lane relationships (handovers, lane reuse, label
+ * spacing) travel with the row — so only inter-lane connector geometry
+ * changes, and downstream routing recomputes from the refined lanes.
+ *
+ * Each edge is scored on its IDEAL route (the same elbow-else-branch-drop
+ * predicate routing applies, before occupancy nudges): a vertical corridor
+ * at the elbow's x when the parent rail can host one, else at the parent's
+ * dot, plus a horizontal run along the child's lane. Strict improvement with
+ * a fixed pair order keeps the pass deterministic and never worse than its
+ * input; family blocks are ≲15 rows, so the quadratic sweep is trivial.
+ */
+function refineLaneOrder(
+	families: string[][],
+	edges: ResolvedEdge[],
+	geomByLabel: Map<string, NodeGeom>,
+	railEnds: Map<string, RailEnd>,
+	laneOf: Map<string, number>,
+	geo: LayoutGeometry
+): void {
+	for (const family of families) {
+		if (family.length < 2) continue;
+		const members = new Set(family);
+		const familyEdges = edges.filter((e) => members.has(e.source) && members.has(e.target));
+		if (familyEdges.length === 0) continue;
+
+		const memberLanes = family.map((label) => laneOf.get(label)!);
+		const blockStart = Math.min(...memberLanes);
+		const blockEnd = Math.max(...memberLanes);
+		if (blockEnd === blockStart) continue;
+
+		interface IdealRun {
+			x: number;
+			lo: number;
+			hi: number;
+			childLane: number;
+			runTo: number;
+		}
+
+		/**
+		 * Scores the current lane order, plus two hard-guard metrics a swap
+		 * must never worsen: `upward` (edges whose child sits above its
+		 * parent — lineage flows downwards on this chart, and assignLanes
+		 * anchors prefer below) and `curveSpan` (total lane distance of edges
+		 * that can host neither an elbow nor a branch-drop, e.g. same-date
+		 * pairs — those degrade to brackets or curves whose readability
+		 * collapses with distance). Guarding rather than weighting keeps the
+		 * search from ever trading flow direction or curve adjacency for
+		 * geometry savings, which weight tuning proved unable to guarantee.
+		 */
+		const evaluate = (): { score: number; upward: number; curveSpan: number } => {
+			let score = 0;
+			let upward = 0;
+			let curveSpan = 0;
+			const runs: IdealRun[] = [];
+			for (const edge of familyEdges) {
+				const parentLane = laneOf.get(edge.source)!;
+				const childLane = laneOf.get(edge.target)!;
+				score += REFINE_LANE_SPAN * Math.abs(parentLane - childLane);
+				if (childLane < parentLane) upward += 1;
+				if (parentLane === childLane) continue;
+				const parent = geomByLabel.get(edge.source)!;
+				const child = geomByLabel.get(edge.target)!;
+				const corridor = child.x - geo.elbowRun;
+				const arriveX = child.x - child.radius - 2;
+				const elbowFits =
+					corridor - geo.cornerRadius >= parent.x + parent.radius + 2 &&
+					corridor <= railEnds.get(edge.source)!.railEndX;
+				if (!elbowFits && arriveX - parent.x < geo.cornerRadius + 2) {
+					curveSpan += Math.abs(parentLane - childLane);
+					continue;
+				}
+				runs.push({
+					x: elbowFits ? corridor : parent.x,
+					lo: Math.min(parentLane, childLane),
+					hi: Math.max(parentLane, childLane),
+					childLane,
+					runTo: arriveX
+				});
+			}
+			for (const run of runs) {
+				for (const label of family) {
+					const lane = laneOf.get(label)!;
+					if (lane <= run.lo || lane >= run.hi) continue;
+					const geom = geomByLabel.get(label)!;
+					if (Math.abs(run.x - geom.x) <= geom.radius + 3) score += REFINE_DOT_PUNCTURE;
+					if (geom.x - 2 <= run.x && run.x <= railEnds.get(label)!.railEndX) {
+						score += REFINE_RAIL_PIERCED;
+					}
+				}
+				for (const other of runs) {
+					if (other === run) continue;
+					if (
+						other.childLane > run.lo &&
+						other.childLane < run.hi &&
+						other.x < run.x &&
+						run.x < other.runTo
+					) {
+						score += REFINE_CONNECTOR_CROSSING;
+					}
+				}
+			}
+			return { score, upward, curveSpan };
+		};
+
+		const swapRows = (a: number, b: number): void => {
+			for (const label of family) {
+				const lane = laneOf.get(label)!;
+				if (lane === a) laneOf.set(label, b);
+				else if (lane === b) laneOf.set(label, a);
+			}
+		};
+
+		let current = evaluate();
+		for (let pass = 0; pass < REFINE_MAX_PASSES; pass++) {
+			let improved = false;
+			for (let i = blockStart; i < blockEnd; i++) {
+				for (let j = i + 1; j <= blockEnd; j++) {
+					swapRows(i, j);
+					const candidate = evaluate();
+					if (
+						candidate.score < current.score &&
+						candidate.upward <= current.upward &&
+						candidate.curveSpan <= current.curveSpan
+					) {
+						current = candidate;
+						improved = true;
+					} else {
+						swapRows(i, j);
+					}
+				}
+			}
+			if (!improved) break;
+		}
+	}
+}
+
 /** Greedy first-fit packing for the isolated-dot strip — the old banded layout's packer. */
 function packStrip(
 	labels: string[],
@@ -950,6 +1101,7 @@ export function computeAdoptionLayout(
 
 	const railEnds = computeRailEnds(railLabels, reduced, geomByLabel, plotRight);
 	const rails = assignLanes(families, reduced, geomByLabel, railEnds, itemDates, geo);
+	refineLaneOrder(families, reduced, geomByLabel, railEnds, rails.laneOf, geo);
 	const strip = packStrip(isolated, geomByLabel, geo);
 
 	const railBlockHeight = rails.laneCount * geo.railLaneHeight;
