@@ -33,7 +33,9 @@ export const techOverlays: TechOverlay[] = [
 	{ label: 'Tailwind CSS v4', firstUsed: '2025-01-15' },
 	{ label: 'Oak', firstUsed: '2025-07-15' },
 	{ label: 'Svelte 4', firstUsed: '2024-11-01' },
-	{ label: 'Tailwind CSS', hiddenFrom: ['toolkit', 'map', 'stack', 'relate'] }
+	{ label: 'Tailwind CSS', hiddenFrom: ['toolkit', 'map', 'stack', 'relate'] },
+	{ label: '.NET', hiddenFrom: ['toolkit', 'map', 'stack', 'relate'] },
+	{ label: 'C', hiddenFrom: ['toolkit', 'map', 'stack', 'relate'] }
 	// Bun, SvelteKit, Svelte 5: no curated floor. Per-tech dating (techFirstSeen)
 	// derives these honestly from when they actually entered the-work's history;
 	// a curated floor earlier than the true date would silently override the
