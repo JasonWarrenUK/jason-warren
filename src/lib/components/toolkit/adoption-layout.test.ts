@@ -9,7 +9,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { computeAdoptionLayout, type LayoutGeometry } from './adoption-layout.js';
+import { computeAdoptionLayout, type LayoutGeometry, type PlacedNode } from './adoption-layout.js';
 import type { TechAdoption } from '$lib/data/adoption.js';
 import type { TechRelationship } from '$lib/data/types.js';
 
@@ -19,7 +19,11 @@ const GEO: LayoutGeometry = {
 	rightPad: 28,
 	topPad: 28,
 	axisGap: 28,
-	laneHeight: 30,
+	railLaneHeight: 30,
+	stripLaneHeight: 24,
+	stripGap: 16,
+	elbowRun: 18,
+	cornerRadius: 6,
 	charWidth: 7.2,
 	labelGap: 10
 };
@@ -75,11 +79,15 @@ const FIXTURE_EDGES: TechRelationship[] = [
 	{ kind: 'replaced-by', source: 'Express', target: 'Oak' }
 ];
 
-/** Baseline: date order with no relaxation, i.e. today's old lane-packing order. */
-function countCrossingsInDateOrder(items: TechAdoption[], edges: TechRelationship[]): number {
-	const baseline = computeAdoptionLayout(items, [], GEO); // no edges = no relaxation pull
-	const rankOf = new Map(baseline.placed.map((p, i) => [p.label, i]));
-	const labels = new Set(items.map((i) => i.label));
+/**
+ * Counts lineage-edge pairs that interleave in lane rank while overlapping in
+ * x — the layout's actual crossing metric. `computeAdoptionLayout` doesn't
+ * expose this itself, so tests derive it from `placed` the same way for both
+ * the algorithm's real output and the naive date-ordered baseline below.
+ */
+function countCrossings(placed: PlacedNode[], edges: TechRelationship[]): number {
+	const rankOf = new Map(placed.map((p, i) => [p.label, i]));
+	const labels = new Set(placed.map((p) => p.label));
 	const resolved = edges.filter((e) => labels.has(e.source) && labels.has(e.target));
 
 	let crossings = 0;
@@ -87,10 +95,10 @@ function countCrossingsInDateOrder(items: TechAdoption[], edges: TechRelationshi
 		for (let j = i + 1; j < resolved.length; j++) {
 			const a = resolved[i];
 			const b = resolved[j];
-			const aFrom = baseline.placed.find((p) => p.label === a.source)!;
-			const aTo = baseline.placed.find((p) => p.label === a.target)!;
-			const bFrom = baseline.placed.find((p) => p.label === b.source)!;
-			const bTo = baseline.placed.find((p) => p.label === b.target)!;
+			const aFrom = placed.find((p) => p.label === a.source)!;
+			const aTo = placed.find((p) => p.label === a.target)!;
+			const bFrom = placed.find((p) => p.label === b.source)!;
+			const bTo = placed.find((p) => p.label === b.target)!;
 			const aXLo = Math.min(aFrom.x, aTo.x);
 			const aXHi = Math.max(aFrom.x, aTo.x);
 			const bXLo = Math.min(bFrom.x, bTo.x);
@@ -100,11 +108,18 @@ function countCrossingsInDateOrder(items: TechAdoption[], edges: TechRelationshi
 			const aHi = Math.max(rankOf.get(a.source)!, rankOf.get(a.target)!);
 			const bLo = Math.min(rankOf.get(b.source)!, rankOf.get(b.target)!);
 			const bHi = Math.max(rankOf.get(b.source)!, rankOf.get(b.target)!);
-			const interleaves = (aLo < bLo && bLo < aHi && aHi < bHi) || (bLo < aLo && aLo < bHi && bHi < aHi);
+			const interleaves =
+				(aLo < bLo && bLo < aHi && aHi < bHi) || (bLo < aLo && aLo < bHi && bHi < aHi);
 			if (interleaves) crossings++;
 		}
 	}
 	return crossings;
+}
+
+/** Baseline: date order with no relaxation, i.e. today's old lane-packing order. */
+function countCrossingsInDateOrder(items: TechAdoption[], edges: TechRelationship[]): number {
+	const baseline = computeAdoptionLayout(items, [], GEO); // no edges = no relaxation pull
+	return countCrossings(baseline.placed, edges);
 }
 
 describe('computeAdoptionLayout', () => {
@@ -112,7 +127,7 @@ describe('computeAdoptionLayout', () => {
 		const result = computeAdoptionLayout([], FIXTURE_EDGES, GEO);
 		expect(result.placed).toEqual([]);
 		expect(result.ticks).toEqual([]);
-		expect(result.crossings).toBe(0);
+		expect(countCrossings(result.placed, FIXTURE_EDGES)).toBe(0);
 		expect(result.height).toBe(GEO.topPad * 2);
 	});
 
@@ -137,22 +152,29 @@ describe('computeAdoptionLayout', () => {
 
 	it('reduces crossings relative to the naive date-ordered baseline', () => {
 		const result = computeAdoptionLayout(FIXTURE_ITEMS, FIXTURE_EDGES, GEO);
+		const resultCrossings = countCrossings(result.placed, FIXTURE_EDGES);
 		const baselineCrossings = countCrossingsInDateOrder(FIXTURE_ITEMS, FIXTURE_EDGES);
-		expect(result.crossings).toBeLessThanOrEqual(baselineCrossings);
+		expect(resultCrossings).toBeLessThanOrEqual(baselineCrossings);
 	});
 
 	it('never places two same-lane nodes with overlapping label spans', () => {
 		const result = computeAdoptionLayout(FIXTURE_ITEMS, FIXTURE_EDGES, GEO);
-		const byLane = new Map<number, typeof result.placed>();
+		// Rail lanes and strip lanes are numbered independently (PlacedNode.lane
+		// docs), so group by section + lane, not lane alone.
+		const byLane = new Map<string, PlacedNode[]>();
 		for (const node of result.placed) {
-			const lane = byLane.get(node.lane) ?? [];
+			const key = `${node.section}:${node.lane}`;
+			const lane = byLane.get(key) ?? [];
 			lane.push(node);
-			byLane.set(node.lane, lane);
+			byLane.set(key, lane);
 		}
 		for (const lane of byLane.values()) {
 			const sorted = [...lane].sort((a, b) => a.x - b.x);
 			for (let i = 1; i < sorted.length; i++) {
-				const prevRight = sorted[i - 1].x + sorted[i - 1].radius + 6 + sorted[i - 1].label.length * GEO.charWidth;
+				// Mirrors the source's own labelRight formula (measure() in
+				// adoption-layout.ts): gap + label measured from x, radius counted once.
+				const prevRight =
+					sorted[i - 1].x + sorted[i - 1].radius + 6 + sorted[i - 1].label.length * GEO.charWidth;
 				const currLeft = sorted[i].x - sorted[i].radius;
 				expect(currLeft).toBeGreaterThan(prevRight);
 			}
@@ -173,7 +195,9 @@ describe('computeAdoptionLayout', () => {
 		];
 		const withGhosts = computeAdoptionLayout(FIXTURE_ITEMS, edgesWithGhost, GEO);
 		const withoutGhosts = computeAdoptionLayout(FIXTURE_ITEMS, FIXTURE_EDGES, GEO);
-		expect(withGhosts.crossings).toBe(withoutGhosts.crossings);
+		expect(countCrossings(withGhosts.placed, FIXTURE_EDGES)).toBe(
+			countCrossings(withoutGhosts.placed, FIXTURE_EDGES)
+		);
 		expect(withGhosts.placed).toEqual(withoutGhosts.placed);
 	});
 
@@ -185,7 +209,7 @@ describe('computeAdoptionLayout', () => {
 		];
 		const result = computeAdoptionLayout(isolatedOnly, FIXTURE_EDGES, GEO);
 		expect(result.placed).toHaveLength(3);
-		expect(result.crossings).toBe(0);
+		expect(countCrossings(result.placed, FIXTURE_EDGES)).toBe(0);
 	});
 
 	it('handles a non-time-monotonic edge (target predates source)', () => {
