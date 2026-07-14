@@ -19,7 +19,9 @@ describe('getTechAdoption', () => {
 	});
 
 	it('orders by adoption date ascending, then lineage parent before child, then label', () => {
-		const lineageParentOf = new Map(techRelationships.map((rel) => [rel.target, rel.source]));
+		// A Set of directed edges, matching the source's own structure: a child
+		// with several authored parents keeps every edge, not just the last.
+		const directLineage = new Set(techRelationships.map((rel) => `${rel.source} ${rel.target}`));
 		for (let i = 1; i < adoption.length; i++) {
 			const prev = adoption[i - 1];
 			const curr = adoption[i];
@@ -29,8 +31,8 @@ describe('getTechAdoption', () => {
 				// A same-date pair directly linked by lineage must order parent
 				// before child regardless of label; only unrelated same-date pairs
 				// fall back to alphabetical.
-				if (lineageParentOf.get(curr.label) === prev.label) continue;
-				if (lineageParentOf.get(prev.label) === curr.label) {
+				if (directLineage.has(`${prev.label} ${curr.label}`)) continue;
+				if (directLineage.has(`${curr.label} ${prev.label}`)) {
 					throw new Error(`${curr.label} is ${prev.label}'s lineage parent but sorts after it`);
 				}
 				expect(prev.label.localeCompare(curr.label)).toBeLessThanOrEqual(0);
