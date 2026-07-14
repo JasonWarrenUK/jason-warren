@@ -510,6 +510,10 @@ function assignLanes(
 const REFINE_DOT_PUNCTURE = 800;
 const REFINE_CONNECTOR_CROSSING = 300;
 const REFINE_RAIL_PIERCED = 10;
+// Upward edges are hard-guarded against increases; this small scored term
+// additionally breaks span-neutral ties toward FEWER of them, so a swap that
+// rights an edge's flow direction at no other cost is accepted.
+const REFINE_UPWARD_TIEBREAK = 5;
 const REFINE_LANE_SPAN = 1;
 const REFINE_MAX_PASSES = 25;
 
@@ -619,7 +623,7 @@ function refineLaneOrder(
 					}
 				}
 			}
-			return { score, upward, curveSpan };
+			return { score: score + REFINE_UPWARD_TIEBREAK * upward, upward, curveSpan };
 		};
 
 		const swapRows = (a: number, b: number): void => {
@@ -630,6 +634,27 @@ function refineLaneOrder(
 			}
 		};
 
+		/** Moves row `from` to position `to`, shifting the rows between by one. */
+		const rotateRows = (from: number, to: number): void => {
+			if (from === to) return;
+			const step = from < to ? -1 : 1;
+			for (const label of family) {
+				const lane = laneOf.get(label)!;
+				if (lane === from) laneOf.set(label, to);
+				else if (from < to ? lane > from && lane <= to : lane >= to && lane < from) {
+					laneOf.set(label, lane + step);
+				}
+			}
+		};
+
+		const accepts = (
+			candidate: ReturnType<typeof evaluate>,
+			current: ReturnType<typeof evaluate>
+		): boolean =>
+			candidate.score < current.score &&
+			candidate.upward <= current.upward &&
+			candidate.curveSpan <= current.curveSpan;
+
 		let current = evaluate();
 		for (let pass = 0; pass < REFINE_MAX_PASSES; pass++) {
 			let improved = false;
@@ -637,15 +662,28 @@ function refineLaneOrder(
 				for (let j = i + 1; j <= blockEnd; j++) {
 					swapRows(i, j);
 					const candidate = evaluate();
-					if (
-						candidate.score < current.score &&
-						candidate.upward <= current.upward &&
-						candidate.curveSpan <= current.curveSpan
-					) {
+					if (accepts(candidate, current)) {
 						current = candidate;
 						improved = true;
 					} else {
 						swapRows(i, j);
+					}
+				}
+			}
+			// Rotations reach arrangements pairwise swaps cannot: sliding one
+			// row across several others in a single accepted move (a whole
+			// chain shuffling up by one lane, say). Adjacent rotations are
+			// identical to swaps and already tried above.
+			for (let from = blockStart; from <= blockEnd; from++) {
+				for (let to = blockStart; to <= blockEnd; to++) {
+					if (Math.abs(from - to) <= 1) continue;
+					rotateRows(from, to);
+					const candidate = evaluate();
+					if (accepts(candidate, current)) {
+						current = candidate;
+						improved = true;
+					} else {
+						rotateRows(to, from);
 					}
 				}
 			}
