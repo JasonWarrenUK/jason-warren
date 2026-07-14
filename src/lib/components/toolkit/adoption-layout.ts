@@ -78,7 +78,8 @@ export type ConnectorVariant =
 	| 'vertical-arrival'
 	| 'handover'
 	| 'bracket'
-	| 'branch-drop';
+	| 'branch-drop'
+	| 'gutter-arrival';
 
 export interface Connector {
 	kind: LineageKind;
@@ -732,6 +733,40 @@ function branchDropPath(parent: RailPoint, child: RailPoint, geo: LayoutGeometry
 	].join(' ');
 }
 
+/**
+ * Gutter route: corridor down from the parent (dot or rail), a long run along
+ * the inter-lane gutter past whatever blocks the child's own lane, then a
+ * vertical drop into the child dot's top (or rise into its bottom).
+ */
+function gutterArrivalPath(
+	parent: RailPoint,
+	child: RailPoint,
+	corridorX: number,
+	gutterY: number,
+	geo: LayoutGeometry
+): string {
+	const s = Math.sign(child.y - parent.y);
+	const viaRail = corridorX > parent.x;
+	const startY = viaRail ? parent.y : parent.y + s * (parent.radius + 2);
+	const r = Math.min(
+		geo.cornerRadius,
+		(child.x - corridorX) / 2 - 1,
+		Math.abs(gutterY - startY) / 2,
+		Math.abs(child.y - gutterY) - child.radius - 2
+	);
+	const start = viaRail
+		? `M ${corridorX - r} ${parent.y} Q ${corridorX} ${parent.y} ${corridorX} ${parent.y + s * r}`
+		: `M ${corridorX} ${startY}`;
+	return [
+		start,
+		`V ${gutterY - s * r}`,
+		`Q ${corridorX} ${gutterY} ${corridorX + r} ${gutterY}`,
+		`H ${child.x - r}`,
+		`Q ${child.x} ${gutterY} ${child.x} ${gutterY + s * r}`,
+		`V ${child.y - s * (child.radius + 2)}`
+	].join(' ');
+}
+
 /** Same-lane merge: the final stretch of the retiring rail, recoloured. */
 function handoverPath(parent: RailPoint, child: RailPoint): string {
 	const arriveX = child.x - child.radius - 2;
@@ -751,12 +786,15 @@ interface RoutedEdge {
 	variant: ConnectorVariant;
 	/** x of the connector's vertical corridor; null for variants without one. */
 	corridorX: number | null;
+	/** y of the gutter run; only set for 'gutter-arrival'. */
+	gutterY: number | null;
 }
 
 /** One rail node's footprint within its lane, for clearance checks. */
 interface RailOccupant {
 	label: string;
 	x: number;
+	y: number;
 	radius: number;
 	labelRight: number;
 }
@@ -769,7 +807,13 @@ function indexOccupants(
 	const occupantsByLane = new Map<number, RailOccupant[]>();
 	for (const [label, point] of pointOf) {
 		const lane = laneOf.get(label)!;
-		const occupant = { label, x: point.x, radius: point.radius, labelRight: point.labelRight };
+		const occupant = {
+			label,
+			x: point.x,
+			y: point.y,
+			radius: point.radius,
+			labelRight: point.labelRight
+		};
 		const list = occupantsByLane.get(lane);
 		if (list) list.push(occupant);
 		else occupantsByLane.set(lane, [occupant]);
@@ -845,6 +889,83 @@ function chooseBranchDropRoute(
 	return null;
 }
 
+interface GutterRoute extends BranchDropRoute {
+	gutterY: number;
+}
+
+/**
+ * Last orthogonal resort before a dot-to-dot curve: when the child's own lane
+ * cannot host a horizontal approach (an earlier occupant blocks it, or the
+ * edge is not the child's designated horizontal arrival), route the run
+ * through the GUTTER between the child's lane and its neighbour, then drop
+ * vertically into the child dot. The corridor scan mirrors
+ * chooseBranchDropRoute minus the child-lane run check; the gutter's y is
+ * then nudged towards the child until it clears every flanking dot along the
+ * run, failing honestly when big dots on both sides pinch the gap shut.
+ */
+function chooseGutterRoute(
+	parent: RailPoint,
+	child: RailPoint,
+	parentLane: number,
+	childLane: number,
+	childLabel: string,
+	occupantsByLane: Map<number, RailOccupant[]>,
+	geo: LayoutGeometry
+): GutterRoute | null {
+	const s = Math.sign(child.y - parent.y);
+	if (s === 0) return null;
+	const departLimit = parent.x + parent.radius + 2;
+	const loLane = Math.min(parentLane, childLane);
+	const hiLane = Math.max(parentLane, childLane);
+
+	let corridorX = parent.x;
+	let resolved: BranchDropRoute | null = null;
+	for (let attempt = 0; attempt < 8; attempt++) {
+		const viaRail = corridorX > parent.x;
+		if (viaRail) {
+			corridorX = Math.max(corridorX, departLimit + geo.cornerRadius);
+			if (corridorX > parent.railEndX || corridorX > child.x - geo.elbowRun) return null;
+		}
+		if (child.x - corridorX < geo.cornerRadius * 2 + 2) return null;
+
+		let pushTo = -Infinity;
+		for (let lane = loLane + 1; lane < hiLane; lane++) {
+			for (const occupant of occupantsByLane.get(lane) ?? []) {
+				if (Math.abs(corridorX - occupant.x) <= occupant.radius + 3) {
+					pushTo = Math.max(pushTo, occupant.x + occupant.radius + 4);
+				}
+			}
+		}
+		if (pushTo === -Infinity) {
+			resolved = { corridorX, viaRail };
+			break;
+		}
+		corridorX = pushTo;
+	}
+	if (resolved === null) return null;
+
+	// Default gutter: halfway between the child's lane and its neighbour on
+	// the approach side. Flanking dots along the run push it towards the
+	// child; dots sharing the child's lane cap how close it may come.
+	let gutterY = child.y - s * (geo.railLaneHeight / 2);
+	let nearBound = child.y - s * (child.radius + 4);
+	const inRunSpan = (occupant: RailOccupant): boolean =>
+		occupant.x + occupant.radius > resolved!.corridorX && occupant.x - occupant.radius < child.x;
+	for (const occupant of occupantsByLane.get(childLane - s) ?? []) {
+		if (!inRunSpan(occupant)) continue;
+		const pushed = occupant.y + s * (occupant.radius + 3);
+		gutterY = s > 0 ? Math.max(gutterY, pushed) : Math.min(gutterY, pushed);
+	}
+	for (const occupant of occupantsByLane.get(childLane) ?? []) {
+		if (occupant.label === childLabel || !inRunSpan(occupant)) continue;
+		const limit = occupant.y - s * (occupant.radius + 3);
+		nearBound = s > 0 ? Math.min(nearBound, limit) : Math.max(nearBound, limit);
+	}
+	if (s > 0 ? gutterY > nearBound : gutterY < nearBound) return null;
+
+	return { ...resolved, gutterY };
+}
+
 /**
  * Routing phase: picks a variant and corridor for every surviving edge. Per
  * child, exactly one incoming connector earns the horizontal arrival (the
@@ -898,9 +1019,32 @@ function routeEdges(
 		const child = pointOf.get(edge.target)!;
 		const departLimit = parent.x + parent.radius + 2;
 
-		if (laneOf.get(edge.source) === laneOf.get(edge.target)) {
+		const parentLane = laneOf.get(edge.source)!;
+		const childLane = laneOf.get(edge.target)!;
+
+		// Shared last-orthogonal-resort: gutter route, then dot-to-dot curve.
+		const fallback = (): RoutedEdge => {
+			const gutter =
+				child.x > parent.x
+					? chooseGutterRoute(
+							parent,
+							child,
+							parentLane,
+							childLane,
+							edge.target,
+							occupantsByLane,
+							geo
+						)
+					: null;
+			if (gutter !== null) {
+				return { edge, variant: 'gutter-arrival', corridorX: gutter.corridorX, gutterY: gutter.gutterY };
+			}
+			return { edge, variant: dotToDotVariant(parent, child), corridorX: null, gutterY: null };
+		};
+
+		if (parentLane === childLane) {
 			// Same lane: succession merge or lane-reuse — a straight handover.
-			routed.push({ edge, variant: 'handover', corridorX: null });
+			routed.push({ edge, variant: 'handover', corridorX: null, gutterY: null });
 		} else if (horizontalFor.get(edge.target) === edge) {
 			const corridorX = child.x - geo.elbowRun;
 			// The elbow needs room to depart the parent rail and the corridor
@@ -913,30 +1057,31 @@ function routeEdges(
 						? chooseBranchDropRoute(
 								parent,
 								child,
-								laneOf.get(edge.source)!,
-								laneOf.get(edge.target)!,
+								parentLane,
+								childLane,
 								edge.target,
 								occupantsByLane,
 								geo
 							)
 						: null;
 				if (route === null) {
-					routed.push({ edge, variant: dotToDotVariant(parent, child), corridorX: null });
+					routed.push(fallback());
 				} else {
 					routed.push({
 						edge,
 						variant: route.viaRail ? 'elbow' : 'branch-drop',
-						corridorX: route.corridorX
+						corridorX: route.corridorX,
+						gutterY: null
 					});
 				}
 			} else {
-				routed.push({ edge, variant: 'elbow', corridorX });
+				routed.push({ edge, variant: 'elbow', corridorX, gutterY: null });
 			}
 		} else {
 			if (child.x - geo.cornerRadius < departLimit || child.x > parent.railEndX) {
-				routed.push({ edge, variant: dotToDotVariant(parent, child), corridorX: null });
+				routed.push(fallback());
 			} else {
-				routed.push({ edge, variant: 'vertical-arrival', corridorX: child.x });
+				routed.push({ edge, variant: 'vertical-arrival', corridorX: child.x, gutterY: null });
 			}
 		}
 	}
@@ -965,6 +1110,9 @@ function emitConnector(routed: RoutedEdge, pointOf: Map<string, RailPoint>, geo:
 			break;
 		case 'branch-drop':
 			path = branchDropPath(parent, child, geo);
+			break;
+		case 'gutter-arrival':
+			path = gutterArrivalPath(parent, child, routed.corridorX!, routed.gutterY!, geo);
 			break;
 		case 's-curve':
 			path = sCurvePath(parent, child);

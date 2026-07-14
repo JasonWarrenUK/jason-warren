@@ -376,6 +376,38 @@ describe('computeAdoptionLayout', () => {
 		}
 	});
 
+	it('routes a late edge whose lane approach is blocked through the gutter', () => {
+		// Alpha's rail ends at Beta long before Gamma arrives, and Gamma
+		// reuses Mu's lane, so neither an elbow, a branch-drop nor a rail
+		// corridor can host the horizontal approach (Mu's label blocks the
+		// lane and the rail is gone). The route must take the gutter above
+		// Gamma's lane and drop vertically into its dot.
+		const items: TechAdoption[] = [
+			tech('Alpha', 'language', '2020-01-01'),
+			tech('Beta', 'language', '2021-01-01'),
+			tech('Mu', 'framework', '2021-06-01'),
+			tech('Nu', 'framework', '2021-08-01'),
+			tech('Gamma', 'framework', '2025-01-01')
+		];
+		const edges: TechRelationship[] = [
+			{ kind: 'replaced-by', source: 'Alpha', target: 'Beta' },
+			{ kind: 'leads-to', source: 'Alpha', target: 'Mu' },
+			{ kind: 'replaced-by', source: 'Mu', target: 'Nu' },
+			{ kind: 'leads-to', source: 'Alpha', target: 'Gamma' }
+		];
+		const result = computeAdoptionLayout(items, edges, GEO);
+		const byLabel = new Map(result.placed.map((p) => [p.label, p]));
+		const mu = byLabel.get('Mu')!;
+		const gamma = byLabel.get('Gamma')!;
+		expect(gamma.lane).toBe(mu.lane);
+
+		const connector = result.connectors.find((c) => c.target === 'Gamma')!;
+		expect(connector.variant).toBe('gutter-arrival');
+		// Arrives vertically at the dot's top edge, not horizontally at its left.
+		expect(connector.path.endsWith(`V ${gamma.y - gamma.radius - 2}`)).toBe(true);
+		expect(connector.path).not.toContain('C');
+	});
+
 	it('untangles interleaved parent-child chains within a family', () => {
 		// Greedy assignment dates Kid2 before GKid1, so the two chains come
 		// out interleaved (Root, Kid1, Kid2, GKid1, GKid2) with each
