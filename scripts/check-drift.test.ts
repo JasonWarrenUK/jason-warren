@@ -800,6 +800,73 @@ describe('drift theme', () => {
 });
 
 // ---------------------------------------------------------------------------
+// drift author field-edit tests
+// ---------------------------------------------------------------------------
+
+describe('drift author field edit', () => {
+	let dir: string;
+	let configPath: string;
+
+	beforeEach(() => {
+		({ dir, configPath } = makeOverlaySandbox());
+	});
+
+	afterEach(() => {
+		rmSync(dir, { recursive: true, force: true });
+	});
+
+	it('sets a prose field in place, creating the overlay when absent', () => {
+		const result = runVerbInSandbox(configPath, [
+			'author',
+			'my-proj',
+			'tagline',
+			'A tool that does one thing well.'
+		]);
+		expect(result.status, result.stderr).toBe(0);
+		const source = readFileSync(join(dir, 'projects', 'my-proj.ts'), 'utf8');
+		expect(source).toContain('A tool that does one thing well.');
+	});
+
+	it('replaces an existing value and is idempotent on a repeat', () => {
+		runVerbInSandbox(configPath, ['author', 'my-proj', 'status', 'live']);
+		runVerbInSandbox(configPath, ['author', 'my-proj', 'status', 'archived']);
+		const source = readFileSync(join(dir, 'projects', 'my-proj.ts'), 'utf8');
+		expect(source).toMatch(/status: ["']archived["']/);
+		expect(source).not.toMatch(/status: ["']live["']/);
+
+		const repeat = runVerbInSandbox(configPath, ['author', 'my-proj', 'status', 'archived']);
+		expect(repeat.stdout).toMatch(/already holds/i);
+	});
+
+	it('validates enum fields and rejects unknown or flag fields', () => {
+		const badStatus = runVerbInSandbox(configPath, ['author', 'my-proj', 'status', 'zombie']);
+		expect(badStatus.status).toBe(1);
+		expect(badStatus.stderr).toMatch(/invalid status 'zombie'/i);
+
+		const unknown = runVerbInSandbox(configPath, ['author', 'my-proj', 'sparkles', 'yes']);
+		expect(unknown.status).toBe(1);
+		expect(unknown.stderr).toMatch(/unknown or non-scalar field/i);
+
+		const flag = runVerbInSandbox(configPath, ['author', 'my-proj', 'pin', 'true']);
+		expect(flag.status).toBe(1);
+		expect(flag.stderr).toMatch(/drift flag my-proj --pin/);
+	});
+
+	it('errors when no value is given outside a TTY', () => {
+		const result = runVerbInSandbox(configPath, ['author', 'my-proj', 'name']);
+		expect(result.status).toBe(1);
+		expect(result.stderr).toMatch(/no interactive TTY/i);
+	});
+
+	it('the scaffold template writes liveUrl, matching the AuthoredProject type', () => {
+		runVerbInSandbox(configPath, ['author', 'template-check']);
+		const source = readFileSync(join(dir, 'projects', 'template-check.ts'), 'utf8');
+		expect(source).toContain('liveUrl');
+		expect(source).not.toContain('repoUrl');
+	});
+});
+
+// ---------------------------------------------------------------------------
 // drift author tests
 // ---------------------------------------------------------------------------
 

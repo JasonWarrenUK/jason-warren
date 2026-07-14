@@ -3077,7 +3077,7 @@ export const ${binding}: AuthoredProject = {
 	// One of: 'live' | 'wip' | 'finished' | 'prototype' | 'archived' | 'uncategorised'
 	status: 'wip',
 
-	repoUrl: '',
+	liveUrl: '',
 
 	// 3-5 technically interesting things. Feature or technical detail, not tooling config.
 	highlights: [],
@@ -3114,12 +3114,25 @@ function createOverlayIfAbsent(slug) {
  *
  * @param {{ args: string[], palette: object, useGum: boolean }} options
  */
-function runAuthor({ args, palette }) {
+// Scalar string fields drift author can set without an editor. pin/hide are
+// deliberately absent (drift flag owns them); arrays and objects need
+// $EDITOR, relate or tag.
+const AUTHOR_EDITABLE_FIELDS = ['name', 'tagline', 'blurb', 'description', 'kind', 'status', 'liveUrl'];
+const AUTHOR_FIELD_ENUMS = {
+	kind: ['app', 'game', 'website', 'toy', 'library', 'tool', 'tui', 'repo'],
+	status: ['live', 'wip', 'finished', 'prototype', 'archived', 'uncategorised']
+};
+
+async function runAuthor({ args, palette }) {
 	const { GREEN, RED, YELLOW, BOLD, DIM, RESET } = palette;
 	const slug = args[0]?.trim();
+	const field = args[1]?.trim();
+	// Everything after the field is the value — quoting multi-word prose is
+	// natural, but an unquoted trailing sentence also works.
+	const inlineValue = args.length > 2 ? args.slice(2).join(' ') : undefined;
 
 	if (!slug) {
-		process.stderr.write(`${RED}Usage: drift author <slug>${RESET}\n`);
+		process.stderr.write(`${RED}Usage: drift author <slug> [<field> [<value>]]${RESET}\n`);
 		process.exit(1);
 	}
 
@@ -3128,6 +3141,71 @@ function runAuthor({ args, palette }) {
 			`${RED}Error: invalid slug '${slug}'. Use lowercase kebab-case (e.g. my-project).${RESET}\n`
 		);
 		process.exit(1);
+	}
+
+	if (field !== undefined) {
+		if (field === 'pin' || field === 'hide') {
+			process.stderr.write(
+				`${RED}Error: '${field}' is a curation flag — use: drift flag ${slug} --${field}${RESET}\n`
+			);
+			process.exit(1);
+		}
+		if (!AUTHOR_EDITABLE_FIELDS.includes(field)) {
+			process.stderr.write(
+				`${RED}Error: unknown or non-scalar field '${field}'. Editable fields: ${AUTHOR_EDITABLE_FIELDS.join(', ')}.\n` +
+					`Arrays and objects want $EDITOR (drift author ${slug}), relate, or tag.${RESET}\n`
+			);
+			process.exit(1);
+		}
+
+		let value = inlineValue;
+		if (value === undefined) {
+			// No inline value: prompt interactively when we can, error when we
+			// cannot (CI, pipes).
+			if (process.stdin.isTTY && gumPath()) {
+				const prompt = spawnSync('gum', ['input', '--placeholder', `${field} value`], {
+					stdio: ['inherit', 'pipe', 'inherit'],
+					encoding: 'utf8'
+				});
+				if (prompt.status !== 0) return;
+				value = prompt.stdout.trim();
+			} else {
+				process.stderr.write(
+					`${RED}Error: no value given for '${field}' and no interactive TTY to prompt in.${RESET}\n`
+				);
+				process.exit(1);
+			}
+		}
+
+		const allowed = AUTHOR_FIELD_ENUMS[field];
+		if (allowed && !allowed.includes(value)) {
+			process.stderr.write(
+				`${RED}Error: invalid ${field} '${value}'. Use one of: ${allowed.join(', ')}.${RESET}\n`
+			);
+			process.exit(1);
+		}
+
+		const { ts, path, text, sf, objLit } = await loadOverlayForEdit(slug, palette);
+		const { text: splicedText, changed } = spliceObjectProperty(
+			text,
+			sf,
+			ts,
+			objLit,
+			field,
+			JSON.stringify(value)
+		);
+		if (!changed) {
+			process.stdout.write(
+				`${YELLOW}'${slug}' ${field} already holds that value — nothing to do.${RESET}\n`
+			);
+			return;
+		}
+		writeFileSync(path, splicedText, 'utf8');
+		spawnSync('npx', ['prettier', '--write', path], { stdio: 'ignore' });
+		process.stdout.write(
+			`${GREEN}${BOLD}Set:${RESET} ${field} on '${slug}'.\n${DIM}Rebuild the site to apply.${RESET}\n`
+		);
+		return;
 	}
 
 	const { path, created } = createOverlayIfAbsent(slug);
@@ -5774,7 +5852,7 @@ Compare synced fingerprints against current git state and surface new repos.
 - \`drift keep-all\`
 - \`drift hide <slug>\`
 - \`drift promote <slug> [field]\`
-- \`drift author <slug>\`
+- \`drift author <slug> [<field> [<value>]]\`
 - \`drift flag <slug> --pin | --hide\`
 - \`drift relate project <source-slug> <kind> <target-slug> [--note "..."]\`
 - \`drift relate tech <source-label> <kind> <target-label> [--note "..."]\`
@@ -5793,7 +5871,7 @@ Compare synced fingerprints against current git state and surface new repos.
 - \`keep-all\` · refresh every flagged override baseline at once
 - \`hide\` · append a slug to excluded.json, removing it from the public site
 - \`promote\` · graduate a landed in-progress entry out of in-progress.json (syncs into sources.json on the next \`drift sync\`)
-- \`author\` · scaffold src/lib/data/projects/\<slug\>.ts from a template, then open in \$EDITOR
+- \`author\` · scaffold src/lib/data/projects/\<slug\>.ts and open in \$EDITOR; with a field name, set one scalar field in place (name, tagline, blurb, description, kind, status, liveUrl)
 - \`flag\` · set pin: true or hide: true in the slug's overlay (creating it if absent)
 - \`relate\` · author a project↔project or tech↔tech relationship edge
 - \`tech\` · author per-tech overlays: first-used date, modal note, kind override, surface visibility
@@ -6222,7 +6300,7 @@ ${BOLD}Usage:${RESET}
   drift keep-all
   drift hide <slug>
   drift promote <slug> [field]
-  drift author <slug>
+  drift author <slug> [<field> [<value>]]
   drift flag <slug> --pin | --hide
   drift relate project <source-slug> <kind> <target-slug> [--note "..."]
   drift relate tech <source-label> <kind> <target-label> [--note "..."]
@@ -6859,7 +6937,7 @@ async function runInteractiveMenu({ manifests, palette, useGum, onProgress, clea
 			case 'author': {
 				const chosenSlug = pickSlug('Choose a slug to author:', 'project slug');
 				if (chosenSlug === null) continue outer;
-				runAuthor({ args: [chosenSlug], palette, useGum });
+				await runAuthor({ args: [chosenSlug], palette, useGum });
 				break;
 			}
 			case 'flag': {
@@ -7268,7 +7346,7 @@ async function main() {
 		return;
 	}
 	if (verb === 'author') {
-		runAuthor({ args, palette, useGum });
+		await runAuthor({ args, palette, useGum });
 		return;
 	}
 	if (verb === 'flag') {
