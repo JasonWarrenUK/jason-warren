@@ -474,13 +474,23 @@ interface RailPoint {
 	y: number;
 	radius: number;
 	railEndX: number;
+	/** Right edge of the dot-plus-label extent, for clearance checks. */
+	labelRight: number;
 }
 
-/** Branch elbow with a horizontal arrival at the child dot's left edge. */
-function elbowPath(parent: RailPoint, child: RailPoint, geo: LayoutGeometry): string {
-	const corridorX = child.x - geo.elbowRun;
+/**
+ * Branch elbow with a horizontal arrival at the child dot's left edge. The
+ * corridor defaults to elbowRun before the child; routing may supply another
+ * x (always between the parent's dot and rail end).
+ */
+function elbowPath(
+	parent: RailPoint,
+	child: RailPoint,
+	geo: LayoutGeometry,
+	corridorX: number = child.x - geo.elbowRun
+): string {
 	const s = Math.sign(child.y - parent.y);
-	const r = Math.min(geo.cornerRadius, Math.abs(child.y - parent.y) / 2, geo.elbowRun - 2);
+	const r = Math.min(geo.cornerRadius, Math.abs(child.y - parent.y) / 2, child.x - corridorX - 2);
 	const arriveX = child.x - child.radius - 2;
 	return [
 		`M ${corridorX - r} ${parent.y}`,
@@ -532,21 +542,14 @@ function bracketPath(parent: RailPoint, child: RailPoint, geo: LayoutGeometry): 
 const MIN_S_CURVE_GAP = 6;
 
 /**
- * Dot-to-dot fallback connector. An s-curve spans the vertical gap between
- * the two dots' clearance edges; when the dots sit so close that this gap
- * shrinks below MIN_S_CURVE_GAP (or inverts entirely, drawing a sub-pixel
- * path backwards), a bracket around the dots' left side takes over.
+ * Dot-to-dot fallback variant. An s-curve spans the vertical gap between the
+ * two dots' clearance edges; when the dots sit so close that this gap shrinks
+ * below MIN_S_CURVE_GAP (or inverts entirely, drawing a sub-pixel path
+ * backwards), a bracket around the dots' left side takes over.
  */
-function dotToDotConnector(
-	parent: RailPoint,
-	child: RailPoint,
-	geo: LayoutGeometry
-): { variant: ConnectorVariant; path: string } {
+function dotToDotVariant(parent: RailPoint, child: RailPoint): ConnectorVariant {
 	const gap = Math.abs(child.y - parent.y) - (parent.radius + child.radius + 4);
-	if (gap < MIN_S_CURVE_GAP) {
-		return { variant: 'bracket', path: bracketPath(parent, child, geo) };
-	}
-	return { variant: 's-curve', path: sCurvePath(parent, child) };
+	return gap < MIN_S_CURVE_GAP ? 'bracket' : 's-curve';
 }
 
 /** Same-lane merge: the final stretch of the retiring rail, recoloured. */
@@ -557,21 +560,36 @@ function handoverPath(parent: RailPoint, child: RailPoint): string {
 }
 
 /**
- * Builds one connector per surviving edge. Per child, exactly one incoming
- * connector earns the horizontal arrival (the leads-to parent, nearest lane
- * first); the rest arrive vertically so multiple arrivals at one dot stay
- * distinguishable. A lane-inheriting child's incoming connectors are all
- * vertical (its predecessor's rail occupies the horizontal approach) except
- * the succession merge itself, which is a same-lane handover.
+ * One edge's routing decision, produced by the routing phase and consumed by
+ * the emission phase. Splitting the two keeps every geometric decision (which
+ * variant, where the vertical corridor sits) in one place, so passes that
+ * adjust routes — corridor de-overlap, future variants — never touch path
+ * emission.
  */
-function buildConnectors(
+interface RoutedEdge {
+	edge: ResolvedEdge;
+	variant: ConnectorVariant;
+	/** x of the connector's vertical corridor; null for variants without one. */
+	corridorX: number | null;
+}
+
+/**
+ * Routing phase: picks a variant and corridor for every surviving edge. Per
+ * child, exactly one incoming connector earns the horizontal arrival (the
+ * leads-to parent, nearest lane first); the rest arrive vertically so
+ * multiple arrivals at one dot stay distinguishable. A lane-inheriting
+ * child's incoming connectors are all vertical (its predecessor's rail
+ * occupies the horizontal approach) except the succession merge itself,
+ * which is a same-lane handover.
+ */
+function routeEdges(
 	edges: ResolvedEdge[],
 	pointOf: Map<string, RailPoint>,
 	laneOf: Map<string, number>,
 	inherited: Set<string>,
 	itemDates: Map<string, string>,
 	geo: LayoutGeometry
-): Connector[] {
+): RoutedEdge[] {
 	// Designated horizontal-arrival edge per child.
 	const horizontalFor = new Map<string, ResolvedEdge>();
 	const incomingByChild = new Map<string, ResolvedEdge[]>();
@@ -601,43 +619,74 @@ function buildConnectors(
 		if (designated) horizontalFor.set(child, designated);
 	}
 
-	const connectors: Connector[] = [];
+	const routed: RoutedEdge[] = [];
 	for (const edge of edges) {
 		const parent = pointOf.get(edge.source)!;
 		const child = pointOf.get(edge.target)!;
-
-		let variant: ConnectorVariant;
-		let path: string;
-
 		const departLimit = parent.x + parent.radius + 2;
 
 		if (laneOf.get(edge.source) === laneOf.get(edge.target)) {
 			// Same lane: succession merge or lane-reuse — a straight handover.
-			variant = 'handover';
-			path = handoverPath(parent, child);
+			routed.push({ edge, variant: 'handover', corridorX: null });
 		} else if (horizontalFor.get(edge.target) === edge) {
-			const cornerStart = child.x - geo.elbowRun - geo.cornerRadius;
+			const corridorX = child.x - geo.elbowRun;
 			// The elbow needs room to depart the parent rail and the corridor
 			// must sit where the parent rail still exists.
-			if (cornerStart < departLimit || child.x - geo.elbowRun > parent.railEndX) {
-				({ variant, path } = dotToDotConnector(parent, child, geo));
+			if (corridorX - geo.cornerRadius < departLimit || corridorX > parent.railEndX) {
+				routed.push({ edge, variant: dotToDotVariant(parent, child), corridorX: null });
 			} else {
-				variant = 'elbow';
-				path = elbowPath(parent, child, geo);
+				routed.push({ edge, variant: 'elbow', corridorX });
 			}
 		} else {
-			const cornerStart = child.x - geo.cornerRadius;
-			if (cornerStart < departLimit || child.x > parent.railEndX) {
-				({ variant, path } = dotToDotConnector(parent, child, geo));
+			if (child.x - geo.cornerRadius < departLimit || child.x > parent.railEndX) {
+				routed.push({ edge, variant: dotToDotVariant(parent, child), corridorX: null });
 			} else {
-				variant = 'vertical-arrival';
-				path = verticalArrivalPath(parent, child, geo);
+				routed.push({ edge, variant: 'vertical-arrival', corridorX: child.x });
 			}
 		}
-
-		connectors.push({ kind: edge.kind, source: edge.source, target: edge.target, variant, path });
 	}
-	return connectors;
+	return routed;
+}
+
+/** Emission phase: a pure RoutedEdge → Connector mapping over the path builders. */
+function emitConnector(routed: RoutedEdge, pointOf: Map<string, RailPoint>, geo: LayoutGeometry): Connector {
+	const { edge, variant, corridorX } = routed;
+	const parent = pointOf.get(edge.source)!;
+	const child = pointOf.get(edge.target)!;
+
+	let path: string;
+	switch (variant) {
+		case 'handover':
+			path = handoverPath(parent, child);
+			break;
+		case 'elbow':
+			path = elbowPath(parent, child, geo, corridorX!);
+			break;
+		case 'vertical-arrival':
+			path = verticalArrivalPath(parent, child, geo);
+			break;
+		case 'bracket':
+			path = bracketPath(parent, child, geo);
+			break;
+		case 's-curve':
+			path = sCurvePath(parent, child);
+			break;
+	}
+
+	return { kind: edge.kind, source: edge.source, target: edge.target, variant, path };
+}
+
+/** Builds one connector per surviving edge: route, then emit. */
+function buildConnectors(
+	edges: ResolvedEdge[],
+	pointOf: Map<string, RailPoint>,
+	laneOf: Map<string, number>,
+	inherited: Set<string>,
+	itemDates: Map<string, string>,
+	geo: LayoutGeometry
+): Connector[] {
+	const routed = routeEdges(edges, pointOf, laneOf, inherited, itemDates, geo);
+	return routed.map((r) => emitConnector(r, pointOf, geo));
 }
 
 export function computeAdoptionLayout(
@@ -710,7 +759,16 @@ export function computeAdoptionLayout(
 	const pointOf = new Map<string, RailPoint>(
 		placed
 			.filter((p) => p.section === 'rail')
-			.map((p) => [p.label, { x: p.x, y: p.y, radius: p.radius, railEndX: p.railEndX! }])
+			.map((p) => [
+				p.label,
+				{
+					x: p.x,
+					y: p.y,
+					radius: p.radius,
+					railEndX: p.railEndX!,
+					labelRight: geomByLabel.get(p.label)!.labelRight
+				}
+			])
 	);
 	const connectors = buildConnectors(
 		reduced,
