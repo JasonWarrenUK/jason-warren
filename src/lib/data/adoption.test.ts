@@ -9,6 +9,7 @@
 import { describe, it, expect } from 'vitest';
 import { getTechAdoption, CURATED_FIRST_USED } from './adoption.js';
 import { projects } from './index.js';
+import { techRelationships } from './tech-relationships.js';
 
 describe('getTechAdoption', () => {
 	const adoption = getTechAdoption();
@@ -17,13 +18,21 @@ describe('getTechAdoption', () => {
 		expect(adoption.length).toBeGreaterThan(0);
 	});
 
-	it('orders by adoption date ascending, then label', () => {
+	it('orders by adoption date ascending, then lineage parent before child, then label', () => {
+		const lineageParentOf = new Map(techRelationships.map((rel) => [rel.target, rel.source]));
 		for (let i = 1; i < adoption.length; i++) {
 			const prev = adoption[i - 1];
 			const curr = adoption[i];
 			const byDate = prev.firstDate.localeCompare(curr.firstDate);
 			expect(byDate).toBeLessThanOrEqual(0);
 			if (byDate === 0) {
+				// A same-date pair directly linked by lineage must order parent
+				// before child regardless of label; only unrelated same-date pairs
+				// fall back to alphabetical.
+				if (lineageParentOf.get(curr.label) === prev.label) continue;
+				if (lineageParentOf.get(prev.label) === curr.label) {
+					throw new Error(`${curr.label} is ${prev.label}'s lineage parent but sorts after it`);
+				}
 				expect(prev.label.localeCompare(curr.label)).toBeLessThanOrEqual(0);
 			}
 		}
@@ -102,6 +111,17 @@ describe('getTechAdoption', () => {
 			expect(item?.dateSource).toBe('curated');
 			expect(item?.firstDate).toBe(CURATED_FIRST_USED[label]);
 		}
+	});
+
+	it('orders HTML before CSS despite an alphabetical tie on the same curated date', () => {
+		// HTML and CSS share a curated floor date; HTML leads-to CSS in
+		// tech-relationships.ts, so lineage must win over the alphabetical
+		// fallback ('C' < 'H') or the adoption-timeline layout can place CSS's
+		// rail above its own parent's.
+		expect(CURATED_FIRST_USED.HTML).toBe(CURATED_FIRST_USED.CSS);
+		const htmlIndex = adoption.findIndex((item) => item.label === 'HTML');
+		const cssIndex = adoption.findIndex((item) => item.label === 'CSS');
+		expect(htmlIndex).toBeLessThan(cssIndex);
 	});
 
 	it('projectCount matches the number of projects using the tag (within scope)', () => {

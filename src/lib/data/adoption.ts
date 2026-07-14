@@ -12,6 +12,7 @@
  */
 
 import { projects } from './index.js';
+import { techRelationships } from './tech-relationships.js';
 import type { ProjectSlug, TagKind } from './types.js';
 
 export interface TechAdoption {
@@ -162,7 +163,25 @@ export function getTechAdoption(opts?: { kinds?: TagKind[] }): TechAdoption[] {
 		});
 	}
 
-	return adoption.sort(
-		(a, b) => a.firstDate.localeCompare(b.firstDate) || a.label.localeCompare(b.label)
-	);
+	return adoption.sort(compareAdoption);
+}
+
+/**
+ * A same-date pair directly linked by lineage (e.g. HTML and CSS, both floored
+ * to the same curated date) must still order parent before child — otherwise
+ * a downstream consumer that reads this array as "processed in order" (the
+ * adoption-timeline layout's lane assignment) can place the parent after its
+ * own child, since nothing else in this flat list encodes the edge direction.
+ * Labels with no direct edge, or no date tie, fall back to alphabetical.
+ */
+const lineageParentOf = new Map<string, string>(
+	techRelationships.map((rel) => [rel.target, rel.source])
+);
+
+function compareAdoption(a: TechAdoption, b: TechAdoption): number {
+	const byDate = a.firstDate.localeCompare(b.firstDate);
+	if (byDate !== 0) return byDate;
+	if (lineageParentOf.get(b.label) === a.label) return -1;
+	if (lineageParentOf.get(a.label) === b.label) return 1;
+	return a.label.localeCompare(b.label);
 }

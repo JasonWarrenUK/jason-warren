@@ -274,6 +274,72 @@ interface LaneAssignment {
 }
 
 /**
+ * Re-orders a family's members so a lineage source always precedes its direct
+ * target when the two share an exact adoption date, breaking the tie in the
+ * incoming order otherwise. Defence-in-depth: `getTechAdoption`'s own sort
+ * already breaks a same-date tie toward the lineage parent, so `family`
+ * should already arrive parent-first, but `assignLanes`'s per-family loop
+ * treats array order as the anchor-visitation order — if a parent ever
+ * arrived after its child (a stale caller, a future data source that doesn't
+ * share that tie-break), the anchor lookup at line ~340 would silently find
+ * nothing and open a spurious new lane instead of anchoring beside its child.
+ *
+ * Deliberately scoped to same-date pairs only: a lineage edge whose target
+ * predates its source (backward in time, e.g. an authoring mistake) must
+ * never move a member across a genuine date boundary, since `claimRight`
+ * assumes family members are visited in date-ascending x order — visiting an
+ * out-of-date-order member early would let a later `claimRight` update get
+ * silently overwritten with an earlier x, corrupting overlap checks for every
+ * lane placed afterward. Restricting eligible edges to date ties keeps this
+ * pass a strict refinement of the existing date order rather than a
+ * replacement for it.
+ */
+function topologicalWithinFamily(
+	family: string[],
+	edges: ResolvedEdge[],
+	itemDates: Map<string, string>
+): string[] {
+	const members = new Set(family);
+	const indexOf = new Map(family.map((label, i) => [label, i]));
+	const childrenOf = new Map<string, string[]>();
+	const indegree = new Map<string, number>(family.map((label) => [label, 0]));
+	for (const edge of edges) {
+		if (!members.has(edge.source) || !members.has(edge.target)) continue;
+		if (itemDates.get(edge.source) !== itemDates.get(edge.target)) continue;
+		const list = childrenOf.get(edge.source);
+		if (list) list.push(edge.target);
+		else childrenOf.set(edge.source, [edge.target]);
+		indegree.set(edge.target, indegree.get(edge.target)! + 1);
+	}
+
+	// Min-heap-by-original-index via a sorted array is overkill at family
+	// sizes this small; a linear scan for the lowest-index ready node keeps
+	// the pass simple and still deterministic.
+	const ready = family.filter((label) => indegree.get(label) === 0);
+	const remaining = new Map(indegree);
+	const ordered: string[] = [];
+
+	while (ready.length > 0) {
+		ready.sort((a, b) => indexOf.get(a)! - indexOf.get(b)!);
+		const next = ready.shift()!;
+		ordered.push(next);
+		for (const child of childrenOf.get(next) ?? []) {
+			const left = remaining.get(child)! - 1;
+			remaining.set(child, left);
+			if (left === 0) ready.push(child);
+		}
+	}
+
+	// A cycle (e.g. mutually contradictory authored edges) leaves members
+	// unresolved; append them in original order rather than dropping them.
+	if (ordered.length < family.length) {
+		for (const label of family) if (!ordered.includes(label)) ordered.push(label);
+	}
+
+	return ordered;
+}
+
+/**
  * Assigns each rail a lane. Families occupy contiguous lane blocks. Within a
  * family (rails arriving in date order):
  *
@@ -306,8 +372,9 @@ function assignLanes(
 
 	for (const family of families) {
 		const blockStart = claimRight.length;
+		const ordered = topologicalWithinFamily(family, edges, itemDates);
 
-		for (const label of family) {
+		for (const label of ordered) {
 			const geom = geomByLabel.get(label)!;
 			const dotLeft = geom.x - geom.radius;
 			const claim = Math.max(railEnds.get(label)!.railEndX, geom.labelRight);

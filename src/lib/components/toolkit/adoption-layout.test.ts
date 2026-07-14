@@ -157,6 +157,34 @@ describe('computeAdoptionLayout', () => {
 		expect(resultCrossings).toBeLessThanOrEqual(baselineCrossings);
 	});
 
+	it('places a same-date lineage parent in a lane the child never crosses, regardless of input order', () => {
+		// HTML and CSS share a curated date in the real dataset; feed them here
+		// in the "wrong" (child-before-parent) array order to prove the layout
+		// itself corrects it, independent of getTechAdoption's own tie-break.
+		const items: TechAdoption[] = [
+			tech('CSS', 'language', '2020-01-01'),
+			tech('HTML', 'language', '2020-01-01'),
+			tech('Tailwind CSS', 'framework', '2023-03-01')
+		];
+		const edges: TechRelationship[] = [
+			{ kind: 'leads-to', source: 'HTML', target: 'CSS' },
+			{ kind: 'leads-to', source: 'CSS', target: 'Tailwind CSS' }
+		];
+		const result = computeAdoptionLayout(items, edges, GEO);
+		const byLabel = new Map(result.placed.map((p) => [p.label, p]));
+		const html = byLabel.get('HTML')!;
+		const css = byLabel.get('CSS')!;
+		const tailwind = byLabel.get('Tailwind CSS')!;
+
+		// The real guarantee: HTML (the family root) must never land in a lane
+		// strictly between CSS and CSS's own child, Tailwind CSS — that's the
+		// geometry that made the CSS→Tailwind connector clip through HTML's rail.
+		expect(css.lane).not.toBe(tailwind.lane);
+		const lo = Math.min(css.lane, tailwind.lane);
+		const hi = Math.max(css.lane, tailwind.lane);
+		expect(html.lane > lo && html.lane < hi).toBe(false);
+	});
+
 	it('never places two same-lane nodes with overlapping label spans', () => {
 		const result = computeAdoptionLayout(FIXTURE_ITEMS, FIXTURE_EDGES, GEO);
 		// Rail lanes and strip lanes are numbered independently (PlacedNode.lane
