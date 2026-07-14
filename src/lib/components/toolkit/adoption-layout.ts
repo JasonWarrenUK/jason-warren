@@ -138,6 +138,76 @@ interface NodeGeom {
 	labelRight: number;
 }
 
+/** A year's pixel band on the x-axis: [startX, endX). */
+export interface YearBand {
+	year: number;
+	startX: number;
+	endX: number;
+}
+
+// Year-column sizing. A year's width scales with how many technologies were
+// first used in it, so crowded years get room and sparse years stay compact.
+// The axis is therefore "ordered time, not to scale": dates stay monotonic and
+// gridlines still mark year boundaries, but a year's pixel width reflects its
+// density rather than a fixed calendar span. Raw widths are clamped to shape
+// the ratios, then normalised so the bands fill the plot exactly.
+const YEAR_BASE_WIDTH = 60; // px a year gets regardless of density
+const YEAR_WIDTH_PER_TECH = 34; // px added per technology adopted that year
+const YEAR_MIN_WIDTH = 70; // floor: an empty year still shows a gridline gap
+const YEAR_MAX_WIDTH = 240; // ceiling: one busy year cannot dominate the axis
+
+/**
+ * Splits the plot into one contiguous pixel band per calendar year in
+ * [firstYear, lastYear], each sized by that year's technology count. Widths
+ * are clamped (to keep the ratios sane) then normalised so the bands sum to
+ * plotWidth exactly, leaving plotRight unchanged. Deterministic: pure integer
+ * counting and arithmetic, no clock or randomness. Exported for testing.
+ */
+export function computeYearBands(
+	items: TechAdoption[],
+	plotLeft: number,
+	plotRight: number
+): Map<number, YearBand> {
+	const plotWidth = plotRight - plotLeft;
+	const firstYear = Number(items[0].firstDate.slice(0, 4));
+	const lastYear = Number(items[items.length - 1].firstDate.slice(0, 4));
+
+	// Count technologies per year, seeding every year in range so empty years
+	// still earn a (floor-width) band rather than collapsing their gridline.
+	const countByYear = new Map<number, number>();
+	for (let year = firstYear; year <= lastYear; year++) countByYear.set(year, 0);
+	for (const item of items) {
+		const year = Number(item.firstDate.slice(0, 4));
+		countByYear.set(year, countByYear.get(year)! + 1);
+	}
+
+	const rawByYear = new Map<number, number>();
+	let rawTotal = 0;
+	for (let year = firstYear; year <= lastYear; year++) {
+		const raw = Math.min(
+			YEAR_MAX_WIDTH,
+			Math.max(YEAR_MIN_WIDTH, YEAR_BASE_WIDTH + YEAR_WIDTH_PER_TECH * countByYear.get(year)!)
+		);
+		rawByYear.set(year, raw);
+		rawTotal += raw;
+	}
+
+	// rawTotal is always > 0 (>= 1 year, each >= YEAR_MIN_WIDTH), so scale is
+	// finite and positive; scaling preserves the relative widths.
+	const scale = plotWidth / rawTotal;
+	const bands = new Map<number, YearBand>();
+	let cursor = plotLeft;
+	for (let year = firstYear; year <= lastYear; year++) {
+		const width = rawByYear.get(year)! * scale;
+		bands.set(year, { year, startX: cursor, endX: cursor + width });
+		cursor += width;
+	}
+	// Snap the final band to plotRight so float drift can never push a
+	// December date a sub-pixel past the plot edge.
+	bands.get(lastYear)!.endX = plotRight;
+	return bands;
+}
+
 interface ResolvedEdge {
 	kind: LineageKind;
 	source: string;
@@ -155,14 +225,26 @@ function measure(
 	const maxLabelWidth = Math.max(...items.map((item) => item.label.length)) * geo.charWidth;
 	const maxRadius = 4 + 8 * 0.9; // projectCount caps at 8
 	const plotRight = geo.width - geo.rightPad - maxLabelWidth - maxRadius - 6;
-	const plotWidth = plotRight - plotLeft;
 
-	const days = items.map((item) => dayValue(item.firstDate));
-	const minDay = Math.min(...days);
-	const maxDay = Math.max(...days);
-	const span = maxDay - minDay || 1;
+	// Density-sized year bands replace a single linear time→pixel map: each
+	// year owns a pixel band whose width reflects its technology count. Within
+	// a band a date maps linearly by its day-fraction into the year, so the
+	// order stays monotonic and Jan 1 lands exactly on the band start (where
+	// the year gridline sits).
+	const bands = computeYearBands(items, plotLeft, plotRight);
+	const firstYear = Number(items[0].firstDate.slice(0, 4));
+	const lastYear = Number(items[items.length - 1].firstDate.slice(0, 4));
 
-	const xFor = (iso: string): number => plotLeft + ((dayValue(iso) - minDay) / span) * plotWidth;
+	const xFor = (iso: string): number => {
+		const year = Number(iso.slice(0, 4));
+		if (year < firstYear) return plotLeft;
+		if (year > lastYear) return plotRight;
+		const band = bands.get(year)!;
+		const yearStart = dayValue(`${year}-01-01`);
+		const yearEnd = dayValue(`${year + 1}-01-01`);
+		const frac = (dayValue(iso) - yearStart) / (yearEnd - yearStart);
+		return band.startX + frac * (band.endX - band.startX);
+	};
 
 	const geomByLabel = new Map<string, NodeGeom>();
 	for (const item of items) {

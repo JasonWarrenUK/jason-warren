@@ -9,7 +9,12 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { computeAdoptionLayout, type LayoutGeometry, type PlacedNode } from './adoption-layout.js';
+import {
+	computeAdoptionLayout,
+	computeYearBands,
+	type LayoutGeometry,
+	type PlacedNode
+} from './adoption-layout.js';
 import type { TechAdoption } from '$lib/data/adoption.js';
 import type { TechRelationship } from '$lib/data/types.js';
 
@@ -646,5 +651,80 @@ describe('computeAdoptionLayout', () => {
 		expect(result.ticks[0].year).toBe(firstYear);
 		expect(result.ticks[result.ticks.length - 1].year).toBe(lastYear);
 		expect(result.ticks).toHaveLength(lastYear - firstYear + 1);
+	});
+
+	// ---- variable-width year columns ----------------------------------------
+
+	/** One tech per given year, at mid-year so no band-edge coincidences. */
+	const yearItems = (spec: [number, number][]): TechAdoption[] =>
+		spec.flatMap(([year, count]) =>
+			Array.from({ length: count }, (_, i) =>
+				tech(`${year}-${i}`, 'language', `${year}-06-${String(i + 1).padStart(2, '0')}`)
+			)
+		);
+
+	it('gives a denser year a wider column than a sparser one', () => {
+		// Two years, one with four techs and one with one; usable plot span is
+		// the same, so the busy year must claim the larger band.
+		const items = yearItems([
+			[2020, 1],
+			[2021, 4]
+		]);
+		const bands = computeYearBands(items, GEO.leftPad, 800);
+		const w2020 = bands.get(2020)!.endX - bands.get(2020)!.startX;
+		const w2021 = bands.get(2021)!.endX - bands.get(2021)!.startX;
+		expect(w2021).toBeGreaterThan(w2020);
+	});
+
+	it('lays year bands out contiguously from leftPad to plotRight', () => {
+		const items = yearItems([
+			[2020, 2],
+			[2021, 1],
+			[2022, 3]
+		]);
+		const plotRight = 800;
+		const bands = computeYearBands(items, GEO.leftPad, plotRight);
+		expect(bands.get(2020)!.startX).toBe(GEO.leftPad);
+		expect(bands.get(2020)!.endX).toBe(bands.get(2021)!.startX);
+		expect(bands.get(2021)!.endX).toBe(bands.get(2022)!.startX);
+		expect(bands.get(2022)!.endX).toBe(plotRight); // snapped exactly
+	});
+
+	it('gives an empty gap year a positive-width band (gridline never collapses)', () => {
+		// 2021 has no techs but sits between populated years.
+		const items = yearItems([
+			[2020, 2],
+			[2022, 2]
+		]);
+		const bands = computeYearBands(items, GEO.leftPad, 800);
+		const gap = bands.get(2021)!;
+		expect(gap.endX - gap.startX).toBeGreaterThan(0);
+	});
+
+	it('places each year tick at its band start, first at leftPad', () => {
+		const result = computeAdoptionLayout(FIXTURE_ITEMS, FIXTURE_EDGES, GEO);
+		expect(result.ticks[0].x).toBeCloseTo(GEO.leftPad, 6);
+		// Ticks are strictly increasing (contiguous ascending bands).
+		for (let i = 1; i < result.ticks.length; i++) {
+			expect(result.ticks[i].x).toBeGreaterThan(result.ticks[i - 1].x);
+		}
+	});
+
+	it('keeps x monotonic across an uneven multi-year fixture with an empty gap year', () => {
+		const items = yearItems([
+			[2019, 1],
+			[2020, 5],
+			[2021, 0],
+			[2022, 2]
+		]);
+		const result = computeAdoptionLayout(items, [], GEO);
+		const byLabel = new Map(result.placed.map((p) => [p.label, p]));
+		for (let i = 1; i < items.length; i++) {
+			const prev = byLabel.get(items[i - 1].label)!;
+			const curr = byLabel.get(items[i].label)!;
+			if (items[i - 1].firstDate < items[i].firstDate) {
+				expect(prev.x).toBeLessThanOrEqual(curr.x);
+			}
+		}
 	});
 });
