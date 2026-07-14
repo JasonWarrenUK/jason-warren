@@ -501,6 +501,110 @@ describe('computeAdoptionLayout', () => {
 		expect(a).toEqual(b);
 	});
 
+	// ---- rail colour segments -----------------------------------------------
+	// A rail is coloured by the edge to the next node each stretch reaches.
+
+	/** Rail node lookup for the segment tests. */
+	const railOf = (result: ReturnType<typeof computeAdoptionLayout>, label: string): PlacedNode =>
+		result.placed.find((p) => p.label === label && p.section === 'rail')!;
+
+	it('colours a rail leads-to up to its last leads-to child, then replaced-by into its successor', () => {
+		// React-like: a parent that leads to two children (elbow-routed, so they
+		// depart interior to the rail) and is then replaced by a successor.
+		const items: TechAdoption[] = [
+			tech('Core', 'framework', '2020-01-01'),
+			tech('ChildA', 'framework', '2021-06-01'),
+			tech('ChildB', 'framework', '2022-06-01'),
+			tech('Heir', 'framework', '2024-01-01')
+		];
+		const edges: TechRelationship[] = [
+			{ kind: 'leads-to', source: 'Core', target: 'ChildA' },
+			{ kind: 'leads-to', source: 'Core', target: 'ChildB' },
+			{ kind: 'replaced-by', source: 'Core', target: 'Heir' }
+		];
+		const core = railOf(computeAdoptionLayout(items, edges, GEO), 'Core');
+		const segs = core.railSegments!;
+		expect(segs).toHaveLength(2);
+		expect(segs[0].kind).toBe('leads-to');
+		expect(segs[1].kind).toBe('replaced-by');
+		// Contiguous, spanning the whole rail, with the switch at the last
+		// leads-to departure.
+		expect(segs[0].startX).toBe(core.x);
+		expect(segs[0].endX).toBe(segs[1].startX);
+		expect(segs[1].endX).toBe(core.railEndX);
+	});
+
+	it('colours a pure leaf rail with a single kind-base segment', () => {
+		// A later isolated node keeps Leaf off the plot-right edge so its rail
+		// has width (a rail flush with the edge is legitimately zero-length).
+		const items: TechAdoption[] = [
+			tech('Root', 'language', '2020-01-01'),
+			tech('Leaf', 'framework', '2021-01-01'),
+			tech('Latecomer', 'language', '2025-01-01')
+		];
+		const edges: TechRelationship[] = [{ kind: 'leads-to', source: 'Root', target: 'Leaf' }];
+		const leaf = railOf(computeAdoptionLayout(items, edges, GEO), 'Leaf');
+		expect(leaf.railFades).toBe(true);
+		expect(leaf.railSegments).toHaveLength(1);
+		expect(leaf.railSegments![0].kind).toBeNull();
+		expect(leaf.railSegments![0].endX).toBe(leaf.railEndX);
+	});
+
+	it('colours a replaced-only rail fully replaced-by (no leads-to prefix)', () => {
+		// .NET 8 → .NET 9 shape: a retired rail with no leads-to children.
+		const items: TechAdoption[] = [
+			tech('V8', 'runtime', '2023-01-01'),
+			tech('V9', 'runtime', '2024-06-01')
+		];
+		const edges: TechRelationship[] = [{ kind: 'replaced-by', source: 'V8', target: 'V9' }];
+		const v8 = railOf(computeAdoptionLayout(items, edges, GEO), 'V8');
+		expect(v8.railFades).toBe(false);
+		expect(v8.railSegments).toHaveLength(1);
+		expect(v8.railSegments![0].kind).toBe('replaced-by');
+		expect(v8.railSegments![0].startX).toBe(v8.x);
+		expect(v8.railSegments![0].endX).toBe(v8.railEndX);
+	});
+
+	it('colours a still-in-use rail with leads-to children then a faded kind-base tail', () => {
+		const items: TechAdoption[] = [
+			tech('Base', 'language', '2020-01-01'),
+			tech('Kid', 'framework', '2022-01-01')
+		];
+		// Base leads to Kid but is never replaced, so it fades at the plot edge.
+		const edges: TechRelationship[] = [{ kind: 'leads-to', source: 'Base', target: 'Kid' }];
+		const base = railOf(computeAdoptionLayout(items, edges, GEO), 'Base');
+		expect(base.railFades).toBe(true);
+		const segs = base.railSegments!;
+		expect(segs[0].kind).toBe('leads-to');
+		expect(segs[segs.length - 1].kind).toBeNull(); // faded kind-base tail
+	});
+
+	it('produces canonical segment lists on every rail (contiguous, no zero-width)', () => {
+		const result = computeAdoptionLayout(FIXTURE_ITEMS, FIXTURE_EDGES, GEO);
+		for (const node of result.placed) {
+			if (node.section !== 'rail') {
+				expect(node.railSegments).toBeNull();
+				continue;
+			}
+			const segs = node.railSegments!;
+			// A zero-length rail (dot at the plot edge) legitimately has no
+			// segments; anything with width spans x → railEndX contiguously.
+			if (segs.length === 0) {
+				expect(node.railEndX).toBe(node.x);
+				continue;
+			}
+			expect(segs[0].startX).toBe(node.x);
+			expect(segs[segs.length - 1].endX).toBe(node.railEndX);
+			for (let i = 0; i < segs.length; i++) {
+				expect(segs[i].endX).toBeGreaterThan(segs[i].startX); // no zero-width
+				if (i > 0) {
+					expect(segs[i].startX).toBe(segs[i - 1].endX); // contiguous
+					expect(segs[i].kind).not.toBe(segs[i - 1].kind); // no adjacent same-kind
+				}
+			}
+		}
+	});
+
 	it('drops edges whose source or target is not among the placed items', () => {
 		const edgesWithGhost: TechRelationship[] = [
 			...FIXTURE_EDGES,

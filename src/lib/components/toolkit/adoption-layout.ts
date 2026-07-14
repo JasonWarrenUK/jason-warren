@@ -70,6 +70,25 @@ export interface PlacedNode extends TechAdoption {
 	railEndX: number | null;
 	/** True when the rail runs to the plot edge (still in use) and should fade out. */
 	railFades: boolean;
+	/**
+	 * The rail split into colour segments, left to right, spanning x → railEndX
+	 * with no gaps. Each segment is coloured by the edge to the next node that
+	 * stretch of rail reaches (see RailSegment). Null for strip dots (no rail).
+	 */
+	railSegments: RailSegment[] | null;
+}
+
+/**
+ * One colour segment of a rail. `kind` null means "the tech's own kind colour"
+ * (the rail's base); a lineage kind means the rail is, along this stretch,
+ * heading toward a node reached by an edge of that kind — leads-to while it is
+ * still branching to leads-to children, replaced-by on the final run into its
+ * successor.
+ */
+export interface RailSegment {
+	startX: number;
+	endX: number;
+	kind: LineageKind | null;
 }
 
 export type ConnectorVariant =
@@ -1340,11 +1359,102 @@ function buildConnectors(
 	inherited: Set<string>,
 	itemDates: Map<string, string>,
 	geo: LayoutGeometry
-): Connector[] {
+): { connectors: Connector[]; routed: RoutedEdge[] } {
 	const occupantsByLane = indexOccupants(pointOf, laneOf);
 	const routed = routeEdges(edges, pointOf, laneOf, inherited, itemDates, occupantsByLane, geo);
 	deOverlapCorridors(routed, pointOf, laneOf, occupantsByLane, geo);
-	return routed.map((r) => emitConnector(r, pointOf, geo));
+	return { connectors: routed.map((r) => emitConnector(r, pointOf, geo)), routed };
+}
+
+/**
+ * The x at which a leads-to edge leaves its parent's rail, or null when it
+ * departs the parent's DOT rather than a point along the rail (s-curve and
+ * bracket fallbacks, and any branch that starts at parent.x). Read from the
+ * FINAL routed geometry — after deOverlapCorridors — so a segment boundary
+ * lands exactly where the connector visibly leaves the rail, however the
+ * router placed it (a plain elbow, a de-overlapped corridor, a rail-departing
+ * branch-drop, or a gutter run).
+ */
+function leadsToDepartureX(routed: RoutedEdge, parentX: number): number | null {
+	if (routed.corridorX === null) return null; // s-curve / bracket: departs the dot
+	if (routed.corridorX <= parentX) return null; // departs at (or left of) the dot
+	return routed.corridorX;
+}
+
+/**
+ * Splits every rail into left-to-right colour segments spanning x → railEndX
+ * with no gaps. A stretch is coloured by the edge to the next node it reaches:
+ * leads-to while the rail is still branching to leads-to children, replaced-by
+ * on the final run into a successor. The base (kind-coloured) segment shows
+ * where the rail heads to nothing lineage-bearing next: a still-in-use tail,
+ * or a pure leaf.
+ *
+ * Rules (see the plan):
+ *   - leads-to segment [x … lastLeadsToDepartureX], present only when at least
+ *     one leads-to child departs interior to the rail.
+ *   - terminal segment [lastLeadsToDepartureX … railEndX] (or the whole rail
+ *     when no interior leads-to): replaced-by when the rail is retired (has a
+ *     successor), else the kind-coloured base carrying the fade.
+ *
+ * Deterministic: departure x-values come from already-deterministic routing
+ * and are combined with min/max only; output is canonical (contiguous,
+ * strictly-ascending, no zero-width, no adjacent same-kind runs).
+ */
+function computeAllRailSegments(
+	railLabels: Set<string>,
+	routed: RoutedEdge[],
+	pointOf: Map<string, RailPoint>,
+	railEnds: Map<string, RailEnd>
+): Map<string, RailSegment[]> {
+	// Interior leads-to departure x-values per source rail.
+	const departuresBySource = new Map<string, number[]>();
+	for (const r of routed) {
+		if (r.edge.kind !== 'leads-to') continue;
+		const parent = pointOf.get(r.edge.source);
+		if (parent === undefined) continue;
+		const departX = leadsToDepartureX(r, parent.x);
+		if (departX === null) continue;
+		if (departX <= parent.x || departX >= parent.railEndX) continue; // not interior
+		const list = departuresBySource.get(r.edge.source);
+		if (list) list.push(departX);
+		else departuresBySource.set(r.edge.source, [departX]);
+	}
+
+	const segmentsByLabel = new Map<string, RailSegment[]>();
+	for (const label of railLabels) {
+		const point = pointOf.get(label)!;
+		const end = railEnds.get(label)!;
+		const x0 = point.x;
+		const xEnd = end.railEndX;
+		const retired = !end.fades; // a retired rail merges into a replaced-by successor
+
+		const departures = departuresBySource.get(label);
+		const lastLeadsToX = departures !== undefined ? Math.max(...departures) : x0;
+
+		const segments: RailSegment[] = [];
+		const push = (startX: number, sx: number, kind: LineageKind | null): void => {
+			if (sx - startX <= 0) return; // drop zero-width
+			const prev = segments[segments.length - 1];
+			if (prev && prev.kind === kind) prev.endX = sx; // merge adjacent same-kind
+			else segments.push({ startX, endX: sx, kind });
+		};
+
+		if (lastLeadsToX > x0) {
+			// Leads-to run up to the last interior departure, then the terminal.
+			push(x0, lastLeadsToX, 'leads-to');
+			push(lastLeadsToX, xEnd, retired ? 'replaced-by' : null);
+		} else {
+			// No interior leads-to: the whole rail is one terminal segment —
+			// replaced-by when retired, kind-coloured base otherwise.
+			push(x0, xEnd, retired ? 'replaced-by' : null);
+		}
+
+		// A zero-length rail (dot sitting at the plot-right edge, x0 === xEnd)
+		// yields no segments — there is nothing to draw, exactly as the old
+		// single zero-length <line> rendered nothing.
+		segmentsByLabel.set(label, segments);
+	}
+	return segmentsByLabel;
 }
 
 export function computeAdoptionLayout(
@@ -1388,6 +1498,35 @@ export function computeAdoptionLayout(
 		geo.topPad + railBlockHeight + (rails.laneCount > 0 && strip.laneCount > 0 ? geo.stripGap : 0);
 	const contentBottom = stripTop + strip.laneCount * geo.stripLaneHeight;
 
+	// Rail points are known before the PlacedNodes are built — segments need
+	// routing, and routing needs only x/y/radius/railEndX/labelRight.
+	const pointOf = new Map<string, RailPoint>(
+		items
+			.filter((item) => railLabels.has(item.label))
+			.map((item) => {
+				const geom = geomByLabel.get(item.label)!;
+				return [
+					item.label,
+					{
+						x: geom.x,
+						y: geo.topPad + rails.laneOf.get(item.label)! * geo.railLaneHeight,
+						radius: geom.radius,
+						railEndX: railEnds.get(item.label)!.railEndX,
+						labelRight: geom.labelRight
+					}
+				];
+			})
+	);
+	const { connectors, routed } = buildConnectors(
+		reduced,
+		pointOf,
+		rails.laneOf,
+		rails.inherited,
+		itemDates,
+		geo
+	);
+	const railSegments = computeAllRailSegments(railLabels, routed, pointOf, railEnds);
+
 	const placed: PlacedNode[] = items.map((item) => {
 		const geom = geomByLabel.get(item.label)!;
 		if (railLabels.has(item.label)) {
@@ -1400,7 +1539,8 @@ export function computeAdoptionLayout(
 				lane: rails.laneOf.get(item.label)!,
 				section: 'rail' as const,
 				railEndX: end.railEndX,
-				railFades: end.fades
+				railFades: end.fades,
+				railSegments: railSegments.get(item.label)!
 			};
 		}
 		return {
@@ -1411,32 +1551,10 @@ export function computeAdoptionLayout(
 			lane: strip.laneOf.get(item.label)!,
 			section: 'strip' as const,
 			railEndX: null,
-			railFades: false
+			railFades: false,
+			railSegments: null
 		};
 	});
-
-	const pointOf = new Map<string, RailPoint>(
-		placed
-			.filter((p) => p.section === 'rail')
-			.map((p) => [
-				p.label,
-				{
-					x: p.x,
-					y: p.y,
-					radius: p.radius,
-					railEndX: p.railEndX!,
-					labelRight: geomByLabel.get(p.label)!.labelRight
-				}
-			])
-	);
-	const connectors = buildConnectors(
-		reduced,
-		pointOf,
-		rails.laneOf,
-		rails.inherited,
-		itemDates,
-		geo
-	);
 
 	const axisY = contentBottom + geo.axisGap / 2;
 	const height = axisY + geo.axisGap;

@@ -264,17 +264,27 @@
 					<title>{describe(item)}</title>
 					<!-- The rail: this tech's lifespan, from adoption until replaced
 					     (ends at its successor's dot) or the present (fades out at the
-					     right edge). Strip items carry no rail. Rendered before the dot
-					     so the dot always sits on top of its own rail head. -->
-					{#if item.section === 'rail' && item.railEndX !== null}
-						<line
-							class="adoption__rail"
-							x1={item.x}
-							y1={item.y}
-							x2={item.railEndX}
-							y2={item.y}
-							mask={item.railFades ? 'url(#adoption-rail-fade)' : undefined}
-						/>
+					     right edge). Split into colour segments — each stretch coloured
+					     by the edge to the next node it reaches (leads-to while still
+					     branching, replaced-by into a successor, kind-colour otherwise).
+					     A base (kind-colour) segment inherits currentColor from this
+					     group; edge segments set stroke inline. Only the rightmost
+					     segment carries the still-in-use fade. Strip items carry no
+					     rail. Rendered before the dot so the dot sits on its rail head. -->
+					{#if item.railSegments !== null}
+						{#each item.railSegments as seg, si (`${seg.kind ?? 'base'}:${seg.startX}`)}
+							<line
+								class="adoption__rail"
+								x1={seg.startX}
+								y1={item.y}
+								x2={seg.endX}
+								y2={item.y}
+								style={seg.kind !== null ? `stroke: ${edgeTypeColour(seg.kind)}` : undefined}
+								mask={item.railFades && si === item.railSegments.length - 1
+									? 'url(#adoption-rail-fade)'
+									: undefined}
+							/>
+						{/each}
 					{/if}
 					<!-- Only the dot opens the pin modal — the label is a passive
 					     caption. Interactive handlers and ARIA live here, not on the
@@ -352,7 +362,8 @@
 			</span>
 		{/each}
 		<span class="adoption__legend-note">
-			A line runs until the technology was replaced; fading lines are still in use.
+			Each line is coloured by what comes next: leading to a new technology, then
+			merging into its replacement; fading lines are still in use.
 		</span>
 		{#if provisional}
 			<span class="adoption__provisional">
