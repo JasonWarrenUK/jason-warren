@@ -6694,8 +6694,60 @@ async function runInteractiveMenu({ manifests, palette, useGum, onProgress, clea
 		}
 	};
 
+	/**
+	 * Labelled single pick: rows are [visible label, description, value];
+	 * returns the value, or null on Esc/empty. The flag picker's idiom,
+	 * extracted for the taxonomy wizards.
+	 */
+	const choosePlain = (headerText, rows) => {
+		const pick = spawnSync(
+			'gum',
+			[
+				'choose',
+				'--label-delimiter=:',
+				`--header=${headerText}`,
+				'--cursor=> ',
+				`--cursor.foreground=${BRAND_PRIMARY}`,
+				`--selected.foreground=${BRAND_PRIMARY}`,
+				`--item.foreground=${BRAND_ACCENT}`,
+				...rows.map(([label, desc, value]) => (desc ? `${label}  ${desc}:${value}` : `${label}:${value}`))
+			],
+			{ stdio: ['inherit', 'pipe', 'inherit'], encoding: 'utf8' }
+		);
+		if (pick.status !== 0 || !pick.stdout.trim()) return null;
+		return pick.stdout.trim();
+	};
+
+	/** Plain string pick over verbatim items; null on Esc/empty. */
+	const chooseString = (headerText, items) => {
+		const pick = spawnSync(
+			'gum',
+			[
+				'choose',
+				`--header=${headerText}`,
+				'--cursor=> ',
+				`--cursor.foreground=${BRAND_PRIMARY}`,
+				`--selected.foreground=${BRAND_PRIMARY}`,
+				...items
+			],
+			{ stdio: ['inherit', 'pipe', 'inherit'], encoding: 'utf8' }
+		);
+		if (pick.status !== 0 || !pick.stdout.trim()) return null;
+		return pick.stdout.trim();
+	};
+
+	/** Free-text prompt; null on Ctrl-C or empty Enter. */
+	const promptText = (placeholder) => {
+		const input = spawnSync('gum', ['input', '--placeholder', placeholder], {
+			stdio: ['inherit', 'pipe', 'inherit'],
+			encoding: 'utf8'
+		});
+		if (input.status !== 0) return null;
+		return input.stdout.trim() || null;
+	};
+
 	// Menu rows grouped by theme so no single gum choose list is ever long
-	// enough to need scrolling (max 5 items per section, 5 sections). Each
+	// enough to need scrolling (max 5 items per section, 6 sections). Each
 	// row is [visible name, description, return value]; descriptions must be
 	// colon-free (label-delimiter splits on ':'). Sections are a presentation
 	// grouping only — the dispatch switch below is still keyed on the flat
@@ -6735,9 +6787,21 @@ async function runInteractiveMenu({ manifests, palette, useGum, onProgress, clea
 			header: 'DRIFT · Curate',
 			rows: [
 				['Author', 'Scaffold a project overlay and open it in your editor', 'author'],
+				['Edit field', 'Set one overlay field without opening an editor', 'author-edit'],
 				['Relate', 'Author a project or tech relationship edge', 'relate'],
 				['Flag', 'Pin a project to the hero pool or hide it from there', 'flag'],
 				['Hide', 'Append a slug to excluded.json, removing it from the site', 'hide']
+			]
+		},
+		{
+			section: 'Taxonomy',
+			header: 'DRIFT · Taxonomy',
+			rows: [
+				['Tech list', 'Every tech tag with its overlay and visibility state', 'tech-list'],
+				['Tech overlay', 'Author a first-used date, note, or kind override', 'tech-set'],
+				['Tech visibility', 'Hide or unhide a tech per surface', 'tech-visibility'],
+				['Project tags', 'Add a tech to, or hide one from, a single project', 'tag'],
+				['Themes', 'Manage the theme collections on the toolkit page', 'theme']
 			]
 		},
 		{
@@ -6940,6 +7004,237 @@ async function runInteractiveMenu({ manifests, palette, useGum, onProgress, clea
 				await runAuthor({ args: [chosenSlug], palette, useGum });
 				break;
 			}
+			case 'author-edit': {
+				const chosenSlug = pickSlug('Choose a slug to edit:', 'project slug');
+				if (chosenSlug === null) continue outer;
+				const field = chooseString('Which field?', AUTHOR_EDITABLE_FIELDS);
+				if (field === null) continue outer;
+				const allowed = AUTHOR_FIELD_ENUMS[field];
+				const value = allowed
+					? chooseString(`New ${field}:`, allowed)
+					: promptText(`${field} value`);
+				if (value === null) continue outer;
+				await runAuthor({ args: [chosenSlug, field, value], palette });
+				break;
+			}
+			case 'tech-list':
+				await runTech({ args: ['list'], values: {}, palette });
+				break;
+			case 'tech-set': {
+				const labels = [...(await buildTechLabelIndex({ includeRelateHidden: true })).values()].sort(
+					(a, b) => a.localeCompare(b)
+				);
+				const label = pickOrCreate(
+					'Tech label:',
+					labels,
+					'Create a new tech label',
+					'tech label, e.g. Bun',
+					() => null // labels are free-text; canonical resolution happens in runTech
+				);
+				if (label === null) continue outer;
+				const field = choosePlain('Which field?', [
+					['First used', 'Floor adoption date, YYYY-MM-DD', 'first-used'],
+					['Note', 'One sentence shown in the toolkit modal', 'note'],
+					['Kind override', 'Reclassify the tag everywhere', 'kind']
+				]);
+				if (field === null) continue outer;
+				const value =
+					field === 'kind'
+						? chooseString('New kind:', [...TECH_TAG_KINDS])
+						: promptText(field === 'first-used' ? 'YYYY-MM-DD' : 'note text');
+				if (value === null) continue outer;
+				await runTech({ args: ['set', label], values: { [field]: value }, palette });
+				break;
+			}
+			case 'tech-visibility': {
+				const labels = [...(await buildTechLabelIndex({ includeRelateHidden: true })).values()].sort(
+					(a, b) => a.localeCompare(b)
+				);
+				const label = chooseString('Tech label:', labels);
+				if (label === null) continue outer;
+				const action = choosePlain('Hide or unhide?', [
+					['Hide', 'Remove from the chosen surfaces', 'hide'],
+					['Unhide', 'Restore on the chosen surfaces', 'unhide']
+				]);
+				if (action === null) continue outer;
+				// Multi-select over the four surfaces; empty selection means all.
+				const surfacesPick = spawnSync(
+					'gum',
+					[
+						'choose',
+						'--no-limit',
+						'--header=Surfaces (space to toggle; none selected = all):',
+						'--cursor=> ',
+						`--cursor.foreground=${BRAND_PRIMARY}`,
+						`--selected.foreground=${BRAND_PRIMARY}`,
+						...TECH_SURFACES
+					],
+					{ stdio: ['inherit', 'pipe', 'inherit'], encoding: 'utf8' }
+				);
+				if (surfacesPick.status !== 0) continue outer;
+				const surfaces = surfacesPick.stdout
+					.split('\n')
+					.map((s) => s.trim())
+					.filter((s) => s.length > 0)
+					.join(',');
+				await runTech({
+					args: [action, label],
+					values: { from: surfaces || undefined },
+					palette
+				});
+				break;
+			}
+			case 'tag': {
+				// Dual entry: the same add/hide/unhide flow is reachable from
+				// either end of the project/tech boundary.
+				const route = choosePlain('Start from…', [
+					['A project', 'Pick the project first', 'project'],
+					['A technology', 'Pick the tech first', 'tech']
+				]);
+				if (route === null) continue outer;
+
+				const pickLabel = async () => {
+					const labels = [
+						...(await buildTechLabelIndex({ includeRelateHidden: true })).values()
+					].sort((a, b) => a.localeCompare(b));
+					return pickOrCreate(
+						'Tech label:',
+						labels,
+						'Create a new tech label',
+						'tech label, e.g. Bun',
+						() => null
+					);
+				};
+
+				let chosenSlug = null;
+				let label = null;
+				if (route === 'project') {
+					chosenSlug = pickSlug('Project:', 'project slug');
+					if (chosenSlug === null) continue outer;
+				} else {
+					label = await pickLabel();
+					if (label === null) continue outer;
+				}
+				const action = choosePlain('Tag action:', [
+					['Add', 'Add an authored tech tag', 'add'],
+					['Hide', 'Suppress the tag on this project', 'hide'],
+					['Unhide', 'Lift a suppression', 'unhide']
+				]);
+				if (action === null) continue outer;
+				if (chosenSlug === null) {
+					chosenSlug = pickSlug('Project:', 'project slug');
+					if (chosenSlug === null) continue outer;
+				}
+				if (label === null) {
+					label = await pickLabel();
+					if (label === null) continue outer;
+				}
+				// A brand-new label being added needs a kind up front.
+				const tagValues = {};
+				if (action === 'add') {
+					const index = await buildTechLabelIndex({ includeRelateHidden: true });
+					if (!index.has(label.toLowerCase())) {
+						const kind = chooseString(`Kind for new label '${label}':`, [...TECH_TAG_KINDS]);
+						if (kind === null) continue outer;
+						tagValues.kind = kind;
+					}
+				}
+				await runTag({ args: [action, chosenSlug, label], values: tagValues, palette });
+				break;
+			}
+			case 'theme': {
+				const action = choosePlain('Themes — what to do?', [
+					['List', 'Show every theme with its members', 'list'],
+					['Create', 'Author a new theme', 'create'],
+					['Edit', 'Change a theme name or blurb', 'edit'],
+					['Add project', 'Put a project into a theme', 'add'],
+					['Remove project', 'Take a project out of a theme', 'remove'],
+					['Delete', 'Remove a whole theme', 'delete']
+				]);
+				if (action === null) continue outer;
+
+				if (action === 'list') {
+					await runTheme({ args: ['list'], values: {}, palette });
+					break;
+				}
+
+				const { ts, sf, arrayLit } = await loadThemesForEdit(palette);
+				const themeRows = arrayLit.elements
+					.filter((el) => ts.isObjectLiteralExpression(el))
+					.map((el) => ({
+						id: readRelationshipField(ts, sf, el, 'id'),
+						slugs: readArrayField(ts, sf, el, 'slugs') ?? []
+					}))
+					.filter((t) => t.id !== undefined);
+
+				if (action === 'create') {
+					let id;
+					while (true) {
+						id = promptText('theme id (kebab-case)');
+						if (id === null) break;
+						const error = validateProjectSlug(id) ?? (themeRows.some((t) => t.id === id) ? `A theme with id '${id}' already exists.` : null);
+						if (error === null) break;
+						console.log(`⚠ ${error}`);
+					}
+					if (id === null) continue outer;
+					const name = promptText('display name');
+					if (name === null) continue outer;
+					const blurb = promptText('blurb (optional)') ?? '';
+					const slugs = [];
+					// Member loop: Esc/empty ends collection.
+					while (true) {
+						const member = pickSlug(
+							`Members so far: ${slugs.length ? slugs.join(', ') : 'none'} — add another? (Esc to finish)`,
+							'project slug'
+						);
+						if (member === null) break;
+						if (!slugs.includes(member)) slugs.push(member);
+					}
+					await runTheme({ args: ['create', id], values: { name, blurb, slug: slugs }, palette });
+					break;
+				}
+
+				const id = chooseString('Theme:', themeRows.map((t) => t.id));
+				if (id === null) continue outer;
+
+				if (action === 'edit') {
+					const name = promptText('new name (Enter keeps current)');
+					const blurb = promptText('new blurb (Enter keeps current)');
+					if (name === null && blurb === null) {
+						console.log('Nothing to change.');
+						continue outer;
+					}
+					await runTheme({
+						args: ['edit', id],
+						values: { name: name ?? undefined, blurb: blurb ?? undefined },
+						palette
+					});
+					break;
+				}
+				if (action === 'delete') {
+					const confirm = spawnSync('gum', ['confirm', `Delete theme '${id}'?`], {
+						stdio: 'inherit'
+					});
+					if (confirm.status !== 0) continue outer;
+					await runTheme({ args: ['delete', id], values: {}, palette });
+					break;
+				}
+				// add / remove a member
+				let member;
+				if (action === 'remove') {
+					const current = themeRows.find((t) => t.id === id)?.slugs ?? [];
+					if (current.length === 0) {
+						console.log(`Theme '${id}' has no members.`);
+						continue outer;
+					}
+					member = chooseString('Remove which project?', current);
+				} else {
+					member = pickSlug('Add which project?', 'project slug');
+				}
+				if (member === null || member === undefined) continue outer;
+				await runTheme({ args: [action, id, member], values: {}, palette });
+				break;
+			}
 			case 'flag': {
 				const chosenSlug = pickSlug('Choose a slug to flag:', 'project slug');
 				if (chosenSlug === null) continue outer;
@@ -7133,7 +7428,13 @@ async function runInteractiveMenu({ manifests, palette, useGum, onProgress, clea
 				// action === 'add'.
 				// All known tech labels drift recognises, regardless of whether
 				// they're in a relationship yet — mirrors project mode listing
-				// every manifest slug, not just related ones.
+				// every manifest slug, not just related ones. Labels hidden from
+				// the relate surface stay out, same as CLI resolution.
+				const hiddenFromRelate = new Set(
+					(await readTechOverlaysFile())
+						.filter((o) => o.hiddenFrom?.includes('relate'))
+						.map((o) => o.label)
+				);
 				const allTechLabels = [
 					...new Set(
 						[
@@ -7143,7 +7444,7 @@ async function runInteractiveMenu({ manifests, palette, useGum, onProgress, clea
 							...Object.values(DATABASE_TAGS)
 						].map((t) => t.label)
 					)
-				];
+				].filter((label) => !hiddenFromRelate.has(label));
 
 				// Step 2: source — always a full alphabetised list of existing
 				// entries (manifest slugs for project, taxonomy labels for tech),
