@@ -75,7 +75,6 @@ export const techRelationships: TechRelationship[] = [
 	{ kind: 'leads-to', source: 'Ink', target: 'HTML' },
 	{ kind: 'leads-to', source: 'Ink', target: 'CSS' },
 	{ kind: 'leads-to', source: 'HTML', target: 'JavaScript' },
-	{ kind: 'leads-to', source: 'JavaScript', target: 'Next.js' },
 	{ kind: 'leads-to', source: 'C#', target: '.NET 8' },
 	{ kind: 'leads-to', source: '.NET 8', target: 'ASP.NET Core' },
 	{ kind: 'leads-to', source: 'Tauri', target: 'Rust' },
@@ -83,5 +82,8 @@ export const techRelationships: TechRelationship[] = [
 	{ kind: 'leads-to', source: 'React', target: 'Vite' },
 	{ kind: 'leads-to', source: 'Python', target: 'FastAPI' },
 	{ kind: 'leads-to', source: 'Python', target: 'Python runtime' },
-	{ kind: 'leads-to', source: 'JavaScript', target: 'Node.js' }
+	{ kind: 'leads-to', source: 'JavaScript', target: 'Node.js' },
+	{ kind: 'leads-to', source: 'Shell', target: 'OpenTUI' },
+	{ kind: 'leads-to', source: 'React', target: 'Next.js' },
+	{ kind: 'leads-to', source: 'Svelte 5', target: 'SvelteKit' }
 ];
