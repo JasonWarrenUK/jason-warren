@@ -210,6 +210,117 @@ describe('computeAdoptionLayout', () => {
 		expect(connector.path.startsWith(`M ${html.x - html.radius - 2} ${html.y}`)).toBe(true);
 	});
 
+	// ---- branch-drop routing -------------------------------------------------
+	// A "late child" is one adopted after its lineage parent's rail ended (the
+	// parent was replaced first). These used to fall back to long dot-to-dot
+	// s-curves; they must now route orthogonally.
+
+	it('routes a late child as a branch-drop departing the parent dot', () => {
+		const items: TechAdoption[] = [
+			tech('Alpha', 'language', '2020-01-01'),
+			tech('Beta', 'language', '2021-01-01'),
+			tech('Gamma', 'framework', '2024-01-01')
+		];
+		const edges: TechRelationship[] = [
+			{ kind: 'replaced-by', source: 'Alpha', target: 'Beta' },
+			{ kind: 'leads-to', source: 'Alpha', target: 'Gamma' }
+		];
+		const result = computeAdoptionLayout(items, edges, GEO);
+		const byLabel = new Map(result.placed.map((p) => [p.label, p]));
+		const alpha = byLabel.get('Alpha')!;
+
+		const connector = result.connectors.find((c) => c.target === 'Gamma')!;
+		expect(connector.variant).toBe('branch-drop');
+		expect(connector.path.startsWith(`M ${alpha.x} ${alpha.y + alpha.radius + 2}`)).toBe(true);
+		// Orthogonal by construction: no cubic segment.
+		expect(connector.path).not.toContain('C');
+	});
+
+	it('bundles two late children of one parent onto the same vertical', () => {
+		const items: TechAdoption[] = [
+			tech('Alpha', 'language', '2020-01-01'),
+			tech('Beta', 'language', '2021-01-01'),
+			tech('Gamma', 'framework', '2024-01-01'),
+			tech('Delta', 'framework', '2025-01-01')
+		];
+		const edges: TechRelationship[] = [
+			{ kind: 'replaced-by', source: 'Alpha', target: 'Beta' },
+			{ kind: 'leads-to', source: 'Alpha', target: 'Gamma' },
+			{ kind: 'leads-to', source: 'Alpha', target: 'Delta' }
+		];
+		const result = computeAdoptionLayout(items, edges, GEO);
+		const byLabel = new Map(result.placed.map((p) => [p.label, p]));
+		const alpha = byLabel.get('Alpha')!;
+
+		for (const target of ['Gamma', 'Delta']) {
+			const connector = result.connectors.find((c) => c.target === target)!;
+			expect(connector.variant).toBe('branch-drop');
+			expect(connector.path.startsWith(`M ${alpha.x} `)).toBe(true);
+		}
+	});
+
+	it('nudges the corridor off a same-date sibling dot in an intermediate lane', () => {
+		// Sigma shares Alpha's date and sits in the lane between Alpha and
+		// Gamma, so a corridor at Alpha.x would slice through Sigma's dot. The
+		// route must move right onto Alpha's rail instead (Alpha's rail runs to
+		// Beta, leaving room), clearing Sigma's dot.
+		const items: TechAdoption[] = [
+			tech('Alpha', 'language', '2020-01-01'),
+			tech('Sigma', 'language', '2020-01-01'),
+			tech('Beta', 'language', '2021-01-01'),
+			tech('Gamma', 'framework', '2024-01-01')
+		];
+		const edges: TechRelationship[] = [
+			{ kind: 'replaced-by', source: 'Alpha', target: 'Beta' },
+			{ kind: 'leads-to', source: 'Alpha', target: 'Sigma' },
+			{ kind: 'leads-to', source: 'Alpha', target: 'Gamma' }
+		];
+		const result = computeAdoptionLayout(items, edges, GEO);
+		const byLabel = new Map(result.placed.map((p) => [p.label, p]));
+		const alpha = byLabel.get('Alpha')!;
+		const sigma = byLabel.get('Sigma')!;
+		const gamma = byLabel.get('Gamma')!;
+		expect(sigma.lane).toBeGreaterThan(alpha.lane);
+		expect(sigma.lane).toBeLessThan(gamma.lane);
+
+		const connector = result.connectors.find((c) => c.target === 'Gamma')!;
+		expect(connector.variant).toBe('elbow');
+		// The elbow's corner x (first Q) is the corridor; it must clear the
+		// sibling dot's exclusion zone.
+		const corridorX = Number(connector.path.match(/Q ([\d.]+)/)![1]);
+		expect(corridorX).toBeGreaterThan(sigma.x + sigma.radius + 3);
+	});
+
+	it('clears an earlier occupant of the child lane before running along it', () => {
+		// Gamma reuses Mu's lane (Mu's rail ended at Nu long before Gamma), so
+		// the branch's horizontal run along that lane must start right of Mu's
+		// label, not plough through it.
+		const items: TechAdoption[] = [
+			tech('Alpha', 'language', '2020-01-01'),
+			tech('Mu', 'framework', '2021-06-01'),
+			tech('Nu', 'framework', '2021-08-01'),
+			tech('Beta', 'language', '2024-01-01'),
+			tech('Gamma', 'framework', '2025-01-01')
+		];
+		const edges: TechRelationship[] = [
+			{ kind: 'replaced-by', source: 'Alpha', target: 'Beta' },
+			{ kind: 'leads-to', source: 'Alpha', target: 'Mu' },
+			{ kind: 'replaced-by', source: 'Mu', target: 'Nu' },
+			{ kind: 'leads-to', source: 'Alpha', target: 'Gamma' }
+		];
+		const result = computeAdoptionLayout(items, edges, GEO);
+		const byLabel = new Map(result.placed.map((p) => [p.label, p]));
+		const mu = byLabel.get('Mu')!;
+		const gamma = byLabel.get('Gamma')!;
+		expect(gamma.lane).toBe(mu.lane);
+
+		const connector = result.connectors.find((c) => c.target === 'Gamma')!;
+		expect(connector.variant).toBe('elbow');
+		const corridorX = Number(connector.path.match(/Q ([\d.]+)/)![1]);
+		const muLabelRight = mu.x + mu.radius + 6 + mu.label.length * GEO.charWidth;
+		expect(corridorX).toBeGreaterThan(muLabelRight);
+	});
+
 	it('never places two same-lane nodes with overlapping label spans', () => {
 		const result = computeAdoptionLayout(FIXTURE_ITEMS, FIXTURE_EDGES, GEO);
 		// Rail lanes and strip lanes are numbered independently (PlacedNode.lane

@@ -9,7 +9,10 @@
  * rounded connectors between rails instead of long diagonal arcs:
  *
  *   - "leads-to" is a branch: an elbow leaving the parent rail and arriving
- *     at the child's start dot, while the parent rail continues.
+ *     at the child's start dot, while the parent rail continues. A child that
+ *     arrives after the parent's rail has already ended (the parent was
+ *     replaced first) gets an orthogonal branch-drop from the parent's dot
+ *     instead; siblings share that vertical and peel off at their own lanes.
  *   - "replaced-by" is a merge: the retiring rail curves into its successor's
  *     start dot and ends there. When the successor inherits the retiring
  *     rail's lane (the succession rule below), the merge is a straight
@@ -69,7 +72,13 @@ export interface PlacedNode extends TechAdoption {
 	railFades: boolean;
 }
 
-export type ConnectorVariant = 'elbow' | 's-curve' | 'vertical-arrival' | 'handover' | 'bracket';
+export type ConnectorVariant =
+	| 'elbow'
+	| 's-curve'
+	| 'vertical-arrival'
+	| 'handover'
+	| 'bracket'
+	| 'branch-drop';
 
 export interface Connector {
 	kind: LineageKind;
@@ -552,6 +561,26 @@ function dotToDotVariant(parent: RailPoint, child: RailPoint): ConnectorVariant 
 	return gap < MIN_S_CURVE_GAP ? 'bracket' : 's-curve';
 }
 
+/**
+ * Orthogonal branch for a child that outlives its parent's rail: departs the
+ * parent DOT vertically, drops to the child's lane and runs horizontally to
+ * the child dot's left edge. Late children of one parent all share the
+ * collinear vertical at parent.x and peel off at their own lanes, so a fan of
+ * branches reads as one git-style branch line rather than a sheaf of
+ * diagonals.
+ */
+function branchDropPath(parent: RailPoint, child: RailPoint, geo: LayoutGeometry): string {
+	const s = Math.sign(child.y - parent.y);
+	const arriveX = child.x - child.radius - 2;
+	const r = Math.min(geo.cornerRadius, Math.abs(child.y - parent.y) / 2, arriveX - parent.x - 2);
+	return [
+		`M ${parent.x} ${parent.y + s * (parent.radius + 2)}`,
+		`V ${child.y - s * r}`,
+		`Q ${parent.x} ${child.y} ${parent.x + r} ${child.y}`,
+		`H ${arriveX}`
+	].join(' ');
+}
+
 /** Same-lane merge: the final stretch of the retiring rail, recoloured. */
 function handoverPath(parent: RailPoint, child: RailPoint): string {
 	const arriveX = child.x - child.radius - 2;
@@ -571,6 +600,98 @@ interface RoutedEdge {
 	variant: ConnectorVariant;
 	/** x of the connector's vertical corridor; null for variants without one. */
 	corridorX: number | null;
+}
+
+/** One rail node's footprint within its lane, for clearance checks. */
+interface RailOccupant {
+	label: string;
+	x: number;
+	radius: number;
+	labelRight: number;
+}
+
+/** Rail nodes grouped by lane, x-ascending — the interval index routing needs. */
+function indexOccupants(
+	pointOf: Map<string, RailPoint>,
+	laneOf: Map<string, number>
+): Map<number, RailOccupant[]> {
+	const occupantsByLane = new Map<number, RailOccupant[]>();
+	for (const [label, point] of pointOf) {
+		const lane = laneOf.get(label)!;
+		const occupant = { label, x: point.x, radius: point.radius, labelRight: point.labelRight };
+		const list = occupantsByLane.get(lane);
+		if (list) list.push(occupant);
+		else occupantsByLane.set(lane, [occupant]);
+	}
+	for (const list of occupantsByLane.values()) {
+		list.sort((a, b) => a.x - b.x || a.label.localeCompare(b.label));
+	}
+	return occupantsByLane;
+}
+
+interface BranchDropRoute {
+	corridorX: number;
+	/** True when the corridor sits right of the parent dot and departs the rail. */
+	viaRail: boolean;
+}
+
+/**
+ * Finds a vertical corridor for a branch to a child beyond the parent's rail
+ * end. The first candidate is parent.x itself (the git-branch fan: departs
+ * the dot, and siblings bundle onto one collinear vertical). A candidate is
+ * rejected when it would slice through a dot in an intermediate lane (labels
+ * are fine — the component's halo keeps text legible over verticals) or when
+ * the horizontal run along the child's lane would collide with an earlier
+ * occupant of that lane. Each rejection pushes the corridor just right of the
+ * furthest obstruction; corridors right of the parent dot must depart the
+ * rail instead (emitted as a generalised elbow), which bounds them by the
+ * rail's end and the child's own approach. Deterministic throughout: the scan
+ * is a pure function of node geometry.
+ */
+function chooseBranchDropRoute(
+	parent: RailPoint,
+	child: RailPoint,
+	parentLane: number,
+	childLane: number,
+	childLabel: string,
+	occupantsByLane: Map<number, RailOccupant[]>,
+	geo: LayoutGeometry
+): BranchDropRoute | null {
+	const arriveX = child.x - child.radius - 2;
+	const departLimit = parent.x + parent.radius + 2;
+	const loLane = Math.min(parentLane, childLane);
+	const hiLane = Math.max(parentLane, childLane);
+
+	let corridorX = parent.x;
+	for (let attempt = 0; attempt < 8; attempt++) {
+		const viaRail = corridorX > parent.x;
+		if (viaRail) {
+			corridorX = Math.max(corridorX, departLimit + geo.cornerRadius);
+			if (corridorX > parent.railEndX || corridorX > child.x - geo.elbowRun) return null;
+		}
+		if (arriveX - corridorX < geo.cornerRadius + 2) return null;
+
+		// Furthest clearance x demanded by any obstruction at this corridor;
+		// taking the max guarantees monotonic progress rightwards.
+		let pushTo = -Infinity;
+		for (let lane = loLane + 1; lane < hiLane; lane++) {
+			for (const occupant of occupantsByLane.get(lane) ?? []) {
+				if (Math.abs(corridorX - occupant.x) <= occupant.radius + 3) {
+					pushTo = Math.max(pushTo, occupant.x + occupant.radius + 4);
+				}
+			}
+		}
+		for (const occupant of occupantsByLane.get(childLane) ?? []) {
+			if (occupant.label === childLabel) continue;
+			if (occupant.labelRight > corridorX && occupant.x - occupant.radius < arriveX) {
+				pushTo = Math.max(pushTo, occupant.labelRight + 4);
+			}
+		}
+
+		if (pushTo === -Infinity) return { corridorX, viaRail };
+		corridorX = pushTo;
+	}
+	return null;
 }
 
 /**
@@ -619,6 +740,8 @@ function routeEdges(
 		if (designated) horizontalFor.set(child, designated);
 	}
 
+	const occupantsByLane = indexOccupants(pointOf, laneOf);
+
 	const routed: RoutedEdge[] = [];
 	for (const edge of edges) {
 		const parent = pointOf.get(edge.source)!;
@@ -631,9 +754,31 @@ function routeEdges(
 		} else if (horizontalFor.get(edge.target) === edge) {
 			const corridorX = child.x - geo.elbowRun;
 			// The elbow needs room to depart the parent rail and the corridor
-			// must sit where the parent rail still exists.
+			// must sit where the parent rail still exists. When it cannot —
+			// the child outlives the parent's rail, or sits too close — try
+			// the orthogonal branch-drop before conceding a dot-to-dot curve.
 			if (corridorX - geo.cornerRadius < departLimit || corridorX > parent.railEndX) {
-				routed.push({ edge, variant: dotToDotVariant(parent, child), corridorX: null });
+				const route =
+					child.x > parent.x
+						? chooseBranchDropRoute(
+								parent,
+								child,
+								laneOf.get(edge.source)!,
+								laneOf.get(edge.target)!,
+								edge.target,
+								occupantsByLane,
+								geo
+							)
+						: null;
+				if (route === null) {
+					routed.push({ edge, variant: dotToDotVariant(parent, child), corridorX: null });
+				} else {
+					routed.push({
+						edge,
+						variant: route.viaRail ? 'elbow' : 'branch-drop',
+						corridorX: route.corridorX
+					});
+				}
 			} else {
 				routed.push({ edge, variant: 'elbow', corridorX });
 			}
@@ -667,6 +812,9 @@ function emitConnector(routed: RoutedEdge, pointOf: Map<string, RailPoint>, geo:
 			break;
 		case 'bracket':
 			path = bracketPath(parent, child, geo);
+			break;
+		case 'branch-drop':
+			path = branchDropPath(parent, child, geo);
 			break;
 		case 's-curve':
 			path = sCurvePath(parent, child);
