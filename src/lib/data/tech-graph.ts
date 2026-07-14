@@ -16,6 +16,7 @@
  */
 
 import { projects } from './index.js';
+import { hiddenTechLabels } from './tech-overlays.js';
 import { getTechIndex, layoutSimNodes, normaliseToCanvas, LAYOUT_CANDIDATES } from './graph.js';
 import type { SimNode, SimLink, LayoutResult, Point } from './graph.js';
 import type { TagKind } from './types.js';
@@ -53,11 +54,13 @@ export function getTechNodes(): TechNode[] {
 	}
 
 	const index = getTechIndex(); // label → ProjectSlug[]
+	const hidden = hiddenTechLabels('map');
 	const nodes: TechNode[] = [];
 	for (const [label, slugs] of index) {
 		const kind = kindByLabel.get(label);
 		if (!kind) continue; // should never happen — index is derived from the same tags
 		if (kind === 'language') continue; // excluded: language nodes float with no edges
+		if (hidden.has(label)) continue; // authored as hidden from the map surface
 		nodes.push({ label, kind, projectCount: slugs.length });
 	}
 
@@ -133,13 +136,17 @@ export function getTechCoEdges(options: TechCoEdgeOptions = {}): TechCoEdge[] {
 	// Only consider non-language labels as edge endpoints.
 	const coCount = new Map<string, number>();
 
+	const hidden = hiddenTechLabels('map');
 	for (const project of projects) {
 		// Non-language labels present in this project. Use kindByLabel (first-occurrence
 		// wins) so labels with multiple kind entries (e.g. Go as language + runtime)
-		// are classified consistently with getTechNodes.
+		// are classified consistently with getTechNodes; map-hidden labels drop
+		// out of co-occurrence entirely so no edge dangles towards a missing node.
 		const nonLangLabels = [
 			...new Set(
-				project.tags.filter((t) => kindByLabel.get(t.label) !== 'language').map((t) => t.label)
+				project.tags
+					.filter((t) => kindByLabel.get(t.label) !== 'language' && !hidden.has(t.label))
+					.map((t) => t.label)
 			)
 		];
 
