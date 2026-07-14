@@ -64,7 +64,8 @@ export const techRelationships: TechRelationship[] = [
 	},
 	{ kind: 'replaced-by', source: 'OpenTUI', target: 'Bubble Tea' },
 	{ kind: 'replaced-by', source: '.NET 8', target: '.NET 9' },
-	{ kind: 'leads-to', source: 'CSS', target: 'Tailwind CSS' },
+	{ kind: 'leads-to', source: 'CSS', target: 'Tailwind CSS v3' },
+	{ kind: 'replaced-by', source: 'Tailwind CSS v3', target: 'Tailwind CSS v4' },
 	{ kind: 'leads-to', source: 'JavaScript', target: 'React' },
 	{ kind: 'leads-to', source: 'TypeScript', target: 'Svelte 5' },
 	{ kind: 'leads-to', source: 'Ink', target: 'inkjs' },
@@ -81,7 +82,6 @@ export const techRelationships: TechRelationship[] = [
 	{ kind: 'leads-to', source: 'Node.js', target: 'Express' },
 	{ kind: 'leads-to', source: 'React', target: 'Vite' },
 	{ kind: 'leads-to', source: 'Python', target: 'FastAPI' },
-	{ kind: 'leads-to', source: 'CSS', target: 'Tailwind CSS v4' },
 	{ kind: 'leads-to', source: 'Python', target: 'Python runtime' },
 	{ kind: 'leads-to', source: 'JavaScript', target: 'Node.js' }
 ];
