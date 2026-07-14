@@ -6822,13 +6822,21 @@ async function runInteractiveMenu({ manifests, palette, useGum, onProgress, clea
 		}
 	];
 
-	// Wordmark sits above the interactive list, printed once. gum choose takes
-	// over the TTY immediately after, so it scrolls into history above the
-	// pickers — each picker layer below carries its own --header so the user
-	// stays oriented without the wordmark needing to stay on screen.
-	printWordmark();
+	// Redraw the surface: clear the terminal, then reprint the wordmark at the
+	// top. gum renders each picker on stderr and, when a pick is confirmed or
+	// cancelled empty, leaves a "nothing selected" diagnostic stranded in
+	// scrollback. Clearing before every picker layer wipes that debris so the
+	// menu always reads as one clean surface rather than an accreting stack.
+	const redraw = () => {
+		// ANSI: cursor home + clear screen + clear scrollback.
+		process.stdout.write('\x1b[H\x1b[2J\x1b[3J');
+		printWordmark();
+	};
+
+	redraw();
 
 	outer: while (true) {
+		redraw();
 		const sectionChoose = spawnSync(
 			'gum',
 			[
