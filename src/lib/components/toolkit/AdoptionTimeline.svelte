@@ -77,6 +77,20 @@
 	// Hover overrides the pin; releasing the pointer/focus falls back to it.
 	const effectiveLabel = $derived(activeLabel ?? pinnedLabel);
 
+	// The highlight neighbourhood: the active tech plus every tech directly
+	// linked to it by a lineage edge (either endpoint). Nodes in this set stay
+	// lit; everything else dims. Empty when nothing is active, which the
+	// template reads as "dim nothing".
+	const neighbourhood = $derived.by((): Set<string> => {
+		if (effectiveLabel === null) return new Set();
+		const set = new Set<string>([effectiveLabel]);
+		for (const rel of techRelationships) {
+			if (rel.source === effectiveLabel) set.add(rel.target);
+			else if (rel.target === effectiveLabel) set.add(rel.source);
+		}
+		return set;
+	});
+
 	// Modal state: the tech the user clicked.
 	let selected = $state<TechAdoption | null>(null);
 
@@ -242,6 +256,9 @@
 			{#each layout.connectors as c (`${c.kind}:${c.source}-${c.target}`)}
 				<path
 					class="adoption__connector"
+					class:adoption__connector--dim={effectiveLabel !== null &&
+						c.source !== effectiveLabel &&
+						c.target !== effectiveLabel}
 					d={c.path}
 					style="stroke: {edgeTypeColour(c.kind)}"
 				/>
@@ -254,7 +271,7 @@
 				<g
 					class="adoption__item"
 					class:adoption__item--active={effectiveLabel === item.label}
-					class:adoption__item--dim={effectiveLabel !== null && effectiveLabel !== item.label}
+					class:adoption__item--dim={effectiveLabel !== null && !neighbourhood.has(item.label)}
 					class:adoption__item--pinned={pinnedLabel === item.label}
 					style="--reveal-delay: {Math.min(index * 28, 700)}ms; color: {techKindColour(item.kind)}"
 					role="presentation"
@@ -479,6 +496,13 @@
 		fill: none;
 		stroke-width: 1.5;
 		stroke-opacity: 0.7;
+		transition: stroke-opacity var(--transition-fast);
+	}
+
+	/* Dimmed when another tech is highlighted and this edge does not touch it.
+	   Mirrors the rail dim maths (0.7 is the connector's base stroke-opacity). */
+	.adoption__connector--dim {
+		stroke-opacity: calc(0.7 * var(--dim-node));
 	}
 
 	/* Divider between the lineage rails and the no-lineage dot strip. */
@@ -707,7 +731,8 @@
 		/* Kill highlight transitions too — state still applies instantly. */
 		.adoption__dot,
 		.adoption__label,
-		.adoption__rail {
+		.adoption__rail,
+		.adoption__connector {
 			transition: none;
 		}
 	}
