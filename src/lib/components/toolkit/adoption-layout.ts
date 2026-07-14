@@ -69,7 +69,7 @@ export interface PlacedNode extends TechAdoption {
 	railFades: boolean;
 }
 
-export type ConnectorVariant = 'elbow' | 's-curve' | 'vertical-arrival' | 'handover';
+export type ConnectorVariant = 'elbow' | 's-curve' | 'vertical-arrival' | 'handover' | 'bracket';
 
 export interface Connector {
 	kind: LineageKind;
@@ -511,6 +511,44 @@ function sCurvePath(parent: RailPoint, child: RailPoint): string {
 	return `M ${parent.x} ${fromY} C ${parent.x} ${midY} ${child.x} ${midY} ${child.x} ${toY}`;
 }
 
+/**
+ * Left-side bracket for a parent and child whose dots leave no vertical room
+ * for an s-curve — typically a same-date pair in adjacent lanes whose radii
+ * swallow the lane pitch (HTML → CSS). Departs the parent dot's left edge,
+ * bulges left and arrives at the child dot's left edge, so the connector
+ * stays visible however tightly the dots pack.
+ */
+function bracketPath(parent: RailPoint, child: RailPoint, geo: LayoutGeometry): string {
+	const departX = parent.x - parent.radius - 2;
+	const arriveX = child.x - child.radius - 2;
+	const bulge = geo.elbowRun;
+	return [
+		`M ${departX} ${parent.y}`,
+		`C ${departX - bulge} ${parent.y} ${arriveX - bulge} ${child.y} ${arriveX} ${child.y}`
+	].join(' ');
+}
+
+/** Vertical clearance (px) below which an s-curve degenerates into a bracket. */
+const MIN_S_CURVE_GAP = 6;
+
+/**
+ * Dot-to-dot fallback connector. An s-curve spans the vertical gap between
+ * the two dots' clearance edges; when the dots sit so close that this gap
+ * shrinks below MIN_S_CURVE_GAP (or inverts entirely, drawing a sub-pixel
+ * path backwards), a bracket around the dots' left side takes over.
+ */
+function dotToDotConnector(
+	parent: RailPoint,
+	child: RailPoint,
+	geo: LayoutGeometry
+): { variant: ConnectorVariant; path: string } {
+	const gap = Math.abs(child.y - parent.y) - (parent.radius + child.radius + 4);
+	if (gap < MIN_S_CURVE_GAP) {
+		return { variant: 'bracket', path: bracketPath(parent, child, geo) };
+	}
+	return { variant: 's-curve', path: sCurvePath(parent, child) };
+}
+
 /** Same-lane merge: the final stretch of the retiring rail, recoloured. */
 function handoverPath(parent: RailPoint, child: RailPoint): string {
 	const arriveX = child.x - child.radius - 2;
@@ -582,8 +620,7 @@ function buildConnectors(
 			// The elbow needs room to depart the parent rail and the corridor
 			// must sit where the parent rail still exists.
 			if (cornerStart < departLimit || child.x - geo.elbowRun > parent.railEndX) {
-				variant = 's-curve';
-				path = sCurvePath(parent, child);
+				({ variant, path } = dotToDotConnector(parent, child, geo));
 			} else {
 				variant = 'elbow';
 				path = elbowPath(parent, child, geo);
@@ -591,8 +628,7 @@ function buildConnectors(
 		} else {
 			const cornerStart = child.x - geo.cornerRadius;
 			if (cornerStart < departLimit || child.x > parent.railEndX) {
-				variant = 's-curve';
-				path = sCurvePath(parent, child);
+				({ variant, path } = dotToDotConnector(parent, child, geo));
 			} else {
 				variant = 'vertical-arrival';
 				path = verticalArrivalPath(parent, child, geo);

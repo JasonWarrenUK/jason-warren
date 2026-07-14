@@ -185,6 +185,31 @@ describe('computeAdoptionLayout', () => {
 		expect(html.lane > lo && html.lane < hi).toBe(false);
 	});
 
+	it('draws a visible bracket when a same-date parent and child leave no room for an s-curve', () => {
+		// Mirrors the real HTML/CSS pair: identical adoption dates put both dots
+		// at the same x in adjacent lanes, and high project counts give them
+		// radii that swallow the lane pitch — the s-curve between the dots'
+		// clearance edges inverts into a sub-pixel path drawn backwards.
+		const items: TechAdoption[] = [
+			tech('HTML', 'language', '2020-01-01', 24),
+			tech('CSS', 'language', '2020-01-01', 22),
+			tech('Tailwind CSS', 'framework', '2023-03-01')
+		];
+		const edges: TechRelationship[] = [
+			{ kind: 'leads-to', source: 'HTML', target: 'CSS' },
+			{ kind: 'leads-to', source: 'CSS', target: 'Tailwind CSS' }
+		];
+		const result = computeAdoptionLayout(items, edges, GEO);
+		const connector = result.connectors.find((c) => c.source === 'HTML' && c.target === 'CSS')!;
+		expect(connector.variant).toBe('bracket');
+
+		// The bracket departs the parent dot's left edge rather than vanishing
+		// underneath the dots.
+		const byLabel = new Map(result.placed.map((p) => [p.label, p]));
+		const html = byLabel.get('HTML')!;
+		expect(connector.path.startsWith(`M ${html.x - html.radius - 2} ${html.y}`)).toBe(true);
+	});
+
 	it('never places two same-lane nodes with overlapping label spans', () => {
 		const result = computeAdoptionLayout(FIXTURE_ITEMS, FIXTURE_EDGES, GEO);
 		// Rail lanes and strip lanes are numbered independently (PlacedNode.lane
