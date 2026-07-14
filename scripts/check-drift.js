@@ -104,6 +104,8 @@ const inProgressPath = config.paths.inProgress;
 // tech-relationships.ts has no dedicated config.paths entry — it's a sibling
 // of the projects overlay directory, not a per-project file.
 const techRelationshipsPath = join(dirname(projectsDir), 'tech-relationships.ts');
+const techOverlaysPath = join(dirname(projectsDir), 'tech-overlays.ts');
+const themesPath = join(dirname(projectsDir), 'themes.ts');
 
 // ---------------------------------------------------------------------------
 // File helpers
@@ -3207,21 +3209,8 @@ async function setOverlayFlag(slug, flagName, palette) {
 		ts.ScriptKind.TS
 	);
 
-	// Find the single exported VariableStatement whose initializer is an
-	// ObjectLiteralExpression. Every well-formed overlay has exactly one such export.
-	let objLit = null;
-	for (const stmt of sf.statements) {
-		if (!ts.isVariableStatement(stmt)) continue;
-		if (!stmt.modifiers?.some((m) => m.kind === ts.SyntaxKind.ExportKeyword)) continue;
-		for (const decl of stmt.declarationList.declarations) {
-			if (decl.initializer && ts.isObjectLiteralExpression(decl.initializer)) {
-				objLit = decl.initializer;
-				break;
-			}
-		}
-		if (objLit) break;
-	}
-
+	// Every well-formed overlay has exactly one exported object literal.
+	const objLit = findExportedLiteral(ts, sf, ts.isObjectLiteralExpression);
 	if (!objLit) {
 		process.stderr.write(
 			`${RED}Error: could not locate the exported object literal in ${relPath}.\n` +
@@ -3229,11 +3218,6 @@ async function setOverlayFlag(slug, flagName, palette) {
 		);
 		process.exit(1);
 	}
-
-	// Look for an existing property assignment matching flagName.
-	const flagProp = objLit.properties.find(
-		(p) => ts.isPropertyAssignment(p) && p.name.getText(sf) === flagName
-	);
 
 	const alreadyMsg =
 		flagName === 'pin'
@@ -3247,21 +3231,18 @@ async function setOverlayFlag(slug, flagName, palette) {
 			: `${GREEN}${BOLD}Hidden:${RESET} '${slug}' is now excluded from the hero pool.\n` +
 				`${DIM}Rebuild the site to apply.${RESET}\n`;
 
-	let splicedText;
-
-	if (flagProp) {
-		const initNode = flagProp.initializer;
-		if (initNode.kind === ts.SyntaxKind.TrueKeyword) {
-			// Already set — idempotent no-op.
-			process.stdout.write(alreadyMsg);
-			return;
-		}
-		// Present but not true (e.g. false, variable reference) — splice to true.
-		splicedText = text.slice(0, initNode.getStart(sf)) + 'true' + text.slice(initNode.getEnd());
-	} else {
-		// Absent — insert `<flagName>: true,` immediately after the opening brace.
-		const insertPos = objLit.getStart(sf) + 1; // position just past '{'
-		splicedText = text.slice(0, insertPos) + `\n\t${flagName}: true,` + text.slice(insertPos);
+	const { text: splicedText, changed } = spliceObjectProperty(
+		text,
+		sf,
+		ts,
+		objLit,
+		flagName,
+		'true'
+	);
+	if (!changed) {
+		// Already set — idempotent no-op.
+		process.stdout.write(alreadyMsg);
+		return;
 	}
 
 	writeFileSync(path, splicedText, 'utf8');
@@ -3377,12 +3358,13 @@ function spliceElementIntoArray(text, sf, arrayLit, elementSrc) {
 }
 
 /**
- * Builds the source text for a relationship object literal. Only known,
- * defined fields are included; `note` is omitted when absent. Each string
- * value goes through JSON.stringify for safe quoting (notes may contain
- * apostrophes) — prettier normalises quote style afterward.
+ * Builds the source text for a flat object literal. Only defined fields are
+ * included. Each value goes through JSON.stringify for safe quoting (notes
+ * may contain apostrophes; arrays render as string-literal lists) — prettier
+ * normalises quote style afterward. Named for its first caller; also builds
+ * tech-overlay records and theme elements.
  *
- * @param {Record<string, string | undefined>} fields
+ * @param {Record<string, string | string[] | undefined>} fields
  * @returns {string}
  */
 function buildRelationshipLiteral(fields) {
@@ -3495,6 +3477,167 @@ function readRelationshipField(ts, sf, element, name) {
 	// prettier's own default) commonly uses single-quoted string literals,
 	// which JSON.parse rejects outright.
 	return ts.isStringLiteral(prop.initializer) ? prop.initializer.text : undefined;
+}
+
+/**
+ * Sibling of readRelationshipField for string-array properties (hiddenFrom,
+ * slugs, suppressTags). Returns undefined when the property is absent or not
+ * an array literal; non-string elements are skipped.
+ *
+ * @param {import('typescript')} ts
+ * @param {import('typescript').SourceFile} sf
+ * @param {import('typescript').ObjectLiteralExpression} element
+ * @param {string} name
+ * @returns {string[] | undefined}
+ */
+function readArrayField(ts, sf, element, name) {
+	const prop = element.properties.find(
+		(p) => ts.isPropertyAssignment(p) && p.name.getText(sf) === name
+	);
+	if (!prop || !ts.isArrayLiteralExpression(prop.initializer)) return undefined;
+	const values = [];
+	for (const el of prop.initializer.elements) {
+		if (ts.isStringLiteral(el)) values.push(el.text);
+	}
+	return values;
+}
+
+/**
+ * Sets or replaces one property on an object literal, leaving every other
+ * span untouched — the insert-or-replace core extracted from setOverlayFlag
+ * so any verb can set a field. `valueSrc` is the property's VALUE SOURCE
+ * TEXT (e.g. `'true'`, `JSON.stringify(value)`). Returns the new text plus
+ * `changed: false` when the property already holds byte-identical source,
+ * so call sites get idempotence for free.
+ *
+ * @param {string} text
+ * @param {import('typescript').SourceFile} sf
+ * @param {import('typescript')} ts
+ * @param {import('typescript').ObjectLiteralExpression} objLit
+ * @param {string} propName
+ * @param {string} valueSrc
+ * @returns {{ text: string, changed: boolean }}
+ */
+function spliceObjectProperty(text, sf, ts, objLit, propName, valueSrc) {
+	const prop = objLit.properties.find(
+		(p) => ts.isPropertyAssignment(p) && p.name.getText(sf) === propName
+	);
+	if (prop) {
+		const start = prop.initializer.getStart(sf);
+		const end = prop.initializer.getEnd();
+		if (text.slice(start, end) === valueSrc) return { text, changed: false };
+		return { text: text.slice(0, start) + valueSrc + text.slice(end), changed: true };
+	}
+	const insertPos = objLit.getStart(sf) + 1; // position just past '{'
+	return {
+		text: text.slice(0, insertPos) + `\n\t${propName}: ${valueSrc},` + text.slice(insertPos),
+		changed: true
+	};
+}
+
+/**
+ * Removes one property (and exactly one adjacent comma) from an object
+ * literal, mirroring spliceRemoveElement's position rules. Returns the text
+ * unchanged when the property is absent.
+ *
+ * @param {string} text
+ * @param {import('typescript').SourceFile} sf
+ * @param {import('typescript')} ts
+ * @param {import('typescript').ObjectLiteralExpression} objLit
+ * @param {string} propName
+ * @returns {string}
+ */
+function spliceRemoveObjectProperty(text, sf, ts, objLit, propName) {
+	const props = objLit.properties;
+	const idx = props.findIndex(
+		(p) => ts.isPropertyAssignment(p) && p.name.getText(sf) === propName
+	);
+	if (idx === -1) return text;
+	if (idx === 0) {
+		if (props.length > 1) {
+			return text.slice(0, objLit.getStart(sf) + 1) + '\n\t' + text.slice(props[1].getStart(sf));
+		}
+		return text.slice(0, objLit.getStart(sf) + 1) + text.slice(objLit.getEnd() - 1);
+	}
+	return text.slice(0, props[idx - 1].getEnd()) + text.slice(props[idx].getEnd());
+}
+
+/**
+ * Locates an array element by one decoded string property — a TechOverlay by
+ * `label`, a Theme by `id`. Case-insensitive matching serves labels (canonical
+ * casing is resolved before writes, but stale records must stay findable).
+ *
+ * @param {import('typescript')} ts
+ * @param {import('typescript').SourceFile} sf
+ * @param {import('typescript').ArrayLiteralExpression} arrayLit
+ * @param {string} field
+ * @param {string} value
+ * @param {{ caseInsensitive?: boolean }} [options]
+ * @returns {{ element: import('typescript').ObjectLiteralExpression, index: number } | null}
+ */
+function findElementByStringField(ts, sf, arrayLit, field, value, options = {}) {
+	const wanted = options.caseInsensitive ? value.toLowerCase() : value;
+	return findRelationshipElement(ts, sf, arrayLit, (_ts, _sf, el) => {
+		const actual = readRelationshipField(ts, sf, el, field);
+		if (actual === undefined) return false;
+		return (options.caseInsensitive ? actual.toLowerCase() : actual) === wanted;
+	});
+}
+
+/**
+ * Index of a plain string literal inside an array literal (slugs,
+ * suppressTags members), or -1. spliceRemoveElement handles string elements
+ * unchanged — it only slices spans.
+ *
+ * @param {import('typescript')} ts
+ * @param {import('typescript').SourceFile} sf
+ * @param {import('typescript').ArrayLiteralExpression} arrayLit
+ * @param {string} value
+ * @returns {number}
+ */
+function findStringElementIndex(ts, sf, arrayLit, value) {
+	for (let i = 0; i < arrayLit.elements.length; i++) {
+		const el = arrayLit.elements[i];
+		if (ts.isStringLiteral(el) && el.text === value) return i;
+	}
+	return -1;
+}
+
+/**
+ * AST read of tech-overlays.ts — deliberately not a dynamic import: a read
+ * straight after a write must never hit Bun's module cache, and sandbox
+ * copies need no resolvable './types.js'. Returns [] when the file is
+ * missing (callers that require it error separately).
+ *
+ * @returns {Promise<Array<{ label: string, firstUsed?: string, note?: string, kind?: string, hiddenFrom?: string[] }>>}
+ */
+async function readTechOverlaysFile() {
+	if (!existsSync(techOverlaysPath)) return [];
+	const ts = (await import('typescript')).default;
+	const text = readFileSync(techOverlaysPath, 'utf8');
+	const sf = ts.createSourceFile(
+		techOverlaysPath,
+		text,
+		ts.ScriptTarget.Latest,
+		true,
+		ts.ScriptKind.TS
+	);
+	const arrayLit = findExportedLiteral(ts, sf, ts.isArrayLiteralExpression);
+	if (!arrayLit) return [];
+	const overlays = [];
+	for (const element of arrayLit.elements) {
+		if (!ts.isObjectLiteralExpression(element)) continue;
+		const label = readRelationshipField(ts, sf, element, 'label');
+		if (label === undefined) continue;
+		overlays.push({
+			label,
+			firstUsed: readRelationshipField(ts, sf, element, 'firstUsed'),
+			note: readRelationshipField(ts, sf, element, 'note'),
+			kind: readRelationshipField(ts, sf, element, 'kind'),
+			hiddenFrom: readArrayField(ts, sf, element, 'hiddenFrom')
+		});
+	}
+	return overlays;
 }
 
 /**
