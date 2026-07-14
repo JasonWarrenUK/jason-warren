@@ -4946,6 +4946,261 @@ async function runTag({ args, values, palette }) {
 }
 
 // ---------------------------------------------------------------------------
+// theme verb (5DR.21) — alias: collection
+//
+// Manages the theme territories in themes.ts (id, name, blurb, slugs).
+//
+//   drift theme list [<id>]
+//   drift theme create <id> --name "..." [--blurb "..."] [--slug <s> ...]
+//   drift theme edit <id> [--name "..."] [--blurb "..."]
+//   drift theme add <id> <slug>
+//   drift theme remove <id> <slug>
+//   drift theme delete <id>
+//
+// Write-isolation: writes ONLY themes.ts. `list` writes nothing. Slug
+// existence is themes.test.ts's job (same stance as relate targets); the
+// CLI validates shape only.
+// ---------------------------------------------------------------------------
+
+/** Parses themes.ts for reading or mutation, exiting 1 when missing/malformed. */
+async function loadThemesForEdit(palette) {
+	const { RED, RESET } = palette;
+	const relPath = themesPath.replace(config.repoRoot + '/', '');
+	if (!existsSync(themesPath)) {
+		process.stderr.write(`${RED}Error: ${relPath} not found.${RESET}\n`);
+		process.exit(1);
+	}
+	const ts = (await import('typescript')).default;
+	const text = readFileSync(themesPath, 'utf8');
+	const sf = ts.createSourceFile(themesPath, text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
+	const arrayLit = findExportedLiteral(ts, sf, ts.isArrayLiteralExpression);
+	if (!arrayLit) {
+		process.stderr.write(
+			`${RED}Error: could not locate the exported array literal in ${relPath}.${RESET}\n`
+		);
+		process.exit(1);
+	}
+	return { ts, text, sf, arrayLit, relPath };
+}
+
+/** Writes spliced themes.ts source and prettier-formats it. */
+function writeThemes(splicedText) {
+	writeFileSync(themesPath, splicedText, 'utf8');
+	spawnSync('npx', ['prettier', '--write', themesPath], { stdio: 'ignore' });
+}
+
+/**
+ * Mode dispatcher for `drift theme` (and its `collection` alias). See the
+ * section banner for the grammar.
+ *
+ * @param {{ args: string[], values: object, palette: object }} options
+ */
+async function runTheme({ args, values, palette }) {
+	const { GREEN, RED, YELLOW, BOLD, DIM, RESET } = palette;
+	const usage =
+		'Usage:\n' +
+		'  drift theme list [<id>]\n' +
+		'  drift theme create <id> --name "..." [--blurb "..."] [--slug <s> --slug <s> ...]\n' +
+		'  drift theme edit <id> [--name "..."] [--blurb "..."]\n' +
+		'  drift theme add <id> <slug>\n' +
+		'  drift theme remove <id> <slug>\n' +
+		'  drift theme delete <id>\n' +
+		"  ('drift collection …' is an alias for every form.)";
+
+	const [action, id, slug] = args;
+	const ACTIONS = ['list', 'create', 'edit', 'add', 'remove', 'delete'];
+	if (!ACTIONS.includes(action ?? '')) {
+		process.stderr.write(`${RED}Error: unknown theme action '${action ?? ''}'.\n${usage}${RESET}\n`);
+		process.exit(1);
+	}
+	if (action !== 'list' && id === undefined) {
+		process.stderr.write(`${RED}Error: missing theme id.\n${usage}${RESET}\n`);
+		process.exit(1);
+	}
+	if (id !== undefined) {
+		const idError = validateProjectSlug(id);
+		if (idError !== null) {
+			process.stderr.write(`${RED}Error: theme ids follow slug rules — ${idError}${RESET}\n`);
+			process.exit(1);
+		}
+	}
+	if ((action === 'add' || action === 'remove') && slug === undefined) {
+		process.stderr.write(`${RED}Error: missing project slug.\n${usage}${RESET}\n`);
+		process.exit(1);
+	}
+	if (slug !== undefined) {
+		const slugError = validateProjectSlug(slug);
+		if (slugError !== null) {
+			process.stderr.write(`${RED}Error: ${slugError}${RESET}\n`);
+			process.exit(1);
+		}
+	}
+
+	const { ts, text, sf, arrayLit } = await loadThemesForEdit(palette);
+	const readTheme = (element) => ({
+		id: readRelationshipField(ts, sf, element, 'id'),
+		name: readRelationshipField(ts, sf, element, 'name'),
+		blurb: readRelationshipField(ts, sf, element, 'blurb'),
+		slugs: readArrayField(ts, sf, element, 'slugs') ?? []
+	});
+
+	if (action === 'list') {
+		const themes = arrayLit.elements
+			.filter((el) => ts.isObjectLiteralExpression(el))
+			.map((el) => readTheme(el));
+		const wanted = id === undefined ? themes : themes.filter((t) => t.id === id);
+		if (id !== undefined && wanted.length === 0) {
+			process.stderr.write(`${RED}Error: no theme with id '${id}'.${RESET}\n`);
+			process.exit(1);
+		}
+		for (const theme of wanted) {
+			process.stdout.write(`${BOLD}${theme.id}${RESET} · ${theme.name}\n`);
+			if (theme.blurb) process.stdout.write(`  ${theme.blurb}\n`);
+			process.stdout.write(
+				`  ${DIM}${theme.slugs.length} project${theme.slugs.length === 1 ? '' : 's'}:${RESET} ${theme.slugs.join(', ')}\n`
+			);
+		}
+		if (id === undefined) process.stdout.write(`${DIM}${themes.length} themes.${RESET}\n`);
+		return;
+	}
+
+	const found = findElementByStringField(ts, sf, arrayLit, 'id', id);
+
+	if (action === 'create') {
+		if (found !== null) {
+			process.stderr.write(`${RED}Error: a theme with id '${id}' already exists.${RESET}\n`);
+			process.exit(1);
+		}
+		const name = values.name?.trim();
+		if (!name) {
+			process.stderr.write(`${RED}Error: theme create requires --name.${RESET}\n`);
+			process.exit(1);
+		}
+		const slugs = values.slug ?? [];
+		for (const member of slugs) {
+			const memberError = validateProjectSlug(member);
+			if (memberError !== null) {
+				process.stderr.write(`${RED}Error: --slug '${member}': ${memberError}${RESET}\n`);
+				process.exit(1);
+			}
+		}
+		const elementSrc = buildRelationshipLiteral({
+			id,
+			name,
+			blurb: values.blurb?.trim() || '',
+			slugs
+		});
+		writeThemes(spliceElementIntoArray(text, sf, arrayLit, elementSrc));
+		if (slugs.length < 2) {
+			process.stdout.write(
+				`${YELLOW}Note: themes.test.ts expects at least 2 projects per theme; add more with drift theme add.${RESET}\n`
+			);
+		}
+		process.stdout.write(
+			`${GREEN}${BOLD}Created:${RESET} theme '${id}' (${slugs.length} project${slugs.length === 1 ? '' : 's'}).\n` +
+				`${DIM}Rebuild the site to apply.${RESET}\n`
+		);
+		return;
+	}
+
+	if (found === null) {
+		if (action === 'delete') {
+			process.stdout.write(`${YELLOW}No theme with id '${id}' — nothing to delete.${RESET}\n`);
+			return;
+		}
+		process.stderr.write(`${RED}Error: no theme with id '${id}'.${RESET}\n`);
+		process.exit(1);
+	}
+
+	if (action === 'edit') {
+		const newName = values.name?.trim() || undefined;
+		const newBlurb = values.blurb?.trim() || undefined;
+		if (newName === undefined && newBlurb === undefined) {
+			process.stderr.write(
+				`${RED}Error: theme edit needs --name and/or --blurb — nothing to change.${RESET}\n`
+			);
+			process.exit(1);
+		}
+		// Two sequential single-property splices would go stale; apply the
+		// first, then re-locate for the second.
+		let workingText = text;
+		if (newName !== undefined) {
+			({ text: workingText } = spliceObjectProperty(workingText, sf, ts, found.element, 'name', JSON.stringify(newName)));
+			writeThemes(workingText);
+		}
+		if (newBlurb !== undefined) {
+			const fresh = await loadThemesForEdit(palette);
+			const relocated = findElementByStringField(fresh.ts, fresh.sf, fresh.arrayLit, 'id', id);
+			const { text: blurbed } = spliceObjectProperty(
+				fresh.text,
+				fresh.sf,
+				fresh.ts,
+				relocated.element,
+				'blurb',
+				JSON.stringify(newBlurb)
+			);
+			writeThemes(blurbed);
+		}
+		process.stdout.write(
+			`${GREEN}${BOLD}Edited:${RESET} theme '${id}'.\n${DIM}Rebuild the site to apply.${RESET}\n`
+		);
+		return;
+	}
+
+	if (action === 'delete') {
+		writeThemes(spliceRemoveElement(text, sf, arrayLit, found.index));
+		process.stdout.write(
+			`${GREEN}${BOLD}Deleted:${RESET} theme '${id}'.\n${DIM}Rebuild the site to apply.${RESET}\n`
+		);
+		return;
+	}
+
+	// add / remove a member slug
+	const slugsProp = found.element.properties.find(
+		(p) => ts.isPropertyAssignment(p) && p.name.getText(sf) === 'slugs'
+	);
+	if (!slugsProp || !ts.isArrayLiteralExpression(slugsProp.initializer)) {
+		process.stderr.write(
+			`${RED}Error: theme '${id}' has no slugs array literal — edit themes.ts by hand.${RESET}\n`
+		);
+		process.exit(1);
+	}
+	const memberIndex = findStringElementIndex(ts, sf, slugsProp.initializer, slug);
+
+	if (action === 'add') {
+		if (memberIndex !== -1) {
+			process.stdout.write(
+				`${YELLOW}'${slug}' is already in theme '${id}' — nothing to do.${RESET}\n`
+			);
+			return;
+		}
+		writeThemes(spliceElementIntoArray(text, sf, slugsProp.initializer, JSON.stringify(slug)));
+		process.stdout.write(
+			`${GREEN}${BOLD}Added:${RESET} '${slug}' to theme '${id}'.\n${DIM}Rebuild the site to apply.${RESET}\n`
+		);
+		return;
+	}
+
+	// remove
+	if (memberIndex === -1) {
+		process.stdout.write(
+			`${YELLOW}'${slug}' is not in theme '${id}' — nothing to remove.${RESET}\n`
+		);
+		return;
+	}
+	const remaining = slugsProp.initializer.elements.length - 1;
+	writeThemes(spliceRemoveElement(text, sf, slugsProp.initializer, memberIndex));
+	if (remaining < 2) {
+		process.stdout.write(
+			`${YELLOW}Note: theme '${id}' now has ${remaining} project${remaining === 1 ? '' : 's'}; themes.test.ts expects at least 2.${RESET}\n`
+		);
+	}
+	process.stdout.write(
+		`${GREEN}${BOLD}Removed:${RESET} '${slug}' from theme '${id}'.\n${DIM}Rebuild the site to apply.${RESET}\n`
+	);
+}
+
+// ---------------------------------------------------------------------------
 // audit verb
 //
 // Scores every authored overlay against the content-depth rubric and emits a
@@ -5525,6 +5780,7 @@ Compare synced fingerprints against current git state and surface new repos.
 - \`drift relate tech <source-label> <kind> <target-label> [--note "..."]\`
 - \`drift tech list|set|hide|unhide <label> [...]\`
 - \`drift tag list|add|hide|unhide <slug> [<label>] [--kind <tag-kind>]\`
+- \`drift theme list|create|edit|add|remove|delete <id> [...]\` (alias: \`collection\`)
 - \`drift audit [--json]\`
 - \`drift init\`
 
@@ -5542,6 +5798,7 @@ Compare synced fingerprints against current git state and surface new repos.
 - \`relate\` · author a project↔project or tech↔tech relationship edge
 - \`tech\` · author per-tech overlays: first-used date, modal note, kind override, surface visibility
 - \`tag\` · add a tech to, or suppress one from, a single project's tags
+- \`theme\` · manage the theme territories (collections) on /toolkit
 - \`audit\` · score every authored overlay against the content-depth rubric and report per-entry tiers
 - \`init\` · scaffold drift.config.ts and sources.local.json for this machine
 
@@ -5809,6 +6066,24 @@ Adds a tech to, or suppresses one from, ONE project's tags, writing only
   overlay or entry is a soft no-op.
 `,
 
+	theme: `# drift theme · manage the theme territories (collections)
+
+Manages \`src/lib/data/themes.ts\` — the authored project groupings rendered
+on /toolkit as "Themes the work returns to". \`drift collection …\` is an
+alias for every form.
+
+- \`drift theme list [<id>]\` · every theme with blurb and members. Writes nothing.
+- \`drift theme create <id> --name "..." [--blurb "..."] [--slug <s> --slug <s> ...]\`
+  · appends a new theme. Ids follow slug rules and must be unique; fewer
+  than two members triggers an advisory (themes.test.ts enforces ≥2).
+- \`drift theme edit <id> [--name "..."] [--blurb "..."]\` · in-place field edit.
+- \`drift theme add <id> <slug>\` / \`drift theme remove <id> <slug>\` ·
+  membership changes; slug EXISTENCE is themes.test.ts's job, shape only here.
+- \`drift theme delete <id>\` · removes the theme; a missing id is a soft no-op.
+
+Write-isolation: writes ONLY themes.ts.
+`,
+
 	relate: `# drift relate · author a relationship edge
 
 Appends a relationship to a .ts file by splicing into it with the TypeScript
@@ -5953,6 +6228,7 @@ ${BOLD}Usage:${RESET}
   drift relate tech <source-label> <kind> <target-label> [--note "..."]
   drift tech list|set|hide|unhide <label> [...]
   drift tag list|add|hide|unhide <slug> [<label>] [--kind <tag-kind>]
+  drift theme list|create|edit|add|remove|delete <id> [...]
   drift audit [--json]
   drift init
 
@@ -5969,6 +6245,7 @@ ${BOLD}Verbs:${RESET}
   relate      Author a project↔project or tech↔tech relationship edge.
   tech        Author per-tech overlays: date, note, kind override, visibility.
   tag         Add a tech to, or suppress one from, a single project's tags.
+  theme       Manage the theme territories (collections). Alias: collection.
   audit       Score every authored overlay against the content-depth rubric.
   init        Scaffold drift.config.ts and sources.local.json for this machine.
 
@@ -6125,6 +6402,21 @@ add appends an authored tag (unknown labels require --kind and become the
 entry point for new labels; adding lifts any suppression). hide appends to
 suppressTags, dropping the label from the merged list whether inferred or
 authored. Writes ONLY projects/<slug>.ts.
+`,
+
+		theme: `${BOLD}drift theme${RESET} - manage the theme territories (collections)
+
+${BOLD}Usage:${RESET}
+  drift theme list [<id>]
+  drift theme create <id> --name "..." [--blurb "..."] [--slug <s> --slug <s> ...]
+  drift theme edit <id> [--name "..."] [--blurb "..."]
+  drift theme add <id> <slug>
+  drift theme remove <id> <slug>
+  drift theme delete <id>
+
+Manages src/lib/data/themes.ts, the groupings on /toolkit. 'drift
+collection' is an alias for every form. Ids follow slug rules; slug
+existence stays themes.test.ts's job. Writes ONLY themes.ts.
 `,
 
 		relate: `${BOLD}drift relate${RESET} - author a relationship edge
@@ -6914,7 +7206,11 @@ async function main() {
 				// `drift tech`: authored first-used floor date and surface scoping.
 				'first-used': { type: 'string' },
 				from: { type: 'string' },
-				all: { type: 'boolean', default: false }
+				all: { type: 'boolean', default: false },
+				// `drift theme`: display name, blurb and member slugs (repeatable).
+				name: { type: 'string' },
+				blurb: { type: 'string' },
+				slug: { type: 'string', multiple: true }
 			}
 		}));
 	} catch (err) {
@@ -6936,11 +7232,16 @@ async function main() {
 		'relate',
 		'tech',
 		'tag',
+		'theme',
+		'collection',
 		'audit',
 		'init',
 		'help'
 	]);
-	const verb = KNOWN_VERBS.has(positionals[0]) ? positionals[0] : 'report';
+	const rawVerb = KNOWN_VERBS.has(positionals[0]) ? positionals[0] : 'report';
+	// `collection` is a straight alias for `theme` — Jason's mental model for
+	// the theme territories; normalise immediately so one dispatch serves both.
+	const verb = rawVerb === 'collection' ? 'theme' : rawVerb;
 	// args[0] = slug, args[1] = field (for accept). When the verb was explicit,
 	// slice it off; when the default 'report' was inferred, positionals are not args.
 	const args = KNOWN_VERBS.has(positionals[0]) ? positionals.slice(1) : positionals;
@@ -6954,8 +7255,8 @@ async function main() {
 	if (verb === 'help' || values.help) {
 		// `drift help [verb]` and `drift [verb] --help` both work.
 		// When `drift help update` is used, the target verb is in args[0].
-		const helpTarget = verb === 'help' ? (args[0] ?? 'report') : verb;
-		printHelp(helpTarget, palette, useGum);
+		const rawTarget = verb === 'help' ? (args[0] ?? 'report') : verb;
+		printHelp(rawTarget === 'collection' ? 'theme' : rawTarget, palette, useGum);
 		return;
 	}
 
@@ -6984,6 +7285,10 @@ async function main() {
 	}
 	if (verb === 'tag') {
 		await runTag({ args, values, palette });
+		return;
+	}
+	if (verb === 'theme') {
+		await runTheme({ args, values, palette });
 		return;
 	}
 	if (verb === 'audit') {

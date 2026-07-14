@@ -647,6 +647,159 @@ describe('drift tag', () => {
 });
 
 // ---------------------------------------------------------------------------
+// drift theme tests
+// ---------------------------------------------------------------------------
+
+const SEED_THEMES = [
+	"import type { Theme } from './types.js';",
+	'',
+	'export const themes: Theme[] = [',
+	'\t{',
+	"\t\tid: 'first-theme',",
+	"\t\tname: 'First Theme',",
+	"\t\tblurb: 'The original.',",
+	"\t\tslugs: ['alpha', 'beta']",
+	'\t},',
+	'\t{',
+	"\t\tid: 'second-theme',",
+	"\t\tname: 'Second Theme',",
+	"\t\tblurb: 'The other one.',",
+	"\t\tslugs: ['gamma', 'delta']",
+	'\t}',
+	'];',
+	''
+].join('\n');
+
+describe('drift theme', () => {
+	let dir: string;
+	let configPath: string;
+
+	beforeEach(() => {
+		({ dir, configPath } = makeOverlaySandbox());
+		writeFileSync(join(dir, 'themes.ts'), SEED_THEMES);
+	});
+
+	afterEach(() => {
+		rmSync(dir, { recursive: true, force: true });
+	});
+
+	it('create appends a theme with members; duplicate ids exit 1', () => {
+		const result = runVerbInSandbox(configPath, [
+			'theme',
+			'create',
+			'new-theme',
+			'--name',
+			'New Theme',
+			'--blurb',
+			'Fresh.',
+			'--slug',
+			'alpha',
+			'--slug',
+			'gamma'
+		]);
+		expect(result.status, result.stderr).toBe(0);
+		const source = readFileSync(join(dir, 'themes.ts'), 'utf8');
+		expect(source).toContain('id: "new-theme"');
+		expect(source).toContain('slugs: ["alpha", "gamma"]');
+
+		const duplicate = runVerbInSandbox(configPath, ['theme', 'create', 'first-theme', '--name', 'X']);
+		expect(duplicate.status).toBe(1);
+		expect(duplicate.stderr).toMatch(/already exists/i);
+	});
+
+	it('create warns below two members and requires --name', () => {
+		const thin = runVerbInSandbox(configPath, ['theme', 'create', 'thin-theme', '--name', 'Thin']);
+		expect(thin.status, thin.stderr).toBe(0);
+		expect(thin.stdout).toMatch(/at least 2/i);
+
+		const nameless = runVerbInSandbox(configPath, ['theme', 'create', 'no-name']);
+		expect(nameless.status).toBe(1);
+		expect(nameless.stderr).toMatch(/requires --name/i);
+	});
+
+	it('edit changes only the named fields, leaving the sibling theme untouched', () => {
+		const result = runVerbInSandbox(configPath, [
+			'theme',
+			'edit',
+			'first-theme',
+			'--blurb',
+			'Rewritten.'
+		]);
+		expect(result.status, result.stderr).toBe(0);
+		const source = readFileSync(join(dir, 'themes.ts'), 'utf8');
+		expect(source).toContain('Rewritten.');
+		// Prettier may renormalise quotes; assert content, not quote style.
+		expect(source).toMatch(/name: ["']First Theme["']/);
+		expect(source).toMatch(/id: ["']second-theme["']/);
+		expect(source).toContain('The other one.');
+
+		const nothing = runVerbInSandbox(configPath, ['theme', 'edit', 'first-theme']);
+		expect(nothing.status).toBe(1);
+		expect(nothing.stderr).toMatch(/nothing to change/i);
+	});
+
+	it('add and remove manage membership with idempotence and a below-2 warning', () => {
+		const add = runVerbInSandbox(configPath, ['theme', 'add', 'first-theme', 'epsilon']);
+		expect(add.status, add.stderr).toBe(0);
+		expect(readFileSync(join(dir, 'themes.ts'), 'utf8')).toMatch(
+			/slugs: \[["']alpha["'], ["']beta["'], ["']epsilon["']\]/
+		);
+
+		const again = runVerbInSandbox(configPath, ['theme', 'add', 'first-theme', 'epsilon']);
+		expect(again.stdout).toMatch(/already in theme/i);
+
+		runVerbInSandbox(configPath, ['theme', 'remove', 'first-theme', 'epsilon']);
+		const below = runVerbInSandbox(configPath, ['theme', 'remove', 'first-theme', 'beta']);
+		expect(below.status, below.stderr).toBe(0);
+		expect(below.stdout).toMatch(/at least 2/i);
+
+		const absent = runVerbInSandbox(configPath, ['theme', 'remove', 'first-theme', 'zeta']);
+		expect(absent.status, absent.stderr).toBe(0);
+		expect(absent.stdout).toMatch(/not in theme/i);
+	});
+
+	it('delete removes a theme; a missing id is a soft no-op', () => {
+		const result = runVerbInSandbox(configPath, ['theme', 'delete', 'second-theme']);
+		expect(result.status, result.stderr).toBe(0);
+		const source = readFileSync(join(dir, 'themes.ts'), 'utf8');
+		expect(source).not.toContain('second-theme');
+		expect(source).toContain('first-theme');
+
+		const missing = runVerbInSandbox(configPath, ['theme', 'delete', 'never-existed']);
+		expect(missing.status, missing.stderr).toBe(0);
+		expect(missing.stdout).toMatch(/nothing to delete/i);
+	});
+
+	it('the collection alias dispatches identically, including help', () => {
+		const list = runVerbInSandbox(configPath, ['collection', 'list']);
+		expect(list.status, list.stderr).toBe(0);
+		expect(list.stdout).toMatch(/first-theme/);
+		expect(list.stdout).toMatch(/2 themes/);
+
+		const help = runVerbInSandbox(configPath, ['help', 'collection']);
+		expect(help.status, help.stderr).toBe(0);
+		expect(help.stdout).toMatch(/drift theme/);
+	});
+
+	it('exits 1 when themes.ts is missing and never touches other file families', () => {
+		const sentinel = readFileSync(join(dir, 'themes.ts'), 'utf8');
+		runVerbInSandbox(configPath, ['theme', 'add', 'first-theme', 'epsilon']);
+		// themes changed, but nothing else exists to change — now prove the converse:
+		writeFileSync(join(dir, 'themes.ts'), sentinel);
+		const overlaysSeed =
+			"import type { TechOverlay } from './types.js';\n\nexport const techOverlays: TechOverlay[] = [];\n";
+		writeFileSync(join(dir, 'tech-overlays.ts'), overlaysSeed);
+		runVerbInSandbox(configPath, ['theme', 'edit', 'first-theme', '--name', 'Renamed']);
+		expect(readFileSync(join(dir, 'tech-overlays.ts'), 'utf8')).toBe(overlaysSeed);
+
+		rmSync(join(dir, 'themes.ts'));
+		const missing = runVerbInSandbox(configPath, ['theme', 'list']);
+		expect(missing.status).toBe(1);
+		expect(missing.stderr).toMatch(/not found/i);
+	});
+});
+
+// ---------------------------------------------------------------------------
 // drift author tests
 // ---------------------------------------------------------------------------
 
