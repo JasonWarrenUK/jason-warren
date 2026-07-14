@@ -542,6 +542,111 @@ describe('drift tech', () => {
 });
 
 // ---------------------------------------------------------------------------
+// drift tag tests
+// ---------------------------------------------------------------------------
+
+describe('drift tag', () => {
+	let dir: string;
+	let configPath: string;
+
+	beforeEach(() => {
+		({ dir, configPath } = makeOverlaySandbox());
+	});
+
+	afterEach(() => {
+		rmSync(dir, { recursive: true, force: true });
+	});
+
+	it('add creates the overlay and a tags property, inferring a known label kind', () => {
+		const result = runVerbInSandbox(configPath, ['tag', 'add', 'my-proj', 'ink']);
+		expect(result.status, result.stderr).toBe(0);
+		expect(result.stdout).toMatch(/Using 'Ink' for 'ink'/);
+		expect(result.stdout).toMatch(/Tagged: 'my-proj' with 'Ink' \(language\)/);
+
+		const source = readFileSync(join(dir, 'projects', 'my-proj.ts'), 'utf8');
+		expect(source).toContain('label: "Ink"');
+		expect(source).toContain('kind: "language"');
+	});
+
+	it('add of an unknown label requires --kind, then becomes addable', () => {
+		const bare = runVerbInSandbox(configPath, ['tag', 'add', 'my-proj', 'Quantum Foam']);
+		expect(bare.status).toBe(1);
+		expect(bare.stderr).toMatch(/unknown tech label 'Quantum Foam'/i);
+
+		const withKind = runVerbInSandbox(configPath, [
+			'tag',
+			'add',
+			'my-proj',
+			'Quantum Foam',
+			'--kind',
+			'concept'
+		]);
+		expect(withKind.status, withKind.stderr).toBe(0);
+		const source = readFileSync(join(dir, 'projects', 'my-proj.ts'), 'utf8');
+		expect(source).toContain('label: "Quantum Foam"');
+		expect(source).toContain('kind: "concept"');
+	});
+
+	it('add is idempotent across casings and lifts an existing suppression', () => {
+		runVerbInSandbox(configPath, ['tag', 'hide', 'my-proj', 'Ink']);
+		const add = runVerbInSandbox(configPath, ['tag', 'add', 'my-proj', 'INK']);
+		expect(add.status, add.stderr).toBe(0);
+		expect(add.stdout).toMatch(/lifted suppression/i);
+		const source = readFileSync(join(dir, 'projects', 'my-proj.ts'), 'utf8');
+		expect(source).not.toContain('suppressTags');
+
+		const repeat = runVerbInSandbox(configPath, ['tag', 'add', 'my-proj', 'ink']);
+		expect(repeat.stdout).toMatch(/already carries/i);
+		expect(readFileSync(join(dir, 'projects', 'my-proj.ts'), 'utf8')).toBe(source);
+	});
+
+	it('hide suppresses a label the project does not yet infer, with a note', () => {
+		const result = runVerbInSandbox(configPath, ['tag', 'hide', 'my-proj', 'typescript']);
+		expect(result.status, result.stderr).toBe(0);
+		expect(result.stdout).toMatch(/does not currently infer/i);
+		expect(readFileSync(join(dir, 'projects', 'my-proj.ts'), 'utf8')).toContain(
+			'suppressTags: ["TypeScript"]'
+		);
+
+		const repeat = runVerbInSandbox(configPath, ['tag', 'hide', 'my-proj', 'TypeScript']);
+		expect(repeat.stdout).toMatch(/already suppressed/i);
+	});
+
+	it('unhide removes the suppression, dropping an emptied property; soft no-ops otherwise', () => {
+		runVerbInSandbox(configPath, ['tag', 'hide', 'my-proj', 'TypeScript']);
+		const result = runVerbInSandbox(configPath, ['tag', 'unhide', 'my-proj', 'TypeScript']);
+		expect(result.status, result.stderr).toBe(0);
+		expect(readFileSync(join(dir, 'projects', 'my-proj.ts'), 'utf8')).not.toContain('suppressTags');
+
+		const missing = runVerbInSandbox(configPath, ['tag', 'unhide', 'no-overlay', 'Ink']);
+		expect(missing.status, missing.stderr).toBe(0);
+		expect(missing.stdout).toMatch(/no overlay/i);
+	});
+
+	it('list shows authored, suppressed and effective labels', () => {
+		runVerbInSandbox(configPath, ['tag', 'add', 'my-proj', 'Neo4j']);
+		runVerbInSandbox(configPath, ['tag', 'hide', 'my-proj', 'TypeScript']);
+		const result = runVerbInSandbox(configPath, ['tag', 'list', 'my-proj']);
+		expect(result.status, result.stderr).toBe(0);
+		expect(result.stdout).toMatch(/authored\s+Neo4j \(data\)/);
+		expect(result.stdout).toMatch(/suppressed\s+TypeScript/);
+		expect(result.stdout).toMatch(/effective\s+Neo4j/);
+	});
+
+	it('rejects a malformed slug and never touches other file families', () => {
+		const bad = runVerbInSandbox(configPath, ['tag', 'add', 'Bad/Slug', 'Ink']);
+		expect(bad.status).toBe(1);
+		expect(bad.stderr).toMatch(/kebab-case/i);
+
+		const overlaysSeed =
+			"import type { TechOverlay } from './types.js';\n\nexport const techOverlays: TechOverlay[] = [];\n";
+		writeFileSync(join(dir, 'tech-overlays.ts'), overlaysSeed);
+		runVerbInSandbox(configPath, ['tag', 'add', 'my-proj', 'Ink']);
+		expect(readFileSync(join(dir, 'tech-overlays.ts'), 'utf8')).toBe(overlaysSeed);
+	});
+});
+
+// ---------------------------------------------------------------------------
 // drift author tests
 // ---------------------------------------------------------------------------
 

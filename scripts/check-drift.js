@@ -4620,6 +4620,332 @@ async function runTech({ args, values, palette }) {
 }
 
 // ---------------------------------------------------------------------------
+// tag verb (5DR.20)
+//
+// Per-project tech tags: authored additions (AuthoredProject.tags) and
+// suppression of inferred tags (AuthoredProject.suppressTags).
+//
+//   drift tag list <slug>
+//   drift tag add <slug> <label> [--kind <tag-kind>]
+//   drift tag hide <slug> <label>
+//   drift tag unhide <slug> <label>
+//
+// Write-isolation: writes ONLY projects/<slug>.ts. `list` writes nothing.
+// ---------------------------------------------------------------------------
+
+/**
+ * Best-known kind for a canonical label: taxonomy first, then any
+ * overlay-authored tag already using it. undefined when nobody knows —
+ * `tag add` then demands an explicit --kind.
+ *
+ * @param {string} label
+ * @returns {Promise<string | undefined>}
+ */
+async function inferKindForLabel(label) {
+	for (const tags of [LANGUAGE_TAGS, RUNTIME_TAGS, FRAMEWORK_TAGS, DATABASE_TAGS]) {
+		for (const tag of Object.values(tags)) {
+			if (tag.label === label) return tag.kind;
+		}
+	}
+	for (const overlay of await loadOverlays()) {
+		if (!Array.isArray(overlay.tags)) continue;
+		for (const tag of overlay.tags) {
+			if (tag && tag.label === label && typeof tag.kind === 'string') return tag.kind;
+		}
+	}
+	return undefined;
+}
+
+/**
+ * Labels the manifest would infer for one slug — an approximation of
+ * inferTags for display and the "not carried" advisory (identity → taxonomy
+ * label, without inferTags's special cases). Empty when sources.json is
+ * absent (bare checkouts, sandboxes).
+ *
+ * @param {string} slug
+ * @returns {string[]}
+ */
+function inferredLabelsForSlug(slug) {
+	if (!existsSync(sourcesPath)) return [];
+	let entry;
+	try {
+		entry = JSON.parse(readFileSync(sourcesPath, 'utf8')).sources?.[slug];
+	} catch {
+		return [];
+	}
+	if (!entry) return [];
+	const labels = new Set();
+	for (const name of entry.languages ?? []) {
+		const tag = LANGUAGE_TAGS[name];
+		if (tag) labels.add(tag.label);
+	}
+	for (const [identities, table] of [
+		[entry.runtime ?? [], RUNTIME_TAGS],
+		[entry.framework ?? [], FRAMEWORK_TAGS],
+		[entry.database ?? [], DATABASE_TAGS]
+	]) {
+		for (const identity of identities) {
+			const tag = table[identity];
+			if (tag) labels.add(tag.label);
+		}
+	}
+	return [...labels];
+}
+
+/** Parses projects/<slug>.ts for mutation, creating it from the template when allowed. */
+async function loadOverlayForEdit(slug, palette) {
+	const { GREEN, RED, BOLD, RESET } = palette;
+	const { path, created } = createOverlayIfAbsent(slug);
+	const relPath = path.replace(config.repoRoot + '/', '');
+	if (created) process.stdout.write(`${GREEN}${BOLD}created${RESET} ${relPath}\n`);
+	const ts = (await import('typescript')).default;
+	const text = readFileSync(path, 'utf8');
+	const sf = ts.createSourceFile(path, text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
+	const objLit = findExportedLiteral(ts, sf, ts.isObjectLiteralExpression);
+	if (!objLit) {
+		process.stderr.write(
+			`${RED}Error: could not locate the exported object literal in ${relPath}.${RESET}\n`
+		);
+		process.exit(1);
+	}
+	return { ts, path, text, sf, objLit, relPath };
+}
+
+/** Finds an array-typed property on the overlay, exiting 1 on a non-array initializer. */
+function overlayArrayProp(ts, sf, objLit, propName, relPath, palette) {
+	const { RED, RESET } = palette;
+	const prop = objLit.properties.find(
+		(p) => ts.isPropertyAssignment(p) && p.name.getText(sf) === propName
+	);
+	if (prop && !ts.isArrayLiteralExpression(prop.initializer)) {
+		process.stderr.write(
+			`${RED}Error: ${propName} in ${relPath} is not an array literal — edit it by hand.${RESET}\n`
+		);
+		process.exit(1);
+	}
+	return prop ?? null;
+}
+
+/**
+ * Mode dispatcher for `drift tag`. See the section banner for the grammar.
+ *
+ * @param {{ args: string[], values: object, palette: object }} options
+ */
+async function runTag({ args, values, palette }) {
+	const { GREEN, RED, YELLOW, BOLD, DIM, RESET } = palette;
+	const usage =
+		'Usage:\n' +
+		'  drift tag list <slug>\n' +
+		'  drift tag add <slug> <label> [--kind <tag-kind>]\n' +
+		'  drift tag hide <slug> <label>\n' +
+		'  drift tag unhide <slug> <label>\n' +
+		'  An unknown label on add REQUIRES --kind (the entry point for new labels).';
+
+	const [action, slug, labelInput] = args;
+	if (!['list', 'add', 'hide', 'unhide'].includes(action ?? '')) {
+		process.stderr.write(`${RED}Error: unknown tag action '${action ?? ''}'.\n${usage}${RESET}\n`);
+		process.exit(1);
+	}
+	if (slug === undefined || (action !== 'list' && labelInput === undefined)) {
+		process.stderr.write(`${RED}Error: missing arguments.\n${usage}${RESET}\n`);
+		process.exit(1);
+	}
+	const slugError = validateProjectSlug(slug);
+	if (slugError !== null) {
+		process.stderr.write(`${RED}Error: ${slugError}${RESET}\n`);
+		process.exit(1);
+	}
+
+	if (action === 'list') {
+		const overlayPath = join(projectsDir, `${slug}.ts`);
+		let authored = [];
+		let suppressed = [];
+		if (existsSync(overlayPath)) {
+			const ts = (await import('typescript')).default;
+			const text = readFileSync(overlayPath, 'utf8');
+			const sf = ts.createSourceFile(overlayPath, text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
+			const objLit = findExportedLiteral(ts, sf, ts.isObjectLiteralExpression);
+			if (objLit) {
+				const tagsProp = objLit.properties.find(
+					(p) => ts.isPropertyAssignment(p) && p.name.getText(sf) === 'tags'
+				);
+				if (tagsProp && ts.isArrayLiteralExpression(tagsProp.initializer)) {
+					for (const el of tagsProp.initializer.elements) {
+						if (!ts.isObjectLiteralExpression(el)) continue;
+						const label = readRelationshipField(ts, sf, el, 'label');
+						const kind = readRelationshipField(ts, sf, el, 'kind');
+						if (label !== undefined) authored.push(kind ? `${label} (${kind})` : label);
+					}
+				}
+				suppressed = readArrayField(ts, sf, objLit, 'suppressTags') ?? [];
+			}
+		}
+		const inferred = inferredLabelsForSlug(slug);
+		const suppressedSet = new Set(suppressed);
+		const effective = [...new Set([...inferred, ...authored.map((a) => a.replace(/ \(.*\)$/, ''))])]
+			.filter((label) => !suppressedSet.has(label));
+
+		process.stdout.write(`${BOLD}${slug}${RESET}\n`);
+		process.stdout.write(`inferred    ${inferred.join(', ') || DIM + 'none' + RESET}\n`);
+		process.stdout.write(`authored    ${authored.join(', ') || DIM + 'none' + RESET}\n`);
+		process.stdout.write(`suppressed  ${suppressed.join(', ') || DIM + 'none' + RESET}\n`);
+		process.stdout.write(`effective   ${effective.join(', ') || DIM + 'none' + RESET}\n`);
+		return;
+	}
+
+	// Label resolution: canonical casing when known; `add` without --kind is
+	// strict, `add --kind` sanctions a brand-new label, hide/unhide pass
+	// unknown labels through (suppressing a future inferred tag is legitimate).
+	const labelIndex = await buildTechLabelIndex({ includeRelateHidden: true });
+	const canonical = labelIndex.get(labelInput.toLowerCase());
+	const explicitKind = values.kind?.trim() || undefined;
+	if (explicitKind !== undefined && !TECH_TAG_KINDS.has(explicitKind)) {
+		process.stderr.write(
+			`${RED}Error: invalid --kind '${explicitKind}'. Use one of: ${[...TECH_TAG_KINDS].join(', ')}.${RESET}\n`
+		);
+		process.exit(1);
+	}
+
+	if (action === 'add') {
+		let label;
+		let kind;
+		if (canonical !== undefined) {
+			label = resolveTechLabel(labelInput, labelIndex, palette, true);
+			kind = explicitKind ?? (await inferKindForLabel(label));
+			if (kind === undefined) {
+				process.stderr.write(
+					`${RED}Error: no known kind for '${label}' — pass --kind.${RESET}\n`
+				);
+				process.exit(1);
+			}
+		} else if (explicitKind !== undefined) {
+			label = labelInput;
+			kind = explicitKind;
+		} else {
+			// Unknown label without --kind: reuse the strict error (near-miss list).
+			resolveTechLabel(labelInput, labelIndex, palette, true);
+			return; // unreachable — resolveTechLabel exits
+		}
+
+		const { ts, path, text, sf, objLit, relPath } = await loadOverlayForEdit(slug, palette);
+		const tagsProp = overlayArrayProp(ts, sf, objLit, 'tags', relPath, palette);
+		if (tagsProp !== null) {
+			const existing = findElementByStringField(ts, sf, tagsProp.initializer, 'label', label, {
+				caseInsensitive: true
+			});
+			if (existing !== null) {
+				process.stdout.write(
+					`${YELLOW}'${slug}' already carries '${label}' — nothing to do.${RESET}\n`
+				);
+				return;
+			}
+		}
+		const elementSrc = buildRelationshipLiteral({ label, kind });
+		let splicedText;
+		if (tagsProp !== null) {
+			splicedText = spliceElementIntoArray(text, sf, tagsProp.initializer, elementSrc);
+		} else {
+			const insertPos = objLit.getStart(sf) + 1;
+			splicedText = text.slice(0, insertPos) + `\n\ttags: [${elementSrc}],` + text.slice(insertPos);
+		}
+		writeFileSync(path, splicedText, 'utf8');
+		spawnSync('npx', ['prettier', '--write', path], { stdio: 'ignore' });
+
+		// Adding and suppressing must not coexist: lift any suppression of
+		// this label in a second pass (positions went stale on the write).
+		{
+			const fresh = await loadOverlayForEdit(slug, palette);
+			const suppressProp = overlayArrayProp(fresh.ts, fresh.sf, fresh.objLit, 'suppressTags', relPath, palette);
+			if (suppressProp !== null) {
+				const idx = findStringElementIndex(fresh.ts, fresh.sf, suppressProp.initializer, label);
+				if (idx !== -1) {
+					// Dropping the last entry drops the whole property — an empty
+					// suppressTags authors nothing.
+					const cleaned =
+						suppressProp.initializer.elements.length === 1
+							? spliceRemoveObjectProperty(fresh.text, fresh.sf, fresh.ts, fresh.objLit, 'suppressTags')
+							: spliceRemoveElement(fresh.text, fresh.sf, suppressProp.initializer, idx);
+					writeFileSync(path, cleaned, 'utf8');
+					spawnSync('npx', ['prettier', '--write', path], { stdio: 'ignore' });
+					process.stdout.write(`${DIM}Also lifted suppression of '${label}'.${RESET}\n`);
+				}
+			}
+		}
+		process.stdout.write(
+			`${GREEN}${BOLD}Tagged:${RESET} '${slug}' with '${label}' (${kind}).\n${DIM}Rebuild the site to apply.${RESET}\n`
+		);
+		return;
+	}
+
+	const label = canonical ?? labelInput;
+
+	if (action === 'hide') {
+		const carried = new Set([...inferredLabelsForSlug(slug)]);
+		const { ts, path, text, sf, objLit, relPath } = await loadOverlayForEdit(slug, palette);
+		const suppressProp = overlayArrayProp(ts, sf, objLit, 'suppressTags', relPath, palette);
+		if (suppressProp !== null) {
+			if (findStringElementIndex(ts, sf, suppressProp.initializer, label) !== -1) {
+				process.stdout.write(
+					`${YELLOW}'${label}' is already suppressed on '${slug}' — nothing to do.${RESET}\n`
+				);
+				return;
+			}
+		}
+		let splicedText;
+		if (suppressProp !== null) {
+			splicedText = spliceElementIntoArray(text, sf, suppressProp.initializer, JSON.stringify(label));
+		} else {
+			const insertPos = objLit.getStart(sf) + 1;
+			splicedText =
+				text.slice(0, insertPos) + `\n\tsuppressTags: [${JSON.stringify(label)}],` + text.slice(insertPos);
+		}
+		writeFileSync(path, splicedText, 'utf8');
+		spawnSync('npx', ['prettier', '--write', path], { stdio: 'ignore' });
+		if (!carried.has(label)) {
+			process.stdout.write(
+				`${YELLOW}Note: '${slug}' does not currently infer '${label}'; the suppression waits for it.${RESET}\n`
+			);
+		}
+		process.stdout.write(
+			`${GREEN}${BOLD}Suppressed:${RESET} '${label}' on '${slug}' (inferred or authored).\n${DIM}Rebuild the site to apply.${RESET}\n`
+		);
+		return;
+	}
+
+	// unhide: soft no-ops throughout — never scaffolds an overlay to remove from it.
+	const overlayPath = join(projectsDir, `${slug}.ts`);
+	if (!existsSync(overlayPath)) {
+		process.stdout.write(`${YELLOW}'${slug}' has no overlay — nothing to unhide.${RESET}\n`);
+		return;
+	}
+	const ts = (await import('typescript')).default;
+	const text = readFileSync(overlayPath, 'utf8');
+	const sf = ts.createSourceFile(overlayPath, text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
+	const objLit = findExportedLiteral(ts, sf, ts.isObjectLiteralExpression);
+	const suppressProp =
+		objLit === null
+			? null
+			: overlayArrayProp(ts, sf, objLit, 'suppressTags', overlayPath, palette);
+	const idx =
+		suppressProp === null ? -1 : findStringElementIndex(ts, sf, suppressProp.initializer, label);
+	if (idx === -1) {
+		process.stdout.write(
+			`${YELLOW}'${label}' is not suppressed on '${slug}' — nothing to do.${RESET}\n`
+		);
+		return;
+	}
+	const splicedText =
+		suppressProp.initializer.elements.length === 1
+			? spliceRemoveObjectProperty(text, sf, ts, objLit, 'suppressTags')
+			: spliceRemoveElement(text, sf, suppressProp.initializer, idx);
+	writeFileSync(overlayPath, splicedText, 'utf8');
+	spawnSync('npx', ['prettier', '--write', overlayPath], { stdio: 'ignore' });
+	process.stdout.write(
+		`${GREEN}${BOLD}Unsuppressed:${RESET} '${label}' on '${slug}'.\n${DIM}Rebuild the site to apply.${RESET}\n`
+	);
+}
+
+// ---------------------------------------------------------------------------
 // audit verb
 //
 // Scores every authored overlay against the content-depth rubric and emits a
@@ -5198,6 +5524,7 @@ Compare synced fingerprints against current git state and surface new repos.
 - \`drift relate project <source-slug> <kind> <target-slug> [--note "..."]\`
 - \`drift relate tech <source-label> <kind> <target-label> [--note "..."]\`
 - \`drift tech list|set|hide|unhide <label> [...]\`
+- \`drift tag list|add|hide|unhide <slug> [<label>] [--kind <tag-kind>]\`
 - \`drift audit [--json]\`
 - \`drift init\`
 
@@ -5214,6 +5541,7 @@ Compare synced fingerprints against current git state and surface new repos.
 - \`flag\` · set pin: true or hide: true in the slug's overlay (creating it if absent)
 - \`relate\` · author a project↔project or tech↔tech relationship edge
 - \`tech\` · author per-tech overlays: first-used date, modal note, kind override, surface visibility
+- \`tag\` · add a tech to, or suppress one from, a single project's tags
 - \`audit\` · score every authored overlay against the content-depth rubric and report per-entry tiers
 - \`init\` · scaffold drift.config.ts and sources.local.json for this machine
 
@@ -5463,6 +5791,24 @@ Labels are case-insensitive and resolve to canonical tag casing.
 Write-isolation: writes ONLY tech-overlays.ts.
 `,
 
+	tag: `# drift tag · per-project tech tags
+
+Adds a tech to, or suppresses one from, ONE project's tags, writing only
+\`src/lib/data/projects/<slug>.ts\` (created from the template when absent).
+
+- \`drift tag list <slug>\` · inferred, authored, suppressed and effective
+  labels for one project. Writes nothing.
+- \`drift tag add <slug> <label> [--kind <tag-kind>]\` · appends an authored
+  tag. A known label resolves case-insensitively and infers its kind; an
+  UNKNOWN label requires \`--kind\` — this is the one sanctioned entry point
+  for a brand-new label. Also lifts any suppression of the same label.
+- \`drift tag hide <slug> <label>\` · appends to \`suppressTags\`, dropping
+  the label from the merged list whether inferred or authored. Suppressing
+  a label the project does not yet infer is allowed (it waits).
+- \`drift tag unhide <slug> <label>\` · removes the suppression; missing
+  overlay or entry is a soft no-op.
+`,
+
 	relate: `# drift relate · author a relationship edge
 
 Appends a relationship to a .ts file by splicing into it with the TypeScript
@@ -5606,6 +5952,7 @@ ${BOLD}Usage:${RESET}
   drift relate project <source-slug> <kind> <target-slug> [--note "..."]
   drift relate tech <source-label> <kind> <target-label> [--note "..."]
   drift tech list|set|hide|unhide <label> [...]
+  drift tag list|add|hide|unhide <slug> [<label>] [--kind <tag-kind>]
   drift audit [--json]
   drift init
 
@@ -5621,6 +5968,7 @@ ${BOLD}Verbs:${RESET}
   flag        Set pin: true or hide: true in the slug's overlay (creating it if absent).
   relate      Author a project↔project or tech↔tech relationship edge.
   tech        Author per-tech overlays: date, note, kind override, visibility.
+  tag         Add a tech to, or suppress one from, a single project's tags.
   audit       Score every authored overlay against the content-depth rubric.
   init        Scaffold drift.config.ts and sources.local.json for this machine.
 
@@ -5763,6 +6111,20 @@ shown in the toolkit modal, kind overrides and per-surface visibility.
 Labels are case-insensitive and resolve to canonical tag casing. hide
 without --from hides from all four surfaces; project detail chips are
 never hidden. Writes ONLY tech-overlays.ts.
+`,
+
+		tag: `${BOLD}drift tag${RESET} - per-project tech tags
+
+${BOLD}Usage:${RESET}
+  drift tag list <slug>
+  drift tag add <slug> <label> [--kind <tag-kind>]
+  drift tag hide <slug> <label>
+  drift tag unhide <slug> <label>
+
+add appends an authored tag (unknown labels require --kind and become the
+entry point for new labels; adding lifts any suppression). hide appends to
+suppressTags, dropping the label from the merged list whether inferred or
+authored. Writes ONLY projects/<slug>.ts.
 `,
 
 		relate: `${BOLD}drift relate${RESET} - author a relationship edge
@@ -6573,6 +6935,7 @@ async function main() {
 		'flag',
 		'relate',
 		'tech',
+		'tag',
 		'audit',
 		'init',
 		'help'
@@ -6617,6 +6980,10 @@ async function main() {
 	}
 	if (verb === 'tech') {
 		await runTech({ args, values, palette });
+		return;
+	}
+	if (verb === 'tag') {
+		await runTag({ args, values, palette });
 		return;
 	}
 	if (verb === 'audit') {
