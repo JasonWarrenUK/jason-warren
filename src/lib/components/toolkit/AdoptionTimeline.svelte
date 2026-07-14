@@ -5,6 +5,8 @@
 	import type { TagKind } from '$lib/data/types.js';
 	import type { TechAdoption } from '$lib/data/adoption.js';
 	import { techRelationships } from '$lib/data/tech-relationships.js';
+	import { getTechOverlay } from '$lib/data/tech-overlays.js';
+	import { formatMonthYear } from '$lib/format-date.js';
 	import { techKindColour, edgeTypeColour, edgeTypeLabel } from '$lib/components/graph/graph-style.js';
 	import { encodeTechLabel, decodeTechLabel } from '$lib/url-state.js';
 	import { writeParam } from '$lib/url-write.js';
@@ -90,6 +92,10 @@
 		text: string;
 		note?: string;
 	}
+
+	// Authored note for the selected tech, read straight from the overlays —
+	// the same pattern the lineage lines use with techRelationships.
+	const selectedNote = $derived(selected !== null ? getTechOverlay(selected.label)?.note : undefined);
 
 	const selectedLineage = $derived.by((): LineageLine[] => {
 		if (!selected) return [];
@@ -360,11 +366,14 @@
 	{@const isPinned = pinnedLabel === selected.label}
 	<SelectionModal open={true} title={selected.label} onclose={() => (selected = null)}>
 		<p class="adoption-modal__desc">
-			First used in {selected.firstYear}{selected.dateSource === 'derived'
+			First used in {formatMonthYear(selected.firstDate)}{selected.dateSource === 'derived'
 				? ` (estimated from ${selected.firstProjectName})`
 				: ''}, across {selected.projectCount}
 			{selected.projectCount === 1 ? 'project' : 'projects'}.
 		</p>
+		{#if selectedNote}
+			<p class="adoption-modal__note">{selectedNote}</p>
+		{/if}
 		{#if selectedLineage.length > 0}
 			<ul class="adoption-modal__lineage">
 				{#each selectedLineage as line (line.text)}
@@ -621,6 +630,14 @@
 	.adoption-modal__desc {
 		font-size: var(--text-sm);
 		color: var(--color-text-subtle);
+		margin: 0;
+		line-height: 1.5;
+	}
+
+	/* Modal note: the authored per-tech sentence from tech-overlays.ts. */
+	.adoption-modal__note {
+		font-size: var(--text-sm);
+		color: var(--color-text);
 		margin: 0;
 		line-height: 1.5;
 	}
