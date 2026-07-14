@@ -259,6 +259,37 @@ describe('computeAdoptionLayout', () => {
 		}
 	});
 
+	it('does not park a leaf in a sibling branch’s abandoned lane', () => {
+		// Mirrors inkjs: Root leads to two branches. The CSS-like branch retires
+		// its early rail (leaving that lane free to the right), and a late leaf
+		// (Leaf, anchored on Root) must NOT squat in that freed sibling lane —
+		// which would vault a long connector across the CSS branch — but take a
+		// lane of its own near Root instead.
+		const items: TechAdoption[] = [
+			tech('Root', 'language', '2020-01-01'),
+			tech('CssA', 'framework', '2020-06-01'),
+			tech('CssB', 'framework', '2020-09-01'),
+			tech('Leaf', 'runtime', '2024-01-01')
+		];
+		const edges: TechRelationship[] = [
+			{ kind: 'leads-to', source: 'Root', target: 'CssA' },
+			{ kind: 'replaced-by', source: 'CssA', target: 'CssB' },
+			{ kind: 'leads-to', source: 'Root', target: 'Leaf' }
+		];
+		const result = computeAdoptionLayout(items, edges, GEO);
+		const byLabel = new Map(result.placed.map((p) => [p.label, p]));
+		const leaf = byLabel.get('Leaf')!;
+		const cssA = byLabel.get('CssA')!;
+		const cssB = byLabel.get('CssB')!;
+		// Leaf must not reuse the CSS branch's lane (CssA's, which CssB inherits).
+		expect(leaf.lane).not.toBe(cssA.lane);
+		expect(leaf.lane).not.toBe(cssB.lane);
+		// And the Root→Leaf connector should not be a long dot-to-dot curve
+		// (the symptom of squatting far from the anchor).
+		const conn = result.connectors.find((c) => c.target === 'Leaf')!;
+		expect(conn.variant).not.toBe('s-curve');
+	});
+
 	it('keeps a same-lane replaced-by as a short handover stub', () => {
 		// The succession case the same-lane-branch split must NOT disturb.
 		const items: TechAdoption[] = [

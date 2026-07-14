@@ -512,6 +512,17 @@ function assignLanes(
 		return false;
 	};
 
+	// A node may REUSE a lane an earlier occupant left free only when that
+	// occupant sits on the node's own anchor chain — the anchor itself, or a
+	// node placed under the anchor. Reusing a lane held by a SIBLING branch
+	// (e.g. inkjs, anchored on Ink, squatting in Tailwind CSS v3's abandoned
+	// row — a cousin down the CSS branch) parks the node far from its anchor
+	// and vaults a long connector across the intervening family. Whole-family
+	// same-root is too loose here (the entire web stack roots at Ink); the
+	// test is the direct anchor→tenant subtree relationship.
+	const reusableByAnchor = (tenant: string, anchor: string): boolean =>
+		tenant === anchor || isPlacedUnder(tenant, anchor);
+
 	const byDateThenLabel = (a: string, b: string): number =>
 		itemDates.get(a)!.localeCompare(itemDates.get(b)!) || a.localeCompare(b);
 
@@ -566,10 +577,18 @@ function assignLanes(
 						? [anchorLane]
 						: [anchorLane + distance, anchorLane - distance]) {
 						if (candidate < blockStart || candidate >= claimRight.length) continue;
-						if (dotLeft > claimRight[candidate] + geo.labelGap) {
-							lane = candidate;
-							break;
-						}
+						if (dotLeft <= claimRight[candidate] + geo.labelGap) continue;
+						// Never reuse a lane whose sitting tenant belongs to an
+						// unrelated chain — that squats the node far from its
+						// anchor and vaults a connector across the other family
+						// (the inkjs-in-Tailwind's-row case). A fresh lane by the
+						// anchor (inserted below) reads far cleaner. The anchor's
+						// own lane (distance 0) and empty lanes are always fine.
+						const occupants = laneMembers[candidate];
+						const tenant = occupants[occupants.length - 1];
+						if (tenant !== undefined && !reusableByAnchor(tenant, anchor)) continue;
+						lane = candidate;
+						break;
 					}
 					if (lane !== -1) break;
 				}
