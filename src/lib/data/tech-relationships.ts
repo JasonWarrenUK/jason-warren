@@ -78,5 +78,6 @@ export const techRelationships: TechRelationship[] = [
 	{ kind: 'leads-to', source: 'Ink', target: 'JavaScript' },
 	{ kind: 'leads-to', source: 'Ink', target: 'inkjs' },
 	{ kind: 'leads-to', source: 'JavaScript', target: 'inkjs' },
-	{ kind: 'leads-to', source: 'Go', target: 'Bubble Tea' }
+	{ kind: 'leads-to', source: 'Go', target: 'Bubble Tea' },
+	{ kind: 'leads-to', source: 'HTML', target: 'CSS' }
 ];
