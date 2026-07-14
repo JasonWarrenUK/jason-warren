@@ -253,6 +253,11 @@ export interface AuthoredProject {
 	kind?: ProjectKind;
 	contribution?: AuthoredContribution;
 	tags?: TechTag[];
+	/**
+	 * Labels removed from this project's merged tag list, whether inferred or
+	 * authored — the only way to drop an inferred tag. Managed by `drift tag`.
+	 */
+	suppressTags?: string[];
 	status?: ProjectStatus;
 	liveUrl?: string;
 	highlights?: string[];

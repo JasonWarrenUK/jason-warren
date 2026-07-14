@@ -282,6 +282,9 @@ function mergeContribution(
  *   - Inferred language/runtime/framework/data tags are NOT dropped by an
  *     authored overlay that only specifies concept tags.
  *   - Exact duplicates (same kind and label) are collapsed.
+ *   - suppressTags runs LAST and drops matching labels whether inferred or
+ *     authored — it is the only way to remove an inferred tag, and it wins
+ *     over an authored addition of the same label.
  *
  * Contribution is merged field-by-field via mergeContribution so the inferred
  * collaboration default survives when an overlay omits it.
@@ -299,6 +302,11 @@ export function mergeAuthored(base: Project, authored: AuthoredProject | undefin
 		const seen = new Set<string>(base.tags.map((t) => `${t.kind}:${t.label}`));
 		const extra = authored.tags.filter((t) => !seen.has(`${t.kind}:${t.label}`));
 		mergedTags = [...base.tags, ...extra];
+	}
+	// Suppression last, so it beats both inference and authored additions.
+	if (authored.suppressTags !== undefined && authored.suppressTags.length > 0) {
+		const suppressed = new Set(authored.suppressTags);
+		mergedTags = mergedTags.filter((t) => !suppressed.has(t.label));
 	}
 
 	return {

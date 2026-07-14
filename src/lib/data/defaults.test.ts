@@ -301,6 +301,30 @@ describe('mergeAuthored', () => {
 		expect(result).toBe(base); // strict reference equality
 	});
 
+	it('suppressTags drops an inferred tag', () => {
+		const authored: AuthoredProject = { slug: 'test-slug', suppressTags: ['TypeScript'] };
+		const result = mergeAuthored(base, authored);
+		expect(result.tags.map((t) => t.label)).not.toContain('TypeScript');
+	});
+
+	it('suppressTags wins over an authored addition of the same label', () => {
+		const authored: AuthoredProject = {
+			slug: 'test-slug',
+			tags: [{ label: 'Neo4j', kind: 'data' }],
+			suppressTags: ['Neo4j']
+		};
+		const result = mergeAuthored(base, authored);
+		expect(result.tags.map((t) => t.label)).not.toContain('Neo4j');
+		// The untouched inferred tag survives suppression of the other label.
+		expect(result.tags.map((t) => t.label)).toContain('TypeScript');
+	});
+
+	it('an empty suppressTags is a no-op', () => {
+		const authored: AuthoredProject = { slug: 'test-slug', suppressTags: [] };
+		const result = mergeAuthored(base, authored);
+		expect(result.tags).toEqual(base.tags);
+	});
+
 	it('overlays authored name', () => {
 		const authored: AuthoredProject = { slug: 'test-slug', name: 'My Custom Name' };
 		const result = mergeAuthored(base, authored);
