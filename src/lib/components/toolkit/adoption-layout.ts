@@ -96,6 +96,7 @@ export type ConnectorVariant =
 	| 's-curve'
 	| 'vertical-arrival'
 	| 'handover'
+	| 'same-lane-branch'
 	| 'bracket'
 	| 'branch-drop'
 	| 'gutter-arrival';
@@ -1007,6 +1008,19 @@ function handoverPath(parent: RailPoint, child: RailPoint): string {
 }
 
 /**
+ * Same-lane branch: a leads-to whose child happens to share the parent's lane
+ * (React landed in JavaScript's lane). Unlike a replaced-by handover — which
+ * is a merge and draws only the rail's final stub — this must read as a full
+ * branch, so it spans the whole gap from the parent dot's edge to the child
+ * dot's edge along the shared row.
+ */
+function sameLaneBranchPath(parent: RailPoint, child: RailPoint): string {
+	const fromX = parent.x + parent.radius + 2;
+	const arriveX = child.x - child.radius - 2;
+	return `M ${fromX} ${parent.y} H ${arriveX}`;
+}
+
+/**
  * One edge's routing decision, produced by the routing phase and consumed by
  * the emission phase. Splitting the two keeps every geometric decision (which
  * variant, where the vertical corridor sits) in one place, so passes that
@@ -1275,8 +1289,12 @@ function routeEdges(
 		};
 
 		if (parentLane === childLane) {
-			// Same lane: succession merge or lane-reuse — a straight handover.
-			routed.push({ edge, variant: 'handover', corridorX: null, gutterY: null });
+			// Same lane. A replaced-by succession is a merge: draw only the
+			// rail's final stub handing over to the successor. A leads-to,
+			// though, is a branch that merely landed in the parent's lane, so
+			// it must read as a full branch across the shared row, not a stub.
+			const variant = edge.kind === 'replaced-by' ? 'handover' : 'same-lane-branch';
+			routed.push({ edge, variant, corridorX: null, gutterY: null });
 		} else if (horizontalFor.get(edge.target) === edge) {
 			const corridorX = child.x - geo.elbowRun;
 			// The elbow needs room to depart the parent rail and the corridor
@@ -1330,6 +1348,9 @@ function emitConnector(routed: RoutedEdge, pointOf: Map<string, RailPoint>, geo:
 	switch (variant) {
 		case 'handover':
 			path = handoverPath(parent, child);
+			break;
+		case 'same-lane-branch':
+			path = sameLaneBranchPath(parent, child);
 			break;
 		case 'elbow':
 			path = elbowPath(parent, child, geo, corridorX!);

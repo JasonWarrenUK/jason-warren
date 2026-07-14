@@ -241,6 +241,40 @@ describe('computeAdoptionLayout', () => {
 		expect(connector.path).not.toContain('C');
 	});
 
+	it('never routes a leads-to edge as a merge handover', () => {
+		// The handover variant is a merge stub: it draws only the rail's final
+		// ~16px into a successor, correct for a replaced-by succession but wrong
+		// for a leads-to branch that merely shares its parent's lane (the
+		// JavaScript→React bug). No leads-to edge may ever emit 'handover';
+		// same-lane leads-to uses the full-width 'same-lane-branch' instead.
+		const result = computeAdoptionLayout(FIXTURE_ITEMS, FIXTURE_EDGES, GEO);
+		const bySourceTarget = new Map(
+			result.connectors.map((c) => [`${c.source}→${c.target}`, c])
+		);
+		for (const edge of FIXTURE_EDGES) {
+			if (edge.kind !== 'leads-to') continue;
+			const connector = bySourceTarget.get(`${edge.source}→${edge.target}`);
+			if (!connector) continue; // reduced/dropped edges have no connector
+			expect(connector.variant, `${edge.source}→${edge.target}`).not.toBe('handover');
+		}
+	});
+
+	it('keeps a same-lane replaced-by as a short handover stub', () => {
+		// The succession case the same-lane-branch split must NOT disturb.
+		const items: TechAdoption[] = [
+			tech('Old', 'runtime', '2020-01-01'),
+			tech('New', 'runtime', '2023-01-01')
+		];
+		const edges: TechRelationship[] = [{ kind: 'replaced-by', source: 'Old', target: 'New' }];
+		const result = computeAdoptionLayout(items, edges, GEO);
+		const byLabel = new Map(result.placed.map((p) => [p.label, p]));
+		expect(byLabel.get('Old')!.lane).toBe(byLabel.get('New')!.lane);
+		const connector = result.connectors.find((c) => c.target === 'New')!;
+		expect(connector.variant).toBe('handover');
+		const [, fromX, toX] = connector.path.match(/M ([\d.]+) [\d.]+ H ([\d.]+)/)!;
+		expect(Number(toX) - Number(fromX)).toBeLessThanOrEqual(16); // final stub only
+	});
+
 	it('bundles two late children of one parent onto the same vertical', () => {
 		const items: TechAdoption[] = [
 			tech('Alpha', 'language', '2020-01-01'),
