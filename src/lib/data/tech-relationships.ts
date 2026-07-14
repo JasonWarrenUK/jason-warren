@@ -67,14 +67,12 @@ export const techRelationships: TechRelationship[] = [
 	{ kind: 'leads-to', source: 'CSS', target: 'Tailwind CSS v3' },
 	{ kind: 'replaced-by', source: 'Tailwind CSS v3', target: 'Tailwind CSS v4' },
 	{ kind: 'leads-to', source: 'JavaScript', target: 'React' },
-	{ kind: 'leads-to', source: 'TypeScript', target: 'Svelte 5' },
 	{ kind: 'leads-to', source: 'Ink', target: 'inkjs' },
 	{ kind: 'leads-to', source: 'JavaScript', target: 'inkjs' },
 	{ kind: 'leads-to', source: 'Go', target: 'Bubble Tea' },
 	{ kind: 'leads-to', source: 'HTML', target: 'CSS' },
 	{ kind: 'leads-to', source: 'Ink', target: 'HTML' },
 	{ kind: 'leads-to', source: 'Ink', target: 'CSS' },
-	{ kind: 'leads-to', source: 'HTML', target: 'JavaScript' },
 	{ kind: 'leads-to', source: 'C#', target: '.NET 8' },
 	{ kind: 'leads-to', source: '.NET 8', target: 'ASP.NET Core' },
 	{ kind: 'leads-to', source: 'Tauri', target: 'Rust' },
@@ -85,5 +83,8 @@ export const techRelationships: TechRelationship[] = [
 	{ kind: 'leads-to', source: 'JavaScript', target: 'Node.js' },
 	{ kind: 'leads-to', source: 'Shell', target: 'OpenTUI' },
 	{ kind: 'leads-to', source: 'React', target: 'Next.js' },
-	{ kind: 'leads-to', source: 'Svelte 5', target: 'SvelteKit' }
+	{ kind: 'leads-to', source: 'Svelte 5', target: 'SvelteKit' },
+	{ kind: 'leads-to', source: 'TypeScript', target: 'Svelte 4' },
+	{ kind: 'replaced-by', source: 'Svelte 4', target: 'Svelte 5' },
+	{ kind: 'leads-to', source: 'Ink', target: 'JavaScript' }
 ];

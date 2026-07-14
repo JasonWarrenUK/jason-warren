@@ -11,9 +11,19 @@ import { describe, it, expect } from 'vitest';
 import { techOverlays, hiddenTechLabels, getTechKindOverrides } from './tech-overlays.js';
 import { CURATED_FIRST_USED, getTechAdoption } from './adoption.js';
 import { projects } from './index.js';
+import { LANGUAGE_TAGS, RUNTIME_TAGS, FRAMEWORK_TAGS, DATABASE_TAGS } from '../../../scripts/tag-taxonomy.js';
 import type { TagKind, TechSurface } from './types.js';
 
-const allLabels = new Set(projects.flatMap((p) => p.tags.map((t) => t.label)));
+// The label universe drift itself recognises: every label a project currently
+// carries PLUS every label the taxonomy can infer. A versionless fallback
+// label (e.g. 'Tailwind CSS') is real even when no project happens to carry it
+// today — authoring an overlay for it (to hide it, say) is legitimate.
+const allLabels = new Set([
+	...projects.flatMap((p) => p.tags.map((t) => t.label)),
+	...[LANGUAGE_TAGS, RUNTIME_TAGS, FRAMEWORK_TAGS, DATABASE_TAGS].flatMap((table) =>
+		Object.values(table).map((tag) => (tag as { label: string }).label)
+	)
+]);
 const VALID_SURFACES: TechSurface[] = ['toolkit', 'map', 'stack', 'relate'];
 const VALID_KINDS: TagKind[] = ['language', 'framework', 'data', 'ai', 'concept', 'tool', 'runtime'];
 
