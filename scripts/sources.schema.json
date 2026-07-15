@@ -143,6 +143,11 @@
 					"type": "array",
 					"items": { "type": "string" },
 					"description": "Framework package identities detected by the dependency-manifest parser (e.g. 'svelte', '@sveltejs/kit', 'react'). Keys match FRAMEWORK_TAGS in tag-taxonomy.js."
+				},
+				"techFirstSeen": {
+					"type": "object",
+					"additionalProperties": { "type": "string", "format": "date" },
+					"description": "First-introduced date (YYYY-MM-DD) per detected tech identity, keyed by the same identity strings used in runtime/framework/database arrays (e.g. 'svelte-5', '@sveltejs/kit', 'bun'). Populated by a git pickaxe/file-add search against package.json, lockfiles and config files at drift sync time. Source-grep-only signals (e.g. inkjs when detected only via source import) are intentionally absent here and fall back to firstCommit downstream. Excluded from drift comparison via DRIFT_SKIP_FIELDS (object identity would otherwise always read as drifted)."
 				}
 			}
 		}

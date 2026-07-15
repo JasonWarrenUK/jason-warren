@@ -9,6 +9,7 @@
 import { describe, it, expect } from 'vitest';
 import { getTechAdoption, CURATED_FIRST_USED } from './adoption.js';
 import { projects } from './index.js';
+import { techRelationships } from './tech-relationships.js';
 
 describe('getTechAdoption', () => {
 	const adoption = getTechAdoption();
@@ -17,13 +18,23 @@ describe('getTechAdoption', () => {
 		expect(adoption.length).toBeGreaterThan(0);
 	});
 
-	it('orders by adoption date ascending, then label', () => {
+	it('orders by adoption date ascending, then lineage parent before child, then label', () => {
+		// A Set of directed edges, matching the source's own structure: a child
+		// with several authored parents keeps every edge, not just the last.
+		const directLineage = new Set(techRelationships.map((rel) => `${rel.source} ${rel.target}`));
 		for (let i = 1; i < adoption.length; i++) {
 			const prev = adoption[i - 1];
 			const curr = adoption[i];
 			const byDate = prev.firstDate.localeCompare(curr.firstDate);
 			expect(byDate).toBeLessThanOrEqual(0);
 			if (byDate === 0) {
+				// A same-date pair directly linked by lineage must order parent
+				// before child regardless of label; only unrelated same-date pairs
+				// fall back to alphabetical.
+				if (directLineage.has(`${prev.label} ${curr.label}`)) continue;
+				if (directLineage.has(`${curr.label} ${prev.label}`)) {
+					throw new Error(`${curr.label} is ${prev.label}'s lineage parent but sorts after it`);
+				}
 				expect(prev.label.localeCompare(curr.label)).toBeLessThanOrEqual(0);
 			}
 		}
@@ -35,23 +46,32 @@ describe('getTechAdoption', () => {
 		}
 	});
 
-	it('derived entries use the earliest firstCommit across projects carrying the tag', () => {
+	/**
+	 * The date a project would contribute for a given tag label: its own
+	 * introduction date (techFirstSeen) when known, else the project's repo
+	 * inception (firstCommit). Mirrors adoption.ts's per-tag read exactly.
+	 */
+	function projectDateFor(project: (typeof projects)[number], label: string): string | undefined {
+		return project.techFirstSeen?.[label] ?? project.firstCommit;
+	}
+
+	it('derived entries use the earliest per-tag date across projects carrying the tag', () => {
 		for (const item of adoption) {
 			if (item.dateSource !== 'derived') continue;
 			const dates = projects
 				.filter((p) => p.tags.some((t) => t.label === item.label))
-				.map((p) => p.firstCommit)
+				.map((p) => projectDateFor(p, item.label))
 				.filter((d): d is string => d !== undefined);
 			const earliest = [...dates].sort()[0];
 			expect(item.firstDate).toBe(earliest);
 		}
 	});
 
-	/** Earliest firstCommit among projects carrying the label, or undefined. */
+	/** Earliest per-tag date among projects carrying the label, or undefined. */
 	function earliestDerived(label: string): string | undefined {
 		const dates = projects
 			.filter((p) => p.tags.some((t) => t.label === label))
-			.map((p) => p.firstCommit)
+			.map((p) => projectDateFor(p, label))
 			.filter((d): d is string => d !== undefined)
 			.sort();
 		return dates[0];
@@ -87,11 +107,46 @@ describe('getTechAdoption', () => {
 
 	it('pre-repo floors surface on the timeline (Ink, HTML, CSS)', () => {
 		const byLabel = new Map(adoption.map((item) => [item.label, item]));
-		for (const label of ['Ink / inkjs', 'HTML', 'CSS']) {
+		for (const label of ['Ink', 'HTML', 'CSS']) {
 			const item = byLabel.get(label);
 			expect(item, `${label} missing from adoption timeline`).toBeDefined();
 			expect(item?.dateSource).toBe('curated');
 			expect(item?.firstDate).toBe(CURATED_FIRST_USED[label]);
+		}
+	});
+
+	it('orders a lineage parent before its child, including on a same-date tie', () => {
+		// HTML leads-to CSS in tech-relationships.ts, so HTML must sort before
+		// CSS whatever their dates — lineage order, never the alphabetical
+		// fallback ('C' < 'H') — or the adoption-timeline layout can place a
+		// child's rail above its own parent's.
+		const htmlIndex = adoption.findIndex((item) => item.label === 'HTML');
+		const cssIndex = adoption.findIndex((item) => item.label === 'CSS');
+		expect(htmlIndex).toBeGreaterThanOrEqual(0);
+		expect(cssIndex).toBeGreaterThanOrEqual(0);
+		expect(htmlIndex).toBeLessThan(cssIndex);
+
+		// The tie-break specifically: when a lineage-linked pair shares an exact
+		// date, the parent still wins over the alphabetical fallback. Assert it
+		// on any such live pair so the guarantee holds if the authored dates
+		// ever converge again.
+		const sameDatePairs = adoption.flatMap((a, i) =>
+			adoption.slice(i + 1).map((b) => [a, b] as const)
+		);
+		for (const [a, b] of sameDatePairs) {
+			if (a.firstDate !== b.firstDate) continue;
+			const aBeforeB = adoption.indexOf(a) < adoption.indexOf(b);
+			// If they are lineage-linked, the source must be the earlier one.
+			const link = techRelationships.find(
+				(r) =>
+					(r.source === a.label && r.target === b.label) ||
+					(r.source === b.label && r.target === a.label)
+			);
+			if (!link) continue;
+			const parentFirst = aBeforeB ? link.source === a.label : link.source === b.label;
+			expect(parentFirst, `${link.source}→${link.target} same-date pair ordered child-first`).toBe(
+				true
+			);
 		}
 	});
 
@@ -111,7 +166,13 @@ describe('getTechAdoption', () => {
 			expect(project).toBeDefined();
 			expect(project?.tags.some((t) => t.label === item.label)).toBe(true);
 			if (item.dateSource === 'derived') {
-				expect(project?.firstCommit).toBe(item.firstDate);
+				// A derived date is per-tag: it comes from the tag's own
+				// introduction date (techFirstSeen) when the project has one for
+				// this label, and only falls back to the project's repo-inception
+				// date (firstCommit) otherwise. The two legitimately differ when a
+				// tech entered a long-lived repo well after the repo started.
+				const expected = project?.techFirstSeen?.[item.label] ?? project?.firstCommit;
+				expect(expected).toBe(item.firstDate);
 			}
 		}
 	});

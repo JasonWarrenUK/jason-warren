@@ -1,0 +1,1894 @@
+/**
+ * Git-branch-graph layout for the adoption timeline.
+ *
+ * The x-axis is semantically fixed to each technology's adoption date; the
+ * chart reads as a git commit graph rotated 90°. Every lineage-connected
+ * technology becomes a horizontal RAIL running from its adoption date to
+ * either the adoption date of its replacement (retired) or the right plot
+ * edge (still in use, rendered with a fade). Lineage edges become short
+ * rounded connectors between rails instead of long diagonal arcs:
+ *
+ *   - "leads-to" is a branch: an elbow leaving the parent rail and arriving
+ *     at the child's start dot, while the parent rail continues. A child that
+ *     arrives after the parent's rail has already ended (the parent was
+ *     replaced first) gets an orthogonal branch-drop from the parent's dot
+ *     instead; siblings share that vertical and peel off at their own lanes.
+ *   - "replaced-by" is a merge: the retiring rail curves into its successor's
+ *     start dot and ends there. When the successor inherits the retiring
+ *     rail's lane (the succession rule below), the merge is a straight
+ *     handover and the two rails read as one continuous "role" line —
+ *     React ▸ Svelte 5 on the UI-framework line, Node.js ▸ Bun on the
+ *     JavaScript-runtime line.
+ *
+ * Technologies with no lineage at all don't earn a rail (it would encode
+ * nothing beyond their dot's x position); they pack into a compact dot strip
+ * below the rails using the same greedy first-fit the old banded layout used.
+ *
+ * A transitive-reduction pass drops any "leads-to" edge already implied by a
+ * chain (JavaScript→React disappears because JavaScript→TypeScript→React
+ * exists), cutting connector count with no informational loss. "replaced-by"
+ * edges are never reduced and never form reduction paths.
+ *
+ * Deterministic by construction: no randomness or clock reads, every sort
+ * keyed by the total order [firstDate, label], every Map built by iterating
+ * `items` in order. Identical output on the server and the first client
+ * render.
+ */
+
+import type { LineageKind, TechRelationship } from '$lib/data/types.js';
+import type { TechAdoption } from '$lib/data/adoption.js';
+
+export interface LayoutGeometry {
+	width: number;
+	leftPad: number;
+	rightPad: number;
+	topPad: number;
+	axisGap: number;
+	/** Vertical rhythm of the rail lanes. */
+	railLaneHeight: number;
+	/** Vertical rhythm of the isolated-dot strip below the rails. */
+	stripLaneHeight: number;
+	/** Gap between the last rail lane and the first strip lane. */
+	stripGap: number;
+	/** Horizontal run a branch connector reserves before its child's dot. */
+	elbowRun: number;
+	/** Corner radius of connector elbows. */
+	cornerRadius: number;
+	charWidth: number;
+	labelGap: number;
+}
+
+/**
+ * How far a curated node's second (hub) ring extends beyond its main ring. The
+ * component draws this ring at `radius + HUB_RING_OFFSET`; the layout reserves
+ * the same distance so connectors dock at the hub ring's edge, not inside it.
+ * Keep the two in lockstep — the component imports this constant.
+ */
+export const HUB_RING_OFFSET = 7;
+
+export interface PlacedNode extends TechAdoption {
+	x: number;
+	y: number;
+	radius: number;
+	/** Lane index within its own section (rail lanes and strip lanes count separately). */
+	lane: number;
+	/** Rails carry lineage; the strip holds technologies with no recorded lineage. */
+	section: 'rail' | 'strip';
+	/** Where the rail line ends (x). Null for strip dots. */
+	railEndX: number | null;
+	/** True when the rail runs to the plot edge (still in use) and should fade out. */
+	railFades: boolean;
+	/**
+	 * The rail split into colour segments, left to right, spanning x → railEndX
+	 * with no gaps. Each segment is coloured by the edge to the next node that
+	 * stretch of rail reaches (see RailSegment). Null for strip dots (no rail).
+	 */
+	railSegments: RailSegment[] | null;
+}
+
+/**
+ * One colour segment of a rail. `kind` null means "the tech's own kind colour"
+ * (the rail's base); a lineage kind means the rail is, along this stretch,
+ * heading toward a node reached by an edge of that kind — leads-to while it is
+ * still branching to leads-to children, replaced-by on the final run into its
+ * successor.
+ */
+export interface RailSegment {
+	startX: number;
+	endX: number;
+	kind: LineageKind | null;
+}
+
+export type ConnectorVariant =
+	| 'elbow'
+	| 's-curve'
+	| 'vertical-arrival'
+	| 'handover'
+	| 'same-lane-branch'
+	| 'branch-drop'
+	| 'gutter-arrival';
+
+export interface Connector {
+	kind: LineageKind;
+	source: string;
+	target: string;
+	variant: ConnectorVariant;
+	/** Complete SVG path data; the component renders it verbatim. */
+	path: string;
+}
+
+export interface YearTick {
+	year: number;
+	x: number;
+}
+
+export interface AdoptionLayoutResult {
+	placed: PlacedNode[];
+	connectors: Connector[];
+	ticks: YearTick[];
+	height: number;
+	axisY: number;
+	railLaneCount: number;
+	stripLaneCount: number;
+	/** y of the first strip lane; the component may draw a separator above it. */
+	stripTop: number;
+}
+
+function dayValue(iso: string): number {
+	const [y, m, d] = iso.split('-').map(Number);
+	return Date.UTC(y, m - 1, d) / 86_400_000;
+}
+
+// Survey-mark ring radius from a tech's project count. A square-root scale so
+// ring AREA tracks count (the honest encoding) and the busy techs stay
+// distinct instead of all pinning to the cap; tuned to a larger maximum than
+// the old linear formula (which maxed at 11.2). Single-sourced so measure()'s
+// radius and its right-margin reservation agree.
+const NODE_BASE_RADIUS = 4;
+const NODE_RADIUS_SCALE = 3.1;
+const NODE_PROJECT_CAP = 27;
+const NODE_MAX_RADIUS = NODE_BASE_RADIUS + NODE_RADIUS_SCALE * Math.sqrt(NODE_PROJECT_CAP);
+
+function nodeRadius(projectCount: number): number {
+	return NODE_BASE_RADIUS + NODE_RADIUS_SCALE * Math.sqrt(Math.min(projectCount, NODE_PROJECT_CAP));
+}
+
+interface NodeGeom {
+	label: string;
+	x: number;
+	radius: number;
+	/** Outermost rendered ring radius (see RailPoint.outerRadius). */
+	outerRadius: number;
+	labelRight: number;
+}
+
+/** A year's pixel band on the x-axis: [startX, endX). */
+export interface YearBand {
+	year: number;
+	startX: number;
+	endX: number;
+}
+
+// Year-column sizing. A year's width scales with how many technologies were
+// first used in it, so crowded years get room and sparse years stay compact.
+// The axis is therefore "ordered time, not to scale": dates stay monotonic and
+// gridlines still mark year boundaries, but a year's pixel width reflects its
+// density rather than a fixed calendar span. Raw widths are clamped to shape
+// the ratios, then normalised so the bands fill the plot exactly.
+const YEAR_BASE_WIDTH = 60; // px a year gets regardless of density
+const YEAR_WIDTH_PER_TECH = 34; // px added per technology adopted that year
+const YEAR_MIN_WIDTH = 70; // floor: an empty year still shows a gridline gap
+const YEAR_MAX_WIDTH = 240; // ceiling: one busy year cannot dominate the axis
+
+/**
+ * Splits the plot into one contiguous pixel band per calendar year in
+ * [firstYear, lastYear], each sized by that year's technology count. Widths
+ * are clamped (to keep the ratios sane) then normalised so the bands sum to
+ * plotWidth exactly, leaving plotRight unchanged. Deterministic: pure integer
+ * counting and arithmetic, no clock or randomness. Exported for testing.
+ */
+export function computeYearBands(
+	items: TechAdoption[],
+	plotLeft: number,
+	plotRight: number
+): Map<number, YearBand> {
+	const plotWidth = plotRight - plotLeft;
+	const firstYear = Number(items[0].firstDate.slice(0, 4));
+	const lastYear = Number(items[items.length - 1].firstDate.slice(0, 4));
+
+	// Count technologies per year, seeding every year in range so empty years
+	// still earn a (floor-width) band rather than collapsing their gridline.
+	const countByYear = new Map<number, number>();
+	for (let year = firstYear; year <= lastYear; year++) countByYear.set(year, 0);
+	for (const item of items) {
+		const year = Number(item.firstDate.slice(0, 4));
+		countByYear.set(year, countByYear.get(year)! + 1);
+	}
+
+	const rawByYear = new Map<number, number>();
+	let rawTotal = 0;
+	for (let year = firstYear; year <= lastYear; year++) {
+		const raw = Math.min(
+			YEAR_MAX_WIDTH,
+			Math.max(YEAR_MIN_WIDTH, YEAR_BASE_WIDTH + YEAR_WIDTH_PER_TECH * countByYear.get(year)!)
+		);
+		rawByYear.set(year, raw);
+		rawTotal += raw;
+	}
+
+	// rawTotal is always > 0 (>= 1 year, each >= YEAR_MIN_WIDTH), so scale is
+	// finite and positive; scaling preserves the relative widths.
+	const scale = plotWidth / rawTotal;
+	const bands = new Map<number, YearBand>();
+	let cursor = plotLeft;
+	for (let year = firstYear; year <= lastYear; year++) {
+		const width = rawByYear.get(year)! * scale;
+		bands.set(year, { year, startX: cursor, endX: cursor + width });
+		cursor += width;
+	}
+	// Snap the final band to plotRight so float drift can never push a
+	// December date a sub-pixel past the plot edge.
+	bands.get(lastYear)!.endX = plotRight;
+	return bands;
+}
+
+interface ResolvedEdge {
+	kind: LineageKind;
+	source: string;
+	target: string;
+}
+
+/** Frozen x + label-collision metrics for every node. x never changes after this. */
+function measure(
+	items: TechAdoption[],
+	geo: LayoutGeometry
+): { geomByLabel: Map<string, NodeGeom>; xFor: (iso: string) => number; plotRight: number } {
+	const plotLeft = geo.leftPad;
+	// Reserve room on the right for the widest right-anchored label (plus the
+	// largest survey-mark ring and its gap) so no label ever clips at the
+	// viewBox edge.
+	const maxLabelWidth = Math.max(...items.map((item) => item.label.length)) * geo.charWidth;
+	const plotRight = geo.width - geo.rightPad - maxLabelWidth - NODE_MAX_RADIUS - 6;
+
+	// Density-sized year bands replace a single linear time→pixel map: each
+	// year owns a pixel band whose width reflects its technology count. Within
+	// a band a date maps linearly by its day-fraction into the year, so the
+	// order stays monotonic and Jan 1 lands exactly on the band start (where
+	// the year gridline sits).
+	const bands = computeYearBands(items, plotLeft, plotRight);
+	const firstYear = Number(items[0].firstDate.slice(0, 4));
+	const lastYear = Number(items[items.length - 1].firstDate.slice(0, 4));
+
+	const xFor = (iso: string): number => {
+		const year = Number(iso.slice(0, 4));
+		if (year < firstYear) return plotLeft;
+		if (year > lastYear) return plotRight;
+		const band = bands.get(year)!;
+		const yearStart = dayValue(`${year}-01-01`);
+		const yearEnd = dayValue(`${year + 1}-01-01`);
+		const frac = (dayValue(iso) - yearStart) / (yearEnd - yearStart);
+		return band.startX + frac * (band.endX - band.startX);
+	};
+
+	const geomByLabel = new Map<string, NodeGeom>();
+	for (const item of items) {
+		const x = xFor(item.firstDate);
+		const radius = nodeRadius(item.projectCount);
+		const outerRadius = radius + (item.dateSource === 'curated' ? HUB_RING_OFFSET : 0);
+		const labelRight = x + radius + 6 + item.label.length * geo.charWidth;
+		geomByLabel.set(item.label, { label: item.label, x, radius, outerRadius, labelRight });
+	}
+
+	return { geomByLabel, xFor, plotRight };
+}
+
+/**
+ * Drops any "leads-to" edge (u,v) already implied by a longer leads-to path
+ * u→…→v, so chains render as chains rather than as chains plus shortcuts.
+ * "replaced-by" edges pass through untouched — they carry distinct semantics
+ * (a merge, not a branch) and never participate in reduction paths.
+ */
+function transitiveReduceLeadsTo(edges: ResolvedEdge[]): ResolvedEdge[] {
+	const leadsTo = edges.filter((e) => e.kind === 'leads-to');
+	const adjacency = new Map<string, string[]>();
+	for (const edge of leadsTo) {
+		const list = adjacency.get(edge.source);
+		if (list) list.push(edge.target);
+		else adjacency.set(edge.source, [edge.target]);
+	}
+
+	// v is implied-reachable from u when some neighbour w ≠ v of u reaches v.
+	// Cycle-safe via the visited set; the graph is tiny, so plain DFS is fine.
+	function reaches(from: string, to: string, visited: Set<string>): boolean {
+		if (from === to) return true;
+		if (visited.has(from)) return false;
+		visited.add(from);
+		for (const next of adjacency.get(from) ?? []) {
+			if (reaches(next, to, visited)) return true;
+		}
+		return false;
+	}
+
+	return edges.filter((edge) => {
+		if (edge.kind !== 'leads-to') return true;
+		const implied = (adjacency.get(edge.source) ?? []).some(
+			(w) => w !== edge.target && reaches(w, edge.target, new Set())
+		);
+		return !implied;
+	});
+}
+
+/**
+ * Connected components over the (undirected) edge set, each listed in date
+ * order, families ordered by their earliest member. Labels with no edges are
+ * returned separately — they become the strip.
+ */
+function buildFamilies(
+	items: TechAdoption[],
+	edges: ResolvedEdge[]
+): { families: string[][]; isolated: string[] } {
+	const undirected = new Map<string, string[]>();
+	for (const item of items) undirected.set(item.label, []);
+	for (const edge of edges) {
+		undirected.get(edge.source)!.push(edge.target);
+		undirected.get(edge.target)!.push(edge.source);
+	}
+
+	const visited = new Set<string>();
+	const families: string[][] = [];
+	const isolated: string[] = [];
+
+	// items is date-ascending, so each unvisited connected node seeds its
+	// family from the family's earliest member — families come out ordered
+	// by earliest member automatically.
+	for (const item of items) {
+		if (visited.has(item.label)) continue;
+		if (undirected.get(item.label)!.length === 0) {
+			isolated.push(item.label);
+			continue;
+		}
+		const queue = [item.label];
+		visited.add(item.label);
+		const memberSet = new Set([item.label]);
+		while (queue.length > 0) {
+			const label = queue.shift()!;
+			for (const next of [...undirected.get(label)!].sort((a, b) => a.localeCompare(b))) {
+				if (visited.has(next)) continue;
+				visited.add(next);
+				memberSet.add(next);
+				queue.push(next);
+			}
+		}
+		// Family members in global date order (the order of `items`).
+		families.push(items.filter((i) => memberSet.has(i.label)).map((i) => i.label));
+	}
+
+	return { families, isolated };
+}
+
+interface RailEnd {
+	/** x where the rail line stops. */
+	railEndX: number;
+	/** True when the rail reaches the plot edge (no replacement recorded). */
+	fades: boolean;
+	/** The last replaced-by successor — the rail ends at this tech's dot. */
+	lastSuccessor: string | null;
+}
+
+/** A retired rail ends at its last replacement's dot edge; others run to the plot edge. */
+function computeRailEnds(
+	railLabels: Set<string>,
+	edges: ResolvedEdge[],
+	geomByLabel: Map<string, NodeGeom>,
+	plotRight: number
+): Map<string, RailEnd> {
+	const ends = new Map<string, RailEnd>();
+	for (const label of railLabels) {
+		const successors = edges
+			.filter((e) => e.kind === 'replaced-by' && e.source === label)
+			.map((e) => geomByLabel.get(e.target)!)
+			.sort((a, b) => a.x - b.x || a.label.localeCompare(b.label));
+		if (successors.length === 0) {
+			ends.set(label, { railEndX: plotRight, fades: true, lastSuccessor: null });
+		} else {
+			const last = successors[successors.length - 1];
+			ends.set(label, {
+				railEndX: last.x - last.radius - 2,
+				fades: false,
+				lastSuccessor: last.label
+			});
+		}
+	}
+	return ends;
+}
+
+interface LaneAssignment {
+	laneOf: Map<string, number>;
+	/** Labels that inherited their replaced-by predecessor's lane. */
+	inherited: Set<string>;
+	laneCount: number;
+}
+
+/**
+ * Re-orders a family's members so a lineage source always precedes its direct
+ * target when the two share an exact adoption date, breaking the tie in the
+ * incoming order otherwise. Defence-in-depth: `getTechAdoption`'s own sort
+ * already breaks a same-date tie toward the lineage parent, so `family`
+ * should already arrive parent-first, but `assignLanes`'s per-family loop
+ * treats array order as the anchor-visitation order — if a parent ever
+ * arrived after its child (a stale caller, a future data source that doesn't
+ * share that tie-break), the anchor lookup at line ~340 would silently find
+ * nothing and open a spurious new lane instead of anchoring beside its child.
+ *
+ * Deliberately scoped to same-date pairs only: a lineage edge whose target
+ * predates its source (backward in time, e.g. an authoring mistake) must
+ * never move a member across a genuine date boundary, since `claimRight`
+ * assumes family members are visited in date-ascending x order — visiting an
+ * out-of-date-order member early would let a later `claimRight` update get
+ * silently overwritten with an earlier x, corrupting overlap checks for every
+ * lane placed afterward. Restricting eligible edges to date ties keeps this
+ * pass a strict refinement of the existing date order rather than a
+ * replacement for it.
+ */
+function topologicalWithinFamily(
+	family: string[],
+	edges: ResolvedEdge[],
+	itemDates: Map<string, string>
+): string[] {
+	const members = new Set(family);
+	const indexOf = new Map(family.map((label, i) => [label, i]));
+	const childrenOf = new Map<string, string[]>();
+	const indegree = new Map<string, number>(family.map((label) => [label, 0]));
+	for (const edge of edges) {
+		if (!members.has(edge.source) || !members.has(edge.target)) continue;
+		if (itemDates.get(edge.source) !== itemDates.get(edge.target)) continue;
+		const list = childrenOf.get(edge.source);
+		if (list) list.push(edge.target);
+		else childrenOf.set(edge.source, [edge.target]);
+		indegree.set(edge.target, indegree.get(edge.target)! + 1);
+	}
+
+	// Min-heap-by-original-index via a sorted array is overkill at family
+	// sizes this small; a linear scan for the lowest-index ready node keeps
+	// the pass simple and still deterministic.
+	const ready = family.filter((label) => indegree.get(label) === 0);
+	const remaining = new Map(indegree);
+	const ordered: string[] = [];
+
+	while (ready.length > 0) {
+		ready.sort((a, b) => indexOf.get(a)! - indexOf.get(b)!);
+		const next = ready.shift()!;
+		ordered.push(next);
+		for (const child of childrenOf.get(next) ?? []) {
+			const left = remaining.get(child)! - 1;
+			remaining.set(child, left);
+			if (left === 0) ready.push(child);
+		}
+	}
+
+	// A cycle (e.g. mutually contradictory authored edges) leaves members
+	// unresolved; append them in original order rather than dropping them.
+	if (ordered.length < family.length) {
+		for (const label of family) if (!ordered.includes(label)) ordered.push(label);
+	}
+
+	return ordered;
+}
+
+/**
+ * Assigns each rail a lane. Families occupy contiguous lane blocks. Within a
+ * family (rails arriving in date order):
+ *
+ *   1. Succession: a rail inherits its replaced-by predecessor's lane when it
+ *      is that predecessor's LAST successor (the predecessor's rail actually
+ *      ends here — Deno fails this for Node.js because Bun ends the rail
+ *      later) and the predecessor's label clears this rail's dot.
+ *   2. Otherwise the nearest free lane in the family block to its anchor (the
+ *      leads-to parent, or the replaced-by predecessor when succession was
+ *      rejected), the anchor's own lane included, ties preferring below.
+ *   3. When every existing lane is taken, an anchored member INSERTS a fresh
+ *      lane directly below its anchor (shifting later lanes down) so children
+ *      never strand at the block's bottom; only anchorless family roots
+ *      append a new lane at the end.
+ *
+ * Lane occupancy is a single claimRight scalar per lane — valid because rails
+ * within a family arrive date-ascending, so occupants append left-to-right.
+ */
+function assignLanes(
+	families: string[][],
+	edges: ResolvedEdge[],
+	geomByLabel: Map<string, NodeGeom>,
+	railEnds: Map<string, RailEnd>,
+	itemDates: Map<string, string>,
+	geo: LayoutGeometry
+): LaneAssignment {
+	const laneOf = new Map<string, number>();
+	const inherited = new Set<string>();
+	const claimRight: number[] = [];
+	// Occupants per lane, parallel to claimRight — the insertion walk below
+	// needs to know WHO holds a lane, not just how far its claim extends.
+	const laneMembers: string[][] = [];
+	// Placement parentage (succession predecessor or anchor), recorded as
+	// each member lands. Drives the descendant walk that keeps an anchor's
+	// already-placed subtree contiguous when a new lane is inserted.
+	const placedUnder = new Map<string, string>();
+
+	const isPlacedUnder = (label: string, ancestor: string): boolean => {
+		let current: string | undefined = placedUnder.get(label);
+		while (current !== undefined) {
+			if (current === ancestor) return true;
+			current = placedUnder.get(current);
+		}
+		return false;
+	};
+
+	// A node may REUSE a lane an earlier occupant left free only when that
+	// occupant sits on the node's own anchor chain — the anchor itself, or a
+	// node placed under the anchor. Reusing a lane held by a SIBLING branch
+	// (e.g. inkjs, anchored on Ink, squatting in Tailwind CSS v3's abandoned
+	// row — a cousin down the CSS branch) parks the node far from its anchor
+	// and vaults a long connector across the intervening family. Whole-family
+	// same-root is too loose here (the entire web stack roots at Ink); the
+	// test is the direct anchor→tenant subtree relationship.
+	const reusableByAnchor = (tenant: string, anchor: string): boolean =>
+		tenant === anchor || isPlacedUnder(tenant, anchor);
+
+	const byDateThenLabel = (a: string, b: string): number =>
+		itemDates.get(a)!.localeCompare(itemDates.get(b)!) || a.localeCompare(b);
+
+	for (const family of families) {
+		const blockStart = claimRight.length;
+		const ordered = topologicalWithinFamily(family, edges, itemDates);
+
+		for (const label of ordered) {
+			const geom = geomByLabel.get(label)!;
+			const dotLeft = geom.x - geom.radius;
+			const claim = Math.max(railEnds.get(label)!.railEndX, geom.labelRight);
+
+			// Succession: inherit the primary replaced-by predecessor's lane.
+			const predecessors = edges
+				.filter((e) => e.kind === 'replaced-by' && e.target === label)
+				.map((e) => e.source)
+				.sort(byDateThenLabel);
+			const predecessor = predecessors[0];
+
+			if (predecessor !== undefined && laneOf.has(predecessor)) {
+				const predEnd = railEnds.get(predecessor)!;
+				const predGeom = geomByLabel.get(predecessor)!;
+				if (
+					predEnd.lastSuccessor === label &&
+					predGeom.labelRight + geo.labelGap <= dotLeft
+				) {
+					const lane = laneOf.get(predecessor)!;
+					laneOf.set(label, lane);
+					inherited.add(label);
+					claimRight[lane] = claim;
+					laneMembers[lane].push(label);
+					placedUnder.set(label, predecessor);
+					continue;
+				}
+			}
+
+			// Anchor: the leads-to parent, else the (succession-rejected)
+			// replaced-by predecessor. Only already-placed anchors count.
+			const parents = edges
+				.filter((e) => e.kind === 'leads-to' && e.target === label && laneOf.has(e.source))
+				.map((e) => e.source)
+				.sort(byDateThenLabel);
+			const anchor =
+				parents[0] ?? (predecessor !== undefined && laneOf.has(predecessor) ? predecessor : undefined);
+
+			let lane = -1;
+			if (anchor !== undefined) {
+				const anchorLane = laneOf.get(anchor)!;
+				// Distance 0, then ±1, ±2 … below first, within the family block.
+				for (let distance = 0; distance < claimRight.length - blockStart; distance++) {
+					for (const candidate of distance === 0
+						? [anchorLane]
+						: [anchorLane + distance, anchorLane - distance]) {
+						if (candidate < blockStart || candidate >= claimRight.length) continue;
+						if (dotLeft <= claimRight[candidate] + geo.labelGap) continue;
+						// Never reuse a lane whose sitting tenant belongs to an
+						// unrelated chain — that squats the node far from its
+						// anchor and vaults a connector across the other family
+						// (the inkjs-in-Tailwind's-row case). A fresh lane by the
+						// anchor (inserted below) reads far cleaner. The anchor's
+						// own lane (distance 0) and empty lanes are always fine.
+						const occupants = laneMembers[candidate];
+						const tenant = occupants[occupants.length - 1];
+						if (tenant !== undefined && !reusableByAnchor(tenant, anchor)) continue;
+						lane = candidate;
+						break;
+					}
+					if (lane !== -1) break;
+				}
+			}
+			if (lane === -1 && anchor !== undefined) {
+				// Every existing lane near the anchor is taken — usually by
+				// fading rails, which hold their lanes to the plot edge and
+				// never free up. Rather than appending at the block's bottom
+				// (stranding the child far from its parent, the geometry that
+				// made CSS's Tailwind chain vault half the chart), insert a
+				// fresh lane just below the anchor's existing subtree: start
+				// at the anchor's next lane and walk past every lane held
+				// entirely by nodes already placed under this anchor, so
+				// siblings stack in arrival order instead of last-in-first.
+				// Only this family's lanes exist at or beyond the insertion
+				// point (the block is the tail of claimRight while it is
+				// being built), so shifting them down cannot disturb earlier
+				// families.
+				let insertAt = laneOf.get(anchor)! + 1;
+				while (
+					insertAt < claimRight.length &&
+					laneMembers[insertAt].length > 0 &&
+					laneMembers[insertAt].every((member) => isPlacedUnder(member, anchor))
+				) {
+					insertAt += 1;
+				}
+				for (const [placedLabel, placedLane] of laneOf) {
+					if (placedLane >= insertAt) laneOf.set(placedLabel, placedLane + 1);
+				}
+				claimRight.splice(insertAt, 0, 0);
+				laneMembers.splice(insertAt, 0, []);
+				lane = insertAt;
+			}
+			if (lane === -1) {
+				lane = claimRight.length;
+				claimRight.push(0);
+				laneMembers.push([]);
+			}
+
+			laneOf.set(label, lane);
+			claimRight[lane] = claim;
+			laneMembers[lane].push(label);
+			if (anchor !== undefined) placedUnder.set(label, anchor);
+		}
+	}
+
+	return { laneOf, inherited, laneCount: claimRight.length };
+}
+
+// Integer weights for the lane-refinement objective, worst offence first.
+// Rails pierced by a corridor are deliberately cheap: connectors crossing
+// quiet rails is normal git-graph reading. What ruins the chart is a dot
+// sliced by a vertical, two connectors properly crossing, or long spans.
+const REFINE_DOT_PUNCTURE = 800;
+const REFINE_CONNECTOR_CROSSING = 300;
+const REFINE_RAIL_PIERCED = 10;
+// Upward edges are hard-guarded against increases; this small scored term
+// additionally breaks span-neutral ties toward FEWER of them, so a swap that
+// rights an edge's flow direction at no other cost is accepted.
+const REFINE_UPWARD_TIEBREAK = 5;
+// Span is what the eye reads as tangle: a child far from its parent means a
+// long connector sweeping across intervening rails. Weighted well below a
+// genuine crossing or dot puncture, but high enough that the search actively
+// compacts subtrees toward their parents rather than treating distance as
+// nearly free (at weight 1 a 5-lane span cost less than a single pierced
+// rail, so nothing pulled children up).
+const REFINE_LANE_SPAN = 20;
+// A curve-fallback edge (one that can host neither an elbow nor a branch-
+// drop — same-date pairs, or a replaced-by whose successor moved lanes) reads
+// worse per lane than a clean elbow of the same length, so its span is priced
+// above REFINE_LANE_SPAN. A SCORED term, not a hard guard: an absolute veto
+// on any curve-length increase blocks otherwise-large compactions (e.g.
+// hoisting React's subtree above Node's, which shortens six edges but
+// lengthens one Svelte curve). The weight keeps the search from lengthening
+// curves gratuitously while letting a clear net win through.
+const REFINE_CURVE_SPAN = 30;
+const REFINE_MAX_PASSES = 25;
+
+/**
+ * Crossing-minimising refinement of assignLanes's greedy order: permutes
+ * whole lanes (rows) within each family's contiguous block, accepting a swap
+ * only when it strictly lowers a weighted count of dot punctures, connector
+ * crossings, pierced rails and total lane span. Whole-row moves are safe by
+ * construction — same-lane relationships (handovers, lane reuse, label
+ * spacing) travel with the row — so only inter-lane connector geometry
+ * changes, and downstream routing recomputes from the refined lanes.
+ *
+ * Each edge is scored on its IDEAL route (the same elbow-else-branch-drop
+ * predicate routing applies, before occupancy nudges): a vertical corridor
+ * at the elbow's x when the parent rail can host one, else at the parent's
+ * dot, plus a horizontal run along the child's lane. Three move families are
+ * tried each pass — pairwise row swaps, and contiguous-range relocations
+ * (which subsume single-row rotations and, at size > 1, relocate a whole
+ * subtree block in one step). Strict improvement with a fixed move order
+ * keeps the pass deterministic and never worse than its input; family blocks
+ * are ≲15 rows, so even the O(n^3) range enumeration is trivial.
+ */
+function refineLaneOrder(
+	families: string[][],
+	edges: ResolvedEdge[],
+	geomByLabel: Map<string, NodeGeom>,
+	railEnds: Map<string, RailEnd>,
+	laneOf: Map<string, number>,
+	geo: LayoutGeometry
+): void {
+	for (const family of families) {
+		if (family.length < 2) continue;
+		const members = new Set(family);
+		const familyEdges = edges.filter((e) => members.has(e.source) && members.has(e.target));
+		if (familyEdges.length === 0) continue;
+
+		const memberLanes = family.map((label) => laneOf.get(label)!);
+		const blockStart = Math.min(...memberLanes);
+		const blockEnd = Math.max(...memberLanes);
+		if (blockEnd === blockStart) continue;
+
+		interface IdealRun {
+			x: number;
+			lo: number;
+			hi: number;
+			childLane: number;
+			runTo: number;
+		}
+
+		/**
+		 * Scores the current lane order. `score` folds in span, curve-fallback
+		 * span, dot punctures, connector crossings and pierced rails; the
+		 * separate `upward` count (edges whose child sits above its parent —
+		 * lineage flows downwards, and assignLanes anchors prefer below) is the
+		 * one hard guard a move may never worsen. Curve span used to be a hard
+		 * guard too, but an absolute veto blocked large net compactions that
+		 * lengthen a single curve; it is now a heavily-weighted score term.
+		 */
+		const evaluate = (): { score: number; upward: number } => {
+			let score = 0;
+			let upward = 0;
+			const runs: IdealRun[] = [];
+			for (const edge of familyEdges) {
+				const parentLane = laneOf.get(edge.source)!;
+				const childLane = laneOf.get(edge.target)!;
+				score += REFINE_LANE_SPAN * Math.abs(parentLane - childLane);
+				if (childLane < parentLane) upward += 1;
+				if (parentLane === childLane) continue;
+				const parent = geomByLabel.get(edge.source)!;
+				const child = geomByLabel.get(edge.target)!;
+				const corridor = elbowCorridorX(child, geo);
+				const arriveX = child.x - child.outerRadius - 2;
+				const elbowFits =
+					corridor - geo.cornerRadius >= parent.x + parent.radius + 2 &&
+					corridor <= railEnds.get(edge.source)!.railEndX;
+				if (!elbowFits && arriveX - parent.x < geo.cornerRadius + 2) {
+					// Curve fallback: priced above a clean elbow of equal length.
+					score += REFINE_CURVE_SPAN * Math.abs(parentLane - childLane);
+					continue;
+				}
+				runs.push({
+					x: elbowFits ? corridor : parent.x,
+					lo: Math.min(parentLane, childLane),
+					hi: Math.max(parentLane, childLane),
+					childLane,
+					runTo: arriveX
+				});
+			}
+			for (const run of runs) {
+				for (const label of family) {
+					const lane = laneOf.get(label)!;
+					if (lane <= run.lo || lane >= run.hi) continue;
+					const geom = geomByLabel.get(label)!;
+					if (Math.abs(run.x - geom.x) <= geom.radius + 3) score += REFINE_DOT_PUNCTURE;
+					if (geom.x - 2 <= run.x && run.x <= railEnds.get(label)!.railEndX) {
+						score += REFINE_RAIL_PIERCED;
+					}
+				}
+				for (const other of runs) {
+					if (other === run) continue;
+					if (
+						other.childLane > run.lo &&
+						other.childLane < run.hi &&
+						other.x < run.x &&
+						run.x < other.runTo
+					) {
+						score += REFINE_CONNECTOR_CROSSING;
+					}
+				}
+			}
+			return { score: score + REFINE_UPWARD_TIEBREAK * upward, upward };
+		};
+
+		const swapRows = (a: number, b: number): void => {
+			for (const label of family) {
+				const lane = laneOf.get(label)!;
+				if (lane === a) laneOf.set(label, b);
+				else if (lane === b) laneOf.set(label, a);
+			}
+		};
+
+		/**
+		 * Lifts the contiguous lane range [lo, hi] out and reinserts it so its
+		 * first row lands at `dest`, sliding the displaced rows to fill the
+		 * gap. A length-1 range is a single-row rotation; a multi-row range
+		 * relocates a whole subtree block as a unit — the move a sequence of
+		 * single-row steps cannot reach without passing through a
+		 * higher-cost intermediate, which the strict-improvement guard forbids.
+		 * `dest` is the target lane of the range's first row, expressed in the
+		 * pre-move numbering; a no-op when it lands the range where it started.
+		 */
+		const moveRange = (lo: number, hi: number, dest: number): void => {
+			const size = hi - lo + 1;
+			if (dest === lo) return;
+			for (const label of family) {
+				const lane = laneOf.get(label)!;
+				if (lane >= lo && lane <= hi) {
+					// Moving row: shift by the whole displacement.
+					laneOf.set(label, lane + (dest - lo));
+				} else if (dest < lo && lane >= dest && lane < lo) {
+					// Rows the block jumped over on the way up slide down by size.
+					laneOf.set(label, lane + size);
+				} else if (dest > lo && lane > hi && lane < dest + size) {
+					// Rows the block jumped over on the way down slide up by size.
+					laneOf.set(label, lane - size);
+				}
+			}
+		};
+
+		const accepts = (
+			candidate: ReturnType<typeof evaluate>,
+			current: ReturnType<typeof evaluate>
+		): boolean => candidate.score < current.score && candidate.upward <= current.upward;
+
+		let current = evaluate();
+		for (let pass = 0; pass < REFINE_MAX_PASSES; pass++) {
+			let improved = false;
+			for (let i = blockStart; i < blockEnd; i++) {
+				for (let j = i + 1; j <= blockEnd; j++) {
+					swapRows(i, j);
+					const candidate = evaluate();
+					if (accepts(candidate, current)) {
+						current = candidate;
+						improved = true;
+					} else {
+						swapRows(i, j);
+					}
+				}
+			}
+			// Contiguous-range relocations: for every range [lo, hi] and every
+			// destination, try lifting the range out and reinserting it. This
+			// subsumes single-row rotation (size-1 ranges) and, crucially,
+			// relocates a multi-row subtree block in one accepted step — e.g.
+			// hoisting React's whole framework subtree above Node.js's runtime
+			// subtree, which no single-row move reaches because every
+			// intermediate step raises total span. The valid destinations for
+			// a range are the positions outside it; a rejected move is undone
+			// by the inverse relocation. Blocks are ≲15 rows, so the O(n^3)
+			// enumeration is negligible.
+			for (let lo = blockStart; lo <= blockEnd; lo++) {
+				for (let hi = lo; hi <= blockEnd; hi++) {
+					const size = hi - lo + 1;
+					if (size > blockEnd - blockStart) continue; // whole-block move is a no-op
+					for (let dest = blockStart; dest <= blockEnd - size + 1; dest++) {
+						if (dest >= lo && dest <= hi) continue; // lands within itself → no-op
+						moveRange(lo, hi, dest);
+						const candidate = evaluate();
+						if (accepts(candidate, current)) {
+							current = candidate;
+							improved = true;
+						} else {
+							// Undo: the range now occupies [dest, dest+size-1]; move
+							// it back so its first row returns to `lo`.
+							moveRange(dest, dest + size - 1, lo);
+						}
+					}
+				}
+			}
+			if (!improved) break;
+		}
+	}
+}
+
+/** Greedy first-fit packing for the isolated-dot strip — the old banded layout's packer. */
+function packStrip(
+	labels: string[],
+	geomByLabel: Map<string, NodeGeom>,
+	geo: LayoutGeometry
+): { laneOf: Map<string, number>; laneCount: number } {
+	const laneRight: number[] = [];
+	const laneOf = new Map<string, number>();
+
+	for (const label of labels) {
+		const geom = geomByLabel.get(label)!;
+		let lane = laneRight.findIndex((right) => geom.x - geom.radius > right + geo.labelGap);
+		if (lane === -1) {
+			lane = laneRight.length;
+			laneRight.push(geom.labelRight);
+		} else {
+			laneRight[lane] = geom.labelRight;
+		}
+		laneOf.set(label, lane);
+	}
+
+	return { laneOf, laneCount: laneRight.length };
+}
+
+// --- Connector path builders ------------------------------------------------
+// All builders take resolved pixel coordinates and return complete SVG path
+// data. Corners use quadratic beziers (visually identical to arcs at these
+// radii, with no sweep-flag bookkeeping).
+
+interface RailPoint {
+	x: number;
+	y: number;
+	radius: number;
+	/**
+	 * Radius of the OUTERMOST rendered ring. A curated node earns a second hub
+	 * ring HUB_RING_OFFSET px beyond `radius`; a derived node has none, so its
+	 * outer radius equals `radius`. Connector arrivals dock at this edge, not at
+	 * `radius`, or a curated node's hub ring would swallow the arrival stub.
+	 */
+	outerRadius: number;
+	railEndX: number;
+	/** Right edge of the dot-plus-label extent, for clearance checks. */
+	labelRight: number;
+}
+
+// Connectors DEPART from the parent's centre (tucking under the parent ring)
+// and ARRIVE at the child's outer ring edge (a small gap short of centre): the
+// route leaves the station's exact point and docks at the next station's rim.
+// Horizontal arrivals stop at the child's left edge, vertical arrivals at its
+// top/bottom edge.
+
+/**
+ * The x of a branch elbow's vertical corridor: elbowRun px to the LEFT of the
+ * child's ring edge, not of its centre. Measuring from the edge keeps the
+ * horizontal arrival a constant length outside the ring however large the node
+ * grows; measuring from the centre let a fat ring (radius > elbowRun) swallow
+ * the corridor, so the corner landed inside the ring and the arrival stub
+ * doubled back into it.
+ */
+function elbowCorridorX(child: { x: number; outerRadius: number }, geo: LayoutGeometry): number {
+	return child.x - child.outerRadius - 2 - geo.elbowRun;
+}
+
+/**
+ * Branch elbow with a horizontal arrival at the child dot's ring edge. The
+ * corridor defaults to elbowRun before the child's ring edge; routing may
+ * supply another x (always between the parent's dot and rail end).
+ */
+function elbowPath(
+	parent: RailPoint,
+	child: RailPoint,
+	geo: LayoutGeometry,
+	corridorX: number = elbowCorridorX(child, geo)
+): string {
+	const s = Math.sign(child.y - parent.y);
+	const arriveX = child.x - child.outerRadius - 2;
+	const r = Math.min(geo.cornerRadius, Math.abs(child.y - parent.y) / 2, arriveX - corridorX);
+	return [
+		`M ${corridorX - r} ${parent.y}`,
+		`Q ${corridorX} ${parent.y} ${corridorX} ${parent.y + s * r}`,
+		`V ${child.y - s * r}`,
+		`Q ${corridorX} ${child.y} ${corridorX + r} ${child.y}`,
+		`H ${arriveX}`
+	].join(' ');
+}
+
+/** Single-corner connector arriving vertically at the child dot's ring edge. */
+function verticalArrivalPath(parent: RailPoint, child: RailPoint, geo: LayoutGeometry): string {
+	const s = Math.sign(child.y - parent.y);
+	const r = Math.min(geo.cornerRadius, Math.abs(child.y - parent.y) / 2);
+	return [
+		`M ${child.x - r} ${parent.y}`,
+		`Q ${child.x} ${parent.y} ${child.x} ${parent.y + s * r}`,
+		`V ${child.y - s * (child.outerRadius + 2)}`
+	].join(' ');
+}
+
+/** A cubic bezier's four control points, in order. */
+interface CubicPoints {
+	p0: { x: number; y: number };
+	p1: { x: number; y: number };
+	p2: { x: number; y: number };
+	p3: { x: number; y: number };
+}
+
+/**
+ * The four control points an s-curve emits. Shared by `sCurvePath` and the
+ * collision test. Departs the parent's centre, arrives vertically at the child's
+ * ring edge (top/bottom). x moves monotonically from parent.x to child.x, so the
+ * curve never reverses horizontal direction. `bow` shifts the two mid control
+ * points sideways by `side * bow` (both by the SAME signed amount), letting the
+ * curve lean clear of an obstruction. `bulgeBias` in [0,1] slides both control
+ * points' y along the span (0 = both at the parent end, 0.5 = the symmetric
+ * midpoint, 1 = both at the child end), placing the curve's fattest lateral
+ * excursion beside an obstacle that sits near one end rather than the middle.
+ */
+function sCurveControlPoints(
+	parent: RailPoint,
+	child: RailPoint,
+	bow = 0,
+	side: 1 | -1 = 1,
+	bulgeBias = 0.5
+): CubicPoints {
+	const s = Math.sign(child.y - parent.y);
+	const toY = child.y - s * (child.outerRadius + 2);
+	const ctrlY = parent.y + (toY - parent.y) * bulgeBias;
+	const offset = side * bow;
+	return {
+		p0: { x: parent.x, y: parent.y },
+		p1: { x: parent.x + offset, y: ctrlY },
+		p2: { x: child.x + offset, y: ctrlY },
+		p3: { x: child.x, y: toY }
+	};
+}
+
+/** Dot-to-dot cubic for gaps too tight for an elbow. Departs the parent's
+ *  centre, arrives at the child's ring edge (top/bottom). */
+function sCurvePath(
+	parent: RailPoint,
+	child: RailPoint,
+	bow = 0,
+	side: 1 | -1 = 1,
+	bulgeBias = 0.5
+): string {
+	const { p0, p1, p2, p3 } = sCurveControlPoints(parent, child, bow, side, bulgeBias);
+	return `M ${p0.x} ${p0.y} C ${p1.x} ${p1.y} ${p2.x} ${p2.y} ${p3.x} ${p3.y}`;
+}
+
+/** Fixed sample count for the curve/occupant distance test. Fixed (not
+ *  adaptive) so the whole layout stays a pure function of node geometry. */
+const CURVE_SAMPLES = 24;
+/** Clearance a curve must keep from an occupant's ring, matching the +3 margin
+ *  the orthogonal corridor scans use. */
+const CURVE_CLEARANCE = 3;
+
+/** Minimum distance from a cubic bezier to a point, by fixed-step sampling. */
+function cubicMinDistance(curve: CubicPoints, cx: number, cy: number): number {
+	const { p0, p1, p2, p3 } = curve;
+	let min = Infinity;
+	for (let i = 0; i <= CURVE_SAMPLES; i++) {
+		const t = i / CURVE_SAMPLES;
+		const u = 1 - t;
+		const x = u * u * u * p0.x + 3 * u * u * t * p1.x + 3 * u * t * t * p2.x + t * t * t * p3.x;
+		const y = u * u * u * p0.y + 3 * u * u * t * p1.y + 3 * u * t * t * p2.y + t * t * t * p3.y;
+		min = Math.min(min, Math.hypot(x - cx, y - cy));
+	}
+	return min;
+}
+
+/** True when the curve passes within an occupant's ring plus clearance. */
+function curveHitsOccupant(curve: CubicPoints, occupant: RailOccupant): boolean {
+	return cubicMinDistance(curve, occupant.x, occupant.y) < occupant.radius + CURVE_CLEARANCE;
+}
+
+/** Lateral step (px) each detour attempt leans the s-curve by. */
+const BOW_STEP = 4;
+
+/**
+ * A dot-to-dot curve always arrives vertically at the child's ring edge and is
+ * monotonic in x, so it never reverses direction. The variant is unconditional:
+ * distinct lanes are always at least railLaneHeight apart vertically, leaving a
+ * real span for the curve. (A same-y pair would degenerate, but that never
+ * occurs across distinct lanes, and same-lane edges route as handovers or
+ * same-lane branches before reaching here.)
+ */
+function dotToDotVariant(): ConnectorVariant {
+	return 's-curve';
+}
+
+/**
+ * A dot-to-dot s-curve hugs the parent→child column, so it can graze a node
+ * sitting in a lane between them. This leans the curve sideways — away from the
+ * nearest obstruction — far enough to clear every intermediate occupant's ring.
+ *
+ * The lean must never make the rail read as reversing direction. When parent and
+ * child share a column (a vertical chain, the common case), a lean off that
+ * column is symmetric and reads as an organic bow at any magnitude, so the only
+ * bound is clearing the fattest obstacle. When the two dots are horizontally
+ * offset, a lean on the side OPPOSING the direction of travel would push the
+ * curve backward; there the backward component is capped at one parent radius
+ * (the organic-lead-in budget) and the search concedes the widest in-budget lean
+ * rather than break the forward-only rule. Deterministic: fixed step, geometry-
+ * derived cap, pure function of geometry.
+ */
+function chooseDotToDotDetour(
+	parent: RailPoint,
+	child: RailPoint,
+	parentLane: number,
+	childLane: number,
+	occupantsByLane: Map<number, RailOccupant[]>
+): { variant: ConnectorVariant; bow?: number; side?: 1 | -1; bulgeBias?: number } {
+	const loLane = Math.min(parentLane, childLane);
+	const hiLane = Math.max(parentLane, childLane);
+	const obstacles: RailOccupant[] = [];
+	for (let lane = loLane + 1; lane < hiLane; lane++) {
+		for (const occupant of occupantsByLane.get(lane) ?? []) obstacles.push(occupant);
+	}
+
+	const variant = dotToDotVariant();
+	if (obstacles.length === 0) return { variant };
+
+	// Lean away from the obstruction nearest the column's midline.
+	const midX = (parent.x + child.x) / 2;
+	const nearest = obstacles.reduce((a, b) =>
+		Math.abs(b.x - midX) < Math.abs(a.x - midX) ? b : a
+	);
+	const side: 1 | -1 = midX - nearest.x >= 0 ? 1 : -1;
+
+	// Slide the curve's fattest point beside the nearest obstacle: an s-curve
+	// bulges most between its control points, so an obstacle near one endpoint
+	// (e.g. a big adjacent-lane node) is only cleared if the bulge tracks its y.
+	const span = child.y - parent.y;
+	const rawBias = span === 0 ? 0.5 : (nearest.y - parent.y) / span;
+	const bulgeBias = Math.min(0.85, Math.max(0.15, rawBias));
+
+	// The lean pushes the curve to roughly `side·bow` off the column. Size the
+	// ceiling from the fattest obstacle so a big intermediate ring is cleared.
+	const widestReach = obstacles.reduce((m, o) => Math.max(m, o.radius + CURVE_CLEARANCE), 0);
+	const clearingCap = widestReach + Math.abs(parent.x - child.x) + BOW_STEP;
+
+	// A lean on the side opposing travel reverses direction; bound its backward
+	// excursion to one parent radius. When the dots share a column (delta 0) or
+	// the lean runs WITH travel, there is no reversal to bound.
+	const travel = Math.sign(child.x - parent.x);
+	const reverses = travel !== 0 && side !== travel;
+	const reversalCap = reverses ? Math.max(0, parent.radius - 1) : clearingCap;
+	const maxBow = Math.min(clearingCap, reversalCap);
+
+	for (let bow = 0; bow <= maxBow; bow += BOW_STEP) {
+		const curve = sCurveControlPoints(parent, child, bow, side, bulgeBias);
+		if (!obstacles.some((o) => curveHitsOccupant(curve, o))) {
+			return { variant, bow, side, bulgeBias };
+		}
+	}
+	return { variant, bow: maxBow, side, bulgeBias };
+}
+
+/**
+ * Orthogonal branch for a child that outlives its parent's rail: departs the
+ * parent DOT vertically, drops to the child's lane and runs horizontally to
+ * the child dot's left edge. Late children of one parent all share the
+ * collinear vertical at parent.x and peel off at their own lanes, so a fan of
+ * branches reads as one git-style branch line rather than a sheaf of
+ * diagonals.
+ */
+function branchDropPath(parent: RailPoint, child: RailPoint, geo: LayoutGeometry): string {
+	const s = Math.sign(child.y - parent.y);
+	const arriveX = child.x - child.outerRadius - 2;
+	// Never let the corner overshoot the ring edge: a parent collinear vertical
+	// sitting at or right of arriveX would otherwise curve backwards into the
+	// ring. Clamp at 0 so the drop degenerates to a straight vertical + short H.
+	const r = Math.max(
+		0,
+		Math.min(geo.cornerRadius, Math.abs(child.y - parent.y) / 2, arriveX - parent.x - 2)
+	);
+	return [
+		`M ${parent.x} ${parent.y}`,
+		`V ${child.y - s * r}`,
+		`Q ${parent.x} ${child.y} ${parent.x + r} ${child.y}`,
+		`H ${arriveX}`
+	].join(' ');
+}
+
+/**
+ * Gutter route: corridor down from the parent (dot or rail), a long run along
+ * the inter-lane gutter past whatever blocks the child's own lane, then a
+ * vertical drop into the child dot's top (or rise into its bottom).
+ */
+function gutterArrivalPath(
+	parent: RailPoint,
+	child: RailPoint,
+	corridorX: number,
+	gutterY: number,
+	geo: LayoutGeometry
+): string {
+	const s = Math.sign(child.y - parent.y);
+	const viaRail = corridorX > parent.x;
+	// A dot-departing gutter leaves the parent's centre (under its ring), like
+	// every other departure; a rail-departing one leaves the rail at centre y.
+	const startY = parent.y;
+	const arriveY = child.y - s * (child.outerRadius + 2);
+	const r = Math.min(
+		geo.cornerRadius,
+		(child.x - corridorX) / 2 - 1,
+		Math.abs(gutterY - startY) / 2,
+		// The final leg runs from the corner down/up to the child's ring edge;
+		// the corner must fit within that span.
+		Math.abs(arriveY - gutterY)
+	);
+	const start = viaRail
+		? `M ${corridorX - r} ${parent.y} Q ${corridorX} ${parent.y} ${corridorX} ${parent.y + s * r}`
+		: `M ${corridorX} ${startY}`;
+	return [
+		start,
+		`V ${gutterY - s * r}`,
+		`Q ${corridorX} ${gutterY} ${corridorX + r} ${gutterY}`,
+		`H ${child.x - r}`,
+		`Q ${child.x} ${gutterY} ${child.x} ${gutterY + s * r}`,
+		`V ${arriveY}`
+	].join(' ');
+}
+
+/** Same-lane merge: the final stretch of the retiring rail into the successor
+ *  dot's ring edge, recoloured. Starts from the parent centre when close, else
+ *  a 16px stub, but never left of the parent centre. */
+function handoverPath(parent: RailPoint, child: RailPoint): string {
+	const arriveX = child.x - child.outerRadius - 2;
+	const fromX = Math.max(arriveX - 16, parent.x);
+	return `M ${fromX} ${parent.y} H ${arriveX}`;
+}
+
+/**
+ * Same-lane branch: a leads-to whose child happens to share the parent's lane
+ * (React landed in JavaScript's lane). Unlike a replaced-by handover — which
+ * is a merge and draws only the rail's final stub — this must read as a full
+ * branch, so it spans the whole gap from the parent dot's edge to the child
+ * dot's edge along the shared row.
+ */
+function sameLaneBranchPath(parent: RailPoint, child: RailPoint): string {
+	const arriveX = child.x - child.outerRadius - 2;
+	return `M ${parent.x} ${parent.y} H ${arriveX}`;
+}
+
+/**
+ * One edge's routing decision, produced by the routing phase and consumed by
+ * the emission phase. Splitting the two keeps every geometric decision (which
+ * variant, where the vertical corridor sits) in one place, so passes that
+ * adjust routes — corridor de-overlap, future variants — never touch path
+ * emission.
+ */
+interface RoutedEdge {
+	edge: ResolvedEdge;
+	variant: ConnectorVariant;
+	/** x of the connector's vertical corridor; null for variants without one. */
+	corridorX: number | null;
+	/** y of the gutter run; only set for 'gutter-arrival'. */
+	gutterY: number | null;
+	/** Lateral lean (px), side, and y-bias for a dot-to-dot s-curve leaned clear
+	 *  of an intermediate node's ring; absent means a straight (unbowed) curve. */
+	bow?: number;
+	side?: 1 | -1;
+	bulgeBias?: number;
+}
+
+/** One rail node's footprint within its lane, for clearance checks. */
+interface RailOccupant {
+	label: string;
+	x: number;
+	y: number;
+	radius: number;
+	labelRight: number;
+}
+
+/** Rail nodes grouped by lane, x-ascending — the interval index routing needs. */
+function indexOccupants(
+	pointOf: Map<string, RailPoint>,
+	laneOf: Map<string, number>
+): Map<number, RailOccupant[]> {
+	const occupantsByLane = new Map<number, RailOccupant[]>();
+	for (const [label, point] of pointOf) {
+		const lane = laneOf.get(label)!;
+		const occupant = {
+			label,
+			x: point.x,
+			y: point.y,
+			radius: point.radius,
+			labelRight: point.labelRight
+		};
+		const list = occupantsByLane.get(lane);
+		if (list) list.push(occupant);
+		else occupantsByLane.set(lane, [occupant]);
+	}
+	for (const list of occupantsByLane.values()) {
+		list.sort((a, b) => a.x - b.x || a.label.localeCompare(b.label));
+	}
+	return occupantsByLane;
+}
+
+interface BranchDropRoute {
+	corridorX: number;
+	/** True when the corridor sits right of the parent dot and departs the rail. */
+	viaRail: boolean;
+}
+
+/**
+ * Finds a vertical corridor for a branch to a child beyond the parent's rail
+ * end. The first candidate is parent.x itself (the git-branch fan: departs
+ * the dot, and siblings bundle onto one collinear vertical). A candidate is
+ * rejected when it would slice through a dot in an intermediate lane (labels
+ * are fine — the component's halo keeps text legible over verticals) or when
+ * the horizontal run along the child's lane would collide with an earlier
+ * occupant of that lane. Each rejection pushes the corridor just right of the
+ * furthest obstruction; corridors right of the parent dot must depart the
+ * rail instead (emitted as a generalised elbow), which bounds them by the
+ * rail's end and the child's own approach. Deterministic throughout: the scan
+ * is a pure function of node geometry.
+ */
+function chooseBranchDropRoute(
+	parent: RailPoint,
+	child: RailPoint,
+	parentLane: number,
+	childLane: number,
+	childLabel: string,
+	occupantsByLane: Map<number, RailOccupant[]>,
+	geo: LayoutGeometry
+): BranchDropRoute | null {
+	const arriveX = child.x - child.outerRadius - 2;
+	const departLimit = parent.x + parent.radius + 2;
+	const loLane = Math.min(parentLane, childLane);
+	const hiLane = Math.max(parentLane, childLane);
+
+	let corridorX = parent.x;
+	for (let attempt = 0; attempt < 8; attempt++) {
+		const viaRail = corridorX > parent.x;
+		if (viaRail) {
+			corridorX = Math.max(corridorX, departLimit + geo.cornerRadius);
+			if (corridorX > parent.railEndX || corridorX > elbowCorridorX(child, geo)) return null;
+		}
+		if (arriveX - corridorX < geo.cornerRadius + 2) return null;
+
+		// Furthest clearance x demanded by any obstruction at this corridor;
+		// taking the max guarantees monotonic progress rightwards.
+		let pushTo = -Infinity;
+		for (let lane = loLane + 1; lane < hiLane; lane++) {
+			for (const occupant of occupantsByLane.get(lane) ?? []) {
+				if (Math.abs(corridorX - occupant.x) <= occupant.radius + 3) {
+					pushTo = Math.max(pushTo, occupant.x + occupant.radius + 4);
+				}
+			}
+		}
+		for (const occupant of occupantsByLane.get(childLane) ?? []) {
+			if (occupant.label === childLabel) continue;
+			if (occupant.labelRight > corridorX && occupant.x - occupant.radius < arriveX) {
+				pushTo = Math.max(pushTo, occupant.labelRight + 4);
+			}
+		}
+
+		if (pushTo === -Infinity) return { corridorX, viaRail };
+		corridorX = pushTo;
+	}
+	return null;
+}
+
+interface GutterRoute extends BranchDropRoute {
+	gutterY: number;
+}
+
+/**
+ * Last orthogonal resort before a dot-to-dot curve: when the child's own lane
+ * cannot host a horizontal approach (an earlier occupant blocks it, or the
+ * edge is not the child's designated horizontal arrival), route the run
+ * through the GUTTER between the child's lane and its neighbour, then drop
+ * vertically into the child dot. The corridor scan mirrors
+ * chooseBranchDropRoute minus the child-lane run check; the gutter's y is
+ * then nudged towards the child until it clears every flanking dot along the
+ * run, failing honestly when big dots on both sides pinch the gap shut.
+ */
+function chooseGutterRoute(
+	parent: RailPoint,
+	child: RailPoint,
+	parentLane: number,
+	childLane: number,
+	childLabel: string,
+	occupantsByLane: Map<number, RailOccupant[]>,
+	geo: LayoutGeometry
+): GutterRoute | null {
+	const s = Math.sign(child.y - parent.y);
+	if (s === 0) return null;
+	const departLimit = parent.x + parent.radius + 2;
+	const loLane = Math.min(parentLane, childLane);
+	const hiLane = Math.max(parentLane, childLane);
+
+	let corridorX = parent.x;
+	let resolved: BranchDropRoute | null = null;
+	for (let attempt = 0; attempt < 8; attempt++) {
+		const viaRail = corridorX > parent.x;
+		if (viaRail) {
+			corridorX = Math.max(corridorX, departLimit + geo.cornerRadius);
+			if (corridorX > parent.railEndX || corridorX > elbowCorridorX(child, geo)) return null;
+		}
+		if (child.x - corridorX < geo.cornerRadius * 2 + 2) return null;
+
+		let pushTo = -Infinity;
+		for (let lane = loLane + 1; lane < hiLane; lane++) {
+			for (const occupant of occupantsByLane.get(lane) ?? []) {
+				if (Math.abs(corridorX - occupant.x) <= occupant.radius + 3) {
+					pushTo = Math.max(pushTo, occupant.x + occupant.radius + 4);
+				}
+			}
+		}
+		if (pushTo === -Infinity) {
+			resolved = { corridorX, viaRail };
+			break;
+		}
+		corridorX = pushTo;
+	}
+	if (resolved === null) return null;
+
+	// Default gutter: halfway between the child's lane and its neighbour on
+	// the approach side. Flanking dots along the run push it towards the
+	// child; dots sharing the child's lane cap how close it may come.
+	let gutterY = child.y - s * (geo.railLaneHeight / 2);
+	let nearBound = child.y - s * (child.outerRadius + 4);
+	const inRunSpan = (occupant: RailOccupant): boolean =>
+		occupant.x + occupant.radius > resolved!.corridorX && occupant.x - occupant.radius < child.x;
+	for (const occupant of occupantsByLane.get(childLane - s) ?? []) {
+		if (!inRunSpan(occupant)) continue;
+		const pushed = occupant.y + s * (occupant.radius + 3);
+		gutterY = s > 0 ? Math.max(gutterY, pushed) : Math.min(gutterY, pushed);
+	}
+	for (const occupant of occupantsByLane.get(childLane) ?? []) {
+		if (occupant.label === childLabel || !inRunSpan(occupant)) continue;
+		const limit = occupant.y - s * (occupant.radius + 3);
+		nearBound = s > 0 ? Math.min(nearBound, limit) : Math.max(nearBound, limit);
+	}
+	if (s > 0 ? gutterY > nearBound : gutterY < nearBound) return null;
+
+	return { ...resolved, gutterY };
+}
+
+/**
+ * Routing phase: picks a variant and corridor for every surviving edge. Per
+ * child, exactly one incoming connector earns the horizontal arrival (the
+ * leads-to parent, nearest lane first); the rest arrive vertically so
+ * multiple arrivals at one dot stay distinguishable. A lane-inheriting
+ * child's incoming connectors are all vertical (its predecessor's rail
+ * occupies the horizontal approach) except the succession merge itself,
+ * which is a same-lane handover.
+ */
+function routeEdges(
+	edges: ResolvedEdge[],
+	pointOf: Map<string, RailPoint>,
+	laneOf: Map<string, number>,
+	inherited: Set<string>,
+	itemDates: Map<string, string>,
+	occupantsByLane: Map<number, RailOccupant[]>,
+	geo: LayoutGeometry
+): RoutedEdge[] {
+	// Designated horizontal-arrival edge per child.
+	const horizontalFor = new Map<string, ResolvedEdge>();
+	const incomingByChild = new Map<string, ResolvedEdge[]>();
+	for (const edge of edges) {
+		const list = incomingByChild.get(edge.target);
+		if (list) list.push(edge);
+		else incomingByChild.set(edge.target, [edge]);
+	}
+	for (const [child, incoming] of incomingByChild) {
+		if (inherited.has(child)) continue; // all vertical (or handover)
+		const childLane = laneOf.get(child)!;
+		const leadsTo = incoming
+			.filter((e) => e.kind === 'leads-to')
+			.sort(
+				(a, b) =>
+					Math.abs(laneOf.get(a.source)! - childLane) -
+						Math.abs(laneOf.get(b.source)! - childLane) || a.source.localeCompare(b.source)
+			);
+		const replacedBy = incoming
+			.filter((e) => e.kind === 'replaced-by')
+			.sort(
+				(a, b) =>
+					itemDates.get(a.source)!.localeCompare(itemDates.get(b.source)!) ||
+					a.source.localeCompare(b.source)
+			);
+		const designated = leadsTo[0] ?? replacedBy[0];
+		if (designated) horizontalFor.set(child, designated);
+	}
+
+	const routed: RoutedEdge[] = [];
+	for (const edge of edges) {
+		const parent = pointOf.get(edge.source)!;
+		const child = pointOf.get(edge.target)!;
+		const departLimit = parent.x + parent.radius + 2;
+
+		const parentLane = laneOf.get(edge.source)!;
+		const childLane = laneOf.get(edge.target)!;
+
+		// Shared last-orthogonal-resort: gutter route, then dot-to-dot curve.
+		const fallback = (): RoutedEdge => {
+			const gutter =
+				child.x > parent.x
+					? chooseGutterRoute(
+							parent,
+							child,
+							parentLane,
+							childLane,
+							edge.target,
+							occupantsByLane,
+							geo
+						)
+					: null;
+			if (gutter !== null) {
+				return { edge, variant: 'gutter-arrival', corridorX: gutter.corridorX, gutterY: gutter.gutterY };
+			}
+			const detour = chooseDotToDotDetour(parent, child, parentLane, childLane, occupantsByLane);
+			return {
+				edge,
+				variant: detour.variant,
+				corridorX: null,
+				gutterY: null,
+				bow: detour.bow,
+				side: detour.side,
+				bulgeBias: detour.bulgeBias
+			};
+		};
+
+		if (parentLane === childLane) {
+			// Same lane. A replaced-by succession is a merge: draw only the
+			// rail's final stub handing over to the successor. A leads-to,
+			// though, is a branch that merely landed in the parent's lane, so
+			// it must read as a full branch across the shared row, not a stub.
+			const variant = edge.kind === 'replaced-by' ? 'handover' : 'same-lane-branch';
+			routed.push({ edge, variant, corridorX: null, gutterY: null });
+		} else if (horizontalFor.get(edge.target) === edge) {
+			const corridorX = elbowCorridorX(child, geo);
+			// The elbow needs room to depart the parent rail and the corridor
+			// must sit where the parent rail still exists. When it cannot —
+			// the child outlives the parent's rail, or sits too close — try
+			// the orthogonal branch-drop before conceding a dot-to-dot curve.
+			if (corridorX - geo.cornerRadius < departLimit || corridorX > parent.railEndX) {
+				const route =
+					child.x > parent.x
+						? chooseBranchDropRoute(
+								parent,
+								child,
+								parentLane,
+								childLane,
+								edge.target,
+								occupantsByLane,
+								geo
+							)
+						: null;
+				if (route === null) {
+					routed.push(fallback());
+				} else {
+					routed.push({
+						edge,
+						variant: route.viaRail ? 'elbow' : 'branch-drop',
+						corridorX: route.corridorX,
+						gutterY: null
+					});
+				}
+			} else {
+				routed.push({ edge, variant: 'elbow', corridorX, gutterY: null });
+			}
+		} else {
+			if (child.x - geo.cornerRadius < departLimit || child.x > parent.railEndX) {
+				routed.push(fallback());
+			} else {
+				routed.push({ edge, variant: 'vertical-arrival', corridorX: child.x, gutterY: null });
+			}
+		}
+	}
+	return routed;
+}
+
+/** Emission phase: a pure RoutedEdge → Connector mapping over the path builders. */
+function emitConnector(routed: RoutedEdge, pointOf: Map<string, RailPoint>, geo: LayoutGeometry): Connector {
+	const { edge, variant, corridorX } = routed;
+	const parent = pointOf.get(edge.source)!;
+	const child = pointOf.get(edge.target)!;
+
+	let path: string;
+	switch (variant) {
+		case 'handover':
+			path = handoverPath(parent, child);
+			break;
+		case 'same-lane-branch':
+			path = sameLaneBranchPath(parent, child);
+			break;
+		case 'elbow':
+			path = elbowPath(parent, child, geo, corridorX!);
+			break;
+		case 'vertical-arrival':
+			path = verticalArrivalPath(parent, child, geo);
+			break;
+		case 'branch-drop':
+			path = branchDropPath(parent, child, geo);
+			break;
+		case 'gutter-arrival':
+			path = gutterArrivalPath(parent, child, routed.corridorX!, routed.gutterY!, geo);
+			break;
+		case 's-curve':
+			path = sCurvePath(parent, child, routed.bow, routed.side, routed.bulgeBias);
+			break;
+	}
+
+	return { kind: edge.kind, source: edge.source, target: edge.target, variant, path };
+}
+
+/** Minimum x separation between two unrelated vertical corridor runs. */
+const CORRIDOR_SEPARATION = 6;
+
+/**
+ * Spreads near-coincident vertical corridor runs apart so unrelated
+ * connectors never read as one line. Runs sharing a source are exempt: a
+ * parent's branch fan (and a same-corridor elbow pair from one rail) is
+ * deliberately collinear. Only elbows move — leftwards, in 4px steps —
+ * because a vertical-arrival must land on its child's dot and a branch-drop
+ * is pinned to its parent's x. A shift is abandoned (and the overlap
+ * accepted) when it would break the elbow's departure clearance, puncture a
+ * dot the route was pushed clear of, or still conflict after three steps.
+ */
+function deOverlapCorridors(
+	routed: RoutedEdge[],
+	pointOf: Map<string, RailPoint>,
+	laneOf: Map<string, number>,
+	occupantsByLane: Map<number, RailOccupant[]>,
+	geo: LayoutGeometry
+): void {
+	interface Run {
+		routed: RoutedEdge;
+		yLo: number;
+		yHi: number;
+	}
+	const runs: Run[] = [];
+	for (const r of routed) {
+		if (r.corridorX === null) continue;
+		const parent = pointOf.get(r.edge.source)!;
+		const child = pointOf.get(r.edge.target)!;
+		runs.push({ routed: r, yLo: Math.min(parent.y, child.y), yHi: Math.max(parent.y, child.y) });
+	}
+	runs.sort(
+		(a, b) =>
+			a.routed.corridorX! - b.routed.corridorX! ||
+			a.routed.edge.target.localeCompare(b.routed.edge.target) ||
+			a.routed.edge.source.localeCompare(b.routed.edge.source)
+	);
+
+	const accepted: Run[] = [];
+	const conflicts = (x: number, run: Run): boolean =>
+		accepted.some(
+			(other) =>
+				other.routed.edge.source !== run.routed.edge.source &&
+				Math.abs(other.routed.corridorX! - x) < CORRIDOR_SEPARATION &&
+				other.yLo < run.yHi &&
+				run.yLo < other.yHi
+		);
+	const puncturesDot = (x: number, run: Run): boolean => {
+		const parentLane = laneOf.get(run.routed.edge.source)!;
+		const childLane = laneOf.get(run.routed.edge.target)!;
+		const lo = Math.min(parentLane, childLane);
+		const hi = Math.max(parentLane, childLane);
+		for (let lane = lo + 1; lane < hi; lane++) {
+			for (const occupant of occupantsByLane.get(lane) ?? []) {
+				if (Math.abs(x - occupant.x) <= occupant.radius + 3) return true;
+			}
+		}
+		return false;
+	};
+
+	for (const run of runs) {
+		if (run.routed.variant === 'elbow' && conflicts(run.routed.corridorX!, run)) {
+			const parent = pointOf.get(run.routed.edge.source)!;
+			const leftBound = parent.x + parent.radius + 2 + geo.cornerRadius;
+			for (let shift = 4; shift <= 12; shift += 4) {
+				const candidate = run.routed.corridorX! - shift;
+				if (candidate < leftBound) break;
+				if (puncturesDot(candidate, run)) break;
+				if (!conflicts(candidate, run)) {
+					run.routed.corridorX = candidate;
+					break;
+				}
+			}
+		}
+		accepted.push(run);
+	}
+}
+
+/** Builds one connector per surviving edge: route, adjust, then emit. */
+function buildConnectors(
+	edges: ResolvedEdge[],
+	pointOf: Map<string, RailPoint>,
+	laneOf: Map<string, number>,
+	inherited: Set<string>,
+	itemDates: Map<string, string>,
+	geo: LayoutGeometry
+): { connectors: Connector[]; routed: RoutedEdge[] } {
+	const occupantsByLane = indexOccupants(pointOf, laneOf);
+	const routed = routeEdges(edges, pointOf, laneOf, inherited, itemDates, occupantsByLane, geo);
+	deOverlapCorridors(routed, pointOf, laneOf, occupantsByLane, geo);
+	return { connectors: routed.map((r) => emitConnector(r, pointOf, geo)), routed };
+}
+
+/**
+ * The x at which a leads-to edge leaves its parent's rail, or null when it
+ * departs the parent's DOT rather than a point along the rail (s-curve and
+ * bracket fallbacks, and any branch that starts at parent.x). Read from the
+ * FINAL routed geometry — after deOverlapCorridors — so a segment boundary
+ * lands exactly where the connector visibly leaves the rail, however the
+ * router placed it (a plain elbow, a de-overlapped corridor, a rail-departing
+ * branch-drop, or a gutter run).
+ */
+function leadsToDepartureX(routed: RoutedEdge, parentX: number): number | null {
+	if (routed.corridorX === null) return null; // s-curve / bracket: departs the dot
+	if (routed.corridorX <= parentX) return null; // departs at (or left of) the dot
+	return routed.corridorX;
+}
+
+/**
+ * Splits every rail into left-to-right colour segments spanning x → railEndX
+ * with no gaps. A stretch is coloured by the edge to the next node it reaches:
+ * leads-to while the rail is still branching to leads-to children, replaced-by
+ * on the final run into a successor. The base (kind-coloured) segment shows
+ * where the rail heads to nothing lineage-bearing next: a still-in-use tail,
+ * or a pure leaf.
+ *
+ * Rules (see the plan):
+ *   - leads-to segment [x … lastLeadsToDepartureX], present only when at least
+ *     one leads-to child departs interior to the rail.
+ *   - terminal segment [lastLeadsToDepartureX … railEndX] (or the whole rail
+ *     when no interior leads-to): replaced-by when the rail is retired (has a
+ *     successor), else the kind-coloured base carrying the fade.
+ *
+ * Deterministic: departure x-values come from already-deterministic routing
+ * and are combined with min/max only; output is canonical (contiguous,
+ * strictly-ascending, no zero-width, no adjacent same-kind runs).
+ */
+function computeAllRailSegments(
+	railLabels: Set<string>,
+	routed: RoutedEdge[],
+	pointOf: Map<string, RailPoint>,
+	railEnds: Map<string, RailEnd>
+): Map<string, RailSegment[]> {
+	// Interior leads-to departure x-values per source rail.
+	const departuresBySource = new Map<string, number[]>();
+	for (const r of routed) {
+		if (r.edge.kind !== 'leads-to') continue;
+		const parent = pointOf.get(r.edge.source);
+		if (parent === undefined) continue;
+		const departX = leadsToDepartureX(r, parent.x);
+		if (departX === null) continue;
+		if (departX <= parent.x || departX >= parent.railEndX) continue; // not interior
+		const list = departuresBySource.get(r.edge.source);
+		if (list) list.push(departX);
+		else departuresBySource.set(r.edge.source, [departX]);
+	}
+
+	const segmentsByLabel = new Map<string, RailSegment[]>();
+	for (const label of railLabels) {
+		const point = pointOf.get(label)!;
+		const end = railEnds.get(label)!;
+		const x0 = point.x;
+		const xEnd = end.railEndX;
+		const retired = !end.fades; // a retired rail merges into a replaced-by successor
+
+		const departures = departuresBySource.get(label);
+		const lastLeadsToX = departures !== undefined ? Math.max(...departures) : x0;
+
+		const segments: RailSegment[] = [];
+		const push = (startX: number, sx: number, kind: LineageKind | null): void => {
+			if (sx - startX <= 0) return; // drop zero-width
+			const prev = segments[segments.length - 1];
+			if (prev && prev.kind === kind) prev.endX = sx; // merge adjacent same-kind
+			else segments.push({ startX, endX: sx, kind });
+		};
+
+		if (lastLeadsToX > x0) {
+			// Leads-to run up to the last interior departure, then the terminal.
+			push(x0, lastLeadsToX, 'leads-to');
+			push(lastLeadsToX, xEnd, retired ? 'replaced-by' : null);
+		} else {
+			// No interior leads-to: the whole rail is one terminal segment —
+			// replaced-by when retired, kind-coloured base otherwise.
+			push(x0, xEnd, retired ? 'replaced-by' : null);
+		}
+
+		// A zero-length rail (dot sitting at the plot-right edge, x0 === xEnd)
+		// yields no segments — there is nothing to draw, exactly as the old
+		// single zero-length <line> rendered nothing.
+		segmentsByLabel.set(label, segments);
+	}
+	return segmentsByLabel;
+}
+
+export function computeAdoptionLayout(
+	items: TechAdoption[],
+	edges: TechRelationship[],
+	geo: LayoutGeometry
+): AdoptionLayoutResult {
+	if (items.length === 0) {
+		return {
+			placed: [],
+			connectors: [],
+			ticks: [],
+			height: geo.topPad * 2,
+			axisY: geo.topPad,
+			railLaneCount: 0,
+			stripLaneCount: 0,
+			stripTop: geo.topPad
+		};
+	}
+
+	const { geomByLabel, xFor, plotRight } = measure(items, geo);
+	const itemDates = new Map(items.map((item) => [item.label, item.firstDate]));
+
+	// Edges resolved against rendered items, then transitively reduced.
+	const labels = new Set(items.map((item) => item.label));
+	const resolved: ResolvedEdge[] = edges.filter(
+		(e) => labels.has(e.source) && labels.has(e.target)
+	);
+	const reduced = transitiveReduceLeadsTo(resolved);
+
+	const { families, isolated } = buildFamilies(items, reduced);
+	const railLabels = new Set(families.flat());
+
+	const railEnds = computeRailEnds(railLabels, reduced, geomByLabel, plotRight);
+	const rails = assignLanes(families, reduced, geomByLabel, railEnds, itemDates, geo);
+	refineLaneOrder(families, reduced, geomByLabel, railEnds, rails.laneOf, geo);
+	const strip = packStrip(isolated, geomByLabel, geo);
+
+	const railBlockHeight = rails.laneCount * geo.railLaneHeight;
+	const stripTop =
+		geo.topPad + railBlockHeight + (rails.laneCount > 0 && strip.laneCount > 0 ? geo.stripGap : 0);
+	const contentBottom = stripTop + strip.laneCount * geo.stripLaneHeight;
+
+	// Rail points are known before the PlacedNodes are built — segments need
+	// routing, and routing needs only x/y/radius/railEndX/labelRight.
+	const pointOf = new Map<string, RailPoint>(
+		items
+			.filter((item) => railLabels.has(item.label))
+			.map((item) => {
+				const geom = geomByLabel.get(item.label)!;
+				return [
+					item.label,
+					{
+						x: geom.x,
+						y: geo.topPad + rails.laneOf.get(item.label)! * geo.railLaneHeight,
+						radius: geom.radius,
+						outerRadius: geom.outerRadius,
+						railEndX: railEnds.get(item.label)!.railEndX,
+						labelRight: geom.labelRight
+					}
+				];
+			})
+	);
+	const { connectors, routed } = buildConnectors(
+		reduced,
+		pointOf,
+		rails.laneOf,
+		rails.inherited,
+		itemDates,
+		geo
+	);
+	const railSegments = computeAllRailSegments(railLabels, routed, pointOf, railEnds);
+
+	const placed: PlacedNode[] = items.map((item) => {
+		const geom = geomByLabel.get(item.label)!;
+		if (railLabels.has(item.label)) {
+			const end = railEnds.get(item.label)!;
+			return {
+				...item,
+				x: geom.x,
+				y: geo.topPad + rails.laneOf.get(item.label)! * geo.railLaneHeight,
+				radius: geom.radius,
+				lane: rails.laneOf.get(item.label)!,
+				section: 'rail' as const,
+				railEndX: end.railEndX,
+				railFades: end.fades,
+				railSegments: railSegments.get(item.label)!
+			};
+		}
+		return {
+			...item,
+			x: geom.x,
+			y: stripTop + strip.laneOf.get(item.label)! * geo.stripLaneHeight,
+			radius: geom.radius,
+			lane: strip.laneOf.get(item.label)!,
+			section: 'strip' as const,
+			railEndX: null,
+			railFades: false,
+			railSegments: null
+		};
+	});
+
+	const axisY = contentBottom + geo.axisGap / 2;
+	const height = axisY + geo.axisGap;
+
+	const firstYear = Number(items[0].firstDate.slice(0, 4));
+	const lastYear = Number(items[items.length - 1].firstDate.slice(0, 4));
+	const ticks: YearTick[] = [];
+	for (let year = firstYear; year <= lastYear; year++) {
+		ticks.push({ year, x: xFor(`${year}-01-01`) });
+	}
+
+	return {
+		placed,
+		connectors,
+		ticks,
+		height,
+		axisY,
+		railLaneCount: rails.laneCount,
+		stripLaneCount: strip.laneCount,
+		stripTop
+	};
+}

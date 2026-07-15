@@ -14,6 +14,7 @@
  */
 
 import { projects } from './index.js';
+import { hiddenTechLabels } from './tech-overlays.js';
 import type { TagKind } from './types.js';
 
 export interface StackGroup {
@@ -85,9 +86,11 @@ export function getStackGroups(opts?: { perGroup?: number }): StackGroup[] {
 
 	// label -> { kind, projectCount }, counting each project once per label.
 	const countByLabel = new Map<string, { kind: TagKind; count: number }>();
+	const hidden = hiddenTechLabels('stack');
 	for (const project of projects) {
 		const seenInProject = new Set<string>();
 		for (const tag of project.tags) {
+			if (hidden.has(tag.label)) continue;
 			if (seenInProject.has(tag.label)) continue;
 			seenInProject.add(tag.label);
 			const existing = countByLabel.get(tag.label);

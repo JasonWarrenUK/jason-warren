@@ -3,7 +3,7 @@
 	"_note": "Last-synced fingerprints for each source repo. Run `bun run scripts/check-drift.js sync` to update. Local paths live in sources.local.json (gitignored).",
 	"_firstCommitNote": "firstCommit values are PROVISIONAL estimates derived from commit volume and lastCommit, seeded so the /toolkit adoption timeline can render before a real sync. `bun run scripts/check-drift.js sync` overwrites them with true root-commit dates. After syncing, set firstCommitProvisional to false.",
 	"firstCommitProvisional": false,
-	"lastSyncedAt": "2026-07-11",
+	"lastSyncedAt": "2026-07-14",
 	"sources": {
 		"baby-names": {
 			"head": "9f5bdf1",
@@ -25,54 +25,65 @@
 			"linesRemovedRecentAll": 0,
 			"remote": "https://github.com/JasonWarrenUK/baby-names",
 			"runtime": ["bun"],
-			"framework": ["@sveltejs/kit", "svelte-5"],
-			"measuredRef": "main"
+			"framework": ["@sveltejs/kit", "svelte-5", "vite"],
+			"measuredRef": "main",
+			"techFirstSeen": {
+				"bun": "2026-03-14",
+				"@sveltejs/kit": "2026-03-14",
+				"svelte-5": "2026-03-14",
+				"vite": "2026-03-14"
+			}
 		},
 		"chirpdb": {
-			"head": "e1c029a",
-			"commits": 570,
-			"commitsRecentAll": 261,
-			"commitsMine": 248,
-			"commitsRecent": 220,
-			"lastCommit": "2026-07-09",
-			"firstCommit": "2026-02-23",
+			"head": "19212a2",
+			"commits": 578,
+			"commitsRecentAll": 234,
+			"commitsMine": 256,
+			"commitsRecent": 212,
+			"lastCommit": "2026-07-14",
+			"firstCommit": "2026-06-08",
 			"languages": ["Python", "SQL", "Shell", "JavaScript"],
-			"linesOfCode": 25124,
-			"linesAdded": 73599,
-			"linesRemoved": 51104,
-			"linesAddedAll": 114059,
-			"linesRemovedAll": 69637,
-			"linesAddedRecent": 32399,
-			"linesRemovedRecent": 12193,
-			"linesAddedRecentAll": 36754,
-			"linesRemovedRecentAll": 15943,
+			"linesOfCode": 25927,
+			"linesAdded": 74663,
+			"linesRemoved": 51364,
+			"linesAddedAll": 115123,
+			"linesRemovedAll": 69897,
+			"linesAddedRecent": 26408,
+			"linesRemovedRecent": 10742,
+			"linesAddedRecentAll": 27963,
+			"linesRemovedRecentAll": 11414,
 			"remote": "https://github.com/ZigZag-Technology/CHIRPdb",
 			"runtime": ["python"],
 			"framework": ["fastapi"],
 			"measuredRef": "main",
-			"database": ["supabase-py", "supabase-postgres"]
+			"database": ["supabase-py", "supabase-postgres"],
+			"techFirstSeen": {
+				"python": "2026-02-23",
+				"fastapi": "2026-02-23"
+			}
 		},
 		"code-arcana": {
-			"head": "b0d1669",
-			"commits": 2,
-			"commitsRecentAll": 2,
-			"commitsMine": 2,
-			"commitsRecent": 2,
+			"head": "a1ae651",
+			"commits": 1,
+			"commitsRecentAll": 0,
+			"commitsMine": 1,
+			"commitsRecent": 0,
 			"lastCommit": "2026-06-11",
 			"firstCommit": "2026-06-11",
-			"languages": ["TypeScript", "Svelte", "JavaScript", "CSS", "HTML"],
+			"languages": [],
 			"linesOfCode": 2041,
-			"linesAdded": 8039,
+			"linesAdded": 0,
 			"linesRemoved": 0,
-			"linesAddedAll": 8039,
+			"linesAddedAll": 0,
 			"linesRemovedAll": 0,
-			"linesAddedRecent": 8039,
+			"linesAddedRecent": 0,
 			"linesRemovedRecent": 0,
-			"linesAddedRecentAll": 8039,
+			"linesAddedRecentAll": 0,
 			"linesRemovedRecentAll": 0,
 			"remote": "https://github.com/JasonWarrenUK/code-arcana",
 			"runtime": ["deno"],
-			"framework": ["@sveltejs/kit"]
+			"framework": ["@sveltejs/kit", "svelte-4", "vite"],
+			"measuredRef": "main"
 		},
 		"cogni": {
 			"head": "22d51f4",
@@ -94,8 +105,14 @@
 			"linesRemovedRecentAll": 0,
 			"remote": "https://github.com/JasonWarrenUK/cogni",
 			"runtime": ["bun"],
-			"framework": ["@sveltejs/kit", "svelte-5"],
-			"measuredRef": "main"
+			"framework": ["@sveltejs/kit", "svelte-5", "vite"],
+			"measuredRef": "main",
+			"techFirstSeen": {
+				"bun": "2026-03-14",
+				"@sveltejs/kit": "2026-03-14",
+				"svelte-5": "2026-03-14",
+				"vite": "2026-03-14"
+			}
 		},
 		"commons-traybake": {
 			"head": "a0b3c6b",
@@ -106,7 +123,7 @@
 			"lastCommit": "2025-11-10",
 			"firstCommit": "2025-10-21",
 			"languages": ["TypeScript", "Svelte", "CSS", "HTML", "JavaScript"],
-			"linesOfCode": 6603,
+			"linesOfCode": 6566,
 			"linesAdded": 6284,
 			"linesRemoved": 270,
 			"linesAddedAll": 13482,
@@ -117,15 +134,21 @@
 			"linesRemovedRecentAll": 0,
 			"remote": "https://github.com/fac-31/commons-traybake",
 			"runtime": ["node"],
-			"framework": ["@sveltejs/kit", "express"],
-			"database": ["neo4j-driver"]
+			"framework": ["@sveltejs/kit", "svelte-5", "express"],
+			"database": ["neo4j-driver"],
+			"measuredRef": "main",
+			"techFirstSeen": {
+				"@sveltejs/kit": "2025-11-07",
+				"svelte-5": "2025-11-07",
+				"express": "2025-11-03"
+			}
 		},
 		"epoch": {
 			"head": "655d33f",
 			"commits": 56,
-			"commitsRecentAll": 3,
+			"commitsRecentAll": 0,
 			"commitsMine": 26,
-			"commitsRecent": 2,
+			"commitsRecent": 0,
 			"lastCommit": "2026-06-14",
 			"firstCommit": "2024-05-17",
 			"languages": ["JavaScript", "Svelte", "CSS", "HTML"],
@@ -136,12 +159,18 @@
 			"linesRemovedAll": 1361,
 			"linesAddedRecent": 0,
 			"linesRemovedRecent": 0,
-			"linesAddedRecentAll": 440,
-			"linesRemovedRecentAll": 16,
+			"linesAddedRecentAll": 0,
+			"linesRemovedRecentAll": 0,
 			"remote": "https://github.com/JasonWarrenUK/epoch",
 			"runtime": ["node"],
-			"framework": ["@sveltejs/kit", "svelte-5", "tailwindcss-4"],
-			"measuredRef": "main"
+			"framework": ["@sveltejs/kit", "svelte-5", "vite", "tailwindcss-4"],
+			"measuredRef": "main",
+			"techFirstSeen": {
+				"@sveltejs/kit": "2026-03-04",
+				"svelte-5": "2026-03-04",
+				"vite": "2026-03-04",
+				"tailwindcss-4": "2026-03-05"
+			}
 		},
 		"fac-cra": {
 			"head": "649507fa",
@@ -150,7 +179,7 @@
 			"commitsMine": 320,
 			"commitsRecent": 0,
 			"lastCommit": "2026-04-02",
-			"firstCommit": "2023-09-11",
+			"firstCommit": "2026-02-11",
 			"languages": ["JavaScript", "TypeScript", "SQL", "Shell", "HTML", "CSS", "Python"],
 			"linesOfCode": 213140,
 			"linesAdded": 31500,
@@ -165,7 +194,12 @@
 			"runtime": ["node"],
 			"framework": ["express", "react", "vite", "next"],
 			"database": ["pg", "graphql"],
-			"measuredRef": "main"
+			"measuredRef": "main",
+			"techFirstSeen": {
+				"express": "2026-02-05",
+				"react": "2023-09-11",
+				"vite": "2026-02-07"
+			}
 		},
 		"flyt": {
 			"head": "b85f752",
@@ -187,15 +221,20 @@
 			"linesRemovedRecentAll": 0,
 			"remote": "https://github.com/JasonWarrenUK/flyt",
 			"runtime": ["node"],
-			"framework": ["@sveltejs/kit", "svelte-5"],
-			"measuredRef": "main"
+			"framework": ["@sveltejs/kit", "svelte-5", "vite"],
+			"measuredRef": "main",
+			"techFirstSeen": {
+				"@sveltejs/kit": "2026-03-08",
+				"svelte-5": "2026-03-08",
+				"vite": "2026-03-08"
+			}
 		},
 		"grumble": {
 			"head": "51ea652",
 			"commits": 5,
-			"commitsRecentAll": 5,
+			"commitsRecentAll": 0,
 			"commitsMine": 5,
-			"commitsRecent": 5,
+			"commitsRecent": 0,
 			"lastCommit": "2026-06-14",
 			"firstCommit": "2026-06-14",
 			"languages": ["Svelte", "TypeScript", "CSS", "HTML", "JavaScript"],
@@ -204,38 +243,52 @@
 			"linesRemoved": 23,
 			"linesAddedAll": 1437,
 			"linesRemovedAll": 23,
-			"linesAddedRecent": 1437,
-			"linesRemovedRecent": 23,
-			"linesAddedRecentAll": 1437,
-			"linesRemovedRecentAll": 23,
+			"linesAddedRecent": 0,
+			"linesRemovedRecent": 0,
+			"linesAddedRecentAll": 0,
+			"linesRemovedRecentAll": 0,
 			"remote": "https://github.com/JasonWarrenUK/grumble",
 			"runtime": ["bun"],
-			"framework": ["@sveltejs/kit", "svelte-5"],
-			"measuredRef": "main"
+			"framework": ["@sveltejs/kit", "svelte-5", "vite"],
+			"measuredRef": "main",
+			"techFirstSeen": {
+				"bun": "2026-06-14",
+				"@sveltejs/kit": "2026-06-14",
+				"svelte-5": "2026-06-14",
+				"vite": "2026-06-14"
+			}
 		},
 		"guardrails": {
 			"head": "2a4881a",
 			"commits": 200,
-			"commitsRecentAll": 101,
+			"commitsRecentAll": 98,
 			"commitsMine": 100,
-			"commitsRecent": 94,
+			"commitsRecent": 92,
 			"lastCommit": "2026-06-30",
-			"firstCommit": "2025-12-11",
+			"firstCommit": "2026-04-02",
 			"languages": ["TypeScript", "SQL", "JavaScript", "CSS", "Python", "HTML", "Shell"],
 			"linesOfCode": 21751,
 			"linesAdded": 14607,
 			"linesRemoved": 10186,
 			"linesAddedAll": 61325,
 			"linesRemovedAll": 17715,
-			"linesAddedRecent": 9696,
-			"linesRemovedRecent": 10013,
-			"linesAddedRecentAll": 10018,
-			"linesRemovedRecentAll": 10547,
+			"linesAddedRecent": 9602,
+			"linesRemovedRecent": 10007,
+			"linesAddedRecentAll": 9740,
+			"linesRemovedRecentAll": 10070,
 			"remote": "https://github.com/yalla-coop/yalla-labs-guardrails",
 			"runtime": ["node", "python"],
 			"measuredRef": "staging",
 			"framework": ["react", "vite", "tailwindcss-4", "express", "fastapi"],
-			"database": ["pg"]
+			"database": ["pg"],
+			"techFirstSeen": {
+				"react": "2026-04-08",
+				"vite": "2026-04-08",
+				"tailwindcss-4": "2026-04-08",
+				"express": "2025-12-17",
+				"python": "2025-12-15",
+				"fastapi": "2025-12-15"
+			}
 		},
 		"historia": {
 			"head": "01f7b8b",
@@ -257,31 +310,46 @@
 			"linesRemovedRecentAll": 0,
 			"remote": "https://github.com/JasonWarrenUK/historia",
 			"runtime": ["bun"],
-			"framework": ["@sveltejs/kit", "svelte-5", "tailwindcss-4"],
-			"measuredRef": "main"
+			"framework": ["@sveltejs/kit", "svelte-5", "vite", "tailwindcss-4"],
+			"measuredRef": "main",
+			"techFirstSeen": {
+				"bun": "2026-03-14",
+				"@sveltejs/kit": "2026-03-14",
+				"svelte-5": "2026-03-14",
+				"vite": "2026-03-14",
+				"tailwindcss-4": "2026-03-14"
+			}
 		},
 		"iris": {
-			"head": "b2e6d89",
-			"commits": 753,
-			"commitsRecentAll": 87,
-			"commitsMine": 730,
-			"commitsRecent": 83,
-			"lastCommit": "2026-07-10",
+			"head": "f00abb9",
+			"commits": 768,
+			"commitsRecentAll": 97,
+			"commitsMine": 745,
+			"commitsRecent": 97,
+			"lastCommit": "2026-07-11",
 			"firstCommit": "2026-01-09",
 			"languages": ["TypeScript", "HTML", "Rust", "Svelte", "JavaScript"],
-			"linesOfCode": 28911,
-			"linesAdded": 134230,
-			"linesRemoved": 36878,
-			"linesAddedAll": 140298,
-			"linesRemovedAll": 37957,
-			"linesAddedRecent": 13886,
-			"linesRemovedRecent": 6607,
-			"linesAddedRecentAll": 14522,
-			"linesRemovedRecentAll": 6654,
+			"linesOfCode": 30133,
+			"linesAdded": 136107,
+			"linesRemoved": 37484,
+			"linesAddedAll": 142175,
+			"linesRemovedAll": 38563,
+			"linesAddedRecent": 15763,
+			"linesRemovedRecent": 7213,
+			"linesAddedRecentAll": 15763,
+			"linesRemovedRecentAll": 7213,
 			"remote": "https://github.com/foundersandcoders/iris",
 			"runtime": ["bun"],
-			"framework": ["@sveltejs/kit", "@opentui/core", "tauri"],
-			"measuredRef": "main"
+			"framework": ["@sveltejs/kit", "svelte-5", "vite", "@opentui/core", "tauri"],
+			"measuredRef": "main",
+			"techFirstSeen": {
+				"bun": "2026-01-09",
+				"@sveltejs/kit": "2026-01-09",
+				"svelte-5": "2026-01-09",
+				"vite": "2026-01-09",
+				"@opentui/core": "2026-02-06",
+				"tauri": "2026-01-09"
+			}
 		},
 		"kamino": {
 			"head": "671ae41",
@@ -301,7 +369,8 @@
 			"linesRemovedRecent": 0,
 			"linesAddedRecentAll": 0,
 			"linesRemovedRecentAll": 0,
-			"remote": "https://github.com/JasonWarrenUK/kamino"
+			"remote": "https://github.com/JasonWarrenUK/kamino",
+			"measuredRef": "main"
 		},
 		"kitchen-gremlin": {
 			"head": "a04d922",
@@ -325,12 +394,18 @@
 			"runtime": ["bun"],
 			"measuredRef": "main",
 			"framework": ["@sveltejs/kit", "svelte-5", "vite"],
-			"database": ["@sqlite.org/sqlite-wasm"]
+			"database": ["@sqlite.org/sqlite-wasm"],
+			"techFirstSeen": {
+				"bun": "2026-04-26",
+				"@sveltejs/kit": "2026-04-26",
+				"svelte-5": "2026-04-26",
+				"vite": "2026-04-26"
+			}
 		},
 		"lyra-rose": {
 			"head": "6c1d73d",
 			"commits": 46,
-			"commitsRecentAll": 20,
+			"commitsRecentAll": 18,
 			"commitsMine": 43,
 			"commitsRecent": 17,
 			"lastCommit": "2026-06-21",
@@ -343,13 +418,19 @@
 			"linesRemovedAll": 163,
 			"linesAddedRecent": 226,
 			"linesRemovedRecent": 38,
-			"linesAddedRecentAll": 822,
-			"linesRemovedRecentAll": 83,
+			"linesAddedRecentAll": 315,
+			"linesRemovedRecentAll": 39,
 			"remote": "https://github.com/JasonWarrenUK/lyra-rose",
 			"runtime": ["bun"],
-			"framework": ["@sveltejs/kit", "svelte-5"],
-			"database": ["@supabase/supabase-js"],
-			"measuredRef": "main"
+			"framework": ["@sveltejs/kit", "svelte-5", "vite"],
+			"database": ["@supabase/supabase-js", "supabase-postgres"],
+			"measuredRef": "main",
+			"techFirstSeen": {
+				"bun": "2026-04-27",
+				"@sveltejs/kit": "2026-04-27",
+				"svelte-5": "2026-04-27",
+				"vite": "2026-04-27"
+			}
 		},
 		"nib": {
 			"head": "d19cc8a",
@@ -371,7 +452,8 @@
 			"linesRemovedRecentAll": 0,
 			"remote": "https://github.com/JasonWarrenUK/nib",
 			"measuredRef": "main",
-			"framework": ["svelte-5", "inkjs"]
+			"framework": ["svelte-5"],
+			"runtime": ["inkjs"]
 		},
 		"psyche": {
 			"head": "d8aa8d7",
@@ -393,7 +475,10 @@
 			"linesRemovedRecentAll": 0,
 			"remote": "https://github.com/fac-31/psyche",
 			"measuredRef": "main",
-			"runtime": ["dotnet-9"]
+			"runtime": ["dotnet-9"],
+			"techFirstSeen": {
+				"dotnet-9": "2025-11-17"
+			}
 		},
 		"redot": {
 			"head": "8a11543",
@@ -402,9 +487,9 @@
 			"commitsMine": 28,
 			"commitsRecent": 0,
 			"lastCommit": "2025-10-13",
-			"firstCommit": "2025-09-29",
+			"firstCommit": "2025-10-06",
 			"languages": ["TypeScript", "JavaScript"],
-			"linesOfCode": 35629,
+			"linesOfCode": 35624,
 			"linesAdded": 2386,
 			"linesRemoved": 1091,
 			"linesAddedAll": 215125,
@@ -414,7 +499,8 @@
 			"linesAddedRecentAll": 0,
 			"linesRemovedRecentAll": 0,
 			"remote": "https://github.com/fac-31/ReDoT",
-			"runtime": ["node"]
+			"runtime": ["node", "bun"],
+			"measuredRef": "main"
 		},
 		"rhea": {
 			"head": "eb42a9d",
@@ -437,7 +523,13 @@
 			"remote": "https://github.com/foundersandcoders/rhea",
 			"runtime": ["node", "deno"],
 			"framework": ["@sveltejs/kit", "svelte-5", "vite"],
-			"measuredRef": "main"
+			"measuredRef": "main",
+			"techFirstSeen": {
+				"@sveltejs/kit": "2025-09-12",
+				"svelte-5": "2025-10-20",
+				"vite": "2025-09-12",
+				"deno": "2026-03-25"
+			}
 		},
 		"riffle": {
 			"head": "07aba44",
@@ -446,7 +538,7 @@
 			"commitsMine": 1,
 			"commitsRecent": 0,
 			"lastCommit": "2026-03-12",
-			"firstCommit": "2026-03-11",
+			"firstCommit": "2026-03-12",
 			"languages": ["TypeScript"],
 			"linesOfCode": 1179,
 			"linesAdded": 87,
@@ -503,32 +595,44 @@
 			"linesRemovedRecentAll": 0,
 			"remote": "https://github.com/JasonWarrenUK/sparker",
 			"runtime": ["node"],
-			"framework": ["@sveltejs/kit", "svelte-5"],
+			"framework": ["@sveltejs/kit", "svelte-5", "vite"],
 			"database": ["neo4j-driver"],
-			"measuredRef": "main"
+			"measuredRef": "main",
+			"techFirstSeen": {
+				"@sveltejs/kit": "2026-03-04",
+				"svelte-5": "2026-03-04",
+				"vite": "2026-03-04"
+			}
 		},
 		"the-tongue": {
-			"head": "acfe777",
-			"commits": 19,
-			"commitsRecentAll": 19,
-			"commitsMine": 19,
-			"commitsRecent": 19,
+			"head": "bcb69f7",
+			"commits": 23,
+			"commitsRecentAll": 15,
+			"commitsMine": 23,
+			"commitsRecent": 15,
 			"lastCommit": "2026-07-11",
 			"firstCommit": "2026-06-14",
 			"languages": ["TypeScript", "Svelte", "CSS", "HTML", "JavaScript"],
-			"linesOfCode": 1304,
-			"linesAdded": 3299,
-			"linesRemoved": 77,
-			"linesAddedAll": 3299,
-			"linesRemovedAll": 77,
-			"linesAddedRecent": 3299,
-			"linesRemovedRecent": 77,
-			"linesAddedRecentAll": 3299,
-			"linesRemovedRecentAll": 77,
+			"linesOfCode": 1628,
+			"linesAdded": 4036,
+			"linesRemoved": 121,
+			"linesAddedAll": 4036,
+			"linesRemovedAll": 121,
+			"linesAddedRecent": 1684,
+			"linesRemovedRecent": 96,
+			"linesAddedRecentAll": 1684,
+			"linesRemovedRecentAll": 96,
 			"remote": "https://github.com/JasonWarrenUK/the-tongue",
 			"runtime": ["bun"],
 			"framework": ["@sveltejs/kit", "svelte-5", "vite", "tailwindcss-4"],
-			"measuredRef": "main"
+			"measuredRef": "main",
+			"techFirstSeen": {
+				"bun": "2026-06-14",
+				"@sveltejs/kit": "2026-06-14",
+				"svelte-5": "2026-06-14",
+				"vite": "2026-06-14",
+				"tailwindcss-4": "2026-06-14"
+			}
 		},
 		"the-work": {
 			"head": "165a081",
@@ -538,8 +642,8 @@
 			"commitsRecent": 10,
 			"lastCommit": "2026-07-04",
 			"firstCommit": "2023-03-23",
-			"languages": ["Svelte", "TypeScript", "HTML", "CSS", "JavaScript"],
-			"linesOfCode": 5286,
+			"languages": ["Ink", "Svelte", "TypeScript", "HTML", "CSS", "JavaScript"],
+			"linesOfCode": 7898,
 			"linesAdded": 15893,
 			"linesRemoved": 356,
 			"linesAddedAll": 28074,
@@ -549,9 +653,16 @@
 			"linesAddedRecentAll": 1049,
 			"linesRemovedRecentAll": 168,
 			"remote": "https://github.com/JasonWarrenUK/the-work",
-			"runtime": ["bun"],
-			"framework": ["@sveltejs/kit", "svelte-5", "vite", "inkjs"],
-			"measuredRef": "main"
+			"runtime": ["bun", "inkjs"],
+			"framework": ["@sveltejs/kit", "svelte-5", "vite"],
+			"measuredRef": "main",
+			"techFirstSeen": {
+				"bun": "2026-03-05",
+				"@sveltejs/kit": "2026-03-05",
+				"svelte-5": "2026-03-05",
+				"vite": "2026-03-05",
+				"inkjs": "2026-03-05"
+			}
 		},
 		"things-we-do": {
 			"head": "4e47c16",
@@ -573,39 +684,51 @@
 			"linesRemovedRecentAll": 0,
 			"remote": "https://github.com/fac30/things-we-do",
 			"runtime": ["node"],
-			"framework": ["next", "react", "tailwindcss"],
+			"framework": ["next", "react", "tailwindcss-3"],
 			"database": ["rxdb"],
-			"measuredRef": "main"
+			"measuredRef": "main",
+			"techFirstSeen": {
+				"next": "2024-11-25",
+				"react": "2024-11-25",
+				"tailwindcss-3": "2024-11-25"
+			}
 		},
 		"those-who-came-before": {
-			"head": "a8fa2cc",
-			"commits": 145,
-			"commitsRecentAll": 54,
-			"commitsMine": 145,
-			"commitsRecent": 54,
-			"lastCommit": "2026-07-11",
+			"head": "238ddd6",
+			"commits": 179,
+			"commitsRecentAll": 88,
+			"commitsMine": 179,
+			"commitsRecent": 88,
+			"lastCommit": "2026-07-13",
 			"firstCommit": "2023-09-09",
 			"languages": ["TypeScript", "Svelte", "CSS", "HTML", "JavaScript"],
-			"linesOfCode": 4639,
-			"linesAdded": 31566,
-			"linesRemoved": 14852,
-			"linesAddedAll": 31566,
-			"linesRemovedAll": 14852,
-			"linesAddedRecent": 6044,
-			"linesRemovedRecent": 987,
-			"linesAddedRecentAll": 6044,
-			"linesRemovedRecentAll": 987,
+			"linesOfCode": 7754,
+			"linesAdded": 35541,
+			"linesRemoved": 15092,
+			"linesAddedAll": 35541,
+			"linesRemovedAll": 15092,
+			"linesAddedRecent": 10019,
+			"linesRemovedRecent": 1227,
+			"linesAddedRecentAll": 10019,
+			"linesRemovedRecentAll": 1227,
 			"remote": "https://github.com/JasonWarrenUK/those-who-came-before",
 			"measuredRef": "main",
 			"runtime": ["deno"],
-			"framework": ["@sveltejs/kit", "svelte-5", "vite", "tailwindcss-4"]
+			"framework": ["@sveltejs/kit", "svelte-5", "vite", "tailwindcss-4"],
+			"techFirstSeen": {
+				"deno": "2025-06-21",
+				"@sveltejs/kit": "2026-02-16",
+				"svelte-5": "2026-02-16",
+				"vite": "2026-02-16",
+				"tailwindcss-4": "2026-02-16"
+			}
 		},
 		"top-girls": {
 			"head": "9a9accf",
 			"commits": 33,
-			"commitsRecentAll": 33,
+			"commitsRecentAll": 13,
 			"commitsMine": 33,
-			"commitsRecent": 33,
+			"commitsRecent": 13,
 			"lastCommit": "2026-06-16",
 			"firstCommit": "2026-06-14",
 			"languages": ["TypeScript", "Svelte", "Shell", "CSS", "HTML", "JavaScript"],
@@ -614,14 +737,20 @@
 			"linesRemoved": 612,
 			"linesAddedAll": 4795,
 			"linesRemovedAll": 612,
-			"linesAddedRecent": 4795,
-			"linesRemovedRecent": 612,
-			"linesAddedRecentAll": 4795,
-			"linesRemovedRecentAll": 612,
+			"linesAddedRecent": 2714,
+			"linesRemovedRecent": 282,
+			"linesAddedRecentAll": 2714,
+			"linesRemovedRecentAll": 282,
 			"remote": "https://github.com/JasonWarrenUK/top-girls",
 			"runtime": ["bun"],
-			"framework": ["svelte", "svelte-5"],
-			"measuredRef": "main"
+			"framework": ["svelte-5", "vite"],
+			"measuredRef": "main",
+			"techFirstSeen": {
+				"bun": "2026-06-14",
+				"svelte": "2026-06-14",
+				"svelte-5": "2026-06-14",
+				"vite": "2026-06-14"
+			}
 		},
 		"workwise": {
 			"head": "ec6516d",
@@ -630,7 +759,7 @@
 			"commitsMine": 196,
 			"commitsRecent": 0,
 			"lastCommit": "2025-11-01",
-			"firstCommit": "2025-05-28",
+			"firstCommit": "2025-06-02",
 			"languages": ["TypeScript", "Svelte", "SQL", "Shell", "JavaScript", "HTML", "CSS"],
 			"linesOfCode": 12225,
 			"linesAdded": 16608,
@@ -645,30 +774,40 @@
 			"runtime": ["node"],
 			"framework": ["@sveltejs/kit", "svelte-5", "vite", "tailwindcss-4"],
 			"database": ["@supabase/supabase-js", "supabase-postgres"],
-			"measuredRef": "main"
+			"measuredRef": "main",
+			"techFirstSeen": {
+				"@sveltejs/kit": "2025-05-28",
+				"svelte-5": "2025-05-28",
+				"vite": "2025-05-28",
+				"tailwindcss-4": "2025-05-28"
+			}
 		},
 		"wyrd-tui": {
-			"head": "d97a60c",
-			"commits": 306,
-			"commitsRecentAll": 36,
-			"commitsMine": 306,
-			"commitsRecent": 36,
-			"lastCommit": "2026-07-04",
+			"head": "55fec42",
+			"commits": 308,
+			"commitsRecentAll": 23,
+			"commitsMine": 308,
+			"commitsRecent": 23,
+			"lastCommit": "2026-07-11",
 			"firstCommit": "2026-03-18",
 			"languages": ["Go", "HTML"],
 			"linesOfCode": 44266,
-			"linesAdded": 60141,
-			"linesRemoved": 10110,
-			"linesAddedAll": 60141,
-			"linesRemovedAll": 10110,
-			"linesAddedRecent": 3196,
-			"linesRemovedRecent": 1938,
-			"linesAddedRecentAll": 3196,
-			"linesRemovedRecentAll": 1938,
+			"linesAdded": 60160,
+			"linesRemoved": 10111,
+			"linesAddedAll": 60160,
+			"linesRemovedAll": 10111,
+			"linesAddedRecent": 2198,
+			"linesRemovedRecent": 1696,
+			"linesAddedRecentAll": 2198,
+			"linesRemovedRecentAll": 1696,
 			"remote": "https://github.com/JasonWarrenUK/wyrd",
 			"runtime": ["go"],
 			"measuredRef": "main",
-			"framework": ["bubble-tea"]
+			"framework": ["bubble-tea"],
+			"techFirstSeen": {
+				"go": "2026-03-19",
+				"bubble-tea": "2026-03-23"
+			}
 		},
 		"beacons": {
 			"head": "0102f4a",
@@ -692,8 +831,12 @@
 			"measuredRef": "main",
 			"runtime": ["deno", "node"],
 			"companionRemotes": ["https://github.com/foundersandcoders/beacons-frontend-v2"],
-			"framework": ["oak", "react", "vite", "tailwindcss"],
-			"database": ["neo4j-driver", "@supabase/supabase-js", "supabase-postgres"]
+			"framework": ["oak", "react", "vite", "tailwindcss-3"],
+			"database": ["neo4j-driver", "@supabase/supabase-js", "supabase-postgres"],
+			"techFirstSeen": {
+				"deno": "2025-01-14",
+				"oak": "2025-03-07"
+			}
 		},
 		"craft-and-graft": {
 			"head": "6c50037",
@@ -715,10 +858,15 @@
 			"linesRemovedRecentAll": 0,
 			"remote": "https://github.com/fac30/craft-and-graft-front",
 			"runtime": ["node"],
-			"framework": ["react", "vite", "tailwindcss", "express"],
+			"framework": ["react", "vite", "tailwindcss-3", "express"],
 			"measuredRef": "main",
 			"companionRemotes": ["https://github.com/fac30/craft-and-graft-api"],
-			"database": ["pg"]
+			"database": ["pg"],
+			"techFirstSeen": {
+				"react": "2024-10-15",
+				"vite": "2024-10-15",
+				"tailwindcss-3": "2024-10-16"
+			}
 		},
 		"sakura": {
 			"head": "41e03f7",
@@ -742,8 +890,12 @@
 			"measuredRef": "main",
 			"companionRemotes": ["https://github.com/fac30/sakura-front"],
 			"runtime": ["dotnet-8", "node"],
-			"framework": ["aspnet-core", "react", "tailwindcss"],
-			"database": ["entity-framework-core", "npgsql"]
+			"framework": ["aspnet-core", "react", "vite", "tailwindcss-3"],
+			"database": ["entity-framework-core", "npgsql"],
+			"techFirstSeen": {
+				"dotnet-8": "2024-11-12",
+				"aspnet-core": "2024-11-12"
+			}
 		},
 		"rimewarden": {
 			"head": "7f4aa57",
@@ -765,8 +917,15 @@
 			"linesRemovedRecentAll": 0,
 			"remote": "https://github.com/JasonWarrenUK/rimewarden",
 			"runtime": ["bun"],
-			"framework": ["@sveltejs/kit", "svelte-5", "tailwindcss-4"],
-			"measuredRef": "main"
+			"framework": ["@sveltejs/kit", "svelte-5", "vite", "tailwindcss-4"],
+			"measuredRef": "main",
+			"techFirstSeen": {
+				"bun": "2026-01-24",
+				"@sveltejs/kit": "2026-01-24",
+				"svelte-5": "2026-01-24",
+				"vite": "2026-01-24",
+				"tailwindcss-4": "2026-01-24"
+			}
 		}
 	}
 }

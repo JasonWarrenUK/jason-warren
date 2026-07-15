@@ -25,7 +25,8 @@ import sourcesManifest from './sources.json';
 import overridesManifest from './overrides.json';
 import excludedManifest from './excluded.json';
 import inProgressManifest from './in-progress.json';
-import { defaultProjectFromManifest, mergeAuthored } from './defaults.js';
+import { defaultProjectFromManifest, mergeAuthored, inferTechFirstSeen } from './defaults.js';
+import { getTechKindOverrides } from './tech-overlays.js';
 import type { Project, AuthoredProject, ProjectMetrics, InProgressEntry } from './types.js';
 
 export type { Project };
@@ -75,6 +76,12 @@ export interface SyncedSource {
 	runtime?: string[];
 	database?: string[];
 	framework?: string[];
+	// First-introduced date (YYYY-MM-DD) per detected tech identity, keyed by
+	// the same identity strings as runtime/framework/database (e.g. 'svelte-5').
+	// Populated by a git history search, distinct from firstCommit (repo
+	// inception) — a tag on a long-lived repo can enter years after the repo
+	// started. Source-grep-only signals are absent here by design.
+	techFirstSeen?: Record<string, string>;
 }
 
 const sources = sourcesManifest.sources as Record<string, SyncedSource>;
@@ -251,11 +258,20 @@ function withSyncedMetrics(project: Project): Project {
 		if (merged[key] === undefined) delete merged[key];
 	}
 
+	// Re-key the manifest's identity-keyed techFirstSeen (e.g. 'svelte-5') to
+	// the tag-label-keyed form adoption.ts reads (e.g. 'Svelte 5'), via the
+	// same taxonomy lookups inferTags uses. No per-label override shape exists
+	// in SlugOverrides yet — this seam is deliberately ready for one (mirroring
+	// lastCommit/firstCommit above) rather than a gap; add override precedence
+	// here if that's ever built.
+	const techFirstSeen = synced ? inferTechFirstSeen(synced) : project.techFirstSeen;
+
 	return {
 		...project,
 		// Date overlay: override > synced > base default (empty string for manifest-only)
 		lastCommit: ov?.lastCommit?.value ?? synced?.lastCommit ?? project.lastCommit,
 		firstCommit: ov?.firstCommit?.value ?? synced?.firstCommit ?? project.firstCommit,
+		techFirstSeen,
 		metrics: Object.keys(merged).length > 0 ? merged : undefined
 	};
 }
@@ -270,10 +286,38 @@ function withSyncedMetrics(project: Project): Project {
 // order — document it so the map diff is expected.
 // ---------------------------------------------------------------------------
 
+/**
+ * Applies authored per-tech kind overrides (tech-overlays.ts) to a project's
+ * merged tags. This is the SINGLE application point — running here, between
+ * mergeAuthored and withSyncedMetrics, means every consumer of `projects`
+ * (adoption, tech graph, stack, queries, cards) sees the same kind. An
+ * override can collapse a former two-kind pair (e.g. language + runtime)
+ * into one, so the result re-dedupes by (kind, label).
+ */
+function applyTechKindOverrides(project: Project): Project {
+	const overrides = getTechKindOverrides();
+	if (overrides.size === 0) return project;
+	const seen = new Set<string>();
+	const tags = project.tags
+		.map((tag) => {
+			const kind = overrides.get(tag.label) ?? tag.kind;
+			return kind === tag.kind ? tag : { ...tag, kind };
+		})
+		.filter((tag) => {
+			const key = `${tag.kind}:${tag.label}`;
+			if (seen.has(key)) return false;
+			seen.add(key);
+			return true;
+		});
+	return { ...project, tags };
+}
+
 export const projects: Project[] = Object.keys(sources)
 	.filter((slug) => !excludedSlugs.has(slug))
 	.map((slug) =>
 		withSyncedMetrics(
-			mergeAuthored(defaultProjectFromManifest(slug, sources[slug]), authoredBySlug[slug])
+			applyTechKindOverrides(
+				mergeAuthored(defaultProjectFromManifest(slug, sources[slug]), authoredBySlug[slug])
+			)
 		)
 	);

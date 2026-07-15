@@ -51,14 +51,14 @@ function findManifests(repoPath, fileNames, maxDepth = 3) {
 
 import { execFile, spawn, spawnSync } from 'child_process';
 import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from 'fs';
-import { join } from 'path';
+import { join, dirname, relative } from 'path';
 import { fileURLToPath, pathToFileURL } from 'url';
 import { cpus } from 'os';
 import { parseArgs, promisify } from 'node:util';
 
 const execFileAsync = promisify(execFile);
 // COUPLING [5DR.4]: resolved — tag taxonomy relocated to scripts/tag-taxonomy.js.
-import { EXTENSION_LANGUAGE } from './tag-taxonomy.js';
+import { EXTENSION_LANGUAGE, LANGUAGE_TAGS, RUNTIME_TAGS, FRAMEWORK_TAGS, DATABASE_TAGS } from './tag-taxonomy.js';
 import { loadConfig, DEFAULTS } from './drift-config.js';
 
 // ---------------------------------------------------------------------------
@@ -101,6 +101,11 @@ const excludedPath = config.paths.excluded;
 const cachePath = config.paths.cache;
 const projectsDir = config.paths.projects;
 const inProgressPath = config.paths.inProgress;
+// tech-relationships.ts has no dedicated config.paths entry — it's a sibling
+// of the projects overlay directory, not a per-project file.
+const techRelationshipsPath = join(dirname(projectsDir), 'tech-relationships.ts');
+const techOverlaysPath = join(dirname(projectsDir), 'tech-overlays.ts');
+const themesPath = join(dirname(projectsDir), 'themes.ts');
 
 // ---------------------------------------------------------------------------
 // File helpers
@@ -220,7 +225,11 @@ const ARRAY_FINGERPRINT_FIELDS = new Set(
 // Fields excluded from drift comparison even though they live in the schema
 // and persist in sources.json. These are metadata / provenance fields; their
 // changes are surfaced via advisory report sections, not as field drift.
-const DRIFT_SKIP_FIELDS = new Set(['measuredRef']);
+// techFirstSeen is an object: the scalar `was !== now` comparison used for
+// non-array fields is always true for object identity, which would flag it
+// as drifted on every single sync. It is still fully persisted and written —
+// only excluded from the drift *report*, same treatment as measuredRef.
+const DRIFT_SKIP_FIELDS = new Set(['measuredRef', 'techFirstSeen']);
 
 // EXTENSION_LANGUAGE is imported from scripts/tag-taxonomy.js above.
 // That module is the single source of truth shared between the CLI and the app.
@@ -342,23 +351,77 @@ async function countLinesViaBlobs(repoPath, listing, ref = 'HEAD') {
 }
 
 /**
+ * Run-level collector for file extensions seen during a scan that have no
+ * EXTENSION_LANGUAGE mapping. Previously these vanished with zero trace —
+ * detectLanguages silently `continue`d past them. Surfaced by `drift audit`
+ * as an "Unmapped extensions" advisory so a real but untagged language (like
+ * Ink before this map entry existed) is discoverable instead of invisible.
+ *
+ * Module-level rather than threaded through the fingerprint: unmapped
+ * extensions are a scan-time diagnostic, not a persisted metric, so they
+ * must stay out of the schema-validated sources.json shape and the
+ * ref+TTL fingerprint cache. Reset at the start of each scan via
+ * resetUnmappedExtensions().
+ */
+let unmappedExtensions = new Map();
+
+function resetUnmappedExtensions() {
+	unmappedExtensions = new Map();
+}
+
+/**
  * Languages present in the repo, ordered by file count (most prevalent first).
  * Accepts a pre-fetched file listing so the caller can share one git ls-files result
  * between detectLanguages and countLinesOfCode.
  *
+ * Extensions with no EXTENSION_LANGUAGE mapping are folded into the module-level
+ * unmappedExtensions collector rather than silently dropped.
+ *
  * @param {string | null} listing  Result of listFiles(), or null.
+ * @param {string} [slug]  Project slug, used to attribute unmapped extensions.
  */
-function detectLanguages(listing) {
+function detectLanguages(listing, slug) {
 	if (!listing) return [];
 	const counts = new Map();
 	for (const file of listing.split('\n')) {
 		const dot = file.lastIndexOf('.');
 		if (dot < 0) continue;
-		const language = EXTENSION_LANGUAGE[file.slice(dot + 1).toLowerCase()];
-		if (!language) continue;
+		const ext = file.slice(dot + 1).toLowerCase();
+		const language = EXTENSION_LANGUAGE[ext];
+		if (!language) {
+			const entry = unmappedExtensions.get(ext) ?? { files: 0, repos: new Set() };
+			entry.files += 1;
+			if (slug) entry.repos.add(slug);
+			unmappedExtensions.set(ext, entry);
+			continue;
+		}
 		counts.set(language, (counts.get(language) ?? 0) + 1);
 	}
 	return [...counts.entries()].sort((a, b) => b[1] - a[1]).map(([language]) => language);
+}
+
+/**
+ * Prints a short advisory listing file extensions seen this scan that have
+ * no EXTENSION_LANGUAGE mapping, sorted by file count. Silent when nothing
+ * was scanned or every extension seen is already mapped — this is advisory
+ * noise, not a report section, so it stays out of --json output.
+ *
+ * @param {object} palette
+ */
+function printUnmappedExtensionsAdvisory(palette) {
+	if (unmappedExtensions.size === 0) return;
+	const { DIM, YELLOW, BOLD, RESET } = palette;
+	const rows = [...unmappedExtensions.entries()].sort((a, b) => b[1].files - a[1].files);
+	process.stderr.write(
+		`${YELLOW}${BOLD}Unmapped extensions${RESET}${DIM} (not in EXTENSION_LANGUAGE — invisible to language detection):${RESET}\n`
+	);
+	for (const [ext, { files, repos }] of rows) {
+		const repoCount = repos.size;
+		process.stderr.write(
+			`  ${DIM}.${ext}  ${files} file${files === 1 ? '' : 's'}, ${repoCount} repo${repoCount === 1 ? '' : 's'}${RESET}\n`
+		);
+	}
+	process.stderr.write('\n');
 }
 
 /**
@@ -456,8 +519,34 @@ async function defaultBranch(repoPath) {
 	return { ref: 'HEAD', fellBack: true };
 }
 
-/** ISO date of the earliest root commit, the project's inception. */
+/**
+ * ISO date of Jason's earliest commit, the project's inception from his side.
+ *
+ * Author-scoped via AUTHOR_PATTERN, same as every other "mine" metric
+ * (countCommits, countChurn). A repo Jason contributed to but did not
+ * originate still gets a meaningful "when I joined" date rather than the
+ * root commit's date, which may belong to another author entirely.
+ *
+ * Falls back to the unfiltered root/earliest commit only when Jason has no
+ * authored commits on the ref at all (e.g. an empty clone mid-scan), so a
+ * project never loses its date entirely.
+ */
 async function getFirstCommit(repoPath, ref = 'HEAD') {
+	const mineRoots = await git(
+		['log', '--max-parents=0', '--extended-regexp', `--author=${AUTHOR_PATTERN}`, '--format=%cs', ref],
+		repoPath
+	);
+	if (mineRoots.ok && mineRoots.out) {
+		return mineRoots.out.split('\n').sort()[0];
+	}
+	const mineReversed = await git(
+		['log', '--reverse', '--extended-regexp', `--author=${AUTHOR_PATTERN}`, '--format=%cs', ref],
+		repoPath
+	);
+	if (mineReversed.ok && mineReversed.out) {
+		return mineReversed.out.split('\n')[0];
+	}
+	// No Jason-authored commits found — fall back to the repo's own root commit.
 	const roots = await git(['log', '--max-parents=0', '--format=%cs', ref], repoPath);
 	if (roots.ok && roots.out) {
 		return roots.out.split('\n').sort()[0];
@@ -476,22 +565,34 @@ async function getFirstCommit(repoPath, ref = 'HEAD') {
  * single contract binding the CLI parser to the app's tag inference.
  *
  * @param {string} repoPath
- * @returns {{ runtime: string[], framework: string[], database: string[] }}
+ * @returns {{ runtime: string[], framework: string[], database: string[], detections: Array<{identity: string, file: string, kind: 'add'|'pickaxe'|'regex', needle?: string}> }}
  */
 function detectDependencies(repoPath) {
 	const runtime = [];
 	const framework = [];
 	const database = [];
+	// Dating breadcrumbs for dateDetectedTech: one entry per identity actually
+	// found above, describing which file and git-history query recovers its
+	// real introduction date. Only manifest/lockfile/config-file paths are
+	// tracked here — the broader source-grep signals in detectSourceSignals
+	// are deliberately excluded (see that function's own comment) and those
+	// identities fall back to the repo's firstCommit downstream.
+	const detections = [];
 
-	const hasBunLock =
-		existsSync(join(repoPath, 'bun.lock')) ||
-		existsSync(join(repoPath, 'bun.lockb')) ||
-		existsSync(join(repoPath, 'bunfig.toml'));
-	const hasDenoLock =
-		existsSync(join(repoPath, 'deno.json')) || existsSync(join(repoPath, 'deno.lock'));
+	const bunLockPath = ['bun.lock', 'bun.lockb', 'bunfig.toml']
+		.map((file) => join(repoPath, file))
+		.find((file) => existsSync(file));
+	const denoLockPath = ['deno.json', 'deno.lock']
+		.map((file) => join(repoPath, file))
+		.find((file) => existsSync(file));
 
-	if (hasBunLock) runtime.push('bun');
-	else if (hasDenoLock) runtime.push('deno');
+	if (bunLockPath) {
+		runtime.push('bun');
+		detections.push({ identity: 'bun', file: bunLockPath, kind: 'add' });
+	} else if (denoLockPath) {
+		runtime.push('deno');
+		detections.push({ identity: 'deno', file: denoLockPath, kind: 'add' });
+	}
 
 	// -----------------------------------------------------------------------
 	// package.json: JS/TS ecosystem, including monorepo workspaces
@@ -504,29 +605,113 @@ function detectDependencies(repoPath) {
 			const pkg = JSON.parse(readFileSync(packagePath, 'utf8'));
 			const allDeps = { ...(pkg.dependencies ?? {}), ...(pkg.devDependencies ?? {}) };
 
-			if ('@sveltejs/kit' in allDeps) framework.push('@sveltejs/kit');
-			else if ('svelte' in allDeps) framework.push('svelte');
-			const svelteVersion = allDeps.svelte;
-			if (
-				typeof svelteVersion === 'string' &&
-				svelteVersion.match(/\d+/)?.[0] === '5'
-			) {
-				framework.push('svelte-5');
+			if ('@sveltejs/kit' in allDeps) {
+				framework.push('@sveltejs/kit');
+				detections.push({
+					identity: '@sveltejs/kit',
+					file: packagePath,
+					kind: 'pickaxe',
+					needle: '@sveltejs/kit'
+				});
+			} else if ('svelte' in allDeps) {
+				framework.push('svelte');
+				detections.push({ identity: 'svelte', file: packagePath, kind: 'pickaxe', needle: 'svelte' });
 			}
-			if ('next' in allDeps) framework.push('next');
-			if ('react' in allDeps) framework.push('react');
-			if ('vite' in allDeps) framework.push('vite');
-			if ('express' in allDeps) framework.push('express');
-			if ('inkjs' in allDeps) framework.push('inkjs');
+			const svelteVersion = allDeps.svelte;
+			const svelteMajor =
+				typeof svelteVersion === 'string' ? svelteVersion.match(/\d+/)?.[0] : undefined;
+			if (svelteMajor !== undefined) {
+				framework.push(`svelte-${svelteMajor}`);
+				// Regex pickaxe on the version string, not a plain -S on the package
+				// name, so a 4→5 migration dates to the migration commit, not the
+				// repo's first-ever svelte dependency (which may be an older major).
+				// [[:space:]]* not \s*: git's -G uses POSIX ERE by default, which has
+				// no \s shorthand (silently matches nothing rather than erroring).
+				// The POSIX class also tolerates both prettier-formatted ("key": "value")
+				// and compact (no space) JSON, unlike assuming a literal single space.
+				detections.push({
+					identity: `svelte-${svelteMajor}`,
+					file: packagePath,
+					kind: 'regex',
+					needle: `"svelte":[[:space:]]*"[\\^~]?${svelteMajor}`
+				});
+			}
+			if ('next' in allDeps) {
+				framework.push('next');
+				detections.push({ identity: 'next', file: packagePath, kind: 'pickaxe', needle: 'next' });
+			}
+			if ('react' in allDeps) {
+				framework.push('react');
+				detections.push({ identity: 'react', file: packagePath, kind: 'pickaxe', needle: 'react' });
+			}
+			if ('vite' in allDeps) {
+				framework.push('vite');
+				detections.push({ identity: 'vite', file: packagePath, kind: 'pickaxe', needle: 'vite' });
+			}
+			if ('express' in allDeps) {
+				framework.push('express');
+				detections.push({
+					identity: 'express',
+					file: packagePath,
+					kind: 'pickaxe',
+					needle: 'express'
+				});
+			}
+			// inkjs is the Ink runtime, not a framework — kept separate from the Ink
+			// language tag itself (detected via the .ink extension, see EXTENSION_LANGUAGE).
+			if ('inkjs' in allDeps) {
+				runtime.push('inkjs');
+				detections.push({ identity: 'inkjs', file: packagePath, kind: 'pickaxe', needle: 'inkjs' });
+			}
 			if ('@deno/svelte-adapter' in allDeps && !runtime.includes('deno')) {
 				runtime.push('deno');
+				detections.push({
+					identity: 'deno',
+					file: packagePath,
+					kind: 'pickaxe',
+					needle: '@deno/svelte-adapter'
+				});
 			}
-			if ('@opentui/core' in allDeps) framework.push('@opentui/core');
-			if ('@tauri-apps/api' in allDeps || 'tauri' in allDeps) framework.push('tauri');
+			if ('@opentui/core' in allDeps) {
+				framework.push('@opentui/core');
+				detections.push({
+					identity: '@opentui/core',
+					file: packagePath,
+					kind: 'pickaxe',
+					needle: '@opentui/core'
+				});
+			}
+			if ('@tauri-apps/api' in allDeps || 'tauri' in allDeps) {
+				framework.push('tauri');
+				const needle = '@tauri-apps/api' in allDeps ? '@tauri-apps/api' : 'tauri';
+				detections.push({ identity: 'tauri', file: packagePath, kind: 'pickaxe', needle });
+			}
+			// Per-major identity, mirroring the .csproj-driven dotnet-N scheme:
+			// each Tailwind major carries its own adoption date, so a mid-project
+			// migration shows on the timeline. The versionless identity survives
+			// only as a fallback for unparseable ranges; majors without a
+			// taxonomy entry drop silently, per the taxonomy's own contract.
 			const tailwindVersion = allDeps.tailwindcss ?? allDeps['@tailwindcss/vite'];
 			if (typeof tailwindVersion === 'string') {
+				const tailwindMajor = tailwindVersion.match(/\d+/)?.[0];
 				framework.push(
-					tailwindVersion.match(/\d+/)?.[0] === '4' ? 'tailwindcss-4' : 'tailwindcss'
+					tailwindMajor === undefined ? 'tailwindcss' : `tailwindcss-${tailwindMajor}`
+				);
+				detections.push(
+					tailwindMajor === undefined
+						? {
+								identity: 'tailwindcss',
+								file: packagePath,
+								kind: 'pickaxe',
+								needle: 'tailwindcss'
+							}
+						: {
+								identity: `tailwindcss-${tailwindMajor}`,
+								file: packagePath,
+								kind: 'regex',
+								// [[:space:]]* not \s* — see the svelte needle above.
+								needle: `"(tailwindcss|@tailwindcss/vite)":[[:space:]]*"[\\^~]?${tailwindMajor}`
+							}
 				);
 			}
 
@@ -554,12 +739,52 @@ function detectDependencies(repoPath) {
 			.find((file) => existsSync(file));
 		if (denoConfigPath) {
 			const denoConfig = readFileSync(denoConfigPath, 'utf8');
-			if (/@oak\/oak|deno\.land\/x\/oak/i.test(denoConfig)) framework.push('oak');
-			if (/npm:@sveltejs\/kit/i.test(denoConfig)) framework.push('@sveltejs/kit');
-			if (/npm:svelte@(?:\^|~)?5/i.test(denoConfig)) framework.push('svelte-5');
-			if (/npm:vite@/i.test(denoConfig)) framework.push('vite');
-			if (/npm:(?:@tailwindcss\/vite|tailwindcss)@(?:\^|~)?4/i.test(denoConfig)) {
-				framework.push('tailwindcss-4');
+			if (/@oak\/oak|deno\.land\/x\/oak/i.test(denoConfig)) {
+				framework.push('oak');
+				detections.push({
+					identity: 'oak',
+					file: denoConfigPath,
+					kind: 'regex',
+					needle: '@oak/oak|deno\\.land/x/oak'
+				});
+			}
+			if (/npm:@sveltejs\/kit/i.test(denoConfig)) {
+				framework.push('@sveltejs/kit');
+				detections.push({
+					identity: '@sveltejs/kit',
+					file: denoConfigPath,
+					kind: 'regex',
+					needle: 'npm:@sveltejs/kit'
+				});
+			}
+			const denoSvelte = denoConfig.match(/npm:svelte@(?:\^|~)?(\d+)/i);
+			if (denoSvelte) {
+				framework.push(`svelte-${denoSvelte[1]}`);
+				detections.push({
+					identity: `svelte-${denoSvelte[1]}`,
+					file: denoConfigPath,
+					kind: 'regex',
+					needle: `npm:svelte@[\\^~]?${denoSvelte[1]}`
+				});
+			}
+			if (/npm:vite@/i.test(denoConfig)) {
+				framework.push('vite');
+				detections.push({
+					identity: 'vite',
+					file: denoConfigPath,
+					kind: 'regex',
+					needle: 'npm:vite@'
+				});
+			}
+			const denoTailwind = denoConfig.match(/npm:(?:@tailwindcss\/vite|tailwindcss)@(?:\^|~)?(\d+)/i);
+			if (denoTailwind) {
+				framework.push(`tailwindcss-${denoTailwind[1]}`);
+				detections.push({
+					identity: `tailwindcss-${denoTailwind[1]}`,
+					file: denoConfigPath,
+					kind: 'regex',
+					needle: `npm:(@tailwindcss/vite|tailwindcss)@[\\^~]?${denoTailwind[1]}`
+				});
 			}
 			if (/neo4j-driver/i.test(denoConfig)) database.push('neo4j-driver');
 			if (/@supabase\/supabase-js/i.test(denoConfig)) {
@@ -574,10 +799,22 @@ function detectDependencies(repoPath) {
 	// Go: go.mod
 	// -----------------------------------------------------------------------
 	try {
-		if (existsSync(join(repoPath, 'go.mod'))) {
-			if (!runtime.includes('go')) runtime.push('go');
-			const goModule = readFileSync(join(repoPath, 'go.mod'), 'utf8');
-			if (/charm\.land\/bubbletea/i.test(goModule)) framework.push('bubble-tea');
+		const goModPath = join(repoPath, 'go.mod');
+		if (existsSync(goModPath)) {
+			if (!runtime.includes('go')) {
+				runtime.push('go');
+				detections.push({ identity: 'go', file: goModPath, kind: 'add' });
+			}
+			const goModule = readFileSync(goModPath, 'utf8');
+			if (/charm\.land\/bubbletea/i.test(goModule)) {
+				framework.push('bubble-tea');
+				detections.push({
+					identity: 'bubble-tea',
+					file: goModPath,
+					kind: 'regex',
+					needle: 'charm\\.land/bubbletea'
+				});
+			}
 		}
 	} catch {
 		// Ignore
@@ -592,12 +829,32 @@ function detectDependencies(repoPath) {
 			new Set(['pyproject.toml', 'requirements.txt'])
 		);
 		if (pythonManifests.length > 0) {
-			if (!runtime.includes('python')) runtime.push('python');
+			if (!runtime.includes('python')) {
+				runtime.push('python');
+				detections.push({ identity: 'python', file: pythonManifests[0], kind: 'add' });
+			}
 			for (const manifestPath of pythonManifests) {
 				const manifestText = readFileSync(manifestPath, 'utf8');
-				if (/fastapi/i.test(manifestText)) framework.push('fastapi');
-				else if (/flask/i.test(manifestText)) framework.push('flask');
-				else if (/django/i.test(manifestText)) framework.push('django');
+				if (/fastapi/i.test(manifestText)) {
+					framework.push('fastapi');
+					detections.push({
+						identity: 'fastapi',
+						file: manifestPath,
+						kind: 'regex',
+						needle: 'fastapi'
+					});
+				} else if (/flask/i.test(manifestText)) {
+					framework.push('flask');
+					detections.push({ identity: 'flask', file: manifestPath, kind: 'regex', needle: 'flask' });
+				} else if (/django/i.test(manifestText)) {
+					framework.push('django');
+					detections.push({
+						identity: 'django',
+						file: manifestPath,
+						kind: 'regex',
+						needle: 'django'
+					});
+				}
 				if (/psycopg2|psycopg/i.test(manifestText)) database.push('psycopg');
 				if (/sqlalchemy/i.test(manifestText)) database.push('sqlalchemy');
 				if (/\bsupabase\b/i.test(manifestText)) {
@@ -613,11 +870,13 @@ function detectDependencies(repoPath) {
 	// Rust: Cargo.toml
 	// -----------------------------------------------------------------------
 	try {
-		if (existsSync(join(repoPath, 'Cargo.toml'))) {
+		const cargoPath = join(repoPath, 'Cargo.toml');
+		if (existsSync(cargoPath)) {
 			// Rust projects may also be detected as having Tauri via Cargo.toml
-			const cargo = readFileSync(join(repoPath, 'Cargo.toml'), 'utf8');
+			const cargo = readFileSync(cargoPath, 'utf8');
 			if (/tauri/i.test(cargo) && !framework.includes('tauri')) {
 				framework.push('tauri');
+				detections.push({ identity: 'tauri', file: cargoPath, kind: 'regex', needle: 'tauri' });
 			}
 		}
 	} catch {
@@ -630,15 +889,34 @@ function detectDependencies(repoPath) {
 	try {
 		const projectFile = readdirSync(repoPath).find((file) => file.endsWith('.csproj'));
 		if (projectFile) {
-			const project = readFileSync(join(repoPath, projectFile), 'utf8');
+			const projectPath = join(repoPath, projectFile);
+			const project = readFileSync(projectPath, 'utf8');
 			const target = project.match(
 				/<TargetFramework>net(\d+)(?:\.\d+)?<\/TargetFramework>/i
 			);
 
-			if (target) runtime.push(`dotnet-${target[1]}`);
-			else runtime.push('dotnet');
+			if (target) {
+				runtime.push(`dotnet-${target[1]}`);
+				detections.push({
+					identity: `dotnet-${target[1]}`,
+					file: projectPath,
+					kind: 'regex',
+					needle: `<TargetFramework>net${target[1]}`
+				});
+			} else {
+				runtime.push('dotnet');
+				detections.push({ identity: 'dotnet', file: projectPath, kind: 'add' });
+			}
 
-			if (/Microsoft\.NET\.Sdk\.Web/i.test(project)) framework.push('aspnet-core');
+			if (/Microsoft\.NET\.Sdk\.Web/i.test(project)) {
+				framework.push('aspnet-core');
+				detections.push({
+					identity: 'aspnet-core',
+					file: projectPath,
+					kind: 'regex',
+					needle: 'Microsoft\\.NET\\.Sdk\\.Web'
+				});
+			}
 			if (/Microsoft\.EntityFrameworkCore/i.test(project)) {
 				database.push('entity-framework-core');
 			}
@@ -648,7 +926,82 @@ function detectDependencies(repoPath) {
 		// No readable root .NET project.
 	}
 
-	return { runtime, framework, database };
+	return { runtime, framework, database, detections };
+}
+
+/**
+ * For each detected tech identity, finds the git date it was actually
+ * introduced — as opposed to the repo's own inception date (firstCommit).
+ * A tag on a long-lived repo can enter years after the repo started (e.g.
+ * migrating to Svelte 5 partway through a project's life); dating every tag
+ * to the repo's birth silently back-dates it. This is the fix.
+ *
+ * Runs one bounded git-history query per detection (typically 3-8 per repo,
+ * never all ~15+ taxonomy identities speculatively — only ones the
+ * working-tree scan actually found), folded into getFingerprint's existing
+ * concurrent-subprocess fan-out via Promise.all.
+ *
+ * When the same identity is detected via more than one file (a monorepo with
+ * several package.json workspaces), the EARLIEST date across all of them
+ * wins — the honest "when did I first use X anywhere in this repo" answer,
+ * matching the adoption timeline's own earliest-across-projects semantics.
+ *
+ * A failed or empty query (e.g. `--follow` losing a renamed/relocated file,
+ * or a query racing a shallow clone) OMITS that identity from the result
+ * entirely, rather than guessing — the caller's downstream read already
+ * falls back to firstCommit for any identity absent here.
+ *
+ * @param {string} repoPath
+ * @param {string} ref
+ * @param {Array<{identity: string, file: string, kind: 'add'|'pickaxe'|'regex', needle?: string}>} detections
+ * @returns {Promise<Record<string, string>>}
+ */
+async function dateDetectedTech(repoPath, ref, detections) {
+	const dated = {};
+	if (detections.length === 0) return dated;
+
+	const results = await Promise.all(
+		detections.map(async (d) => {
+			const relPath = relative(repoPath, d.file);
+			let flags;
+			if (d.kind === 'add') {
+				// --diff-filter=A is correct here: it filters on the FILE's own
+				// add/delete/modify status, and this query wants the commit that
+				// added the file itself.
+				flags = ['log', '--diff-filter=A', '--follow', '--format=%cs', '--reverse', ref, '--', relPath];
+			} else if (d.kind === 'pickaxe') {
+				// No --diff-filter here: the pickaxe (-S) already finds the commit
+				// that changed the STRING's occurrence count in the file, which is
+				// exactly "when this dependency entered" regardless of whether the
+				// file itself was added or merely modified in that commit. Adding
+				// --diff-filter=A would additionally require the FILE to have been
+				// added in that same commit, which silently drops every dependency
+				// added to an already-existing package.json (i.e. almost always).
+				//
+				// The needle is quoted as a JSON key literal ("vite" not vite): -S
+				// is a plain substring match, so an unquoted bare package name like
+				// "vite" or "react" would also match inside an unrelated key that
+				// merely contains it as a substring (e.g. "@tailwindcss/vite").
+				flags = ['log', `-S"${d.needle}"`, '--format=%cs', '--reverse', ref, '--', relPath];
+			} else {
+				flags = ['log', `-G${d.needle}`, '--format=%cs', '--reverse', ref, '--', relPath];
+			}
+			const r = await git(flags, repoPath);
+			if (!r.ok || !r.out) return null;
+			const date = r.out.split('\n')[0];
+			return { identity: d.identity, date };
+		})
+	);
+
+	for (const result of results) {
+		if (!result) continue;
+		const existing = dated[result.identity];
+		if (existing === undefined || result.date < existing) {
+			dated[result.identity] = result.date;
+		}
+	}
+
+	return dated;
 }
 
 /**
@@ -695,7 +1048,9 @@ async function detectSourceSignals(repoPath, ref, listing) {
 	const source = sourceSearch.ok ? sourceSearch.out : '';
 
 	if (/Bun\./.test(source)) runtime.push('bun');
-	if (/from ["']inkjs["']/.test(source)) framework.push('inkjs');
+	// inkjs is the Ink runtime, not a framework — see the matching note in
+	// detectDependencies's package.json scan.
+	if (/from ["']inkjs["']/.test(source)) runtime.push('inkjs');
 	if (/from ["']@sveltejs\/kit/.test(source)) framework.push('@sveltejs/kit');
 
 	return { runtime, framework };
@@ -714,8 +1069,10 @@ async function detectSourceSignals(repoPath, ref, listing) {
  *   resolves the ref internally. The computeDrift pool hoists the resolution so
  *   the cache fast-path and getFingerprint share the same ref without a duplicate
  *   defaultBranch() call.
+ * @param {string} [slug]  Project slug, forwarded to detectLanguages for
+ *   attributing unmapped extensions to the repo(s) they were seen in.
  */
-async function getFingerprint(repoPath, resolvedRef) {
+async function getFingerprint(repoPath, resolvedRef, slug) {
 	if (!existsSync(join(repoPath, '.git'))) return null;
 
 	// Resolve the default branch once. This drives all seven previously HEAD-bound
@@ -765,10 +1122,27 @@ async function getFingerprint(repoPath, resolvedRef) {
 
 	// detectLanguages uses the ref-aware listing; countLinesOfCode reads blobs
 	// from the ref via git cat-file --batch (no working-tree readFileSync).
-	const languages = detectLanguages(listing);
-	const sourceSignals = await detectSourceSignals(repoPath, ref, listing);
+	const languages = detectLanguages(listing, slug);
+	// Source signals (current-state grep) and per-tech dating (history pickaxe,
+	// only for the manifest/lockfile detections above) are independent history
+	// walks — run concurrently rather than sequentially.
+	const [sourceSignals, techFirstSeen] = await Promise.all([
+		detectSourceSignals(repoPath, ref, listing),
+		dateDetectedTech(repoPath, ref, dependencies.detections)
+	]);
 	const runtime = [...new Set([...dependencies.runtime, ...sourceSignals.runtime])];
-	const framework = [...new Set([...dependencies.framework, ...sourceSignals.framework])];
+	const mergedFramework = [...new Set([...dependencies.framework, ...sourceSignals.framework])];
+	// A project carrying both a bare identity and its version-derived sibling
+	// (bare `svelte` + `svelte-5`, bare `tailwindcss` + `tailwindcss-4` from a
+	// hybrid npm/Deno setup) otherwise renders as two adoption-timeline nodes
+	// for the same thing. Once any version signal has fired, the bare identity
+	// is redundant — drop it.
+	const hasVersioned = (base) => mergedFramework.some((f) => f.startsWith(`${base}-`));
+	const framework = mergedFramework.filter(
+		(f) =>
+			!(f === 'svelte' && hasVersioned('svelte')) &&
+			!(f === 'tailwindcss' && hasVersioned('tailwindcss'))
+	);
 	const { database } = dependencies;
 	const linesOfCode = await countLinesOfCode(repoPath, listing, ref);
 
@@ -802,7 +1176,11 @@ async function getFingerprint(repoPath, resolvedRef) {
 		...(remote && { remote }),
 		...(runtime.length > 0 && { runtime }),
 		...(framework.length > 0 && { framework }),
-		...(database.length > 0 && { database })
+		...(database.length > 0 && { database }),
+		// Per-tech introduction dates (see dateDetectedTech). Guarded the same
+		// way as the arrays above: an empty result never clobbers a good saved
+		// value on a partial/failed history walk.
+		...(Object.keys(techFirstSeen).length > 0 && { techFirstSeen })
 	};
 }
 
@@ -1205,6 +1583,11 @@ async function computeDrift(
 	{ manifest, overrideEntries, localPaths, sourceTopology = {}, cache, inProgress = {} },
 	{ full = false, onProgress = null, useCache = false } = {}
 ) {
+	// Start each scan with a clean unmapped-extensions slate. Cached repos never
+	// call detectLanguages this run, so their prior-run extensions are correctly
+	// absent — the advisory reflects only what was actually scanned just now.
+	resetUnmappedExtensions();
+
 	const { excludedRepoNames } = loadExcluded();
 
 	const entries = Object.entries(manifest.sources);
@@ -1298,7 +1681,7 @@ async function computeDrift(
 
 			if (!current) {
 				const fingerprints = await Promise.all(
-					resolvedSources.map((source) => getFingerprint(source.path, source.resolvedRef))
+					resolvedSources.map((source) => getFingerprint(source.path, source.resolvedRef, slug))
 				);
 				if (fingerprints.every((fingerprint) => fingerprint !== null)) {
 					const [primaryFingerprint, ...companionFingerprints] = fingerprints;
@@ -2694,7 +3077,7 @@ export const ${binding}: AuthoredProject = {
 	// One of: 'live' | 'wip' | 'finished' | 'prototype' | 'archived' | 'uncategorised'
 	status: 'wip',
 
-	repoUrl: '',
+	liveUrl: '',
 
 	// 3-5 technically interesting things. Feature or technical detail, not tooling config.
 	highlights: [],
@@ -2731,12 +3114,25 @@ function createOverlayIfAbsent(slug) {
  *
  * @param {{ args: string[], palette: object, useGum: boolean }} options
  */
-function runAuthor({ args, palette }) {
+// Scalar string fields drift author can set without an editor. pin/hide are
+// deliberately absent (drift flag owns them); arrays and objects need
+// $EDITOR, relate or tag.
+const AUTHOR_EDITABLE_FIELDS = ['name', 'tagline', 'blurb', 'description', 'kind', 'status', 'liveUrl'];
+const AUTHOR_FIELD_ENUMS = {
+	kind: ['app', 'game', 'website', 'toy', 'library', 'tool', 'tui', 'repo'],
+	status: ['live', 'wip', 'finished', 'prototype', 'archived', 'uncategorised']
+};
+
+async function runAuthor({ args, palette }) {
 	const { GREEN, RED, YELLOW, BOLD, DIM, RESET } = palette;
 	const slug = args[0]?.trim();
+	const field = args[1]?.trim();
+	// Everything after the field is the value — quoting multi-word prose is
+	// natural, but an unquoted trailing sentence also works.
+	const inlineValue = args.length > 2 ? args.slice(2).join(' ') : undefined;
 
 	if (!slug) {
-		process.stderr.write(`${RED}Usage: drift author <slug>${RESET}\n`);
+		process.stderr.write(`${RED}Usage: drift author <slug> [<field> [<value>]]${RESET}\n`);
 		process.exit(1);
 	}
 
@@ -2745,6 +3141,71 @@ function runAuthor({ args, palette }) {
 			`${RED}Error: invalid slug '${slug}'. Use lowercase kebab-case (e.g. my-project).${RESET}\n`
 		);
 		process.exit(1);
+	}
+
+	if (field !== undefined) {
+		if (field === 'pin' || field === 'hide') {
+			process.stderr.write(
+				`${RED}Error: '${field}' is a curation flag — use: drift flag ${slug} --${field}${RESET}\n`
+			);
+			process.exit(1);
+		}
+		if (!AUTHOR_EDITABLE_FIELDS.includes(field)) {
+			process.stderr.write(
+				`${RED}Error: unknown or non-scalar field '${field}'. Editable fields: ${AUTHOR_EDITABLE_FIELDS.join(', ')}.\n` +
+					`Arrays and objects want $EDITOR (drift author ${slug}), relate, or tag.${RESET}\n`
+			);
+			process.exit(1);
+		}
+
+		let value = inlineValue;
+		if (value === undefined) {
+			// No inline value: prompt interactively when we can, error when we
+			// cannot (CI, pipes).
+			if (process.stdin.isTTY && gumPath()) {
+				const prompt = spawnSync('gum', ['input', '--placeholder', `${field} value`], {
+					stdio: ['inherit', 'pipe', 'inherit'],
+					encoding: 'utf8'
+				});
+				if (prompt.status !== 0) return;
+				value = prompt.stdout.trim();
+			} else {
+				process.stderr.write(
+					`${RED}Error: no value given for '${field}' and no interactive TTY to prompt in.${RESET}\n`
+				);
+				process.exit(1);
+			}
+		}
+
+		const allowed = AUTHOR_FIELD_ENUMS[field];
+		if (allowed && !allowed.includes(value)) {
+			process.stderr.write(
+				`${RED}Error: invalid ${field} '${value}'. Use one of: ${allowed.join(', ')}.${RESET}\n`
+			);
+			process.exit(1);
+		}
+
+		const { ts, path, text, sf, objLit } = await loadOverlayForEdit(slug, palette);
+		const { text: splicedText, changed } = spliceObjectProperty(
+			text,
+			sf,
+			ts,
+			objLit,
+			field,
+			JSON.stringify(value)
+		);
+		if (!changed) {
+			process.stdout.write(
+				`${YELLOW}'${slug}' ${field} already holds that value — nothing to do.${RESET}\n`
+			);
+			return;
+		}
+		writeFileSync(path, splicedText, 'utf8');
+		spawnSync('npx', ['prettier', '--write', path], { stdio: 'ignore' });
+		process.stdout.write(
+			`${GREEN}${BOLD}Set:${RESET} ${field} on '${slug}'.\n${DIM}Rebuild the site to apply.${RESET}\n`
+		);
+		return;
 	}
 
 	const { path, created } = createOverlayIfAbsent(slug);
@@ -2826,21 +3287,8 @@ async function setOverlayFlag(slug, flagName, palette) {
 		ts.ScriptKind.TS
 	);
 
-	// Find the single exported VariableStatement whose initializer is an
-	// ObjectLiteralExpression. Every well-formed overlay has exactly one such export.
-	let objLit = null;
-	for (const stmt of sf.statements) {
-		if (!ts.isVariableStatement(stmt)) continue;
-		if (!stmt.modifiers?.some((m) => m.kind === ts.SyntaxKind.ExportKeyword)) continue;
-		for (const decl of stmt.declarationList.declarations) {
-			if (decl.initializer && ts.isObjectLiteralExpression(decl.initializer)) {
-				objLit = decl.initializer;
-				break;
-			}
-		}
-		if (objLit) break;
-	}
-
+	// Every well-formed overlay has exactly one exported object literal.
+	const objLit = findExportedLiteral(ts, sf, ts.isObjectLiteralExpression);
 	if (!objLit) {
 		process.stderr.write(
 			`${RED}Error: could not locate the exported object literal in ${relPath}.\n` +
@@ -2848,11 +3296,6 @@ async function setOverlayFlag(slug, flagName, palette) {
 		);
 		process.exit(1);
 	}
-
-	// Look for an existing property assignment matching flagName.
-	const flagProp = objLit.properties.find(
-		(p) => ts.isPropertyAssignment(p) && p.name.getText(sf) === flagName
-	);
 
 	const alreadyMsg =
 		flagName === 'pin'
@@ -2866,21 +3309,18 @@ async function setOverlayFlag(slug, flagName, palette) {
 			: `${GREEN}${BOLD}Hidden:${RESET} '${slug}' is now excluded from the hero pool.\n` +
 				`${DIM}Rebuild the site to apply.${RESET}\n`;
 
-	let splicedText;
-
-	if (flagProp) {
-		const initNode = flagProp.initializer;
-		if (initNode.kind === ts.SyntaxKind.TrueKeyword) {
-			// Already set — idempotent no-op.
-			process.stdout.write(alreadyMsg);
-			return;
-		}
-		// Present but not true (e.g. false, variable reference) — splice to true.
-		splicedText = text.slice(0, initNode.getStart(sf)) + 'true' + text.slice(initNode.getEnd());
-	} else {
-		// Absent — insert `<flagName>: true,` immediately after the opening brace.
-		const insertPos = objLit.getStart(sf) + 1; // position just past '{'
-		splicedText = text.slice(0, insertPos) + `\n\t${flagName}: true,` + text.slice(insertPos);
+	const { text: splicedText, changed } = spliceObjectProperty(
+		text,
+		sf,
+		ts,
+		objLit,
+		flagName,
+		'true'
+	);
+	if (!changed) {
+		// Already set — idempotent no-op.
+		process.stdout.write(alreadyMsg);
+		return;
 	}
 
 	writeFileSync(path, splicedText, 'utf8');
@@ -2924,6 +3364,1918 @@ async function runFlag({ args, values, palette }) {
 	}
 
 	await setOverlayFlag(slug, values.hide ? 'hide' : 'pin', palette);
+}
+
+// ---------------------------------------------------------------------------
+// relate verb (5DR.18)
+//
+// Authors a relationship edge by splicing into a .ts file, the same technique
+// as setOverlayFlag: locate the exported literal via the TypeScript compiler
+// API, then a targeted text-splice so no existing field/comment is disturbed.
+//
+// Two modes:
+//   drift relate project <source-slug> <kind> <target-slug> [--note "..."]
+//     Appends a ProjectRelationship to `relationships: [...]` on the exported
+//     AuthoredProject object literal in projects/<source-slug>.ts. Creates
+//     the overlay first if it does not exist yet.
+//   drift relate tech <source-label> <kind> <target-label> [--note "..."]
+//     Appends a TechRelationship to the exported array literal in
+//     tech-relationships.ts.
+//
+// Idempotent: re-relating an identical edge is a no-op. Validation is
+// structural only (kind union, non-self-edge, slug shape) — target existence
+// and tag-label correctness are left to data.test.ts / tech-relationships.test.ts,
+// which already gate on real slugs/labels; duplicating that here would couple
+// the CLI to the registry it is meant to stay lightweight against.
+//
+// Write-isolation: writes exactly one of projects/<slug>.ts or
+// tech-relationships.ts per invocation — never both, never any JSON file.
+// ---------------------------------------------------------------------------
+
+const PROJECT_RELATIONSHIP_KINDS = new Set(['extracted-from', 'powers', 'related']);
+const TECH_RELATIONSHIP_KINDS = new Set(['leads-to', 'replaced-by']);
+
+/**
+ * Validates a project slug's shape: lowercase kebab-case, matching the exact
+ * regex runRelate enforces before dispatching to relateProject
+ * (`/^[a-z0-9]+(-[a-z0-9]+)*$/`). Kept as a standalone pure function — not a
+ * closure over any TUI state — so the TUI's "create a new project" wizard
+ * step and the CLI's own validation can never quietly drift apart, and so
+ * it's directly unit-testable without spawning gum.
+ *
+ * @param {string} value
+ * @returns {string | null} an error message, or null when the value is valid.
+ */
+function validateProjectSlug(value) {
+	if (!/^[a-z0-9]+(-[a-z0-9]+)*$/.test(value)) {
+		return 'Slugs must be lowercase kebab-case (e.g. my-project).';
+	}
+	return null;
+}
+
+/**
+ * Splices a new element into an array literal, either after its opening
+ * bracket (empty array) or after its last element (populated array — the
+ * last element's getEnd() excludes any trailing comma, so exactly one comma
+ * is introduced). Prettier reflows whitespace afterward.
+ *
+ * @param {string} text  Full source text.
+ * @param {import('typescript').SourceFile} sf
+ * @param {import('typescript').ArrayLiteralExpression} arrayLit
+ * @param {string} elementSrc  Source text of the element to insert, e.g. "{ kind: 'powers', target: 'nib' }".
+ * @returns {string} the spliced text
+ */
+function spliceElementIntoArray(text, sf, arrayLit, elementSrc) {
+	if (arrayLit.elements.length === 0) {
+		const insertPos = arrayLit.getStart(sf) + 1; // position just past '['
+		return text.slice(0, insertPos) + `\n\t${elementSrc},\n` + text.slice(insertPos);
+	}
+	const lastElement = arrayLit.elements[arrayLit.elements.length - 1];
+	const insertPos = lastElement.getEnd();
+	return text.slice(0, insertPos) + `,\n\t${elementSrc}` + text.slice(insertPos);
+}
+
+/**
+ * Builds the source text for a flat object literal. Only defined fields are
+ * included. Each value goes through JSON.stringify for safe quoting (notes
+ * may contain apostrophes; arrays render as string-literal lists) — prettier
+ * normalises quote style afterward. Named for its first caller; also builds
+ * tech-overlay records and theme elements.
+ *
+ * @param {Record<string, string | string[] | undefined>} fields
+ * @returns {string}
+ */
+function buildRelationshipLiteral(fields) {
+	const parts = Object.entries(fields)
+		.filter(([, value]) => value !== undefined)
+		.map(([key, value]) => `${key}: ${JSON.stringify(value)}`);
+	return `{ ${parts.join(', ')} }`;
+}
+
+/**
+ * Removes the element at `idx` from an array literal, consuming exactly one
+ * adjacent comma so the result stays syntactically valid even before
+ * prettier reflows it. The rule branches on position because a single
+ * "always trim the leading comma" rule breaks on the first element of a
+ * multi-element array (there is no leading comma to trim, so naively
+ * removing only the element's own span leaves a dangling leading comma on
+ * the new-first element: `[, {b}, {c}]`).
+ *
+ * - First element with siblings: trim forward through the NEXT element's
+ *   start (consumes this element and its trailing comma/whitespace).
+ * - Any other element (middle, last, or the sole element): trim backward
+ *   from the PREVIOUS element's end through this element's end (consumes
+ *   this element's leading comma/whitespace). For the sole element this
+ *   degrades to the array's own opening bracket, yielding `[]`.
+ *
+ * Verified directly against ts.createSourceFile output for first/middle/
+ * last/sole cases, both compact and prettier-formatted multiline arrays.
+ *
+ * @param {string} text
+ * @param {import('typescript').SourceFile} sf
+ * @param {import('typescript').ArrayLiteralExpression} arrayLit
+ * @param {number} idx
+ * @returns {string} the spliced text
+ */
+function spliceRemoveElement(text, sf, arrayLit, idx) {
+	const el = arrayLit.elements[idx];
+	if (idx === 0) {
+		if (arrayLit.elements.length > 1) {
+			const nextStart = arrayLit.elements[1].getStart(sf);
+			return text.slice(0, arrayLit.getStart(sf) + 1) + text.slice(nextStart);
+		}
+		// Sole element: trim through the array's own closing bracket, not just
+		// the element's end — el.getEnd() excludes a trailing comma before ']'
+		// (the prettier/multiline-array default), so stopping there would
+		// leave a dangling comma (`[,]`). arrayLit.getEnd() - 1 is the ']'
+		// itself, which the outer slice below re-adds.
+		return text.slice(0, arrayLit.getStart(sf) + 1) + text.slice(arrayLit.getEnd() - 1);
+	}
+	const prevEnd = arrayLit.elements[idx - 1].getEnd();
+	return text.slice(0, prevEnd) + text.slice(el.getEnd());
+}
+
+/**
+ * Replaces one array element's source text in place with a freshly built
+ * literal, preserving all surrounding formatting/commas untouched (only the
+ * element's own [getStart, getEnd) span is replaced).
+ *
+ * @param {string} text
+ * @param {import('typescript').SourceFile} sf
+ * @param {import('typescript').Node} element
+ * @param {string} newElementSrc
+ * @returns {string} the spliced text
+ */
+function spliceReplaceElement(text, sf, element, newElementSrc) {
+	return text.slice(0, element.getStart(sf)) + newElementSrc + text.slice(element.getEnd());
+}
+
+/**
+ * Locates an element within an array literal whose property values match
+ * `matchFn`. Generalises the duplicated idempotence-matcher shape that used
+ * to live inline in relateProject/relateTech into a single reusable finder,
+ * used by: the add-flow's idempotence check, the remove/edit locators, and
+ * the TUI's "pick an existing edge" step.
+ *
+ * @param {import('typescript')} ts
+ * @param {import('typescript').SourceFile} sf
+ * @param {import('typescript').ArrayLiteralExpression} arrayLit
+ * @param {(ts: import('typescript'), sf: import('typescript').SourceFile, element: import('typescript').ObjectLiteralExpression) => boolean} matchFn
+ * @returns {{ element: import('typescript').ObjectLiteralExpression, index: number } | null}
+ */
+function findRelationshipElement(ts, sf, arrayLit, matchFn) {
+	for (let index = 0; index < arrayLit.elements.length; index++) {
+		const element = arrayLit.elements[index];
+		if (!ts.isObjectLiteralExpression(element)) continue;
+		if (matchFn(ts, sf, element)) return { element, index };
+	}
+	return null;
+}
+
+/**
+ * Reads a property's string value off a relationship object literal (e.g.
+ * `kind`, `target`, `source`, `note`), parsing the JSON.stringify'd literal
+ * text back into a real string. Returns undefined when the property is
+ * absent — used both by the field-value matchers and by remove/edit to
+ * recover an existing element's current fields before rebuilding it.
+ *
+ * @param {import('typescript')} ts
+ * @param {import('typescript').SourceFile} sf
+ * @param {import('typescript').ObjectLiteralExpression} element
+ * @param {string} name
+ * @returns {string | undefined}
+ */
+function readRelationshipField(ts, sf, element, name) {
+	const prop = element.properties.find(
+		(p) => ts.isPropertyAssignment(p) && p.name.getText(sf) === name
+	);
+	if (!prop) return undefined;
+	// Use the compiler's own decoded string value (node.text), not
+	// JSON.parse on the raw source text — hand-authored .ts source (and
+	// prettier's own default) commonly uses single-quoted string literals,
+	// which JSON.parse rejects outright.
+	return ts.isStringLiteral(prop.initializer) ? prop.initializer.text : undefined;
+}
+
+/**
+ * Sibling of readRelationshipField for string-array properties (hiddenFrom,
+ * slugs, suppressTags). Returns undefined when the property is absent or not
+ * an array literal; non-string elements are skipped.
+ *
+ * @param {import('typescript')} ts
+ * @param {import('typescript').SourceFile} sf
+ * @param {import('typescript').ObjectLiteralExpression} element
+ * @param {string} name
+ * @returns {string[] | undefined}
+ */
+function readArrayField(ts, sf, element, name) {
+	const prop = element.properties.find(
+		(p) => ts.isPropertyAssignment(p) && p.name.getText(sf) === name
+	);
+	if (!prop || !ts.isArrayLiteralExpression(prop.initializer)) return undefined;
+	const values = [];
+	for (const el of prop.initializer.elements) {
+		if (ts.isStringLiteral(el)) values.push(el.text);
+	}
+	return values;
+}
+
+/**
+ * Sets or replaces one property on an object literal, leaving every other
+ * span untouched — the insert-or-replace core extracted from setOverlayFlag
+ * so any verb can set a field. `valueSrc` is the property's VALUE SOURCE
+ * TEXT (e.g. `'true'`, `JSON.stringify(value)`). Returns the new text plus
+ * `changed: false` when the property already holds byte-identical source,
+ * so call sites get idempotence for free.
+ *
+ * @param {string} text
+ * @param {import('typescript').SourceFile} sf
+ * @param {import('typescript')} ts
+ * @param {import('typescript').ObjectLiteralExpression} objLit
+ * @param {string} propName
+ * @param {string} valueSrc
+ * @returns {{ text: string, changed: boolean }}
+ */
+function spliceObjectProperty(text, sf, ts, objLit, propName, valueSrc) {
+	const prop = objLit.properties.find(
+		(p) => ts.isPropertyAssignment(p) && p.name.getText(sf) === propName
+	);
+	if (prop) {
+		const start = prop.initializer.getStart(sf);
+		const end = prop.initializer.getEnd();
+		if (text.slice(start, end) === valueSrc) return { text, changed: false };
+		return { text: text.slice(0, start) + valueSrc + text.slice(end), changed: true };
+	}
+	const insertPos = objLit.getStart(sf) + 1; // position just past '{'
+	return {
+		text: text.slice(0, insertPos) + `\n\t${propName}: ${valueSrc},` + text.slice(insertPos),
+		changed: true
+	};
+}
+
+/**
+ * Removes one property (and exactly one adjacent comma) from an object
+ * literal, mirroring spliceRemoveElement's position rules. Returns the text
+ * unchanged when the property is absent.
+ *
+ * @param {string} text
+ * @param {import('typescript').SourceFile} sf
+ * @param {import('typescript')} ts
+ * @param {import('typescript').ObjectLiteralExpression} objLit
+ * @param {string} propName
+ * @returns {string}
+ */
+function spliceRemoveObjectProperty(text, sf, ts, objLit, propName) {
+	const props = objLit.properties;
+	const idx = props.findIndex(
+		(p) => ts.isPropertyAssignment(p) && p.name.getText(sf) === propName
+	);
+	if (idx === -1) return text;
+	if (idx === 0) {
+		if (props.length > 1) {
+			return text.slice(0, objLit.getStart(sf) + 1) + '\n\t' + text.slice(props[1].getStart(sf));
+		}
+		return text.slice(0, objLit.getStart(sf) + 1) + text.slice(objLit.getEnd() - 1);
+	}
+	return text.slice(0, props[idx - 1].getEnd()) + text.slice(props[idx].getEnd());
+}
+
+/**
+ * Locates an array element by one decoded string property — a TechOverlay by
+ * `label`, a Theme by `id`. Case-insensitive matching serves labels (canonical
+ * casing is resolved before writes, but stale records must stay findable).
+ *
+ * @param {import('typescript')} ts
+ * @param {import('typescript').SourceFile} sf
+ * @param {import('typescript').ArrayLiteralExpression} arrayLit
+ * @param {string} field
+ * @param {string} value
+ * @param {{ caseInsensitive?: boolean }} [options]
+ * @returns {{ element: import('typescript').ObjectLiteralExpression, index: number } | null}
+ */
+function findElementByStringField(ts, sf, arrayLit, field, value, options = {}) {
+	const wanted = options.caseInsensitive ? value.toLowerCase() : value;
+	return findRelationshipElement(ts, sf, arrayLit, (_ts, _sf, el) => {
+		const actual = readRelationshipField(ts, sf, el, field);
+		if (actual === undefined) return false;
+		return (options.caseInsensitive ? actual.toLowerCase() : actual) === wanted;
+	});
+}
+
+/**
+ * Index of a plain string literal inside an array literal (slugs,
+ * suppressTags members), or -1. spliceRemoveElement handles string elements
+ * unchanged — it only slices spans.
+ *
+ * @param {import('typescript')} ts
+ * @param {import('typescript').SourceFile} sf
+ * @param {import('typescript').ArrayLiteralExpression} arrayLit
+ * @param {string} value
+ * @returns {number}
+ */
+function findStringElementIndex(ts, sf, arrayLit, value) {
+	for (let i = 0; i < arrayLit.elements.length; i++) {
+		const el = arrayLit.elements[i];
+		if (ts.isStringLiteral(el) && el.text === value) return i;
+	}
+	return -1;
+}
+
+/**
+ * AST read of tech-overlays.ts — deliberately not a dynamic import: a read
+ * straight after a write must never hit Bun's module cache, and sandbox
+ * copies need no resolvable './types.js'. Returns [] when the file is
+ * missing (callers that require it error separately).
+ *
+ * @returns {Promise<Array<{ label: string, firstUsed?: string, note?: string, kind?: string, hiddenFrom?: string[] }>>}
+ */
+async function readTechOverlaysFile() {
+	if (!existsSync(techOverlaysPath)) return [];
+	const ts = (await import('typescript')).default;
+	const text = readFileSync(techOverlaysPath, 'utf8');
+	const sf = ts.createSourceFile(
+		techOverlaysPath,
+		text,
+		ts.ScriptTarget.Latest,
+		true,
+		ts.ScriptKind.TS
+	);
+	const arrayLit = findExportedLiteral(ts, sf, ts.isArrayLiteralExpression);
+	if (!arrayLit) return [];
+	const overlays = [];
+	for (const element of arrayLit.elements) {
+		if (!ts.isObjectLiteralExpression(element)) continue;
+		const label = readRelationshipField(ts, sf, element, 'label');
+		if (label === undefined) continue;
+		overlays.push({
+			label,
+			firstUsed: readRelationshipField(ts, sf, element, 'firstUsed'),
+			note: readRelationshipField(ts, sf, element, 'note'),
+			kind: readRelationshipField(ts, sf, element, 'kind'),
+			hiddenFrom: readArrayField(ts, sf, element, 'hiddenFrom')
+		});
+	}
+	return overlays;
+}
+
+/**
+ * Locates the single exported top-level literal in a source file — either an
+ * ObjectLiteralExpression (project overlays) or an ArrayLiteralExpression
+ * (tech-relationships.ts) — matching the same walk setOverlayFlag uses.
+ *
+ * @param {import('typescript')} ts
+ * @param {import('typescript').SourceFile} sf
+ * @param {(node: import('typescript').Node) => boolean} isMatch
+ */
+function findExportedLiteral(ts, sf, isMatch) {
+	for (const stmt of sf.statements) {
+		if (!ts.isVariableStatement(stmt)) continue;
+		if (!stmt.modifiers?.some((m) => m.kind === ts.SyntaxKind.ExportKeyword)) continue;
+		for (const decl of stmt.declarationList.declarations) {
+			if (decl.initializer && isMatch(decl.initializer)) return decl.initializer;
+		}
+	}
+	return null;
+}
+
+/**
+ * Prints the reciprocal-edge reminder for a project relationship kind, iff
+ * that kind is one half of the powers/extracted-from pair data.test.ts
+ * enforces both sides of. Shared by add/remove/edit so all three nudge
+ * consistently. `related` and tech mode never warrant this (tech lineage is
+ * single-sided; `related` has no pairing contract).
+ *
+ * @param {object} palette
+ * @param {string} verbSuffix  e.g. '' for add, ' --remove' for remove.
+ * @param {string} kind
+ * @param {string} sourceSlug
+ * @param {string} targetSlug
+ */
+function printProjectReciprocalReminder(palette, verbSuffix, kind, sourceSlug, targetSlug) {
+	const { DIM, RESET } = palette;
+	if (kind === 'powers') {
+		process.stdout.write(
+			`${DIM}Reciprocal: drift relate project ${targetSlug} extracted-from ${sourceSlug}${verbSuffix}${RESET}\n`
+		);
+	} else if (kind === 'extracted-from') {
+		process.stdout.write(
+			`${DIM}Reciprocal: drift relate project ${targetSlug} powers ${sourceSlug}${verbSuffix}${RESET}\n`
+		);
+	}
+}
+
+/**
+ * Locates the (kind, target) element within a project overlay's
+ * relationships array. Shared by the add-flow's idempotence check and the
+ * remove/edit paths — all three need the exact same locator.
+ *
+ * @param {import('typescript')} ts
+ * @param {import('typescript').SourceFile} sf
+ * @param {import('typescript').ArrayLiteralExpression} arrayLit
+ * @param {string} kind
+ * @param {string} targetSlug
+ */
+function findProjectRelationship(ts, sf, arrayLit, kind, targetSlug) {
+	return findRelationshipElement(
+		ts,
+		sf,
+		arrayLit,
+		(_ts, _sf, el) =>
+			readRelationshipField(ts, sf, el, 'kind') === kind &&
+			readRelationshipField(ts, sf, el, 'target') === targetSlug
+	);
+}
+
+/**
+ * Mode A: adds, removes, or edits a ProjectRelationship in
+ * projects/<sourceSlug>.ts's `relationships` array.
+ *
+ * add (default): creates the overlay from the template first if absent.
+ * Idempotent on an identical (kind, target) pair.
+ *
+ * remove: locates by (kind, target). A missing overlay or missing edge is a
+ * soft no-op (nothing to remove is not an error) — never scaffolds an
+ * overlay just to remove from it.
+ *
+ * edit: locates by (kind, target) — the CURRENT kind, i.e. the locator, not
+ * the new one. Rebuilds the element with `newKind`/`newNote` overlaid onto
+ * the existing fields (whichever were not passed are kept as-is). A missing
+ * overlay or missing edge IS an error (nothing sensible to edit into).
+ *
+ * @param {{ sourceSlug: string, kind: string, targetSlug: string, note?: string, palette: object, opMode?: 'add'|'remove'|'edit', newKind?: string, newNote?: string }} options
+ */
+async function relateProject({
+	sourceSlug,
+	kind,
+	targetSlug,
+	note,
+	palette,
+	opMode = 'add',
+	newKind,
+	newNote
+}) {
+	const { GREEN, RED, YELLOW, BOLD, DIM, RESET } = palette;
+
+	let path, created;
+	if (opMode === 'add') {
+		({ path, created } = createOverlayIfAbsent(sourceSlug));
+	} else {
+		path = join(projectsDir, `${sourceSlug}.ts`);
+		created = false;
+		if (!existsSync(path)) {
+			if (opMode === 'remove') {
+				process.stdout.write(
+					`${YELLOW}'${sourceSlug}' has no overlay — nothing to remove.${RESET}\n`
+				);
+				return;
+			}
+			process.stderr.write(`${RED}Error: no overlay found for '${sourceSlug}'.${RESET}\n`);
+			process.exit(1);
+		}
+	}
+	const relPath = path.replace(config.repoRoot + '/', '');
+
+	if (created) {
+		process.stdout.write(`${GREEN}${BOLD}created${RESET} ${relPath}\n`);
+	}
+
+	const ts = (await import('typescript')).default;
+	const text = readFileSync(path, 'utf8');
+	const sf = ts.createSourceFile(path, text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
+
+	const objLit = findExportedLiteral(ts, sf, ts.isObjectLiteralExpression);
+	if (!objLit) {
+		process.stderr.write(
+			`${RED}Error: could not locate the exported object literal in ${relPath}.\n` +
+				`Expected one named export with an object literal initializer.${RESET}\n`
+		);
+		process.exit(1);
+	}
+
+	const relationshipsProp = objLit.properties.find(
+		(p) => ts.isPropertyAssignment(p) && p.name.getText(sf) === 'relationships'
+	);
+
+	if (relationshipsProp && !ts.isArrayLiteralExpression(relationshipsProp.initializer)) {
+		process.stderr.write(
+			`${RED}Error: '${sourceSlug}'s relationships field is not an array literal — edit ${relPath} by hand.${RESET}\n`
+		);
+		process.exit(1);
+	}
+
+	if (opMode === 'remove' || opMode === 'edit') {
+		if (!relationshipsProp) {
+			if (opMode === 'remove') {
+				process.stdout.write(
+					`${YELLOW}'${sourceSlug}' ${kind} '${targetSlug}' not found — nothing to remove.${RESET}\n`
+				);
+				return;
+			}
+			process.stderr.write(
+				`${RED}Error: '${sourceSlug}' has no relationships to edit.${RESET}\n`
+			);
+			process.exit(1);
+		}
+		const arrayLit = relationshipsProp.initializer;
+		const found = findProjectRelationship(ts, sf, arrayLit, kind, targetSlug);
+		if (!found) {
+			if (opMode === 'remove') {
+				process.stdout.write(
+					`${YELLOW}'${sourceSlug}' ${kind} '${targetSlug}' not found — nothing to remove.${RESET}\n`
+				);
+				return;
+			}
+			process.stderr.write(
+				`${RED}Error: '${sourceSlug}' ${kind} '${targetSlug}' not found — nothing to edit.${RESET}\n`
+			);
+			process.exit(1);
+		}
+
+		let splicedText;
+		if (opMode === 'remove') {
+			splicedText = spliceRemoveElement(text, sf, arrayLit, found.index);
+		} else {
+			const existingNote = readRelationshipField(ts, sf, found.element, 'note');
+			const finalKind = newKind ?? kind;
+			const finalNote = newNote !== undefined ? newNote : existingNote;
+			const elementSrc = buildRelationshipLiteral({
+				kind: finalKind,
+				target: targetSlug,
+				note: finalNote
+			});
+			splicedText = spliceReplaceElement(text, sf, found.element, elementSrc);
+		}
+
+		writeFileSync(path, splicedText, 'utf8');
+		spawnSync('npx', ['prettier', '--write', path], { stdio: 'ignore' });
+
+		if (opMode === 'remove') {
+			process.stdout.write(
+				`${GREEN}${BOLD}Removed:${RESET} '${sourceSlug}' ${kind} '${targetSlug}'.\n` +
+					`${DIM}Rebuild the site to apply.${RESET}\n`
+			);
+			printProjectReciprocalReminder(palette, ' --remove', kind, sourceSlug, targetSlug);
+		} else {
+			const finalKind = newKind ?? kind;
+			process.stdout.write(
+				`${GREEN}${BOLD}Edited:${RESET} '${sourceSlug}' ${finalKind} '${targetSlug}'.\n` +
+					`${DIM}Rebuild the site to apply.${RESET}\n`
+			);
+			// Nudge if the kind changed and either the old or new kind is part of
+			// the powers/extracted-from pairing contract — a pure note edit never
+			// warrants this, since notes aren't part of that contract.
+			if (newKind !== undefined && newKind !== kind) {
+				printProjectReciprocalReminder(palette, ' --edit --kind ...', kind, sourceSlug, targetSlug);
+				printProjectReciprocalReminder(
+					palette,
+					' --edit --kind ...',
+					finalKind,
+					sourceSlug,
+					targetSlug
+				);
+			}
+		}
+		return;
+	}
+
+	// opMode === 'add'
+	// Idempotence: an identical (kind, target) pair already present is a no-op.
+	if (relationshipsProp) {
+		const arrayLit = relationshipsProp.initializer;
+		const alreadyPresent = findProjectRelationship(ts, sf, arrayLit, kind, targetSlug) !== null;
+		if (alreadyPresent) {
+			process.stdout.write(
+				`${YELLOW}'${sourceSlug}' ${kind} '${targetSlug}' already recorded — nothing to do.${RESET}\n`
+			);
+			return;
+		}
+	}
+
+	const elementSrc = buildRelationshipLiteral({ kind, target: targetSlug, note });
+
+	let splicedText;
+	if (relationshipsProp) {
+		splicedText = spliceElementIntoArray(text, sf, relationshipsProp.initializer, elementSrc);
+	} else {
+		// No relationships property yet — insert one after the opening brace,
+		// flag-style, rather than requiring every overlay to pre-declare it.
+		const insertPos = objLit.getStart(sf) + 1;
+		splicedText =
+			text.slice(0, insertPos) +
+			`\n\trelationships: [${elementSrc}],` +
+			text.slice(insertPos);
+	}
+
+	writeFileSync(path, splicedText, 'utf8');
+	spawnSync('npx', ['prettier', '--write', path], { stdio: 'ignore' });
+
+	process.stdout.write(
+		`${GREEN}${BOLD}Related:${RESET} '${sourceSlug}' ${kind} '${targetSlug}'.\n` +
+			`${DIM}Rebuild the site to apply.${RESET}\n`
+	);
+
+	// data.test.ts enforces that 'powers' and 'extracted-from' are always
+	// authored in matching pairs on both sides. Nudge rather than block: the
+	// verb writes one file per call, so the reciprocal edge is a follow-up.
+	printProjectReciprocalReminder(palette, '', kind, sourceSlug, targetSlug);
+}
+
+/**
+ * Locates the (kind, source, target) element within the tech-relationships
+ * array. Shared by the add-flow's idempotence check and the remove/edit paths.
+ * Labels match case-insensitively (kind stays exact): input is resolved to
+ * canonical casing before writes, but an already-authored edge with stray
+ * casing must still be locatable so remove/edit can clean it up.
+ *
+ * @param {import('typescript')} ts
+ * @param {import('typescript').SourceFile} sf
+ * @param {import('typescript').ArrayLiteralExpression} arrayLit
+ * @param {string} kind
+ * @param {string} sourceLabel
+ * @param {string} targetLabel
+ */
+function findTechRelationship(ts, sf, arrayLit, kind, sourceLabel, targetLabel) {
+	const sourceKey = sourceLabel.toLowerCase();
+	const targetKey = targetLabel.toLowerCase();
+	return findRelationshipElement(
+		ts,
+		sf,
+		arrayLit,
+		(_ts, _sf, el) =>
+			readRelationshipField(ts, sf, el, 'kind') === kind &&
+			readRelationshipField(ts, sf, el, 'source')?.toLowerCase() === sourceKey &&
+			readRelationshipField(ts, sf, el, 'target')?.toLowerCase() === targetKey
+	);
+}
+
+/**
+ * Builds the canonical tech-label universe for `drift relate tech`: every
+ * label the tag taxonomy can infer plus every overlay-authored tag label,
+ * the same universe tech-relationships.test.ts validates edges against.
+ * Returned as a Map from lowercased label to canonical casing (taxonomy
+ * entries first on collision) so case-insensitive input always resolves to
+ * the label the site actually renders.
+ *
+ * @returns {Promise<Map<string, string>>}
+ */
+async function buildTechLabelIndex(options = {}) {
+	const byLower = new Map();
+	const add = (label) => {
+		const key = label.toLowerCase();
+		if (!byLower.has(key)) byLower.set(key, label);
+	};
+	for (const tags of [LANGUAGE_TAGS, RUNTIME_TAGS, FRAMEWORK_TAGS, DATABASE_TAGS]) {
+		for (const tag of Object.values(tags)) add(tag.label);
+	}
+	for (const overlay of await loadOverlays()) {
+		if (!Array.isArray(overlay.tags)) continue;
+		for (const tag of overlay.tags) {
+			if (tag && typeof tag.label === 'string') add(tag.label);
+		}
+	}
+	// Labels authored as hidden from the relate surface stay out of pickers
+	// and strict resolution; `drift tech` passes includeRelateHidden so its
+	// own list/set/unhide keep seeing them.
+	if (!options.includeRelateHidden) {
+		for (const overlay of await readTechOverlaysFile()) {
+			if (overlay.hiddenFrom?.includes('relate')) byLower.delete(overlay.label.toLowerCase());
+		}
+	}
+	return byLower;
+}
+
+/**
+ * Resolves a user-typed tech label against the canonical label index,
+ * case-insensitively. A hit returns the canonical casing, noting the
+ * correction when the input differed. A miss is a hard error when `strict`
+ * (the add path must never write a label no surface can resolve); remove and
+ * edit pass the input through verbatim instead, so a stale edge whose label
+ * is no longer a real tag can still be located and cleaned up.
+ *
+ * @param {string} input
+ * @param {Map<string, string>} byLower
+ * @param {object} palette
+ * @param {boolean} strict
+ * @returns {string}
+ */
+function resolveTechLabel(input, byLower, palette, strict) {
+	const { RED, DIM, RESET } = palette;
+	const canonical = byLower.get(input.toLowerCase());
+	if (canonical !== undefined) {
+		if (canonical !== input) {
+			process.stdout.write(`${DIM}Using '${canonical}' for '${input}'.${RESET}\n`);
+		}
+		return canonical;
+	}
+	if (!strict) return input;
+	const needle = input.toLowerCase();
+	const near = [...byLower.values()].filter((l) => l.toLowerCase().includes(needle)).slice(0, 5);
+	process.stderr.write(
+		`${RED}Error: unknown tech label '${input}'. Labels must match a project tag (case-insensitive).` +
+			(near.length > 0 ? ` Did you mean: ${near.join(', ')}?` : '') +
+			`${RESET}\n`
+	);
+	process.exit(1);
+}
+
+/**
+ * Enumerates EVERY relationship across all sources for a mode — used by the
+ * TUI's remove/edit wizard, which lists the whole set up front rather than
+ * asking the user to pick a source before it can show anything. Project mode
+ * scans every overlay .ts file in projectsDir (relationships are per-file);
+ * tech mode is already one flat file, so this is listRelationshipsFor's tech
+ * branch with no source filter. Each returned row carries its own `source`
+ * (the project slug or tech label its edge belongs to) so the caller can
+ * still dispatch a located edge back through the per-source CLI grammar.
+ *
+ * @param {'project' | 'tech'} mode
+ * @returns {Promise<{ source: string, kind: string, target: string, note?: string }[]>}
+ */
+async function listAllRelationships(mode) {
+	const ts = (await import('typescript')).default;
+
+	if (mode === 'project') {
+		const files = readdirSync(projectsDir).filter((f) => f.endsWith('.ts'));
+		const rows = [];
+		for (const file of files) {
+			const path = join(projectsDir, file);
+			const source = file.slice(0, -3); // strip '.ts' — overlay files are named <slug>.ts
+			let text;
+			try {
+				text = readFileSync(path, 'utf8');
+			} catch {
+				continue;
+			}
+			const sf = ts.createSourceFile(path, text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
+			const objLit = findExportedLiteral(ts, sf, ts.isObjectLiteralExpression);
+			if (!objLit) continue;
+			const relationshipsProp = objLit.properties.find(
+				(p) => ts.isPropertyAssignment(p) && p.name.getText(sf) === 'relationships'
+			);
+			if (!relationshipsProp || !ts.isArrayLiteralExpression(relationshipsProp.initializer)) continue;
+			for (const el of relationshipsProp.initializer.elements) {
+				if (!ts.isObjectLiteralExpression(el)) continue;
+				rows.push({
+					source,
+					kind: readRelationshipField(ts, sf, el, 'kind'),
+					target: readRelationshipField(ts, sf, el, 'target'),
+					note: readRelationshipField(ts, sf, el, 'note')
+				});
+			}
+		}
+		return rows;
+	}
+
+	// mode === 'tech' — one flat file, no per-source filter.
+	if (!existsSync(techRelationshipsPath)) return [];
+	const text = readFileSync(techRelationshipsPath, 'utf8');
+	const sf = ts.createSourceFile(
+		techRelationshipsPath,
+		text,
+		ts.ScriptTarget.Latest,
+		true,
+		ts.ScriptKind.TS
+	);
+	const arrayLit = findExportedLiteral(ts, sf, ts.isArrayLiteralExpression);
+	if (!arrayLit) return [];
+	return arrayLit.elements
+		.filter((el) => ts.isObjectLiteralExpression(el))
+		.map((el) => ({
+			source: readRelationshipField(ts, sf, el, 'source'),
+			kind: readRelationshipField(ts, sf, el, 'kind'),
+			target: readRelationshipField(ts, sf, el, 'target'),
+			note: readRelationshipField(ts, sf, el, 'note')
+		}));
+}
+
+/**
+ * Mode B: adds, removes, or edits a TechRelationship in the exported array
+ * in tech-relationships.ts. The file always exists (it ships with the
+ * repo) — no create-if-absent step for any mode.
+ *
+ * add (default): idempotent on an identical (kind, source, target) triple.
+ * remove: locates by the (kind, source, target) triple; a missing edge is a
+ * soft no-op. edit: locates by the same triple (the CURRENT kind), rebuilds
+ * with `newKind`/`newNote` overlaid on the existing fields; a missing edge
+ * is an error. No reciprocal reminder in either case — tech lineage is
+ * single-sided, unlike project powers/extracted-from pairs.
+ *
+ * @param {{ sourceLabel: string, kind: string, targetLabel: string, note?: string, palette: object, opMode?: 'add'|'remove'|'edit', newKind?: string, newNote?: string }} options
+ */
+async function relateTech({
+	sourceLabel,
+	kind,
+	targetLabel,
+	note,
+	palette,
+	opMode = 'add',
+	newKind,
+	newNote
+}) {
+	const { GREEN, RED, YELLOW, BOLD, DIM, RESET } = palette;
+	const relPath = techRelationshipsPath.replace(config.repoRoot + '/', '');
+
+	if (!existsSync(techRelationshipsPath)) {
+		process.stderr.write(`${RED}Error: ${relPath} not found.${RESET}\n`);
+		process.exit(1);
+	}
+
+	const ts = (await import('typescript')).default;
+	const text = readFileSync(techRelationshipsPath, 'utf8');
+	const sf = ts.createSourceFile(
+		techRelationshipsPath,
+		text,
+		ts.ScriptTarget.Latest,
+		true,
+		ts.ScriptKind.TS
+	);
+
+	const arrayLit = findExportedLiteral(ts, sf, ts.isArrayLiteralExpression);
+	if (!arrayLit) {
+		process.stderr.write(
+			`${RED}Error: could not locate the exported array literal in ${relPath}.\n` +
+				`Expected one named export with an array literal initializer.${RESET}\n`
+		);
+		process.exit(1);
+	}
+
+	if (opMode === 'remove' || opMode === 'edit') {
+		const found = findTechRelationship(ts, sf, arrayLit, kind, sourceLabel, targetLabel);
+		if (!found) {
+			if (opMode === 'remove') {
+				process.stdout.write(
+					`${YELLOW}'${sourceLabel}' ${kind} '${targetLabel}' not found — nothing to remove.${RESET}\n`
+				);
+				return;
+			}
+			process.stderr.write(
+				`${RED}Error: '${sourceLabel}' ${kind} '${targetLabel}' not found — nothing to edit.${RESET}\n`
+			);
+			process.exit(1);
+		}
+
+		let splicedText;
+		if (opMode === 'remove') {
+			splicedText = spliceRemoveElement(text, sf, arrayLit, found.index);
+		} else {
+			const existingNote = readRelationshipField(ts, sf, found.element, 'note');
+			const finalKind = newKind ?? kind;
+			const finalNote = newNote !== undefined ? newNote : existingNote;
+			const elementSrc = buildRelationshipLiteral({
+				kind: finalKind,
+				source: sourceLabel,
+				target: targetLabel,
+				note: finalNote
+			});
+			splicedText = spliceReplaceElement(text, sf, found.element, elementSrc);
+		}
+
+		writeFileSync(techRelationshipsPath, splicedText, 'utf8');
+		spawnSync('npx', ['prettier', '--write', techRelationshipsPath], { stdio: 'ignore' });
+
+		if (opMode === 'remove') {
+			process.stdout.write(
+				`${GREEN}${BOLD}Removed:${RESET} '${sourceLabel}' ${kind} '${targetLabel}'.\n` +
+					`${DIM}Rebuild the site to apply.${RESET}\n`
+			);
+		} else {
+			const finalKind = newKind ?? kind;
+			process.stdout.write(
+				`${GREEN}${BOLD}Edited:${RESET} '${sourceLabel}' ${finalKind} '${targetLabel}'.\n` +
+					`${DIM}Rebuild the site to apply.${RESET}\n`
+			);
+		}
+		return;
+	}
+
+	// opMode === 'add'
+	// Idempotence: an identical (kind, source, target) triple already present is a no-op.
+	const alreadyPresent =
+		findTechRelationship(ts, sf, arrayLit, kind, sourceLabel, targetLabel) !== null;
+	if (alreadyPresent) {
+		process.stdout.write(
+			`${YELLOW}'${sourceLabel}' ${kind} '${targetLabel}' already recorded — nothing to do.${RESET}\n`
+		);
+		return;
+	}
+
+	const elementSrc = buildRelationshipLiteral({ kind, source: sourceLabel, target: targetLabel, note });
+	const splicedText = spliceElementIntoArray(text, sf, arrayLit, elementSrc);
+
+	writeFileSync(techRelationshipsPath, splicedText, 'utf8');
+	spawnSync('npx', ['prettier', '--write', techRelationshipsPath], { stdio: 'ignore' });
+
+	process.stdout.write(
+		`${GREEN}${BOLD}Related:${RESET} '${sourceLabel}' ${kind} '${targetLabel}'.\n` +
+			`${DIM}Rebuild the site to apply.${RESET}\n`
+	);
+}
+
+/**
+ * Parses mode + positionals, validates, and dispatches to relateProject or
+ * relateTech. Requires no drift scan — runs before loadManifests() in main().
+ *
+ * @param {{ args: string[], values: object, palette: object }} options
+ */
+async function runRelate({ args, values, palette }) {
+	const { RED, RESET } = palette;
+	const usage =
+		'Usage:\n' +
+		'  drift relate project <source-slug> <kind> <target-slug> [--note "..."]\n' +
+		'    kind: extracted-from | powers | related\n' +
+		'  drift relate tech <source-label> <kind> <target-label> [--note "..."]\n' +
+		'    kind: leads-to | replaced-by\n' +
+		'    labels are case-insensitive and written in canonical tag casing\n' +
+		'  Add --remove to delete the located edge instead of adding it.\n' +
+		'  Add --edit with --kind and/or --note to change an existing edge in place\n' +
+		'    (the positional <kind>/<source>/<target> locate WHICH edge; --kind is the new value).';
+
+	const [mode, source, kind, target] = args;
+
+	if (mode !== 'project' && mode !== 'tech') {
+		process.stderr.write(`${RED}Error: first argument must be 'project' or 'tech'.\n${usage}${RESET}\n`);
+		process.exit(1);
+	}
+	if (!source || !kind || !target) {
+		process.stderr.write(`${RED}Error: missing arguments.\n${usage}${RESET}\n`);
+		process.exit(1);
+	}
+
+	if (values.remove && values.edit) {
+		process.stderr.write(`${RED}Error: --remove and --edit are mutually exclusive.${RESET}\n`);
+		process.exit(1);
+	}
+	const opMode = values.remove ? 'remove' : values.edit ? 'edit' : 'add';
+
+	const note = values.note?.trim() || undefined;
+	const newKind = values.kind?.trim() || undefined;
+
+	if (opMode === 'edit' && newKind === undefined && note === undefined) {
+		process.stderr.write(
+			`${RED}Error: --edit needs --kind and/or --note — nothing to change.${RESET}\n`
+		);
+		process.exit(1);
+	}
+
+	if (mode === 'project') {
+		if (!PROJECT_RELATIONSHIP_KINDS.has(kind)) {
+			process.stderr.write(
+				`${RED}Error: invalid kind '${kind}'. Use one of: extracted-from, powers, related.${RESET}\n`
+			);
+			process.exit(1);
+		}
+		if (opMode === 'edit' && newKind !== undefined && !PROJECT_RELATIONSHIP_KINDS.has(newKind)) {
+			process.stderr.write(
+				`${RED}Error: invalid --kind '${newKind}'. Use one of: extracted-from, powers, related.${RESET}\n`
+			);
+			process.exit(1);
+		}
+		if (!/^[a-z0-9]+(-[a-z0-9]+)*$/.test(source) || !/^[a-z0-9]+(-[a-z0-9]+)*$/.test(target)) {
+			process.stderr.write(
+				`${RED}Error: slugs must be lowercase kebab-case (e.g. my-project).${RESET}\n`
+			);
+			process.exit(1);
+		}
+		if (source === target) {
+			process.stderr.write(`${RED}Error: a project cannot relate to itself.${RESET}\n`);
+			process.exit(1);
+		}
+		await relateProject({
+			sourceSlug: source,
+			kind,
+			targetSlug: target,
+			note,
+			palette,
+			opMode,
+			newKind,
+			newNote: opMode === 'edit' ? note : undefined
+		});
+		return;
+	}
+
+	// mode === 'tech'
+	if (!TECH_RELATIONSHIP_KINDS.has(kind)) {
+		process.stderr.write(`${RED}Error: invalid kind '${kind}'. Use one of: leads-to, replaced-by.${RESET}\n`);
+		process.exit(1);
+	}
+	if (opMode === 'edit' && newKind !== undefined && !TECH_RELATIONSHIP_KINDS.has(newKind)) {
+		process.stderr.write(
+			`${RED}Error: invalid --kind '${newKind}'. Use one of: leads-to, replaced-by.${RESET}\n`
+		);
+		process.exit(1);
+	}
+	// Labels resolve case-insensitively against the canonical tag universe;
+	// only the add path insists on a known label (see resolveTechLabel).
+	const labelIndex = await buildTechLabelIndex();
+	const sourceLabel = resolveTechLabel(source, labelIndex, palette, opMode === 'add');
+	const targetLabel = resolveTechLabel(target, labelIndex, palette, opMode === 'add');
+	if (sourceLabel.toLowerCase() === targetLabel.toLowerCase()) {
+		process.stderr.write(`${RED}Error: a technology cannot relate to itself.${RESET}\n`);
+		process.exit(1);
+	}
+	await relateTech({
+		sourceLabel,
+		kind,
+		targetLabel,
+		note,
+		palette,
+		opMode,
+		newKind,
+		newNote: opMode === 'edit' ? note : undefined
+	});
+}
+
+// ---------------------------------------------------------------------------
+// tech verb (5DR.19)
+//
+// Authored per-tech overlays (tech-overlays.ts): first-used floor date,
+// modal note, kind override and per-surface visibility.
+//
+//   drift tech list [<label>]
+//   drift tech set <label> [--first-used YYYY-MM-DD] [--note "..."] [--kind <tag-kind>]
+//   drift tech hide <label> [--from toolkit,map,stack,relate]
+//   drift tech unhide <label> [--from ... | --all]
+//
+// Write-isolation: writes ONLY tech-overlays.ts. `list` writes nothing.
+// ---------------------------------------------------------------------------
+
+const TECH_TAG_KINDS = new Set([
+	'language',
+	'framework',
+	'data',
+	'ai',
+	'concept',
+	'tool',
+	'runtime'
+]);
+const TECH_SURFACES = ['toolkit', 'map', 'stack', 'relate'];
+
+/**
+ * Parses a --from value ("toolkit,map") into a validated surface list, in
+ * canonical TECH_SURFACES order. undefined input means "all surfaces".
+ * Exits 1 on an unknown surface token.
+ *
+ * @param {string | undefined} fromValue
+ * @param {object} palette
+ * @returns {string[]}
+ */
+function parseSurfaces(fromValue, palette) {
+	const { RED, RESET } = palette;
+	if (fromValue === undefined) return [...TECH_SURFACES];
+	const tokens = fromValue
+		.split(',')
+		.map((t) => t.trim())
+		.filter((t) => t.length > 0);
+	for (const token of tokens) {
+		if (!TECH_SURFACES.includes(token)) {
+			process.stderr.write(
+				`${RED}Error: unknown surface '${token}'. Use any of: ${TECH_SURFACES.join(', ')}.${RESET}\n`
+			);
+			process.exit(1);
+		}
+	}
+	return TECH_SURFACES.filter((s) => tokens.includes(s));
+}
+
+/**
+ * Parses tech-overlays.ts for mutation, exiting 1 when the file or its
+ * exported array cannot be found (the file ships with the repo; a missing
+ * one is a broken checkout, mirroring relateTech's stance).
+ */
+async function loadTechOverlaysForEdit(palette) {
+	const { RED, RESET } = palette;
+	const relPath = techOverlaysPath.replace(config.repoRoot + '/', '');
+	if (!existsSync(techOverlaysPath)) {
+		process.stderr.write(`${RED}Error: ${relPath} not found.${RESET}\n`);
+		process.exit(1);
+	}
+	const ts = (await import('typescript')).default;
+	const text = readFileSync(techOverlaysPath, 'utf8');
+	const sf = ts.createSourceFile(
+		techOverlaysPath,
+		text,
+		ts.ScriptTarget.Latest,
+		true,
+		ts.ScriptKind.TS
+	);
+	const arrayLit = findExportedLiteral(ts, sf, ts.isArrayLiteralExpression);
+	if (!arrayLit) {
+		process.stderr.write(
+			`${RED}Error: could not locate the exported array literal in ${relPath}.${RESET}\n`
+		);
+		process.exit(1);
+	}
+	return { ts, text, sf, arrayLit, relPath };
+}
+
+/** Writes spliced tech-overlays.ts source and prettier-formats it. */
+function writeTechOverlays(splicedText) {
+	writeFileSync(techOverlaysPath, splicedText, 'utf8');
+	spawnSync('npx', ['prettier', '--write', techOverlaysPath], { stdio: 'ignore' });
+}
+
+/**
+ * Sets one property on the overlay record for `label`, re-parsing afterwards
+ * so consecutive field updates never splice against stale positions. Creates
+ * the record when absent.
+ *
+ * @param {string} label  Canonical label (already resolved).
+ * @param {string} propName
+ * @param {string} valueSrc  Value SOURCE text, e.g. JSON.stringify(value).
+ * @param {object} palette
+ * @returns {Promise<boolean>} true when the file changed.
+ */
+async function setTechOverlayProperty(label, propName, valueSrc, palette) {
+	const { ts, text, sf, arrayLit } = await loadTechOverlaysForEdit(palette);
+	const found = findElementByStringField(ts, sf, arrayLit, 'label', label, {
+		caseInsensitive: true
+	});
+	if (found === null) {
+		const elementSrc = `{ label: ${JSON.stringify(label)}, ${propName}: ${valueSrc} }`;
+		writeTechOverlays(spliceElementIntoArray(text, sf, arrayLit, elementSrc));
+		return true;
+	}
+	const { text: splicedText, changed } = spliceObjectProperty(
+		text,
+		sf,
+		ts,
+		found.element,
+		propName,
+		valueSrc
+	);
+	if (changed) writeTechOverlays(splicedText);
+	return changed;
+}
+
+/**
+ * Mode dispatcher for `drift tech`. See the section banner for the grammar.
+ *
+ * @param {{ args: string[], values: object, palette: object }} options
+ */
+async function runTech({ args, values, palette }) {
+	const { GREEN, RED, YELLOW, BOLD, DIM, RESET } = palette;
+	const usage =
+		'Usage:\n' +
+		'  drift tech list [<label>]\n' +
+		'  drift tech set <label> [--first-used YYYY-MM-DD] [--note "..."] [--kind <tag-kind>]\n' +
+		'  drift tech hide <label> [--from toolkit,map,stack,relate]\n' +
+		'  drift tech unhide <label> [--from ... | --all]\n' +
+		'  Labels are case-insensitive and resolve to canonical tag casing.';
+
+	const [action, labelInput] = args;
+
+	if (action === 'list' || action === undefined) {
+		const labelIndex = await buildTechLabelIndex({ includeRelateHidden: true });
+		const overlays = await readTechOverlaysFile();
+		const overlayByLower = new Map(overlays.map((o) => [o.label.toLowerCase(), o]));
+
+		const describeOverlay = (overlay) => {
+			const parts = [];
+			if (overlay.firstUsed !== undefined) parts.push(`first used ${overlay.firstUsed}`);
+			if (overlay.kind !== undefined) parts.push(`kind → ${overlay.kind}`);
+			if (overlay.note !== undefined) parts.push('note ✓');
+			if (overlay.hiddenFrom !== undefined && overlay.hiddenFrom.length > 0) {
+				parts.push(`hidden: ${overlay.hiddenFrom.join(', ')}`);
+			}
+			return parts;
+		};
+
+		if (labelInput !== undefined) {
+			const canonical = labelIndex.get(labelInput.toLowerCase());
+			if (canonical === undefined) {
+				process.stderr.write(`${RED}Error: unknown tech label '${labelInput}'.${RESET}\n`);
+				process.exit(1);
+			}
+			const overlay = overlayByLower.get(canonical.toLowerCase());
+			process.stdout.write(`${BOLD}${canonical}${RESET}\n`);
+			if (overlay === undefined) {
+				process.stdout.write(`${DIM}No authored overlay.${RESET}\n`);
+			} else {
+				if (overlay.firstUsed !== undefined) {
+					process.stdout.write(`first used  ${overlay.firstUsed}\n`);
+				}
+				if (overlay.kind !== undefined) process.stdout.write(`kind        ${overlay.kind}\n`);
+				if (overlay.note !== undefined) process.stdout.write(`note        ${overlay.note}\n`);
+				if (overlay.hiddenFrom !== undefined && overlay.hiddenFrom.length > 0) {
+					process.stdout.write(`hidden from ${overlay.hiddenFrom.join(', ')}\n`);
+				}
+			}
+			return;
+		}
+
+		const canonicalLabels = [...labelIndex.values()].sort((a, b) => a.localeCompare(b));
+		for (const label of canonicalLabels) {
+			const overlay = overlayByLower.get(label.toLowerCase());
+			const annotation = overlay === undefined ? '' : `  ${DIM}${describeOverlay(overlay).join(' · ')}${RESET}`;
+			process.stdout.write(`${label}${annotation}\n`);
+		}
+		process.stdout.write(`${DIM}${canonicalLabels.length} labels.${RESET}\n`);
+		return;
+	}
+
+	if (action !== 'set' && action !== 'hide' && action !== 'unhide') {
+		process.stderr.write(`${RED}Error: unknown tech action '${action}'.\n${usage}${RESET}\n`);
+		process.exit(1);
+	}
+	if (labelInput === undefined) {
+		process.stderr.write(`${RED}Error: missing label.\n${usage}${RESET}\n`);
+		process.exit(1);
+	}
+
+	// hide/unhide/set all resolve case-insensitively; only unhide tolerates an
+	// unknown label (stale records must stay cleanable).
+	const labelIndex = await buildTechLabelIndex({ includeRelateHidden: true });
+	const label = resolveTechLabel(labelInput, labelIndex, palette, action !== 'unhide');
+
+	if (action === 'set') {
+		const firstUsed = values['first-used'];
+		const note = values.note?.trim() || undefined;
+		const kind = values.kind?.trim() || undefined;
+		if (firstUsed === undefined && note === undefined && kind === undefined) {
+			process.stderr.write(
+				`${RED}Error: tech set needs --first-used, --note and/or --kind — nothing to change.${RESET}\n`
+			);
+			process.exit(1);
+		}
+		if (firstUsed !== undefined) {
+			const month = Number(firstUsed.slice(5, 7));
+			if (!/^\d{4}-\d{2}-\d{2}$/.test(firstUsed) || month < 1 || month > 12) {
+				process.stderr.write(
+					`${RED}Error: --first-used must be an ISO date (YYYY-MM-DD), got '${firstUsed}'.${RESET}\n`
+				);
+				process.exit(1);
+			}
+		}
+		if (kind !== undefined && !TECH_TAG_KINDS.has(kind)) {
+			process.stderr.write(
+				`${RED}Error: invalid --kind '${kind}'. Use one of: ${[...TECH_TAG_KINDS].join(', ')}.${RESET}\n`
+			);
+			process.exit(1);
+		}
+
+		let changed = false;
+		if (firstUsed !== undefined) {
+			changed = (await setTechOverlayProperty(label, 'firstUsed', JSON.stringify(firstUsed), palette)) || changed;
+		}
+		if (note !== undefined) {
+			changed = (await setTechOverlayProperty(label, 'note', JSON.stringify(note), palette)) || changed;
+		}
+		if (kind !== undefined) {
+			changed = (await setTechOverlayProperty(label, 'kind', JSON.stringify(kind), palette)) || changed;
+		}
+		if (changed) {
+			process.stdout.write(
+				`${GREEN}${BOLD}Set:${RESET} overlay for '${label}'.\n${DIM}Rebuild the site to apply.${RESET}\n`
+			);
+		} else {
+			process.stdout.write(`${YELLOW}Overlay for '${label}' already holds those values — nothing to do.${RESET}\n`);
+		}
+		return;
+	}
+
+	// hide / unhide
+	const requested = parseSurfaces(values.all ? undefined : values.from, palette);
+	const { ts, text, sf, arrayLit } = await loadTechOverlaysForEdit(palette);
+	const found = findElementByStringField(ts, sf, arrayLit, 'label', label, {
+		caseInsensitive: true
+	});
+	const current =
+		found === null ? [] : (readArrayField(ts, sf, found.element, 'hiddenFrom') ?? []);
+
+	if (action === 'hide') {
+		const next = TECH_SURFACES.filter((s) => current.includes(s) || requested.includes(s));
+		if (next.length === current.length) {
+			process.stdout.write(
+				`${YELLOW}'${label}' is already hidden from ${requested.join(', ')} — nothing to do.${RESET}\n`
+			);
+			return;
+		}
+		const valueSrc = JSON.stringify(next);
+		if (found === null) {
+			const elementSrc = `{ label: ${JSON.stringify(label)}, hiddenFrom: ${valueSrc} }`;
+			writeTechOverlays(spliceElementIntoArray(text, sf, arrayLit, elementSrc));
+		} else {
+			const { text: splicedText } = spliceObjectProperty(text, sf, ts, found.element, 'hiddenFrom', valueSrc);
+			writeTechOverlays(splicedText);
+		}
+		process.stdout.write(
+			`${GREEN}${BOLD}Hidden:${RESET} '${label}' from ${next.join(', ')}.\n${DIM}Rebuild the site to apply.${RESET}\n`
+		);
+		return;
+	}
+
+	// unhide
+	if (found === null || current.length === 0) {
+		process.stdout.write(`${YELLOW}'${label}' is not hidden anywhere — nothing to do.${RESET}\n`);
+		return;
+	}
+	const next = current.filter((s) => !requested.includes(s));
+	if (next.length === current.length) {
+		process.stdout.write(
+			`${YELLOW}'${label}' is not hidden from ${requested.join(', ')} — nothing to do.${RESET}\n`
+		);
+		return;
+	}
+	// An emptied hiddenFrom drops the property; a record reduced to a bare
+	// label drops entirely (it authors nothing).
+	const hasOtherFields = ['firstUsed', 'note', 'kind'].some(
+		(field) => readRelationshipField(ts, sf, found.element, field) !== undefined
+	);
+	let splicedText;
+	if (next.length > 0) {
+		({ text: splicedText } = spliceObjectProperty(text, sf, ts, found.element, 'hiddenFrom', JSON.stringify(next)));
+	} else if (hasOtherFields) {
+		splicedText = spliceRemoveObjectProperty(text, sf, ts, found.element, 'hiddenFrom');
+	} else {
+		splicedText = spliceRemoveElement(text, sf, arrayLit, found.index);
+	}
+	writeTechOverlays(splicedText);
+	const remaining = next.length > 0 ? ` (still hidden from ${next.join(', ')})` : '';
+	process.stdout.write(
+		`${GREEN}${BOLD}Unhidden:${RESET} '${label}' from ${current.filter((s) => requested.includes(s)).join(', ')}${remaining}.\n` +
+			`${DIM}Rebuild the site to apply.${RESET}\n`
+	);
+}
+
+// ---------------------------------------------------------------------------
+// tag verb (5DR.20)
+//
+// Per-project tech tags: authored additions (AuthoredProject.tags) and
+// suppression of inferred tags (AuthoredProject.suppressTags).
+//
+//   drift tag list <slug>
+//   drift tag add <slug> <label> [--kind <tag-kind>]
+//   drift tag hide <slug> <label>
+//   drift tag unhide <slug> <label>
+//
+// Write-isolation: writes ONLY projects/<slug>.ts. `list` writes nothing.
+// ---------------------------------------------------------------------------
+
+/**
+ * Best-known kind for a canonical label: taxonomy first, then any
+ * overlay-authored tag already using it. undefined when nobody knows —
+ * `tag add` then demands an explicit --kind.
+ *
+ * @param {string} label
+ * @returns {Promise<string | undefined>}
+ */
+async function inferKindForLabel(label) {
+	for (const tags of [LANGUAGE_TAGS, RUNTIME_TAGS, FRAMEWORK_TAGS, DATABASE_TAGS]) {
+		for (const tag of Object.values(tags)) {
+			if (tag.label === label) return tag.kind;
+		}
+	}
+	for (const overlay of await loadOverlays()) {
+		if (!Array.isArray(overlay.tags)) continue;
+		for (const tag of overlay.tags) {
+			if (tag && tag.label === label && typeof tag.kind === 'string') return tag.kind;
+		}
+	}
+	return undefined;
+}
+
+/**
+ * Labels the manifest would infer for one slug — an approximation of
+ * inferTags for display and the "not carried" advisory (identity → taxonomy
+ * label, without inferTags's special cases). Empty when sources.json is
+ * absent (bare checkouts, sandboxes).
+ *
+ * @param {string} slug
+ * @returns {string[]}
+ */
+function inferredLabelsForSlug(slug) {
+	if (!existsSync(sourcesPath)) return [];
+	let entry;
+	try {
+		entry = JSON.parse(readFileSync(sourcesPath, 'utf8')).sources?.[slug];
+	} catch {
+		return [];
+	}
+	if (!entry) return [];
+	const labels = new Set();
+	for (const name of entry.languages ?? []) {
+		const tag = LANGUAGE_TAGS[name];
+		if (tag) labels.add(tag.label);
+	}
+	for (const [identities, table] of [
+		[entry.runtime ?? [], RUNTIME_TAGS],
+		[entry.framework ?? [], FRAMEWORK_TAGS],
+		[entry.database ?? [], DATABASE_TAGS]
+	]) {
+		for (const identity of identities) {
+			const tag = table[identity];
+			if (tag) labels.add(tag.label);
+		}
+	}
+	return [...labels];
+}
+
+/** Parses projects/<slug>.ts for mutation, creating it from the template when allowed. */
+async function loadOverlayForEdit(slug, palette) {
+	const { GREEN, RED, BOLD, RESET } = palette;
+	const { path, created } = createOverlayIfAbsent(slug);
+	const relPath = path.replace(config.repoRoot + '/', '');
+	if (created) process.stdout.write(`${GREEN}${BOLD}created${RESET} ${relPath}\n`);
+	const ts = (await import('typescript')).default;
+	const text = readFileSync(path, 'utf8');
+	const sf = ts.createSourceFile(path, text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
+	const objLit = findExportedLiteral(ts, sf, ts.isObjectLiteralExpression);
+	if (!objLit) {
+		process.stderr.write(
+			`${RED}Error: could not locate the exported object literal in ${relPath}.${RESET}\n`
+		);
+		process.exit(1);
+	}
+	return { ts, path, text, sf, objLit, relPath };
+}
+
+/** Finds an array-typed property on the overlay, exiting 1 on a non-array initializer. */
+function overlayArrayProp(ts, sf, objLit, propName, relPath, palette) {
+	const { RED, RESET } = palette;
+	const prop = objLit.properties.find(
+		(p) => ts.isPropertyAssignment(p) && p.name.getText(sf) === propName
+	);
+	if (prop && !ts.isArrayLiteralExpression(prop.initializer)) {
+		process.stderr.write(
+			`${RED}Error: ${propName} in ${relPath} is not an array literal — edit it by hand.${RESET}\n`
+		);
+		process.exit(1);
+	}
+	return prop ?? null;
+}
+
+/**
+ * Mode dispatcher for `drift tag`. See the section banner for the grammar.
+ *
+ * @param {{ args: string[], values: object, palette: object }} options
+ */
+async function runTag({ args, values, palette }) {
+	const { GREEN, RED, YELLOW, BOLD, DIM, RESET } = palette;
+	const usage =
+		'Usage:\n' +
+		'  drift tag list <slug>\n' +
+		'  drift tag add <slug> <label> [--kind <tag-kind>]\n' +
+		'  drift tag hide <slug> <label>\n' +
+		'  drift tag unhide <slug> <label>\n' +
+		'  An unknown label on add REQUIRES --kind (the entry point for new labels).';
+
+	const [action, slug, labelInput] = args;
+	if (!['list', 'add', 'hide', 'unhide'].includes(action ?? '')) {
+		process.stderr.write(`${RED}Error: unknown tag action '${action ?? ''}'.\n${usage}${RESET}\n`);
+		process.exit(1);
+	}
+	if (slug === undefined || (action !== 'list' && labelInput === undefined)) {
+		process.stderr.write(`${RED}Error: missing arguments.\n${usage}${RESET}\n`);
+		process.exit(1);
+	}
+	const slugError = validateProjectSlug(slug);
+	if (slugError !== null) {
+		process.stderr.write(`${RED}Error: ${slugError}${RESET}\n`);
+		process.exit(1);
+	}
+
+	if (action === 'list') {
+		const overlayPath = join(projectsDir, `${slug}.ts`);
+		let authored = [];
+		let suppressed = [];
+		if (existsSync(overlayPath)) {
+			const ts = (await import('typescript')).default;
+			const text = readFileSync(overlayPath, 'utf8');
+			const sf = ts.createSourceFile(overlayPath, text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
+			const objLit = findExportedLiteral(ts, sf, ts.isObjectLiteralExpression);
+			if (objLit) {
+				const tagsProp = objLit.properties.find(
+					(p) => ts.isPropertyAssignment(p) && p.name.getText(sf) === 'tags'
+				);
+				if (tagsProp && ts.isArrayLiteralExpression(tagsProp.initializer)) {
+					for (const el of tagsProp.initializer.elements) {
+						if (!ts.isObjectLiteralExpression(el)) continue;
+						const label = readRelationshipField(ts, sf, el, 'label');
+						const kind = readRelationshipField(ts, sf, el, 'kind');
+						if (label !== undefined) authored.push(kind ? `${label} (${kind})` : label);
+					}
+				}
+				suppressed = readArrayField(ts, sf, objLit, 'suppressTags') ?? [];
+			}
+		}
+		const inferred = inferredLabelsForSlug(slug);
+		const suppressedSet = new Set(suppressed);
+		const effective = [...new Set([...inferred, ...authored.map((a) => a.replace(/ \(.*\)$/, ''))])]
+			.filter((label) => !suppressedSet.has(label));
+
+		process.stdout.write(`${BOLD}${slug}${RESET}\n`);
+		process.stdout.write(`inferred    ${inferred.join(', ') || DIM + 'none' + RESET}\n`);
+		process.stdout.write(`authored    ${authored.join(', ') || DIM + 'none' + RESET}\n`);
+		process.stdout.write(`suppressed  ${suppressed.join(', ') || DIM + 'none' + RESET}\n`);
+		process.stdout.write(`effective   ${effective.join(', ') || DIM + 'none' + RESET}\n`);
+		return;
+	}
+
+	// Label resolution: canonical casing when known; `add` without --kind is
+	// strict, `add --kind` sanctions a brand-new label, hide/unhide pass
+	// unknown labels through (suppressing a future inferred tag is legitimate).
+	const labelIndex = await buildTechLabelIndex({ includeRelateHidden: true });
+	const canonical = labelIndex.get(labelInput.toLowerCase());
+	const explicitKind = values.kind?.trim() || undefined;
+	if (explicitKind !== undefined && !TECH_TAG_KINDS.has(explicitKind)) {
+		process.stderr.write(
+			`${RED}Error: invalid --kind '${explicitKind}'. Use one of: ${[...TECH_TAG_KINDS].join(', ')}.${RESET}\n`
+		);
+		process.exit(1);
+	}
+
+	if (action === 'add') {
+		let label;
+		let kind;
+		if (canonical !== undefined) {
+			label = resolveTechLabel(labelInput, labelIndex, palette, true);
+			kind = explicitKind ?? (await inferKindForLabel(label));
+			if (kind === undefined) {
+				process.stderr.write(
+					`${RED}Error: no known kind for '${label}' — pass --kind.${RESET}\n`
+				);
+				process.exit(1);
+			}
+		} else if (explicitKind !== undefined) {
+			label = labelInput;
+			kind = explicitKind;
+		} else {
+			// Unknown label without --kind: reuse the strict error (near-miss list).
+			resolveTechLabel(labelInput, labelIndex, palette, true);
+			return; // unreachable — resolveTechLabel exits
+		}
+
+		const { ts, path, text, sf, objLit, relPath } = await loadOverlayForEdit(slug, palette);
+		const tagsProp = overlayArrayProp(ts, sf, objLit, 'tags', relPath, palette);
+		if (tagsProp !== null) {
+			const existing = findElementByStringField(ts, sf, tagsProp.initializer, 'label', label, {
+				caseInsensitive: true
+			});
+			if (existing !== null) {
+				process.stdout.write(
+					`${YELLOW}'${slug}' already carries '${label}' — nothing to do.${RESET}\n`
+				);
+				return;
+			}
+		}
+		const elementSrc = buildRelationshipLiteral({ label, kind });
+		let splicedText;
+		if (tagsProp !== null) {
+			splicedText = spliceElementIntoArray(text, sf, tagsProp.initializer, elementSrc);
+		} else {
+			const insertPos = objLit.getStart(sf) + 1;
+			splicedText = text.slice(0, insertPos) + `\n\ttags: [${elementSrc}],` + text.slice(insertPos);
+		}
+		writeFileSync(path, splicedText, 'utf8');
+		spawnSync('npx', ['prettier', '--write', path], { stdio: 'ignore' });
+
+		// Adding and suppressing must not coexist: lift any suppression of
+		// this label in a second pass (positions went stale on the write).
+		{
+			const fresh = await loadOverlayForEdit(slug, palette);
+			const suppressProp = overlayArrayProp(fresh.ts, fresh.sf, fresh.objLit, 'suppressTags', relPath, palette);
+			if (suppressProp !== null) {
+				const idx = findStringElementIndex(fresh.ts, fresh.sf, suppressProp.initializer, label);
+				if (idx !== -1) {
+					// Dropping the last entry drops the whole property — an empty
+					// suppressTags authors nothing.
+					const cleaned =
+						suppressProp.initializer.elements.length === 1
+							? spliceRemoveObjectProperty(fresh.text, fresh.sf, fresh.ts, fresh.objLit, 'suppressTags')
+							: spliceRemoveElement(fresh.text, fresh.sf, suppressProp.initializer, idx);
+					writeFileSync(path, cleaned, 'utf8');
+					spawnSync('npx', ['prettier', '--write', path], { stdio: 'ignore' });
+					process.stdout.write(`${DIM}Also lifted suppression of '${label}'.${RESET}\n`);
+				}
+			}
+		}
+		process.stdout.write(
+			`${GREEN}${BOLD}Tagged:${RESET} '${slug}' with '${label}' (${kind}).\n${DIM}Rebuild the site to apply.${RESET}\n`
+		);
+		return;
+	}
+
+	const label = canonical ?? labelInput;
+
+	if (action === 'hide') {
+		const carried = new Set([...inferredLabelsForSlug(slug)]);
+		const { ts, path, text, sf, objLit, relPath } = await loadOverlayForEdit(slug, palette);
+		const suppressProp = overlayArrayProp(ts, sf, objLit, 'suppressTags', relPath, palette);
+		if (suppressProp !== null) {
+			if (findStringElementIndex(ts, sf, suppressProp.initializer, label) !== -1) {
+				process.stdout.write(
+					`${YELLOW}'${label}' is already suppressed on '${slug}' — nothing to do.${RESET}\n`
+				);
+				return;
+			}
+		}
+		let splicedText;
+		if (suppressProp !== null) {
+			splicedText = spliceElementIntoArray(text, sf, suppressProp.initializer, JSON.stringify(label));
+		} else {
+			const insertPos = objLit.getStart(sf) + 1;
+			splicedText =
+				text.slice(0, insertPos) + `\n\tsuppressTags: [${JSON.stringify(label)}],` + text.slice(insertPos);
+		}
+		writeFileSync(path, splicedText, 'utf8');
+		spawnSync('npx', ['prettier', '--write', path], { stdio: 'ignore' });
+		if (!carried.has(label)) {
+			process.stdout.write(
+				`${YELLOW}Note: '${slug}' does not currently infer '${label}'; the suppression waits for it.${RESET}\n`
+			);
+		}
+		process.stdout.write(
+			`${GREEN}${BOLD}Suppressed:${RESET} '${label}' on '${slug}' (inferred or authored).\n${DIM}Rebuild the site to apply.${RESET}\n`
+		);
+		return;
+	}
+
+	// unhide: soft no-ops throughout — never scaffolds an overlay to remove from it.
+	const overlayPath = join(projectsDir, `${slug}.ts`);
+	if (!existsSync(overlayPath)) {
+		process.stdout.write(`${YELLOW}'${slug}' has no overlay — nothing to unhide.${RESET}\n`);
+		return;
+	}
+	const ts = (await import('typescript')).default;
+	const text = readFileSync(overlayPath, 'utf8');
+	const sf = ts.createSourceFile(overlayPath, text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
+	const objLit = findExportedLiteral(ts, sf, ts.isObjectLiteralExpression);
+	const suppressProp =
+		objLit === null
+			? null
+			: overlayArrayProp(ts, sf, objLit, 'suppressTags', overlayPath, palette);
+	const idx =
+		suppressProp === null ? -1 : findStringElementIndex(ts, sf, suppressProp.initializer, label);
+	if (idx === -1) {
+		process.stdout.write(
+			`${YELLOW}'${label}' is not suppressed on '${slug}' — nothing to do.${RESET}\n`
+		);
+		return;
+	}
+	const splicedText =
+		suppressProp.initializer.elements.length === 1
+			? spliceRemoveObjectProperty(text, sf, ts, objLit, 'suppressTags')
+			: spliceRemoveElement(text, sf, suppressProp.initializer, idx);
+	writeFileSync(overlayPath, splicedText, 'utf8');
+	spawnSync('npx', ['prettier', '--write', overlayPath], { stdio: 'ignore' });
+	process.stdout.write(
+		`${GREEN}${BOLD}Unsuppressed:${RESET} '${label}' on '${slug}'.\n${DIM}Rebuild the site to apply.${RESET}\n`
+	);
+}
+
+// ---------------------------------------------------------------------------
+// theme verb (5DR.21) — alias: collection
+//
+// Manages the theme territories in themes.ts (id, name, blurb, slugs).
+//
+//   drift theme list [<id>]
+//   drift theme create <id> --name "..." [--blurb "..."] [--slug <s> ...]
+//   drift theme edit <id> [--name "..."] [--blurb "..."]
+//   drift theme add <id> <slug>
+//   drift theme remove <id> <slug>
+//   drift theme delete <id>
+//
+// Write-isolation: writes ONLY themes.ts. `list` writes nothing. Slug
+// existence is themes.test.ts's job (same stance as relate targets); the
+// CLI validates shape only.
+// ---------------------------------------------------------------------------
+
+/** Parses themes.ts for reading or mutation, exiting 1 when missing/malformed. */
+async function loadThemesForEdit(palette) {
+	const { RED, RESET } = palette;
+	const relPath = themesPath.replace(config.repoRoot + '/', '');
+	if (!existsSync(themesPath)) {
+		process.stderr.write(`${RED}Error: ${relPath} not found.${RESET}\n`);
+		process.exit(1);
+	}
+	const ts = (await import('typescript')).default;
+	const text = readFileSync(themesPath, 'utf8');
+	const sf = ts.createSourceFile(themesPath, text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
+	const arrayLit = findExportedLiteral(ts, sf, ts.isArrayLiteralExpression);
+	if (!arrayLit) {
+		process.stderr.write(
+			`${RED}Error: could not locate the exported array literal in ${relPath}.${RESET}\n`
+		);
+		process.exit(1);
+	}
+	return { ts, text, sf, arrayLit, relPath };
+}
+
+/** Writes spliced themes.ts source and prettier-formats it. */
+function writeThemes(splicedText) {
+	writeFileSync(themesPath, splicedText, 'utf8');
+	spawnSync('npx', ['prettier', '--write', themesPath], { stdio: 'ignore' });
+}
+
+/**
+ * Mode dispatcher for `drift theme` (and its `collection` alias). See the
+ * section banner for the grammar.
+ *
+ * @param {{ args: string[], values: object, palette: object }} options
+ */
+async function runTheme({ args, values, palette }) {
+	const { GREEN, RED, YELLOW, BOLD, DIM, RESET } = palette;
+	const usage =
+		'Usage:\n' +
+		'  drift theme list [<id>]\n' +
+		'  drift theme create <id> --name "..." [--blurb "..."] [--slug <s> --slug <s> ...]\n' +
+		'  drift theme edit <id> [--name "..."] [--blurb "..."]\n' +
+		'  drift theme add <id> <slug>\n' +
+		'  drift theme remove <id> <slug>\n' +
+		'  drift theme delete <id>\n' +
+		"  ('drift collection …' is an alias for every form.)";
+
+	const [action, id, slug] = args;
+	const ACTIONS = ['list', 'create', 'edit', 'add', 'remove', 'delete'];
+	if (!ACTIONS.includes(action ?? '')) {
+		process.stderr.write(`${RED}Error: unknown theme action '${action ?? ''}'.\n${usage}${RESET}\n`);
+		process.exit(1);
+	}
+	if (action !== 'list' && id === undefined) {
+		process.stderr.write(`${RED}Error: missing theme id.\n${usage}${RESET}\n`);
+		process.exit(1);
+	}
+	if (id !== undefined) {
+		const idError = validateProjectSlug(id);
+		if (idError !== null) {
+			process.stderr.write(`${RED}Error: theme ids follow slug rules — ${idError}${RESET}\n`);
+			process.exit(1);
+		}
+	}
+	if ((action === 'add' || action === 'remove') && slug === undefined) {
+		process.stderr.write(`${RED}Error: missing project slug.\n${usage}${RESET}\n`);
+		process.exit(1);
+	}
+	if (slug !== undefined) {
+		const slugError = validateProjectSlug(slug);
+		if (slugError !== null) {
+			process.stderr.write(`${RED}Error: ${slugError}${RESET}\n`);
+			process.exit(1);
+		}
+	}
+
+	const { ts, text, sf, arrayLit } = await loadThemesForEdit(palette);
+	const readTheme = (element) => ({
+		id: readRelationshipField(ts, sf, element, 'id'),
+		name: readRelationshipField(ts, sf, element, 'name'),
+		blurb: readRelationshipField(ts, sf, element, 'blurb'),
+		slugs: readArrayField(ts, sf, element, 'slugs') ?? []
+	});
+
+	if (action === 'list') {
+		const themes = arrayLit.elements
+			.filter((el) => ts.isObjectLiteralExpression(el))
+			.map((el) => readTheme(el));
+		const wanted = id === undefined ? themes : themes.filter((t) => t.id === id);
+		if (id !== undefined && wanted.length === 0) {
+			process.stderr.write(`${RED}Error: no theme with id '${id}'.${RESET}\n`);
+			process.exit(1);
+		}
+		for (const theme of wanted) {
+			process.stdout.write(`${BOLD}${theme.id}${RESET} · ${theme.name}\n`);
+			if (theme.blurb) process.stdout.write(`  ${theme.blurb}\n`);
+			process.stdout.write(
+				`  ${DIM}${theme.slugs.length} project${theme.slugs.length === 1 ? '' : 's'}:${RESET} ${theme.slugs.join(', ')}\n`
+			);
+		}
+		if (id === undefined) process.stdout.write(`${DIM}${themes.length} themes.${RESET}\n`);
+		return;
+	}
+
+	const found = findElementByStringField(ts, sf, arrayLit, 'id', id);
+
+	if (action === 'create') {
+		if (found !== null) {
+			process.stderr.write(`${RED}Error: a theme with id '${id}' already exists.${RESET}\n`);
+			process.exit(1);
+		}
+		const name = values.name?.trim();
+		if (!name) {
+			process.stderr.write(`${RED}Error: theme create requires --name.${RESET}\n`);
+			process.exit(1);
+		}
+		const slugs = values.slug ?? [];
+		for (const member of slugs) {
+			const memberError = validateProjectSlug(member);
+			if (memberError !== null) {
+				process.stderr.write(`${RED}Error: --slug '${member}': ${memberError}${RESET}\n`);
+				process.exit(1);
+			}
+		}
+		const elementSrc = buildRelationshipLiteral({
+			id,
+			name,
+			blurb: values.blurb?.trim() || '',
+			slugs
+		});
+		writeThemes(spliceElementIntoArray(text, sf, arrayLit, elementSrc));
+		if (slugs.length < 2) {
+			process.stdout.write(
+				`${YELLOW}Note: themes.test.ts expects at least 2 projects per theme; add more with drift theme add.${RESET}\n`
+			);
+		}
+		process.stdout.write(
+			`${GREEN}${BOLD}Created:${RESET} theme '${id}' (${slugs.length} project${slugs.length === 1 ? '' : 's'}).\n` +
+				`${DIM}Rebuild the site to apply.${RESET}\n`
+		);
+		return;
+	}
+
+	if (found === null) {
+		if (action === 'delete') {
+			process.stdout.write(`${YELLOW}No theme with id '${id}' — nothing to delete.${RESET}\n`);
+			return;
+		}
+		process.stderr.write(`${RED}Error: no theme with id '${id}'.${RESET}\n`);
+		process.exit(1);
+	}
+
+	if (action === 'edit') {
+		const newName = values.name?.trim() || undefined;
+		const newBlurb = values.blurb?.trim() || undefined;
+		if (newName === undefined && newBlurb === undefined) {
+			process.stderr.write(
+				`${RED}Error: theme edit needs --name and/or --blurb — nothing to change.${RESET}\n`
+			);
+			process.exit(1);
+		}
+		// Two sequential single-property splices would go stale; apply the
+		// first, then re-locate for the second.
+		let workingText = text;
+		if (newName !== undefined) {
+			({ text: workingText } = spliceObjectProperty(workingText, sf, ts, found.element, 'name', JSON.stringify(newName)));
+			writeThemes(workingText);
+		}
+		if (newBlurb !== undefined) {
+			const fresh = await loadThemesForEdit(palette);
+			const relocated = findElementByStringField(fresh.ts, fresh.sf, fresh.arrayLit, 'id', id);
+			const { text: blurbed } = spliceObjectProperty(
+				fresh.text,
+				fresh.sf,
+				fresh.ts,
+				relocated.element,
+				'blurb',
+				JSON.stringify(newBlurb)
+			);
+			writeThemes(blurbed);
+		}
+		process.stdout.write(
+			`${GREEN}${BOLD}Edited:${RESET} theme '${id}'.\n${DIM}Rebuild the site to apply.${RESET}\n`
+		);
+		return;
+	}
+
+	if (action === 'delete') {
+		writeThemes(spliceRemoveElement(text, sf, arrayLit, found.index));
+		process.stdout.write(
+			`${GREEN}${BOLD}Deleted:${RESET} theme '${id}'.\n${DIM}Rebuild the site to apply.${RESET}\n`
+		);
+		return;
+	}
+
+	// add / remove a member slug
+	const slugsProp = found.element.properties.find(
+		(p) => ts.isPropertyAssignment(p) && p.name.getText(sf) === 'slugs'
+	);
+	if (!slugsProp || !ts.isArrayLiteralExpression(slugsProp.initializer)) {
+		process.stderr.write(
+			`${RED}Error: theme '${id}' has no slugs array literal — edit themes.ts by hand.${RESET}\n`
+		);
+		process.exit(1);
+	}
+	const memberIndex = findStringElementIndex(ts, sf, slugsProp.initializer, slug);
+
+	if (action === 'add') {
+		if (memberIndex !== -1) {
+			process.stdout.write(
+				`${YELLOW}'${slug}' is already in theme '${id}' — nothing to do.${RESET}\n`
+			);
+			return;
+		}
+		writeThemes(spliceElementIntoArray(text, sf, slugsProp.initializer, JSON.stringify(slug)));
+		process.stdout.write(
+			`${GREEN}${BOLD}Added:${RESET} '${slug}' to theme '${id}'.\n${DIM}Rebuild the site to apply.${RESET}\n`
+		);
+		return;
+	}
+
+	// remove
+	if (memberIndex === -1) {
+		process.stdout.write(
+			`${YELLOW}'${slug}' is not in theme '${id}' — nothing to remove.${RESET}\n`
+		);
+		return;
+	}
+	const remaining = slugsProp.initializer.elements.length - 1;
+	writeThemes(spliceRemoveElement(text, sf, slugsProp.initializer, memberIndex));
+	if (remaining < 2) {
+		process.stdout.write(
+			`${YELLOW}Note: theme '${id}' now has ${remaining} project${remaining === 1 ? '' : 's'}; themes.test.ts expects at least 2.${RESET}\n`
+		);
+	}
+	process.stdout.write(
+		`${GREEN}${BOLD}Removed:${RESET} '${slug}' from theme '${id}'.\n${DIM}Rebuild the site to apply.${RESET}\n`
+	);
 }
 
 // ---------------------------------------------------------------------------
@@ -3499,8 +5851,14 @@ Compare synced fingerprints against current git state and surface new repos.
 - \`drift keep --all-projects <field>\`
 - \`drift keep-all\`
 - \`drift hide <slug>\`
-- \`drift author <slug>\`
+- \`drift promote <slug> [field]\`
+- \`drift author <slug> [<field> [<value>]]\`
 - \`drift flag <slug> --pin | --hide\`
+- \`drift relate project <source-slug> <kind> <target-slug> [--note "..."]\`
+- \`drift relate tech <source-label> <kind> <target-label> [--note "..."]\`
+- \`drift tech list|set|hide|unhide <label> [...]\`
+- \`drift tag list|add|hide|unhide <slug> [<label>] [--kind <tag-kind>]\`
+- \`drift theme list|create|edit|add|remove|delete <id> [...]\` (alias: \`collection\`)
 - \`drift audit [--json]\`
 - \`drift init\`
 
@@ -3512,8 +5870,13 @@ Compare synced fingerprints against current git state and surface new repos.
 - \`keep\` · keep your manual override value, refreshing its synced baseline to dismiss the flag
 - \`keep-all\` · refresh every flagged override baseline at once
 - \`hide\` · append a slug to excluded.json, removing it from the public site
-- \`author\` · scaffold src/lib/data/projects/\<slug\>.ts from a template, then open in \$EDITOR
+- \`promote\` · graduate a landed in-progress entry out of in-progress.json (syncs into sources.json on the next \`drift sync\`)
+- \`author\` · scaffold src/lib/data/projects/\<slug\>.ts and open in \$EDITOR; with a field name, set one scalar field in place (name, tagline, blurb, description, kind, status, liveUrl)
 - \`flag\` · set pin: true or hide: true in the slug's overlay (creating it if absent)
+- \`relate\` · author a project↔project or tech↔tech relationship edge
+- \`tech\` · author per-tech overlays: first-used date, modal note, kind override, surface visibility
+- \`tag\` · add a tech to, or suppress one from, a single project's tags
+- \`theme\` · manage the theme territories (collections) on /toolkit
 - \`audit\` · score every authored overlay against the content-depth rubric and report per-entry tiers
 - \`init\` · scaffold drift.config.ts and sources.local.json for this machine
 
@@ -3614,6 +5977,32 @@ drift hide mood-time
 drift hide some-private-experiment
 \`\`\``,
 
+	promote: `# drift promote · graduate a landed in-progress entry
+
+Removes an entry (or a single tracked field) from \`in-progress.json\` once its
+branch has merged into the default branch. Writes ONLY in-progress.json.
+
+The tracked value then graduates into \`sources.json\` automatically on the next
+\`drift sync\`: with the branch merged, \`getFingerprint\` (which measures the
+default branch) picks up the higher counts with no manual edit to sources.json.
+
+Pass a \`field\` to promote just that one tracked field; omit it to promote the
+whole entry. Warns (and no-ops) when the slug is not in in-progress.json.
+
+## Usage
+
+\`\`\`
+drift promote <slug>
+drift promote <slug> <field>
+\`\`\`
+
+## Examples
+
+\`\`\`
+drift promote lyra-rose
+drift promote lyra-rose commitsMine
+\`\`\``,
+
 	snapshot: `# drift snapshot · view all current metrics
 
 Shows every metric's current value for every resolvable project, colourised
@@ -3712,6 +6101,141 @@ drift flag lyra-rose --pin
 drift flag kitchen-gremlin --hide
 \`\`\``,
 
+	tech: `# drift tech · author per-tech overlays and visibility
+
+Manages \`src/lib/data/tech-overlays.ts\`, the single authoring surface for
+per-tech data, via the same TypeScript-compiler splices \`relate\` uses.
+Labels are case-insensitive and resolve to canonical tag casing.
+
+- \`drift tech list [<label>]\` · every canonical tag label with its overlay
+  state (first-used date, note, kind override, hidden surfaces); with a
+  label, full detail for one tech. Writes nothing.
+- \`drift tech set <label> [--first-used YYYY-MM-DD] [--note "..."] [--kind <tag-kind>]\`
+  · upserts overlay fields. \`--first-used\` is a FLOOR date (a derived date
+  at or before it wins on the timeline); \`--note\` shows in the toolkit
+  modal; \`--kind\` overrides the tag's kind everywhere. At least one flag
+  is required.
+- \`drift tech hide <label> [--from toolkit,map,stack,relate]\` · hides the
+  label from the given aggregate surfaces (all four when \`--from\` is
+  omitted). Project detail chips are never hidden — that would misrepresent
+  individual projects.
+- \`drift tech unhide <label> [--from ... | --all]\` · reverses hide; a
+  record reduced to a bare label is removed entirely. Tolerates unknown
+  labels so stale records stay cleanable.
+
+Write-isolation: writes ONLY tech-overlays.ts.
+`,
+
+	tag: `# drift tag · per-project tech tags
+
+Adds a tech to, or suppresses one from, ONE project's tags, writing only
+\`src/lib/data/projects/<slug>.ts\` (created from the template when absent).
+
+- \`drift tag list <slug>\` · inferred, authored, suppressed and effective
+  labels for one project. Writes nothing.
+- \`drift tag add <slug> <label> [--kind <tag-kind>]\` · appends an authored
+  tag. A known label resolves case-insensitively and infers its kind; an
+  UNKNOWN label requires \`--kind\` — this is the one sanctioned entry point
+  for a brand-new label. Also lifts any suppression of the same label.
+- \`drift tag hide <slug> <label>\` · appends to \`suppressTags\`, dropping
+  the label from the merged list whether inferred or authored. Suppressing
+  a label the project does not yet infer is allowed (it waits).
+- \`drift tag unhide <slug> <label>\` · removes the suppression; missing
+  overlay or entry is a soft no-op.
+`,
+
+	theme: `# drift theme · manage the theme territories (collections)
+
+Manages \`src/lib/data/themes.ts\` — the authored project groupings rendered
+on /toolkit as "Themes the work returns to". \`drift collection …\` is an
+alias for every form.
+
+- \`drift theme list [<id>]\` · every theme with blurb and members. Writes nothing.
+- \`drift theme create <id> --name "..." [--blurb "..."] [--slug <s> --slug <s> ...]\`
+  · appends a new theme. Ids follow slug rules and must be unique; fewer
+  than two members triggers an advisory (themes.test.ts enforces ≥2).
+- \`drift theme edit <id> [--name "..."] [--blurb "..."]\` · in-place field edit.
+- \`drift theme add <id> <slug>\` / \`drift theme remove <id> <slug>\` ·
+  membership changes; slug EXISTENCE is themes.test.ts's job, shape only here.
+- \`drift theme delete <id>\` · removes the theme; a missing id is a soft no-op.
+
+Write-isolation: writes ONLY themes.ts.
+`,
+
+	relate: `# drift relate · author a relationship edge
+
+Appends a relationship to a .ts file by splicing into it with the TypeScript
+compiler API — the same technique \`flag\` uses to set overlay flags — so no
+existing field or comment is disturbed. Idempotent: re-relating an identical
+edge is a no-op.
+
+Two modes:
+
+- \`drift relate project <source-slug> <kind> <target-slug>\` appends a
+  \`ProjectRelationship\` to \`relationships: [...]\` in
+  \`src/lib/data/projects/<source-slug>.ts\`, creating the overlay from the
+  standard template first if it does not exist. Kind is one of:
+  \`extracted-from\`, \`powers\`, \`related\`.
+- \`drift relate tech <source-label> <kind> <target-label>\` appends a
+  \`TechRelationship\` to the exported array in \`src/lib/data/tech-relationships.ts\`.
+  Kind is one of: \`leads-to\`, \`replaced-by\`.
+
+\`--note "..."\` attaches a free-text note to the edge; omit it to leave the
+edge unannotated.
+
+The positional \`<source> <kind> <target>\` always LOCATES which edge you
+mean — for add that's the edge to create; for \`--remove\`/\`--edit\` that's
+the edge to find, not something you're setting.
+
+- \`--remove\` deletes the located edge. A missing overlay or missing edge is
+  a soft no-op (nothing to remove is not an error), never scaffolds an
+  overlay just to remove from it.
+- \`--edit\` changes an existing edge's \`kind\` and/or \`note\` in place.
+  \`--kind <new-kind>\` supplies the new kind (validated against the same
+  kind union as the locator); \`--note "..."\` supplies the new note.
+  At least one of \`--kind\`/\`--note\` is required — editing nothing is a
+  usage error. Unlike remove, editing an edge that does not exist IS an
+  error (there is nothing sensible to edit into). \`--remove\` and \`--edit\`
+  are mutually exclusive.
+
+Validation is structural only — kind union, non-self-edge, slug shape for
+project mode. Target existence and tag-label correctness are NOT checked
+here: \`data.test.ts\` already fails the build on a dangling relationship
+target, and \`tech-relationships.test.ts\` already fails on an unknown tag
+label, exactly as those tests already gate hand-edited files.
+
+\`powers\` and \`extracted-from\` are meant to be authored as a matching pair
+(one side on each project). After adding, removing, or kind-editing one
+side, \`relate\` prints the reciprocal command as a reminder — it never
+writes both files itself. A note-only edit never triggers this, since notes
+are not part of the pairing contract.
+
+Write-isolation: writes exactly one of \`projects/<slug>.ts\` or
+\`tech-relationships.ts\` per invocation. Never touches any JSON data file.
+
+## Usage
+
+\`\`\`
+drift relate project <source-slug> <kind> <target-slug> [--note "..."]
+drift relate project <source-slug> <kind> <target-slug> --remove
+drift relate project <source-slug> <kind> <target-slug> --edit [--kind <new-kind>] [--note "..."]
+drift relate tech "<source-label>" <kind> "<target-label>" [--note "..."]
+drift relate tech "<source-label>" <kind> "<target-label>" --remove
+drift relate tech "<source-label>" <kind> "<target-label>" --edit [--kind <new-kind>] [--note "..."]
+\`\`\`
+
+## Examples
+
+\`\`\`
+drift relate project nib powers the-work --note "Extracted runtime."
+drift relate project the-work extracted-from nib
+drift relate project nib powers the-work --remove
+drift relate project nib powers the-work --edit --kind related
+drift relate tech "Node.js" replaced-by Bun --note "Speed and built-in tooling."
+drift relate tech Deno leads-to Oak
+drift relate tech Deno leads-to Oak --edit --note "Updated rationale."
+\`\`\``,
+
 	audit: `# drift audit · score every authored overlay against the depth rubric
 
 Reads every \`src/lib/data/projects/*.ts\` overlay and computes a mechanical-
@@ -3775,8 +6299,14 @@ ${BOLD}Usage:${RESET}
   drift keep --all-projects <field>
   drift keep-all
   drift hide <slug>
-  drift author <slug>
+  drift promote <slug> [field]
+  drift author <slug> [<field> [<value>]]
   drift flag <slug> --pin | --hide
+  drift relate project <source-slug> <kind> <target-slug> [--note "..."]
+  drift relate tech <source-label> <kind> <target-label> [--note "..."]
+  drift tech list|set|hide|unhide <label> [...]
+  drift tag list|add|hide|unhide <slug> [<label>] [--kind <tag-kind>]
+  drift theme list|create|edit|add|remove|delete <id> [...]
   drift audit [--json]
   drift init
 
@@ -3787,8 +6317,13 @@ ${BOLD}Verbs:${RESET}
   keep        Keep your manual override value, refreshing its baseline to dismiss the flag.
   keep-all    Refresh every flagged override baseline at once.
   hide        Append a slug to excluded.json, removing it from the public site.
+  promote     Graduate a landed in-progress entry out of in-progress.json.
   author      Scaffold projects/<slug>.ts from a template, then open in $EDITOR.
   flag        Set pin: true or hide: true in the slug's overlay (creating it if absent).
+  relate      Author a project↔project or tech↔tech relationship edge.
+  tech        Author per-tech overlays: date, note, kind override, visibility.
+  tag         Add a tech to, or suppress one from, a single project's tags.
+  theme       Manage the theme territories (collections). Alias: collection.
   audit       Score every authored overlay against the content-depth rubric.
   init        Scaffold drift.config.ts and sources.local.json for this machine.
 
@@ -3850,6 +6385,19 @@ ${DIM}Warns when the slug is not yet in sources.json.${RESET}
   Usage:   drift hide <slug>
   Example: drift hide some-private-experiment`,
 
+		promote: `${BOLD}drift promote <slug> [field]${RESET} - graduate a landed in-progress entry
+
+Removes an entry (or one tracked field) from in-progress.json once its branch
+has merged. Writes in-progress.json only.
+
+${DIM}The value graduates into sources.json automatically on the next drift sync.
+Warns and no-ops when the slug is not in in-progress.json.${RESET}
+
+  Usage:   drift promote <slug>
+           drift promote <slug> <field>
+  Example: drift promote lyra-rose
+           drift promote lyra-rose commitsMine`,
+
 		snapshot: `${BOLD}drift snapshot${RESET} - view all current metrics
 
 Shows every metric's current value for every resolvable project, colourised
@@ -3904,6 +6452,83 @@ Rebuild the site to apply.${RESET}
            drift flag <slug> --hide
   Example: drift flag iris --pin
            drift flag kitchen-gremlin --hide`,
+
+		tech: `${BOLD}drift tech${RESET} - author per-tech overlays and visibility
+
+${BOLD}Usage:${RESET}
+  drift tech list [<label>]
+  drift tech set <label> [--first-used YYYY-MM-DD] [--note "..."] [--kind <tag-kind>]
+  drift tech hide <label> [--from toolkit,map,stack,relate]
+  drift tech unhide <label> [--from ... | --all]
+
+Manages src/lib/data/tech-overlays.ts: first-used floor dates, the note
+shown in the toolkit modal, kind overrides and per-surface visibility.
+Labels are case-insensitive and resolve to canonical tag casing. hide
+without --from hides from all four surfaces; project detail chips are
+never hidden. Writes ONLY tech-overlays.ts.
+`,
+
+		tag: `${BOLD}drift tag${RESET} - per-project tech tags
+
+${BOLD}Usage:${RESET}
+  drift tag list <slug>
+  drift tag add <slug> <label> [--kind <tag-kind>]
+  drift tag hide <slug> <label>
+  drift tag unhide <slug> <label>
+
+add appends an authored tag (unknown labels require --kind and become the
+entry point for new labels; adding lifts any suppression). hide appends to
+suppressTags, dropping the label from the merged list whether inferred or
+authored. Writes ONLY projects/<slug>.ts.
+`,
+
+		theme: `${BOLD}drift theme${RESET} - manage the theme territories (collections)
+
+${BOLD}Usage:${RESET}
+  drift theme list [<id>]
+  drift theme create <id> --name "..." [--blurb "..."] [--slug <s> --slug <s> ...]
+  drift theme edit <id> [--name "..."] [--blurb "..."]
+  drift theme add <id> <slug>
+  drift theme remove <id> <slug>
+  drift theme delete <id>
+
+Manages src/lib/data/themes.ts, the groupings on /toolkit. 'drift
+collection' is an alias for every form. Ids follow slug rules; slug
+existence stays themes.test.ts's job. Writes ONLY themes.ts.
+`,
+
+		relate: `${BOLD}drift relate${RESET} - author a relationship edge
+
+Appends a relationship by splicing into a .ts file with the TypeScript
+compiler API, the same technique flag uses. Idempotent: an identical edge
+is a no-op.
+
+  project mode  Appends a ProjectRelationship to relationships: [...] in
+                projects/<source-slug>.ts, creating the overlay first if
+                absent. kind: extracted-from | powers | related
+  tech mode     Appends a TechRelationship to the exported array in
+                tech-relationships.ts. kind: leads-to | replaced-by
+
+  --remove      Deletes the edge located by <source> <kind> <target>. A
+                missing overlay/edge is a soft no-op, never an error.
+  --edit        Changes an existing edge's kind and/or note in place, via
+                --kind <new-kind> and/or --note "...". Needs at least one;
+                editing a nonexistent edge IS an error. Mutually exclusive
+                with --remove.
+
+${DIM}Validation is structural only (kind, non-self-edge, slug shape) — target
+existence and tag-label correctness are already gated by data.test.ts and
+tech-relationships.test.ts. After add/remove/kind-edit of a powers or
+extracted-from edge, relate prints the reciprocal command as a reminder; a
+note-only edit never does. Writes one file per call, never a JSON file.${RESET}
+
+  Usage:   drift relate project <source-slug> <kind> <target-slug> [--note "..."]
+           drift relate project <source-slug> <kind> <target-slug> --remove
+           drift relate project <source-slug> <kind> <target-slug> --edit [--kind <new-kind>] [--note "..."]
+           drift relate tech "<source-label>" <kind> "<target-label>" [--note "..."]
+  Example: drift relate project nib powers the-work --note "Extracted runtime."
+           drift relate project nib powers the-work --remove
+           drift relate tech "Node.js" replaced-by Bun --edit --note "Updated."`,
 
 		audit: `${BOLD}drift audit${RESET} - score every authored overlay against the depth rubric
 
@@ -3984,303 +6609,950 @@ async function runInteractiveMenu({ manifests, palette, useGum, onProgress, clea
 		return r;
 	};
 
-	// Menu rows: [visible name, description, return value].
-	// Descriptions must be colon-free (label-delimiter splits on ':').
-	// Values are unchanged from the original menu, so the dispatch switch below
-	// needs no edits.
-	const menuRows = [
-		['Report', 'Show repos whose metrics drifted since last sync', 'report'],
-		[
-			'Report (full scan)',
-			'Per-field drift across every repo, not just moved HEADs',
-			'report-full'
-		],
-		['Snapshot', 'Every current metric value, changed fields highlighted', 'snapshot'],
-		['Sync', 'Rewrite sources.json with current git fingerprints', 'sync'],
-		['Keep override', 'Keep your pinned value, dismiss one drift flag', 'keep'],
-		[
-			'Keep field everywhere',
-			"Keep one field's value, dismiss its flag on every project",
-			'keep-all-projects'
-		],
-		['Keep all', 'Keep every pinned value, dismiss all drift flags at once', 'keep-all'],
-		['Hide', 'Append a slug to excluded.json, removing it from the site', 'hide'],
-		['Author', 'Scaffold a project overlay and open it in your editor', 'author'],
-		['Flag', 'Pin a project to the hero pool or hide it from there', 'flag'],
-		['Audit', 'Score every authored overlay against the depth rubric', 'audit'],
-		['Help', 'Show the command reference', 'help']
+	// Shared "pick a slug from the manifest, or free-text fallback when there
+	// are no candidates" prompt — collapses what used to be five near-identical
+	// copies (hide/author/flag, plus relate's two project-mode slug steps).
+	// Returns the chosen slug, or null if the user escaped (Esc/Ctrl-C).
+	const pickSlug = (headerText, placeholder, filter) => {
+		const all = Object.keys(manifests.manifest.sources).sort();
+		const candidates = filter ? all.filter(filter) : all;
+		if (candidates.length > 0) {
+			const slugItems = candidates.map((s) => `${s}:${s}`);
+			const pick = spawnSync(
+				'gum',
+				[
+					'choose',
+					'--label-delimiter=:',
+					`--header=${headerText}`,
+					'--cursor=> ',
+					`--cursor.foreground=${BRAND_PRIMARY}`,
+					`--selected.foreground=${BRAND_PRIMARY}`,
+					`--item.foreground=${BRAND_ACCENT}`,
+					...slugItems
+				],
+				{ stdio: ['inherit', 'pipe', 'inherit'], encoding: 'utf8' }
+			);
+			if (pick.status !== 0 || !pick.stdout.trim()) return null;
+			return pick.stdout.trim();
+		}
+		// Fallback: free-text input when there are no candidates to pick from.
+		const input = spawnSync('gum', ['input', '--placeholder', placeholder], {
+			stdio: ['inherit', 'pipe', 'inherit'],
+			encoding: 'utf8'
+		});
+		if (input.status !== 0 || !input.stdout.trim()) return null;
+		return input.stdout.trim();
+	};
+
+	// Always-list-and-offer-to-create prompt for relate's add flow. Unlike
+	// pickSlug (which only falls back to free-text when there are zero
+	// candidates), this always shows the full alphabetised candidate list
+	// with a pinned "Create a new <kind>" option first — the picker itself
+	// never validates (an existing candidate is valid by definition), but
+	// the create-new free-text path loops on invalid input rather than
+	// silently proceeding or aborting the whole wizard: gum input has no
+	// --validate flag, so this hand-rolls the retry in JS.
+	// Returns the chosen/typed value, or null if the user escaped at any point.
+	const pickOrCreate = (headerText, candidates, createLabel, createPlaceholder, validate) => {
+		const sorted = [...new Set(candidates)].sort();
+		const items = [
+			`${createLabel}:__create__`,
+			...sorted.map((c) => `${c}:${c}`)
+		];
+		const pick = spawnSync(
+			'gum',
+			[
+				'choose',
+				'--label-delimiter=:',
+				`--header=${headerText}`,
+				'--cursor=> ',
+				`--cursor.foreground=${BRAND_PRIMARY}`,
+				`--selected.foreground=${BRAND_PRIMARY}`,
+				`--item.foreground=${BRAND_ACCENT}`,
+				...items
+			],
+			{ stdio: ['inherit', 'pipe', 'inherit'], encoding: 'utf8' }
+		);
+		if (pick.status !== 0 || !pick.stdout.trim()) return null;
+		const chosen = pick.stdout.trim();
+		if (chosen !== '__create__') return chosen; // an existing entry — always valid
+
+		// Create-new path: retry the SAME free-text prompt on invalid input,
+		// rather than aborting the wizard or silently accepting bad data.
+		while (true) {
+			const input = spawnSync('gum', ['input', '--placeholder', createPlaceholder], {
+				stdio: ['inherit', 'pipe', 'inherit'],
+				encoding: 'utf8'
+			});
+			if (input.status !== 0) return null; // Ctrl-C aborts
+			const typed = input.stdout.trim();
+			if (!typed) return null; // empty Enter also aborts, matching pickSlug's convention
+			const error = validate(typed);
+			if (error === null) return typed;
+			console.log(`⚠ ${error}`);
+			// loop: re-show this same create-new prompt, not the picker above it.
+		}
+	};
+
+	/**
+	 * Labelled single pick: rows are [visible label, description, value];
+	 * returns the value, or null on Esc/empty. The flag picker's idiom,
+	 * extracted for the taxonomy wizards.
+	 */
+	const choosePlain = (headerText, rows) => {
+		const pick = spawnSync(
+			'gum',
+			[
+				'choose',
+				'--label-delimiter=:',
+				`--header=${headerText}`,
+				'--cursor=> ',
+				`--cursor.foreground=${BRAND_PRIMARY}`,
+				`--selected.foreground=${BRAND_PRIMARY}`,
+				`--item.foreground=${BRAND_ACCENT}`,
+				...rows.map(([label, desc, value]) => (desc ? `${label}  ${desc}:${value}` : `${label}:${value}`))
+			],
+			{ stdio: ['inherit', 'pipe', 'inherit'], encoding: 'utf8' }
+		);
+		if (pick.status !== 0 || !pick.stdout.trim()) return null;
+		return pick.stdout.trim();
+	};
+
+	/** Plain string pick over verbatim items; null on Esc/empty. */
+	const chooseString = (headerText, items) => {
+		const pick = spawnSync(
+			'gum',
+			[
+				'choose',
+				`--header=${headerText}`,
+				'--cursor=> ',
+				`--cursor.foreground=${BRAND_PRIMARY}`,
+				`--selected.foreground=${BRAND_PRIMARY}`,
+				...items
+			],
+			{ stdio: ['inherit', 'pipe', 'inherit'], encoding: 'utf8' }
+		);
+		if (pick.status !== 0 || !pick.stdout.trim()) return null;
+		return pick.stdout.trim();
+	};
+
+	/** Free-text prompt; null on Ctrl-C or empty Enter. */
+	const promptText = (placeholder) => {
+		const input = spawnSync('gum', ['input', '--placeholder', placeholder], {
+			stdio: ['inherit', 'pipe', 'inherit'],
+			encoding: 'utf8'
+		});
+		if (input.status !== 0) return null;
+		return input.stdout.trim() || null;
+	};
+
+	// Menu rows grouped by theme so no single gum choose list is ever long
+	// enough to need scrolling (max 5 items per section, 6 sections). Each
+	// row is [visible name, description, return value]; descriptions must be
+	// colon-free (label-delimiter splits on ':'). Sections are a presentation
+	// grouping only — the dispatch switch below is still keyed on the flat
+	// return value, unchanged in shape from the original single-list menu.
+	const sections = [
+		{
+			section: 'Inspect',
+			header: 'DRIFT · Inspect',
+			rows: [
+				['Report', 'Show repos whose metrics drifted since last sync', 'report'],
+				[
+					'Report (full scan)',
+					'Per-field drift across every repo, not just moved HEADs',
+					'report-full'
+				],
+				['Snapshot', 'Every current metric value, changed fields highlighted', 'snapshot'],
+				['Audit', 'Score every authored overlay against the depth rubric', 'audit']
+			]
+		},
+		{
+			section: 'Reconcile',
+			header: 'DRIFT · Reconcile',
+			rows: [
+				['Sync', 'Rewrite sources.json with current git fingerprints', 'sync'],
+				['Promote', 'Graduate a landed in-progress entry out of in-progress.json', 'promote'],
+				['Keep override', 'Keep your pinned value, dismiss one drift flag', 'keep'],
+				[
+					'Keep field everywhere',
+					"Keep one field's value, dismiss its flag on every project",
+					'keep-all-projects'
+				],
+				['Keep all', 'Keep every pinned value, dismiss all drift flags at once', 'keep-all']
+			]
+		},
+		{
+			section: 'Curate',
+			header: 'DRIFT · Curate',
+			rows: [
+				['Author', 'Scaffold a project overlay and open it in your editor', 'author'],
+				['Edit field', 'Set one overlay field without opening an editor', 'author-edit'],
+				['Relate', 'Author a project or tech relationship edge', 'relate'],
+				['Flag', 'Pin a project to the hero pool or hide it from there', 'flag'],
+				['Hide', 'Append a slug to excluded.json, removing it from the site', 'hide']
+			]
+		},
+		{
+			section: 'Taxonomy',
+			header: 'DRIFT · Taxonomy',
+			rows: [
+				['Tech list', 'Every tech tag with its overlay and visibility state', 'tech-list'],
+				['Tech overlay', 'Author a first-used date, note, or kind override', 'tech-set'],
+				['Tech visibility', 'Hide or unhide a tech per surface', 'tech-visibility'],
+				['Project tags', 'Add a tech to, or hide one from, a single project', 'tag'],
+				['Themes', 'Manage the theme collections on the toolkit page', 'theme']
+			]
+		},
+		{
+			section: 'Configure',
+			header: 'DRIFT · Configure',
+			rows: [
+				[
+					'Init',
+					'Scaffold drift.config.ts and sources.local.json for this machine',
+					'init'
+				]
+			]
+		},
+		{
+			section: 'Help',
+			header: 'DRIFT · Help',
+			rows: [['Help', 'Show the command reference', 'help']]
+		}
 	];
 
-	// Pad names to a fixed width so descriptions align in a second column.
-	const nameWidth = Math.max(...menuRows.map(([n]) => n.length));
-	const items = menuRows.map(
-		([name, desc, value]) => `${name.padEnd(nameWidth + 3)}${desc}:${value}`
-	);
+	// Redraw the surface: clear the terminal, then reprint the wordmark at the
+	// top. gum renders each picker on stderr and, when a pick is confirmed or
+	// cancelled empty, leaves a "nothing selected" diagnostic stranded in
+	// scrollback. Clearing before every picker layer wipes that debris so the
+	// menu always reads as one clean surface rather than an accreting stack.
+	const redraw = () => {
+		// ANSI: cursor home + clear screen + clear scrollback.
+		process.stdout.write('\x1b[H\x1b[2J\x1b[3J');
+		printWordmark();
+	};
 
-	// Wordmark sits above the interactive list. gum choose takes over the TTY
-	// immediately after, so the wordmark scrolls into history above the picker.
-	printWordmark();
+	redraw();
 
-	const choose = spawnSync(
-		'gum',
-		[
-			'choose',
-			'--label-delimiter=:',
-			'--cursor=> ',
-			`--cursor.foreground=${BRAND_PRIMARY}`,
-			`--selected.foreground=${BRAND_PRIMARY}`,
-			`--item.foreground=${BRAND_ACCENT}`,
-			...items
-		],
-		{ stdio: ['inherit', 'pipe', 'inherit'], encoding: 'utf8' }
-	);
+	outer: while (true) {
+		redraw();
+		const sectionChoose = spawnSync(
+			'gum',
+			[
+				'choose',
+				'--header=DRIFT · choose a category',
+				'--cursor=> ',
+				`--cursor.foreground=${BRAND_PRIMARY}`,
+				`--selected.foreground=${BRAND_PRIMARY}`,
+				`--item.foreground=${BRAND_ACCENT}`,
+				...sections.map((s) => s.section)
+			],
+			{ stdio: ['inherit', 'pipe', 'inherit'], encoding: 'utf8' }
+		);
+		// Esc/Ctrl-C at the top level exits the whole menu.
+		if (sectionChoose.status !== 0 || !sectionChoose.stdout.trim()) return;
 
-	if (choose.status !== 0 || !choose.stdout.trim()) return; // Esc or Ctrl-C — no scan
+		const section = sections.find((s) => s.section === sectionChoose.stdout.trim());
+		if (!section) continue outer; // defensive — should be unreachable
 
-	const verb = choose.stdout.trim();
+		// Pad names to this section's own width so descriptions align.
+		const nameWidth = Math.max(...section.rows.map(([n]) => n.length));
+		const items = section.rows.map(
+			([name, desc, value]) => `${name.padEnd(nameWidth + 3)}${desc}:${value}`
+		);
 
-	switch (verb) {
-		case 'help':
-			printHelp('report', palette, useGum); // no scan
-			break;
-		case 'report':
-			runReport({
-				result: await scan(false),
-				manifest: manifests.manifest,
-				palette,
-				json: false,
-				full: false,
-				useGum
-			});
-			break;
-		case 'report-full':
-			runReport({
-				result: await scan(true),
-				manifest: manifests.manifest,
-				palette,
-				json: false,
-				full: true,
-				useGum
-			});
-			break;
-		case 'snapshot':
-			runSnapshot({
-				result: await scan(true),
-				manifest: manifests.manifest,
-				palette,
-				json: false,
-				useGum
-			});
-			break;
-		case 'sync':
-			runUpdate({
-				result: await scan(false),
-				manifest: manifests.manifest,
-				palette,
-				useGum,
-				args: [],
-				dryRun: false
-			});
-			break;
-		case 'keep-all':
-			runAccept({
-				result: await scan(false),
-				args: [],
-				acceptAll: true,
-				allProjects: false,
-				palette
-			});
-			break;
-		case 'keep': {
-			const result = await scan(false);
-			const { conflicts } = result;
-			if (conflicts.length === 0) {
-				console.log('No flagged overrides to keep.');
-				return;
-			}
-			// Second picker: choose one conflict to keep.
-			// Label is "slug.field" (human-readable); value is "slug field" (space-separated).
-			const ovItems = conflicts.map((c) => `${c.slug}.${c.field}:${c.slug} ${c.field}`);
-			const pick = spawnSync(
-				'gum',
-				[
-					'choose',
-					'--label-delimiter=:',
-					'--cursor=> ',
-					`--cursor.foreground=${BRAND_PRIMARY}`,
-					`--selected.foreground=${BRAND_PRIMARY}`,
-					`--item.foreground=${BRAND_ACCENT}`,
-					...ovItems
-				],
-				{ stdio: ['inherit', 'pipe', 'inherit'], encoding: 'utf8' }
-			);
-			if (pick.status !== 0 || !pick.stdout.trim()) return;
-			// Slugs are kebab-case, fields are camelCase — neither contains spaces.
-			const [slug, field] = pick.stdout.trim().split(' ');
-			runAccept({ result, args: [slug, field], acceptAll: false, allProjects: false, palette });
-			break;
-		}
-		case 'keep-all-projects': {
-			// Second picker: choose a field name to keep across all projects.
-			const result = await scan(false);
-			const { conflicts } = result;
-			if (conflicts.length === 0) {
-				console.log('No flagged overrides to keep.');
-				return;
-			}
-			// Distinct field names across all conflicts.
-			const fields = [...new Set(conflicts.map((c) => c.field))].sort();
-			const fieldItems = fields.map((f) => `${f}:${f}`);
-			const pick = spawnSync(
-				'gum',
-				[
-					'choose',
-					'--label-delimiter=:',
-					'--header=Keep this field across all projects:',
-					'--cursor=> ',
-					`--cursor.foreground=${BRAND_PRIMARY}`,
-					`--selected.foreground=${BRAND_PRIMARY}`,
-					`--item.foreground=${BRAND_ACCENT}`,
-					...fieldItems
-				],
-				{ stdio: ['inherit', 'pipe', 'inherit'], encoding: 'utf8' }
-			);
-			if (pick.status !== 0 || !pick.stdout.trim()) return;
-			const chosenField = pick.stdout.trim();
-			runAccept({ result, args: [chosenField], acceptAll: false, allProjects: true, palette });
-			break;
-		}
-		case 'hide': {
-			// Prompt for a slug to hide — offer the non-excluded manifest keys.
-			const { excludedSlugs: currentExcluded } = loadExcluded();
-			const manifest = manifests.manifest;
-			const candidateSlugs = Object.keys(manifest.sources)
-				.filter((s) => !currentExcluded.has(s))
-				.sort();
+		const choose = spawnSync(
+			'gum',
+			[
+				'choose',
+				'--label-delimiter=:',
+				`--header=${section.header}`,
+				'--cursor=> ',
+				`--cursor.foreground=${BRAND_PRIMARY}`,
+				`--selected.foreground=${BRAND_PRIMARY}`,
+				`--item.foreground=${BRAND_ACCENT}`,
+				...items
+			],
+			{ stdio: ['inherit', 'pipe', 'inherit'], encoding: 'utf8' }
+		);
+		// Esc/Ctrl-C at this layer returns to the section picker (a "back"
+		// gesture gum's flat choose has no native equivalent for).
+		if (choose.status !== 0 || !choose.stdout.trim()) continue outer;
 
-			let chosenSlug;
-			if (candidateSlugs.length > 0) {
-				const slugItems = candidateSlugs.map((s) => `${s}:${s}`);
+		const verb = choose.stdout.trim();
+
+		switch (verb) {
+			case 'help':
+				printHelp('report', palette, useGum); // no scan
+				break;
+			case 'report':
+				runReport({
+					result: await scan(false),
+					manifest: manifests.manifest,
+					palette,
+					json: false,
+					full: false,
+					useGum
+				});
+				break;
+			case 'report-full':
+				runReport({
+					result: await scan(true),
+					manifest: manifests.manifest,
+					palette,
+					json: false,
+					full: true,
+					useGum
+				});
+				break;
+			case 'snapshot':
+				runSnapshot({
+					result: await scan(true),
+					manifest: manifests.manifest,
+					palette,
+					json: false,
+					useGum
+				});
+				break;
+			case 'sync':
+				runUpdate({
+					result: await scan(false),
+					manifest: manifests.manifest,
+					palette,
+					useGum,
+					args: [],
+					dryRun: false
+				});
+				break;
+			case 'keep-all':
+				runAccept({
+					result: await scan(false),
+					args: [],
+					acceptAll: true,
+					allProjects: false,
+					palette
+				});
+				break;
+			case 'keep': {
+				const result = await scan(false);
+				const { conflicts } = result;
+				if (conflicts.length === 0) {
+					console.log('No flagged overrides to keep.');
+					return;
+				}
+				// Second picker: choose one conflict to keep.
+				// Label is "slug.field" (human-readable); value is "slug field" (space-separated).
+				const ovItems = conflicts.map((c) => `${c.slug}.${c.field}:${c.slug} ${c.field}`);
 				const pick = spawnSync(
 					'gum',
 					[
 						'choose',
 						'--label-delimiter=:',
-						'--header=Choose a slug to hide:',
 						'--cursor=> ',
 						`--cursor.foreground=${BRAND_PRIMARY}`,
 						`--selected.foreground=${BRAND_PRIMARY}`,
 						`--item.foreground=${BRAND_ACCENT}`,
-						...slugItems
+						...ovItems
 					],
 					{ stdio: ['inherit', 'pipe', 'inherit'], encoding: 'utf8' }
 				);
-				if (pick.status !== 0 || !pick.stdout.trim()) return;
-				chosenSlug = pick.stdout.trim();
-			} else {
-				// Fallback: free-text input when all manifest slugs are already hidden.
-				const input = spawnSync('gum', ['input', '--placeholder', 'slug to hide'], {
-					stdio: ['inherit', 'pipe', 'inherit'],
-					encoding: 'utf8'
-				});
-				if (input.status !== 0 || !input.stdout.trim()) return;
-				chosenSlug = input.stdout.trim();
+				if (pick.status !== 0 || !pick.stdout.trim()) continue outer;
+				// Slugs are kebab-case, fields are camelCase — neither contains spaces.
+				const [slug, field] = pick.stdout.trim().split(' ');
+				runAccept({ result, args: [slug, field], acceptAll: false, allProjects: false, palette });
+				break;
 			}
-			runExclude({ args: [chosenSlug], manifest, palette });
-			break;
-		}
-		case 'author': {
-			// Prompt for a slug to author — offer manifest keys as candidates.
-			const candidateSlugs = Object.keys(manifests.manifest.sources).sort();
-			let chosenSlug;
-			if (candidateSlugs.length > 0) {
-				const slugItems = candidateSlugs.map((s) => `${s}:${s}`);
+			case 'keep-all-projects': {
+				// Second picker: choose a field name to keep across all projects.
+				const result = await scan(false);
+				const { conflicts } = result;
+				if (conflicts.length === 0) {
+					console.log('No flagged overrides to keep.');
+					return;
+				}
+				// Distinct field names across all conflicts.
+				const fields = [...new Set(conflicts.map((c) => c.field))].sort();
+				const fieldItems = fields.map((f) => `${f}:${f}`);
 				const pick = spawnSync(
 					'gum',
 					[
 						'choose',
 						'--label-delimiter=:',
-						'--header=Choose a slug to author:',
+						'--header=Keep this field across all projects:',
 						'--cursor=> ',
 						`--cursor.foreground=${BRAND_PRIMARY}`,
 						`--selected.foreground=${BRAND_PRIMARY}`,
 						`--item.foreground=${BRAND_ACCENT}`,
-						...slugItems
+						...fieldItems
 					],
 					{ stdio: ['inherit', 'pipe', 'inherit'], encoding: 'utf8' }
 				);
-				if (pick.status !== 0 || !pick.stdout.trim()) return;
-				chosenSlug = pick.stdout.trim();
-			} else {
-				const input = spawnSync('gum', ['input', '--placeholder', 'project slug'], {
-					stdio: ['inherit', 'pipe', 'inherit'],
-					encoding: 'utf8'
-				});
-				if (input.status !== 0 || !input.stdout.trim()) return;
-				chosenSlug = input.stdout.trim();
+				if (pick.status !== 0 || !pick.stdout.trim()) continue outer;
+				const chosenField = pick.stdout.trim();
+				runAccept({ result, args: [chosenField], acceptAll: false, allProjects: true, palette });
+				break;
 			}
-			runAuthor({ args: [chosenSlug], palette, useGum });
-			break;
-		}
-		case 'flag': {
-			// Prompt for a slug — offer manifest keys as candidates.
-			const candidateSlugs = Object.keys(manifests.manifest.sources).sort();
-			let chosenSlug;
-			if (candidateSlugs.length > 0) {
-				const slugItems = candidateSlugs.map((s) => `${s}:${s}`);
-				const pick = spawnSync(
+			case 'hide': {
+				// Offer the non-excluded manifest keys as candidates.
+				const { excludedSlugs: currentExcluded } = loadExcluded();
+				const manifest = manifests.manifest;
+				const chosenSlug = pickSlug(
+					'Choose a slug to hide:',
+					'slug to hide',
+					(s) => !currentExcluded.has(s)
+				);
+				if (chosenSlug === null) continue outer;
+				runExclude({ args: [chosenSlug], manifest, palette });
+				break;
+			}
+			case 'author': {
+				const chosenSlug = pickSlug('Choose a slug to author:', 'project slug');
+				if (chosenSlug === null) continue outer;
+				await runAuthor({ args: [chosenSlug], palette, useGum });
+				break;
+			}
+			case 'author-edit': {
+				const chosenSlug = pickSlug('Choose a slug to edit:', 'project slug');
+				if (chosenSlug === null) continue outer;
+				const field = chooseString('Which field?', AUTHOR_EDITABLE_FIELDS);
+				if (field === null) continue outer;
+				const allowed = AUTHOR_FIELD_ENUMS[field];
+				const value = allowed
+					? chooseString(`New ${field}:`, allowed)
+					: promptText(`${field} value`);
+				if (value === null) continue outer;
+				await runAuthor({ args: [chosenSlug, field, value], palette });
+				break;
+			}
+			case 'tech-list':
+				await runTech({ args: ['list'], values: {}, palette });
+				break;
+			case 'tech-set': {
+				const labels = [...(await buildTechLabelIndex({ includeRelateHidden: true })).values()].sort(
+					(a, b) => a.localeCompare(b)
+				);
+				const label = pickOrCreate(
+					'Tech label:',
+					labels,
+					'Create a new tech label',
+					'tech label, e.g. Bun',
+					() => null // labels are free-text; canonical resolution happens in runTech
+				);
+				if (label === null) continue outer;
+				const field = choosePlain('Which field?', [
+					['First used', 'Floor adoption date, YYYY-MM-DD', 'first-used'],
+					['Note', 'One sentence shown in the toolkit modal', 'note'],
+					['Kind override', 'Reclassify the tag everywhere', 'kind']
+				]);
+				if (field === null) continue outer;
+				const value =
+					field === 'kind'
+						? chooseString('New kind:', [...TECH_TAG_KINDS])
+						: promptText(field === 'first-used' ? 'YYYY-MM-DD' : 'note text');
+				if (value === null) continue outer;
+				await runTech({ args: ['set', label], values: { [field]: value }, palette });
+				break;
+			}
+			case 'tech-visibility': {
+				const labels = [...(await buildTechLabelIndex({ includeRelateHidden: true })).values()].sort(
+					(a, b) => a.localeCompare(b)
+				);
+				const label = chooseString('Tech label:', labels);
+				if (label === null) continue outer;
+				const action = choosePlain('Hide or unhide?', [
+					['Hide', 'Remove from the chosen surfaces', 'hide'],
+					['Unhide', 'Restore on the chosen surfaces', 'unhide']
+				]);
+				if (action === null) continue outer;
+				// Multi-select over the four surfaces; empty selection means all.
+				const surfacesPick = spawnSync(
+					'gum',
+					[
+						'choose',
+						'--no-limit',
+						'--header=Surfaces (space to toggle; none selected = all):',
+						'--cursor=> ',
+						`--cursor.foreground=${BRAND_PRIMARY}`,
+						`--selected.foreground=${BRAND_PRIMARY}`,
+						...TECH_SURFACES
+					],
+					{ stdio: ['inherit', 'pipe', 'inherit'], encoding: 'utf8' }
+				);
+				if (surfacesPick.status !== 0) continue outer;
+				const surfaces = surfacesPick.stdout
+					.split('\n')
+					.map((s) => s.trim())
+					.filter((s) => s.length > 0)
+					.join(',');
+				await runTech({
+					args: [action, label],
+					values: { from: surfaces || undefined },
+					palette
+				});
+				break;
+			}
+			case 'tag': {
+				// Dual entry: the same add/hide/unhide flow is reachable from
+				// either end of the project/tech boundary.
+				const route = choosePlain('Start from…', [
+					['A project', 'Pick the project first', 'project'],
+					['A technology', 'Pick the tech first', 'tech']
+				]);
+				if (route === null) continue outer;
+
+				const pickLabel = async () => {
+					const labels = [
+						...(await buildTechLabelIndex({ includeRelateHidden: true })).values()
+					].sort((a, b) => a.localeCompare(b));
+					return pickOrCreate(
+						'Tech label:',
+						labels,
+						'Create a new tech label',
+						'tech label, e.g. Bun',
+						() => null
+					);
+				};
+
+				let chosenSlug = null;
+				let label = null;
+				if (route === 'project') {
+					chosenSlug = pickSlug('Project:', 'project slug');
+					if (chosenSlug === null) continue outer;
+				} else {
+					label = await pickLabel();
+					if (label === null) continue outer;
+				}
+				const action = choosePlain('Tag action:', [
+					['Add', 'Add an authored tech tag', 'add'],
+					['Hide', 'Suppress the tag on this project', 'hide'],
+					['Unhide', 'Lift a suppression', 'unhide']
+				]);
+				if (action === null) continue outer;
+				if (chosenSlug === null) {
+					chosenSlug = pickSlug('Project:', 'project slug');
+					if (chosenSlug === null) continue outer;
+				}
+				if (label === null) {
+					label = await pickLabel();
+					if (label === null) continue outer;
+				}
+				// A brand-new label being added needs a kind up front.
+				const tagValues = {};
+				if (action === 'add') {
+					const index = await buildTechLabelIndex({ includeRelateHidden: true });
+					if (!index.has(label.toLowerCase())) {
+						const kind = chooseString(`Kind for new label '${label}':`, [...TECH_TAG_KINDS]);
+						if (kind === null) continue outer;
+						tagValues.kind = kind;
+					}
+				}
+				await runTag({ args: [action, chosenSlug, label], values: tagValues, palette });
+				break;
+			}
+			case 'theme': {
+				const action = choosePlain('Themes — what to do?', [
+					['List', 'Show every theme with its members', 'list'],
+					['Create', 'Author a new theme', 'create'],
+					['Edit', 'Change a theme name or blurb', 'edit'],
+					['Add project', 'Put a project into a theme', 'add'],
+					['Remove project', 'Take a project out of a theme', 'remove'],
+					['Delete', 'Remove a whole theme', 'delete']
+				]);
+				if (action === null) continue outer;
+
+				if (action === 'list') {
+					await runTheme({ args: ['list'], values: {}, palette });
+					break;
+				}
+
+				const { ts, sf, arrayLit } = await loadThemesForEdit(palette);
+				const themeRows = arrayLit.elements
+					.filter((el) => ts.isObjectLiteralExpression(el))
+					.map((el) => ({
+						id: readRelationshipField(ts, sf, el, 'id'),
+						slugs: readArrayField(ts, sf, el, 'slugs') ?? []
+					}))
+					.filter((t) => t.id !== undefined);
+
+				if (action === 'create') {
+					let id;
+					while (true) {
+						id = promptText('theme id (kebab-case)');
+						if (id === null) break;
+						const error = validateProjectSlug(id) ?? (themeRows.some((t) => t.id === id) ? `A theme with id '${id}' already exists.` : null);
+						if (error === null) break;
+						console.log(`⚠ ${error}`);
+					}
+					if (id === null) continue outer;
+					const name = promptText('display name');
+					if (name === null) continue outer;
+					const blurb = promptText('blurb (optional)') ?? '';
+					const slugs = [];
+					// Member loop: Esc/empty ends collection.
+					while (true) {
+						const member = pickSlug(
+							`Members so far: ${slugs.length ? slugs.join(', ') : 'none'} — add another? (Esc to finish)`,
+							'project slug'
+						);
+						if (member === null) break;
+						if (!slugs.includes(member)) slugs.push(member);
+					}
+					await runTheme({ args: ['create', id], values: { name, blurb, slug: slugs }, palette });
+					break;
+				}
+
+				const id = chooseString('Theme:', themeRows.map((t) => t.id));
+				if (id === null) continue outer;
+
+				if (action === 'edit') {
+					const name = promptText('new name (Enter keeps current)');
+					const blurb = promptText('new blurb (Enter keeps current)');
+					if (name === null && blurb === null) {
+						console.log('Nothing to change.');
+						continue outer;
+					}
+					await runTheme({
+						args: ['edit', id],
+						values: { name: name ?? undefined, blurb: blurb ?? undefined },
+						palette
+					});
+					break;
+				}
+				if (action === 'delete') {
+					const confirm = spawnSync('gum', ['confirm', `Delete theme '${id}'?`], {
+						stdio: 'inherit'
+					});
+					if (confirm.status !== 0) continue outer;
+					await runTheme({ args: ['delete', id], values: {}, palette });
+					break;
+				}
+				// add / remove a member
+				let member;
+				if (action === 'remove') {
+					const current = themeRows.find((t) => t.id === id)?.slugs ?? [];
+					if (current.length === 0) {
+						console.log(`Theme '${id}' has no members.`);
+						continue outer;
+					}
+					member = chooseString('Remove which project?', current);
+				} else {
+					member = pickSlug('Add which project?', 'project slug');
+				}
+				if (member === null || member === undefined) continue outer;
+				await runTheme({ args: [action, id, member], values: {}, palette });
+				break;
+			}
+			case 'flag': {
+				const chosenSlug = pickSlug('Choose a slug to flag:', 'project slug');
+				if (chosenSlug === null) continue outer;
+				// Second picker: choose the flag to set.
+				const flagPick = spawnSync(
 					'gum',
 					[
 						'choose',
 						'--label-delimiter=:',
-						'--header=Choose a slug to flag:',
+						'--header=Pin or hide?',
 						'--cursor=> ',
 						`--cursor.foreground=${BRAND_PRIMARY}`,
 						`--selected.foreground=${BRAND_PRIMARY}`,
 						`--item.foreground=${BRAND_ACCENT}`,
-						...slugItems
+						'Pin   Float to the top of the hero pool:pin',
+						'Hide  Exclude from the hero pool:hide'
 					],
 					{ stdio: ['inherit', 'pipe', 'inherit'], encoding: 'utf8' }
 				);
-				if (pick.status !== 0 || !pick.stdout.trim()) return;
-				chosenSlug = pick.stdout.trim();
-			} else {
-				const input = spawnSync('gum', ['input', '--placeholder', 'project slug'], {
-					stdio: ['inherit', 'pipe', 'inherit'],
-					encoding: 'utf8'
+				if (flagPick.status !== 0 || !flagPick.stdout.trim()) continue outer;
+				const chosenFlag = flagPick.stdout.trim();
+				await runFlag({
+					args: [chosenSlug],
+					values: { pin: chosenFlag === 'pin', hide: chosenFlag === 'hide' },
+					palette,
+					useGum
 				});
-				if (input.status !== 0 || !input.stdout.trim()) return;
-				chosenSlug = input.stdout.trim();
+				break;
 			}
-			// Second picker: choose the flag to set.
-			const flagPick = spawnSync(
-				'gum',
-				[
-					'choose',
-					'--label-delimiter=:',
-					'--header=Pin or hide?',
-					'--cursor=> ',
-					`--cursor.foreground=${BRAND_PRIMARY}`,
-					`--selected.foreground=${BRAND_PRIMARY}`,
-					`--item.foreground=${BRAND_ACCENT}`,
-					'Pin   Float to the top of the hero pool:pin',
-					'Hide  Exclude from the hero pool:hide'
-				],
-				{ stdio: ['inherit', 'pipe', 'inherit'], encoding: 'utf8' }
-			);
-			if (flagPick.status !== 0 || !flagPick.stdout.trim()) return;
-			const chosenFlag = flagPick.stdout.trim();
-			await runFlag({
-				args: [chosenSlug],
-				values: { pin: chosenFlag === 'pin', hide: chosenFlag === 'hide' },
-				palette,
-				useGum
-			});
-			break;
+			case 'audit':
+				await runAudit({ palette, useGum, json: false });
+				break;
+			case 'init':
+				runInit({ palette, useGum });
+				break;
+			case 'promote': {
+				const chosenSlug = pickSlug('Choose a slug to promote:', 'slug to promote');
+				if (chosenSlug === null) continue outer;
+				runPromote({ args: [chosenSlug], palette });
+				break;
+			}
+			case 'relate': {
+				// Step 0: add a new edge, or remove/edit an existing one.
+				const actionPick = spawnSync(
+					'gum',
+					[
+						'choose',
+						'--label-delimiter=:',
+						'--header=Relate — add, remove, or edit?',
+						'--cursor=> ',
+						`--cursor.foreground=${BRAND_PRIMARY}`,
+						`--selected.foreground=${BRAND_PRIMARY}`,
+						`--item.foreground=${BRAND_ACCENT}`,
+						'Add      Author a new relationship edge:add',
+						'Remove   Delete an existing edge:remove',
+						'Edit     Change an existing edge\'s kind or note:edit'
+					],
+					{ stdio: ['inherit', 'pipe', 'inherit'], encoding: 'utf8' }
+				);
+				if (actionPick.status !== 0 || !actionPick.stdout.trim()) continue outer;
+				const action = actionPick.stdout.trim();
+
+				// Step 1: project or tech mode.
+				const modePick = spawnSync(
+					'gum',
+					[
+						'choose',
+						'--label-delimiter=:',
+						'--header=Relate — project or tech?',
+						'--cursor=> ',
+						`--cursor.foreground=${BRAND_PRIMARY}`,
+						`--selected.foreground=${BRAND_PRIMARY}`,
+						`--item.foreground=${BRAND_ACCENT}`,
+						'Project   Link one project to another:project',
+						'Tech      Link one technology to another:tech'
+					],
+					{ stdio: ['inherit', 'pipe', 'inherit'], encoding: 'utf8' }
+				);
+				if (modePick.status !== 0 || !modePick.stdout.trim()) continue outer;
+				const mode = modePick.stdout.trim();
+
+				if (action === 'remove' || action === 'edit') {
+					// List every existing edge for this mode up front — no
+					// source step first. Reuses the same TS-compiler read the
+					// CLI's idempotence/locator checks use, just across every
+					// overlay (project mode) or the one flat file (tech mode).
+					const existing = await listAllRelationships(mode);
+					if (existing.length === 0) {
+						console.log(`No ${mode} relationships exist yet to ${action}.`);
+						continue outer;
+					}
+
+					// Alphabetised, with a pinned in-list toggle to flip the sort
+					// key rather than a separate picker step. gum choose has no
+					// live re-sort keybinding, so "toggle" means: pick the toggle
+					// row, flip sortKey, redisplay the SAME list re-sorted.
+					let sortKey = 'source';
+					let source, kind, target;
+					edgeLoop: while (true) {
+						const sorted = [...existing].sort((a, b) => a[sortKey].localeCompare(b[sortKey]));
+						const otherKey = sortKey === 'source' ? 'target' : 'source';
+						const toggleItem = `↕ Currently sorted by ${sortKey} — switch to ${otherKey}:__toggle__`;
+						const edgeItems = sorted.map(
+							(r) =>
+								`${r.source} → ${r.kind} → ${r.target}${r.note ? `  (${r.note})` : ''}:${r.source}|${r.kind}|${r.target}`
+						);
+						const edgePick = spawnSync(
+							'gum',
+							[
+								'choose',
+								'--label-delimiter=:',
+								`--header=Choose an edge to ${action}:`,
+								'--cursor=> ',
+								`--cursor.foreground=${BRAND_PRIMARY}`,
+								`--selected.foreground=${BRAND_PRIMARY}`,
+								`--item.foreground=${BRAND_ACCENT}`,
+								toggleItem,
+								...edgeItems
+							],
+							{ stdio: ['inherit', 'pipe', 'inherit'], encoding: 'utf8' }
+						);
+						if (edgePick.status !== 0 || !edgePick.stdout.trim()) continue outer;
+						const picked = edgePick.stdout.trim();
+						if (picked === '__toggle__') {
+							sortKey = otherKey;
+							continue edgeLoop; // redisplay the same list, newly re-sorted
+						}
+						[source, kind, target] = picked.split('|');
+						break edgeLoop;
+					}
+
+					if (action === 'remove') {
+						await runRelate({
+							args: [mode, source, kind, target],
+							values: { remove: true },
+							palette
+						});
+						break;
+					}
+
+					// Edit: prompt for a new kind (optional — Esc/empty keeps the
+					// current kind) and a new note (optional — Esc/empty keeps the
+					// current note). At least one of the two must actually change,
+					// mirroring the CLI's "nothing to change" guard.
+					const kinds = mode === 'project' ? PROJECT_RELATIONSHIP_KINDS : TECH_RELATIONSHIP_KINDS;
+					const kindItems = [...kinds].map((k) => `${k}${k === kind ? '  (current)' : ''}:${k}`);
+					const kindPick = spawnSync(
+						'gum',
+						[
+							'choose',
+							'--label-delimiter=:',
+							'--header=New kind (Esc to keep the current kind):',
+							'--cursor=> ',
+							`--cursor.foreground=${BRAND_PRIMARY}`,
+							`--selected.foreground=${BRAND_PRIMARY}`,
+							`--item.foreground=${BRAND_ACCENT}`,
+							...kindItems
+						],
+						{ stdio: ['inherit', 'pipe', 'inherit'], encoding: 'utf8' }
+					);
+					// Esc here means "keep the current kind," not "abort the
+					// wizard" — unlike every other step, since editing only the
+					// note with the kind unchanged is a legitimate outcome.
+					const newKind =
+						kindPick.status === 0 && kindPick.stdout.trim() ? kindPick.stdout.trim() : undefined;
+
+					const noteInput = spawnSync(
+						'gum',
+						['input', '--placeholder', 'new note (leave empty to keep the current note)'],
+						{ stdio: ['inherit', 'pipe', 'inherit'], encoding: 'utf8' }
+					);
+					// Ctrl-C aborts the whole wizard; empty Enter means "keep the
+					// current note" (matches runRelate's own note handling, which
+					// cannot distinguish "not provided" from "explicitly cleared").
+					if (noteInput.status !== 0) continue outer;
+					const newNote = noteInput.stdout.trim() || undefined;
+
+					if (newKind === undefined && newNote === undefined) {
+						console.log('Nothing changed — kind and note both left as-is.');
+						continue outer;
+					}
+
+					await runRelate({
+						args: [mode, source, kind, target],
+						values: { edit: true, kind: newKind, note: newNote },
+						palette
+					});
+					break;
+				}
+
+				// action === 'add'.
+				// All known tech labels drift recognises, regardless of whether
+				// they're in a relationship yet — mirrors project mode listing
+				// every manifest slug, not just related ones. Labels hidden from
+				// the relate surface stay out, same as CLI resolution.
+				const hiddenFromRelate = new Set(
+					(await readTechOverlaysFile())
+						.filter((o) => o.hiddenFrom?.includes('relate'))
+						.map((o) => o.label)
+				);
+				const allTechLabels = [
+					...new Set(
+						[
+							...Object.values(LANGUAGE_TAGS),
+							...Object.values(RUNTIME_TAGS),
+							...Object.values(FRAMEWORK_TAGS),
+							...Object.values(DATABASE_TAGS)
+						].map((t) => t.label)
+					)
+				].filter((label) => !hiddenFromRelate.has(label));
+
+				// Step 2: source — always a full alphabetised list of existing
+				// entries (manifest slugs for project, taxonomy labels for tech),
+				// with "Create a new ..." pinned first for anything not listed.
+				// Invalid create-new input re-prompts in place rather than
+				// silently proceeding — see pickOrCreate.
+				let source;
+				if (mode === 'project') {
+					source = pickOrCreate(
+						'Source project slug:',
+						Object.keys(manifests.manifest.sources),
+						'Create a new project',
+						'source-slug',
+						validateProjectSlug
+					);
+				} else {
+					source = pickOrCreate(
+						'Source tech label:',
+						allTechLabels,
+						'Create a new tech',
+						'source tech label, e.g. Node.js',
+						() => null // tech labels are free-text, no shape constraint
+					);
+				}
+				if (source === null) continue outer;
+
+				// Step 3: relationship kind, from the mode-appropriate kind set.
+				const kinds = mode === 'project' ? PROJECT_RELATIONSHIP_KINDS : TECH_RELATIONSHIP_KINDS;
+				const kindItems = [...kinds].map((k) => `${k}:${k}`);
+				const kindPick = spawnSync(
+					'gum',
+					[
+						'choose',
+						'--label-delimiter=:',
+						'--header=Relationship kind:',
+						'--cursor=> ',
+						`--cursor.foreground=${BRAND_PRIMARY}`,
+						`--selected.foreground=${BRAND_PRIMARY}`,
+						`--item.foreground=${BRAND_ACCENT}`,
+						...kindItems
+					],
+					{ stdio: ['inherit', 'pipe', 'inherit'], encoding: 'utf8' }
+				);
+				if (kindPick.status !== 0 || !kindPick.stdout.trim()) continue outer;
+				const kind = kindPick.stdout.trim();
+
+				// Step 4: target — same candidate-list-plus-create shape as
+				// source, but validation ALSO rejects the already-chosen source
+				// (a self-edge would otherwise reach runRelate, which exits the
+				// whole process rather than just this wizard). This covers the
+				// create-new path via `validate`; picking the SAME existing
+				// entry as both source and target bypasses that callback
+				// entirely (picking never calls validate), so it's re-checked
+				// explicitly below regardless of which path target came from.
+				const validateTarget = (value) => {
+					if (value === source) return 'A relationship cannot point to itself.';
+					return mode === 'project' ? validateProjectSlug(value) : null;
+				};
+				let target;
+				while (true) {
+					target =
+						mode === 'project'
+							? pickOrCreate(
+									'Target project slug:',
+									Object.keys(manifests.manifest.sources),
+									'Create a new project',
+									'target-slug',
+									validateTarget
+								)
+							: pickOrCreate(
+									'Target tech label:',
+									allTechLabels,
+									'Create a new tech',
+									'target tech label, e.g. Bun',
+									validateTarget
+								);
+					if (target === null) continue outer;
+					if (target === source) {
+						console.log('⚠ A relationship cannot point to itself.');
+						continue; // re-prompt the whole target step
+					}
+					break;
+				}
+
+				// Step 5: optional free-text note. Empty is a legitimate "no
+				// note" (runRelate normalises '' and undefined identically);
+				// only a non-zero status (Ctrl-C) aborts the wizard.
+				const noteInput = spawnSync(
+					'gum',
+					['input', '--placeholder', 'note (optional)'],
+					{ stdio: ['inherit', 'pipe', 'inherit'], encoding: 'utf8' }
+				);
+				if (noteInput.status !== 0) continue outer;
+				const note = noteInput.stdout.trim() || undefined;
+
+				await runRelate({ args: [mode, source, kind, target], values: { note }, palette });
+				break;
+			}
 		}
-		case 'audit':
-			await runAudit({ palette, useGum, json: false });
-			break;
+		return; // dispatching a verb ends the menu — one action per launch.
 	}
 }
 
@@ -4296,7 +7568,7 @@ async function main() {
 	let values, positionals;
 	try {
 		({ values, positionals } = parseArgs({
-			allowPositionals: true, // verb + optional slug + optional field
+			allowPositionals: true, // verb + optional slug/mode/kind/target + optional field
 			options: {
 				json: { type: 'boolean', default: false },
 				check: { type: 'boolean', default: false },
@@ -4307,7 +7579,25 @@ async function main() {
 				'no-color': { type: 'boolean', default: false },
 				help: { type: 'boolean', short: 'h', default: false },
 				pin: { type: 'boolean', default: false },
-				hide: { type: 'boolean', default: false }
+				hide: { type: 'boolean', default: false },
+				// Free-text note for `drift relate`. No default: undefined means
+				// "no note authored", distinct from an explicit empty string.
+				note: { type: 'string' },
+				// `drift relate ... --remove` deletes the located edge instead of
+				// adding it; `--edit` changes an existing edge's kind/note in
+				// place (paired with --kind for the new kind value, reusing --note
+				// for the new note). Mutually exclusive with --remove.
+				remove: { type: 'boolean', default: false },
+				edit: { type: 'boolean', default: false },
+				kind: { type: 'string' },
+				// `drift tech`: authored first-used floor date and surface scoping.
+				'first-used': { type: 'string' },
+				from: { type: 'string' },
+				all: { type: 'boolean', default: false },
+				// `drift theme`: display name, blurb and member slugs (repeatable).
+				name: { type: 'string' },
+				blurb: { type: 'string' },
+				slug: { type: 'string', multiple: true }
 			}
 		}));
 	} catch (err) {
@@ -4326,11 +7616,19 @@ async function main() {
 		'promote',
 		'author',
 		'flag',
+		'relate',
+		'tech',
+		'tag',
+		'theme',
+		'collection',
 		'audit',
 		'init',
 		'help'
 	]);
-	const verb = KNOWN_VERBS.has(positionals[0]) ? positionals[0] : 'report';
+	const rawVerb = KNOWN_VERBS.has(positionals[0]) ? positionals[0] : 'report';
+	// `collection` is a straight alias for `theme` — Jason's mental model for
+	// the theme territories; normalise immediately so one dispatch serves both.
+	const verb = rawVerb === 'collection' ? 'theme' : rawVerb;
 	// args[0] = slug, args[1] = field (for accept). When the verb was explicit,
 	// slice it off; when the default 'report' was inferred, positionals are not args.
 	const args = KNOWN_VERBS.has(positionals[0]) ? positionals.slice(1) : positionals;
@@ -4344,8 +7642,8 @@ async function main() {
 	if (verb === 'help' || values.help) {
 		// `drift help [verb]` and `drift [verb] --help` both work.
 		// When `drift help update` is used, the target verb is in args[0].
-		const helpTarget = verb === 'help' ? (args[0] ?? 'report') : verb;
-		printHelp(helpTarget, palette, useGum);
+		const rawTarget = verb === 'help' ? (args[0] ?? 'report') : verb;
+		printHelp(rawTarget === 'collection' ? 'theme' : rawTarget, palette, useGum);
 		return;
 	}
 
@@ -4357,11 +7655,27 @@ async function main() {
 		return;
 	}
 	if (verb === 'author') {
-		runAuthor({ args, palette, useGum });
+		await runAuthor({ args, palette, useGum });
 		return;
 	}
 	if (verb === 'flag') {
 		await runFlag({ args, values, palette, useGum });
+		return;
+	}
+	if (verb === 'relate') {
+		await runRelate({ args, values, palette, useGum });
+		return;
+	}
+	if (verb === 'tech') {
+		await runTech({ args, values, palette });
+		return;
+	}
+	if (verb === 'tag') {
+		await runTag({ args, values, palette });
+		return;
+	}
+	if (verb === 'theme') {
+		await runTheme({ args, values, palette });
 		return;
 	}
 	if (verb === 'audit') {
@@ -4414,6 +7728,7 @@ async function main() {
 	const useCache = !values['no-cache'] && !needsFullScan && verb !== 'sync';
 	const result = await computeDrift(manifests, { full: needsFullScan, onProgress, useCache });
 	clearProgress();
+	if (!values.json) printUnmappedExtensionsAdvisory(palette);
 
 	switch (verb) {
 		case 'snapshot':

@@ -57,15 +57,33 @@ export const techRelationships: TechRelationship[] = [
 		note: 'Adopting Deno as a runtime meant reaching for Oak as its natural middleware router.'
 	},
 	{
-		kind: 'leads-to',
+		kind: 'replaced-by',
 		source: 'JavaScript',
 		target: 'TypeScript',
 		note: 'TypeScript was adopted for its static types and editor tooling once projects grew past the size where plain JavaScript stayed manageable.'
 	},
-	{
-		kind: 'leads-to',
-		source: 'Svelte 5',
-		target: 'SvelteKit',
-		note: "SvelteKit is Svelte 5's own full-stack framework; picking up the component model brought its meta-framework with it."
-	}
+	{ kind: 'replaced-by', source: 'OpenTUI', target: 'Bubble Tea' },
+	{ kind: 'replaced-by', source: '.NET 8', target: '.NET 9' },
+	{ kind: 'leads-to', source: 'CSS', target: 'Tailwind CSS v3' },
+	{ kind: 'replaced-by', source: 'Tailwind CSS v3', target: 'Tailwind CSS v4' },
+	{ kind: 'leads-to', source: 'JavaScript', target: 'React' },
+	{ kind: 'leads-to', source: 'Ink', target: 'inkjs' },
+	{ kind: 'leads-to', source: 'JavaScript', target: 'inkjs' },
+	{ kind: 'leads-to', source: 'Go', target: 'Bubble Tea' },
+	{ kind: 'leads-to', source: 'HTML', target: 'CSS' },
+	{ kind: 'leads-to', source: 'Ink', target: 'HTML' },
+	{ kind: 'leads-to', source: 'C#', target: '.NET 8' },
+	{ kind: 'leads-to', source: '.NET 8', target: 'ASP.NET Core' },
+	{ kind: 'leads-to', source: 'Tauri', target: 'Rust' },
+	{ kind: 'leads-to', source: 'Node.js', target: 'Express' },
+	{ kind: 'leads-to', source: 'React', target: 'Vite' },
+	{ kind: 'leads-to', source: 'Python', target: 'FastAPI' },
+	{ kind: 'leads-to', source: 'Python', target: 'Python runtime' },
+	{ kind: 'leads-to', source: 'JavaScript', target: 'Node.js' },
+	{ kind: 'leads-to', source: 'Shell', target: 'OpenTUI' },
+	{ kind: 'leads-to', source: 'React', target: 'Next.js' },
+	{ kind: 'leads-to', source: 'Svelte 5', target: 'SvelteKit' },
+	{ kind: 'leads-to', source: 'TypeScript', target: 'Svelte 4' },
+	{ kind: 'replaced-by', source: 'Svelte 4', target: 'Svelte 5' },
+	{ kind: 'leads-to', source: 'Ink', target: 'JavaScript' }
 ];

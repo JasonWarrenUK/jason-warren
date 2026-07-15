@@ -139,6 +139,38 @@ export interface TechRelationship {
 	note?: string;
 }
 
+/** Aggregate surfaces a tech tag can be hidden from (per-project chips are never hidden here). */
+export type TechSurface =
+	/** The adoption timeline on /toolkit. */
+	| 'toolkit'
+	/** The tech constellation on the map. */
+	| 'map'
+	/** The hero stack groups. */
+	| 'stack'
+	/** drift's relate pickers and label index. */
+	| 'relate';
+
+/**
+ * Authored per-tech data, keyed by exact tag label (validated against real
+ * labels by a data test, like TechRelationship endpoints). Managed by
+ * `drift tech`.
+ */
+export interface TechOverlay {
+	/** Exact tech tag label, e.g. "Tailwind CSS v4". */
+	label: string;
+	/**
+	 * First-used floor date (ISO YYYY-MM-DD, mid-month approximation). A floor,
+	 * not a trump: a derived date at or before it wins (see adoption.ts).
+	 */
+	firstUsed?: string;
+	/** One authored sentence about the tech, shown in the toolkit modal. */
+	note?: string;
+	/** Overrides the taxonomy/authored kind everywhere tags are assembled. */
+	kind?: TagKind;
+	/** Aggregate surfaces this label is hidden from. */
+	hiddenFrom?: TechSurface[];
+}
+
 // ---------------------------------------------------------------------------
 // Contribution — discriminated on role
 //
@@ -221,6 +253,11 @@ export interface AuthoredProject {
 	kind?: ProjectKind;
 	contribution?: AuthoredContribution;
 	tags?: TechTag[];
+	/**
+	 * Labels removed from this project's merged tag list, whether inferred or
+	 * authored — the only way to drop an inferred tag. Managed by `drift tag`.
+	 */
+	suppressTags?: string[];
 	status?: ProjectStatus;
 	liveUrl?: string;
 	highlights?: string[];
@@ -261,6 +298,13 @@ export interface Project {
 	lastCommit?: string;
 	/** ISO date (YYYY-MM-DD) of the first (root) commit, from the source drift manifest. Orders the timeline by inception. */
 	firstCommit?: string;
+	/**
+	 * First-introduced date (YYYY-MM-DD) per tech-tag label, e.g. `{ 'Svelte 5': '2025-03-01' }`.
+	 * Distinct from firstCommit: a tag can enter a long-lived repo years after
+	 * the repo started, so the toolkit adoption timeline prefers this per-tag
+	 * date and falls back to firstCommit for any label absent here.
+	 */
+	techFirstSeen?: Record<string, string>;
 	liveUrl?: string;
 	/** 3–5 technically interesting things about this project. */
 	highlights: string[];
