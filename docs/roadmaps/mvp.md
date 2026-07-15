@@ -172,6 +172,7 @@ _None._
 
 - [ ] 5DR.18. `drift relate <slug> --extracted-from | --powers | --related <target>` verb: writes a `ProjectRelationship` into the slug's `.ts` overlay (creating it via `createOverlayIfAbsent` if needed); target validated against real project slugs; mirrors the `flag`/`author`/`pin` overlay-splice pattern — **depends on 5DR.6**
 - [ ] 5DR.19. `drift link <source-tag> --leads-to | --replaced-by <target-tag>` verb: writes a `TechRelationship` into `tech-relationships.ts`; source/target validated against real tag labels (mirrors the existing data-test contract on `tech-relationships.ts`) — **depends on 5DR.6**
+- [ ] 5DR.20. Intra-span dormancy signal: extend the fingerprint engine to sample commit dates (not just `firstCommit`/`lastCommit`) so a repo's activity gaps become detectable — e.g. a periodic commit-date histogram or an explicit `dormantRanges` field alongside the existing branch-aware measurement in 5DR.7. Unblocks `/timeline` rendering a project's rail as dotted during genuinely dormant stretches (today's `ProjectMetrics` only exposes lifetime totals and a trailing-4-week recency window — verified against `sources.json` — which cannot locate a gap anywhere within a project's lifespan, only whether it's dormant right now) — **depends on 5DR.7**
 
 <a name="m5-blocked"><h4>Blocked (Milestone 5)</h4></a>
 
@@ -335,6 +336,7 @@ flowchart TD
 	5DR.17["`*5DR.17*<br/>**Drift**<br/>flag verb`"]:::done
 	5DR.18["`*5DR.18*<br/>**Drift**<br/>relate verb`"]:::open
 	5DR.19["`*5DR.19*<br/>**Drift**<br/>link verb`"]:::open
+	5DR.20["`*5DR.20*<br/>**Drift**<br/>dormancy signal`"]:::open
 
 	%% M5 — deps
 	5DR.0 --> 5DR.1
@@ -353,6 +355,7 @@ flowchart TD
 	5DR.14 --> 5DR.6
 	5DR.6 --> 5DR.18
 	5DR.6 --> 5DR.19
+	5DR.7 --> 5DR.20
 
 	%% M5 track completers → m5
 	5DR.11 --> m5
@@ -361,6 +364,7 @@ flowchart TD
 	5DR.17 --> m5
 	5DR.18 --> m5
 	5DR.19 --> m5
+	5DR.20 --> m5
 
 	%% M6 — inbound from M3 and M5
 	m3 --> 5DR.8
