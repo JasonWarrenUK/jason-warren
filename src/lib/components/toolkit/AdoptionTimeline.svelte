@@ -287,8 +287,6 @@
 					class:adoption__item--pinned={pinnedLabel === item.label}
 					style="--reveal-delay: {Math.min(index * 28, 700)}ms; color: {techKindColour(item.kind)}"
 					role="presentation"
-					onpointerenter={() => (activeLabel = item.label)}
-					onpointerleave={() => (activeLabel = null)}
 				>
 					<title>{describe(item)}</title>
 					<!-- The rail: this tech's lifespan, from adoption until replaced
@@ -330,17 +328,34 @@
 							r={item.radius + HUB_RING_OFFSET}
 						/>
 					{/if}
+					<circle class="adoption__ring" cx={item.x} cy={item.y} r={item.radius} />
+					<circle class="adoption__centre" cx={item.x} cy={item.y} r="2.8" />
+					<text
+						class="adoption__label"
+						aria-hidden="true"
+						x={item.x + item.radius + 6}
+						y={item.y + 4}
+					>
+						{item.label}
+					</text>
+					<!-- Full-disc hit target: an invisible filled circle at the outer
+					     ring radius, rendered last so it sits topmost for hit-testing.
+					     Every visible element above is pointer-events: none, so this is
+					     the sole hit target — hover, click and focus fire anywhere in the
+					     disc, never on the label or the rail passing beside it. -->
 					<circle
-						class="adoption__ring"
+						class="adoption__hit"
 						cx={item.x}
 						cy={item.y}
-						r={item.radius}
+						r={item.dateSource === 'curated' ? item.radius + HUB_RING_OFFSET : item.radius}
 						role="button"
 						tabindex="0"
 						aria-pressed={pinnedLabel === item.label}
 						aria-label="{describe(item)}. {pinnedLabel === item.label
 							? 'Pinned. Activate to unpin'
 							: 'Activate to pin'}"
+						onpointerenter={() => (activeLabel = item.label)}
+						onpointerleave={() => (activeLabel = null)}
 						onclick={() => openModal(item)}
 						onkeydown={(e) => {
 							if (e.key === 'Enter' || e.key === ' ') {
@@ -351,15 +366,6 @@
 						onfocus={() => (activeLabel = item.label)}
 						onblur={() => (activeLabel = null)}
 					/>
-					<circle class="adoption__centre" cx={item.x} cy={item.y} r="2.8" />
-					<text
-						class="adoption__label"
-						aria-hidden="true"
-						x={item.x + item.radius + 6}
-						y={item.y + 4}
-					>
-						{item.label}
-					</text>
 				</g>
 			{/each}
 		</g>
@@ -493,7 +499,8 @@
 		stroke: currentColor;
 		stroke-width: 1.75;
 		stroke-opacity: 0.7;
-		cursor: pointer;
+		/* Decorative: the invisible .adoption__hit disc owns all interaction. */
+		pointer-events: none;
 		transition:
 			transform var(--dur-micro) var(--ease-standard),
 			stroke var(--dur-base) var(--ease-standard),
@@ -502,9 +509,18 @@
 		transform-origin: center;
 	}
 
-	.adoption__ring:focus-visible {
+	.adoption__hit:focus-visible {
 		outline: 2px solid var(--color-primary);
 		outline-offset: 2px;
+	}
+
+	/* Full-disc hit target: an invisible filled circle at the outer ring radius so
+	   hover, click and focus fire anywhere in the disc, not just on the thin ring
+	   stroke. fill: transparent (NOT none) is required — `none` produces no fill
+	   region to hit-test. */
+	.adoption__hit {
+		fill: transparent;
+		cursor: pointer;
 	}
 
 	/* Hub ring: the map's second outer ring, marking a curated (firmly plotted)
@@ -529,6 +545,9 @@
 		stroke: currentColor;
 		stroke-width: 2;
 		stroke-opacity: 0.4;
+		/* Decorative: the rail runs through the label zone, so it must not carry
+		   hover — only the .adoption__hit disc does. */
+		pointer-events: none;
 		transition:
 			stroke-opacity var(--transition-fast),
 			stroke-width var(--transition-fast);
