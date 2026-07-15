@@ -12,7 +12,12 @@
 	import { writeParam } from '$lib/url-write.js';
 	import { projectsByTagHref, techViewHref } from '$lib/selection.js';
 	import SelectionModal from '$lib/components/ui/SelectionModal.svelte';
-	import { computeAdoptionLayout, type LayoutGeometry, type PlacedNode } from './adoption-layout.js';
+	import {
+		computeAdoptionLayout,
+		HUB_RING_OFFSET,
+		type LayoutGeometry,
+		type PlacedNode
+	} from './adoption-layout.js';
 
 	interface Props {
 		items: TechAdoption[];
@@ -322,7 +327,7 @@
 							class="adoption__ring adoption__ring--hub"
 							cx={item.x}
 							cy={item.y}
-							r={item.radius + 7}
+							r={item.radius + HUB_RING_OFFSET}
 						/>
 					{/if}
 					<circle

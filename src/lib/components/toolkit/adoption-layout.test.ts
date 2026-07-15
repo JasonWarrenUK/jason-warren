@@ -37,7 +37,8 @@ function tech(
 	label: string,
 	kind: TechAdoption['kind'],
 	firstDate: string,
-	projectCount = 1
+	projectCount = 1,
+	dateSource: TechAdoption['dateSource'] = 'derived'
 ): TechAdoption {
 	return {
 		label,
@@ -47,8 +48,34 @@ function tech(
 		firstProjectSlug: 'fixture-project',
 		firstProjectName: 'Fixture Project',
 		projectCount,
-		dateSource: 'derived'
+		dateSource
 	};
+}
+
+/** The outermost rendered ring radius: curated nodes earn a hub ring beyond
+ *  `radius`, derived nodes do not. Mirrors the component and the layout's own
+ *  arrival maths. HUB_RING_OFFSET is re-declared here rather than imported to
+ *  keep the test an independent check of the shipped value. */
+const TEST_HUB_RING_OFFSET = 7;
+function outerRadiusOf(node: PlacedNode): number {
+	return node.radius + (node.dateSource === 'curated' ? TEST_HUB_RING_OFFSET : 0);
+}
+
+/** Walks an SVG path's commands to its final (x, y) point. Handles the M/L/H/V/
+ *  C/Q subset the connector builders emit. */
+function pathEnd(d: string): { x: number; y: number } {
+	let x = 0;
+	let y = 0;
+	for (const cmd of d.match(/[MLHVCQ][^MLHVCQ]*/g) ?? []) {
+		const n = [...cmd.slice(1).matchAll(/-?[\d.]+/g)].map((m) => Number(m[0]));
+		const t = cmd[0];
+		if (t === 'M' || t === 'L') [x, y] = n;
+		else if (t === 'H') x = n[0];
+		else if (t === 'V') y = n[0];
+		else if (t === 'C') [x, y] = [n[4], n[5]];
+		else if (t === 'Q') [x, y] = [n[2], n[3]];
+	}
+	return { x, y };
 }
 
 /** Mirrors the real dataset's shape: a handful of lineage families plus isolated nodes. */
@@ -208,13 +235,13 @@ describe('computeAdoptionLayout', () => {
 		const connector = result.connectors.find((c) => c.source === 'HTML' && c.target === 'CSS')!;
 		expect(connector.variant).toBe('bracket');
 
-		// The bracket departs the parent dot's RIGHT edge (flowing forward, never
-		// looping back around the left) and arrives at the child's centre.
+		// The bracket departs the parent's centre (flowing forward, never
+		// looping back around the left) and arrives at the child's ring edge.
 		const byLabel = new Map(result.placed.map((p) => [p.label, p]));
 		const html = byLabel.get('HTML')!;
 		const css = byLabel.get('CSS')!;
-		expect(connector.path.startsWith(`M ${html.x + html.radius + 2} ${html.y}`)).toBe(true);
-		expect(connector.path.endsWith(`${css.x} ${css.y}`)).toBe(true);
+		expect(connector.path.startsWith(`M ${html.x} ${html.y}`)).toBe(true);
+		expect(connector.path.endsWith(`${css.x - css.radius - 2} ${css.y}`)).toBe(true);
 	});
 
 	// ---- branch-drop routing -------------------------------------------------
@@ -481,8 +508,12 @@ describe('computeAdoptionLayout', () => {
 
 		const connector = result.connectors.find((c) => c.target === 'Gamma')!;
 		expect(connector.variant).toBe('gutter-arrival');
-		// Arrives vertically at the dot's centre, not horizontally at its edge.
-		expect(connector.path.endsWith(`V ${gamma.y}`)).toBe(true);
+		// Arrives vertically at the dot's ring edge (a gap short of centre), not
+		// horizontally at its side. Alpha sits above Gamma, so the run drops
+		// down and stops at the top of the ring.
+		const alpha = byLabel.get('Alpha')!;
+		const s = Math.sign(gamma.y - alpha.y);
+		expect(connector.path.endsWith(`V ${gamma.y - s * (gamma.radius + 2)}`)).toBe(true);
 		expect(connector.path).not.toContain('C');
 	});
 
@@ -794,6 +825,48 @@ describe('computeAdoptionLayout', () => {
 			if (items[i - 1].firstDate < items[i].firstDate) {
 				expect(prev.x).toBeLessThanOrEqual(curr.x);
 			}
+		}
+	});
+
+	it('docks every connector at the child ring edge, never inside a curated hub ring', () => {
+		// The regression: a curated node draws a second hub ring beyond its main
+		// ring, but arrivals stopped at the main ring — so the connector ended
+		// inside the hub ring, leaving a stub between the two rings. Exercised
+		// with curated nodes across every arrival variant (bracket, branch-drop,
+		// elbow, gutter, vertical, handover), the arrival endpoint must sit at or
+		// outside the OUTER ring, never inside it.
+		const items: TechAdoption[] = [
+			tech('HTML', 'language', '2020-01-01', 4, 'curated'),
+			tech('CSS', 'language', '2020-01-01', 4, 'curated'),
+			tech('JavaScript', 'language', '2020-06-01', 8, 'curated'),
+			tech('TypeScript', 'language', '2021-01-01', 6, 'curated'),
+			tech('React', 'framework', '2021-06-01', 2), // derived: no hub ring
+			tech('Node.js', 'runtime', '2020-09-01', 5, 'curated'),
+			tech('Deno', 'runtime', '2024-01-01', 1, 'curated')
+		];
+		const edges: TechRelationship[] = [
+			{ kind: 'leads-to', source: 'HTML', target: 'CSS' },
+			{ kind: 'leads-to', source: 'JavaScript', target: 'TypeScript' },
+			{ kind: 'leads-to', source: 'JavaScript', target: 'React' },
+			{ kind: 'leads-to', source: 'JavaScript', target: 'Node.js' },
+			{ kind: 'replaced-by', source: 'Node.js', target: 'Deno' }
+		];
+		const result = computeAdoptionLayout(items, edges, GEO);
+		const byLabel = new Map(result.placed.map((p) => [p.label, p]));
+
+		expect(result.connectors.length).toBeGreaterThan(0);
+		for (const connector of result.connectors) {
+			const child = byLabel.get(connector.target)!;
+			const end = pathEnd(connector.path);
+			const distFromCentre = Math.hypot(end.x - child.x, end.y - child.y);
+			// A half-pixel tolerance for the rounding-corner geometry; anything
+			// more than that inside the outer ring is the bug.
+			expect(
+				distFromCentre,
+				`${connector.source}→${connector.target} [${connector.variant}] ends ${(
+					outerRadiusOf(child) - distFromCentre
+				).toFixed(1)}px inside the outer ring`
+			).toBeGreaterThanOrEqual(outerRadiusOf(child) - 0.5);
 		}
 	});
 });
