@@ -392,11 +392,18 @@
 		{/each}
 		<span class="adoption__legend-note">Dot size reflects how many projects use it.</span>
 		<span class="adoption__legend-item">
-			<span class="adoption__swatch adoption__swatch--curated"></span>
+			<svg class="adoption__swatch-mark" viewBox="0 0 14 14" aria-hidden="true">
+				<circle class="adoption__swatch-hub" cx="7" cy="7" r="6" />
+				<circle class="adoption__swatch-ring" cx="7" cy="7" r="4" />
+				<circle class="adoption__swatch-centre" cx="7" cy="7" r="1.6" />
+			</svg>
 			Authored date
 		</span>
 		<span class="adoption__legend-item">
-			<span class="adoption__swatch adoption__swatch--derived"></span>
+			<svg class="adoption__swatch-mark" viewBox="0 0 14 14" aria-hidden="true">
+				<circle class="adoption__swatch-ring" cx="7" cy="7" r="5" />
+				<circle class="adoption__swatch-centre" cx="7" cy="7" r="1.6" />
+			</svg>
 			Estimated from project history
 		</span>
 		{#each presentLineageKinds as kind (kind)}
@@ -704,15 +711,33 @@
 		flex-shrink: 0;
 	}
 
-	/* Curated / derived legend swatches use the primary colour as a stand-in
-	   since the actual dots are coloured by kind. */
-	.adoption__swatch--curated {
-		background: var(--color-primary);
+	/* Curated / derived legend swatches: miniature survey marks mirroring the
+	   real node shape (ring + solid centre; curated earns a second, quieter hub
+	   ring). Uses the primary colour as a stand-in since the actual dots are
+	   coloured by kind. */
+	.adoption__swatch-mark {
+		width: 0.85rem;
+		height: 0.85rem;
+		flex-shrink: 0;
+		color: var(--color-primary);
 	}
 
-	.adoption__swatch--derived {
-		background: var(--color-surface-sunken);
-		border: 2px solid var(--color-primary);
+	.adoption__swatch-ring {
+		fill: none;
+		stroke: currentColor;
+		stroke-width: 1.75;
+		stroke-opacity: 0.7;
+	}
+
+	.adoption__swatch-hub {
+		fill: none;
+		stroke: currentColor;
+		stroke-width: 1.25;
+		stroke-opacity: 0.4;
+	}
+
+	.adoption__swatch-centre {
+		fill: currentColor;
 	}
 
 	/* Edge-type swatch: a short line rather than a dot, echoing the lineage
