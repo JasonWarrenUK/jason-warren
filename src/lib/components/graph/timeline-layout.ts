@@ -1,15 +1,27 @@
 /**
- * Time-proportional lifespan-chart layout for /timeline.
+ * Time-ordered lifespan-chart layout for /timeline.
  *
- * The vertical axis is real time, linear and proportional: `now` sits at the
- * top, older dates run downward. The horizontal axis carries no semantic
- * meaning at all — it exists purely for collision avoidance. Each project
- * becomes a vertical RAIL running from its `lastCommit` (top/newer end, its
- * most recent activity) to its `firstCommit` (bottom/older end, its
- * inception); rails are packed into the leftmost
- * column that doesn't overlap an already-placed rail, a swapped-axis greedy
- * first-fit analogous in spirit to `adoption-layout.ts`'s strip packer but
- * far simpler — this module deliberately does NOT attempt that module's
+ * The vertical axis is real time: `now` sits at the top, older dates run
+ * downward. Unlike a truly linear scale, the day-to-pixel rate is NOT
+ * constant — the axis is density-banded, one pixel-band per calendar month,
+ * sized by how many rails were concurrently active that month (see
+ * `computeMonthBands` below). This is the vertical analogue of
+ * `adoption-layout.ts`'s density-sized year columns: "ordered time, not to
+ * scale" — dates stay monotonic and month boundaries still land on real
+ * calendar points, but a month's pixel height reflects its density rather
+ * than a fixed calendar span. The real registry is heavily front-loaded (most
+ * projects cluster in recent months), and a fixed linear rate crushed that
+ * cluster into an unreadable pile at the top of the chart while wasting
+ * hundreds of px on quiet older months; banding gives the crush proportional
+ * room without letting quiet months balloon.
+ *
+ * The horizontal axis carries no semantic meaning at all — it exists purely
+ * for collision avoidance. Each project becomes a vertical RAIL running from
+ * its `lastCommit` (top/newer end, its most recent activity) to its
+ * `firstCommit` (bottom/older end, its inception); rails are packed into the
+ * leftmost column that doesn't overlap an already-placed rail, a swapped-axis
+ * greedy first-fit analogous in spirit to `adoption-layout.ts`'s strip packer
+ * but far simpler — this module deliberately does NOT attempt that module's
  * crossing-minimisation or lane-refinement passes. A timeline's x-axis has no
  * meaning to refine toward; first-fit is the whole story.
  *
@@ -196,6 +208,159 @@ function yearOfDayValue(day: number): number {
 	return new Date(day * 86_400_000).getUTCFullYear();
 }
 
+/**
+ * Inverse of `dayValue`, one calendar level finer than `yearOfDayValue`: the
+ * `year*12 + (month-1)` index an epoch-day integer falls in, so consecutive
+ * months are consecutive integers regardless of year boundaries. Same
+ * determinism contract as `yearOfDayValue` — reads only calendar fields off a
+ * fixed UTC instant built from the same epoch-ms basis `dayValue` uses, never
+ * locale/ICU-dependent formatting.
+ */
+function monthIndexOfDayValue(day: number): number {
+	const date = new Date(day * 86_400_000);
+	return date.getUTCFullYear() * 12 + date.getUTCMonth();
+}
+
+/** Inverse of `monthIndexOfDayValue`: `{ year, month }` (month 1-12) for a month index. */
+function monthIndexToYearMonth(monthIndex: number): { year: number; month: number } {
+	const year = Math.floor(monthIndex / 12);
+	const month = monthIndex - year * 12 + 1;
+	return { year, month };
+}
+
+/** First day-of-month, as a `dayValue`, for a `year*12 + (month-1)` index. */
+function monthStartDay(monthIndex: number): number {
+	const { year, month } = monthIndexToYearMonth(monthIndex);
+	return dayValue(`${year}-${String(month).padStart(2, '0')}-01`);
+}
+
+// ---------------------------------------------------------------------------
+// Month bands (density-proportional vertical scale)
+// ---------------------------------------------------------------------------
+
+/** One calendar month's pixel band on the y-axis: [yTop, yBottom), newer at yTop. */
+export interface MonthBand {
+	year: number;
+	month: number;
+	/** dayValue of the 1st of this month. */
+	dayStart: number;
+	/** dayValue of the 1st of the following month (exclusive upper bound). */
+	dayEnd: number;
+	/** y of the newer (top) edge of this month's band. */
+	yTop: number;
+	/** y of the older (bottom) edge of this month's band. */
+	yBottom: number;
+}
+
+// Month-row sizing. A month's height scales with how many rails have their
+// [firstCommit, lastCommit] interval overlapping it, so months where lots of
+// projects were concurrently active get more vertical room and quiet months
+// compress — the direct vertical analogue of computeYearBands's density-sized
+// year columns, but bucketed by MONTH (the real registry's crush concentrates
+// within a single calendar year, so year granularity would be too coarse to
+// resolve it) and keyed on INTERVAL OVERLAP rather than event count (a rail is
+// an interval, not a point — a long-running project should make every month
+// it spans feel a little busier, not just the month it started in). The axis
+// stays "ordered time, not to scale": dates remain monotonic and month
+// boundaries still land on real calendar points, but a month's pixel height
+// reflects its density rather than a fixed calendar span. Raw heights are
+// clamped to shape the ratios, then normalised so the bands sum to a target
+// total plot height.
+const MONTH_BASE_HEIGHT = 14; // px a month gets regardless of density
+const MONTH_HEIGHT_PER_RAIL = 4; // px added per rail overlapping that month
+const MONTH_MIN_HEIGHT = 20; // floor: an empty/quiet month still shows a real gap
+const MONTH_MAX_HEIGHT = 85; // ceiling: one crushed month cannot dominate the axis
+/** Target total plot height after normalisation — retunes the old fixed-rate
+ *  scale's ~1600px "comfortably tall, scrollable" target for a banded scale
+ *  where total height is a tuning constant rather than domainDays * rate. */
+const MONTH_BANDS_TARGET_HEIGHT = 1550;
+
+/**
+ * Splits `[minDay, nowDay]` into one contiguous pixel band per calendar month,
+ * each sized by how many `dated` rails have their `[firstCommit, lastCommit]`
+ * interval overlapping that month (inclusive overlap test on day ranges, not
+ * just "starts in"). Bands are returned keyed by `year*12+(month-1)` so
+ * lookups are O(1) integer arithmetic; iteration order when building is
+ * oldest-to-newest month, cursor running top-down from `topPad` at the NEWEST
+ * month (mirrors computeYearBands's left-to-right cursor, just walked in
+ * reverse chronological order to match the inverted newest-at-top axis).
+ * Deterministic: pure integer month-index arithmetic, no clock or randomness.
+ * Exported for testing.
+ */
+export function computeMonthBands(
+	dated: TimelineRail[],
+	minDay: number,
+	nowDay: number,
+	topPad: number
+): Map<number, MonthBand> {
+	const firstMonth = monthIndexOfDayValue(minDay);
+	const lastMonth = monthIndexOfDayValue(nowDay);
+
+	// Count rails overlapping each month, seeding every month in range so a
+	// quiet month still earns a (floor-height) band rather than collapsing.
+	const overlapByMonth = new Map<number, number>();
+	for (let m = firstMonth; m <= lastMonth; m++) overlapByMonth.set(m, 0);
+	for (const rail of dated) {
+		const startMonth = monthIndexOfDayValue(dayValue(rail.firstCommit!));
+		const endMonth = monthIndexOfDayValue(dayValue(rail.lastCommit ?? rail.firstCommit!));
+		const lo = Math.max(firstMonth, startMonth);
+		const hi = Math.min(lastMonth, endMonth);
+		for (let m = lo; m <= hi; m++) overlapByMonth.set(m, overlapByMonth.get(m)! + 1);
+	}
+
+	const rawByMonth = new Map<number, number>();
+	let rawTotal = 0;
+	for (let m = firstMonth; m <= lastMonth; m++) {
+		const raw = Math.min(
+			MONTH_MAX_HEIGHT,
+			Math.max(MONTH_MIN_HEIGHT, MONTH_BASE_HEIGHT + MONTH_HEIGHT_PER_RAIL * overlapByMonth.get(m)!)
+		);
+		rawByMonth.set(m, raw);
+		rawTotal += raw;
+	}
+
+	// rawTotal is always > 0 (>= 1 month, each >= MONTH_MIN_HEIGHT), so scale is
+	// finite and positive; scaling preserves the relative heights.
+	const scale = MONTH_BANDS_TARGET_HEIGHT / rawTotal;
+	const bands = new Map<number, MonthBand>();
+	let cursor = topPad;
+	for (let m = lastMonth; m >= firstMonth; m--) {
+		const height = rawByMonth.get(m)! * scale;
+		const { year, month } = monthIndexToYearMonth(m);
+		bands.set(m, {
+			year,
+			month,
+			dayStart: monthStartDay(m),
+			dayEnd: monthStartDay(m + 1),
+			yTop: cursor,
+			yBottom: cursor + height
+		});
+		cursor += height;
+	}
+	return bands;
+}
+
+/**
+ * Builds a `y(day)` scale from density-sized month bands: locates the band a
+ * day falls in, then interpolates linearly within it by day-fraction (the
+ * vertical analogue of `adoption-layout.ts`'s `xFor` sub-band interpolation).
+ * The axis is inverted (newer = smaller y = top), so within a band a LARGER
+ * day value (more recent) must map to a SMALLER y — the fraction of the month
+ * elapsed is subtracted from yBottom, not added to yTop, matching the
+ * band-builder's cursor direction (bands are laid out newest-first, cursor
+ * growing downward as months get older).
+ */
+function makeMonthBandedY(bands: Map<number, MonthBand>, firstMonth: number, lastMonth: number) {
+	return (day: number): number => {
+		const monthIndex = Math.min(lastMonth, Math.max(firstMonth, monthIndexOfDayValue(day)));
+		const band = bands.get(monthIndex)!;
+		const frac = (day - band.dayStart) / (band.dayEnd - band.dayStart);
+		// frac 0 = start of month (older, larger y / yBottom); frac 1 = start of
+		// next month (newer, smaller y / yTop) — so y decreases as frac grows.
+		return band.yBottom - frac * (band.yBottom - band.yTop);
+	};
+}
+
 // ---------------------------------------------------------------------------
 // Density sweep
 // ---------------------------------------------------------------------------
@@ -356,9 +521,10 @@ export function computeTimelineLayout(
 	}
 
 	const minDay = Math.min(...dated.map((r) => dayValue(r.firstCommit!)));
-	const pxPerDay = pxPerDayFor(nowDay, minDay);
-
-	const y = (day: number): number => geo.topPad + (nowDay - day) * pxPerDay;
+	const firstMonth = monthIndexOfDayValue(minDay);
+	const lastMonth = monthIndexOfDayValue(nowDay);
+	const monthBands = computeMonthBands(dated, minDay, nowDay, geo.topPad);
+	const y = makeMonthBandedY(monthBands, firstMonth, lastMonth);
 
 	const placed: PlacedRail[] = dated.map((rail) => {
 		const firstDay = dayValue(rail.firstCommit!);
@@ -409,40 +575,6 @@ export function computeTimelineLayout(
 		width: geo.width,
 		height
 	};
-}
-
-/**
- * Fixed pixels-per-day: the rate that gives the real registry's domain (2023-
- * 03-23 → today, a little over three years) a total plot height inside the
- * "comfortably tall, scrollable" 1400-1800px range the plan targets. A
- * genuinely linear, proportional scale (the brief's explicit requirement,
- * unlike the adoption chart's density-warped year bands) means this rate is
- * constant regardless of the actual domain span — a day always occupies the
- * same vertical pixels on every render, so shrinking or growing the dated
- * domain (filtering to one year, or the registry ageing another decade)
- * changes the total plot height rather than silently renormalising every
- * rail's apparent pace to fit a fixed box.
- */
-const PX_PER_DAY = 1600 / (3.5 * 365);
-/** Domain-day bounds: below `MIN_PLOT_DAYS` the fixed rate above is dropped in
- *  favour of stretching to a usable minimum height; above `MAX_PLOT_DAYS` it is
- *  dropped in favour of compressing to a maximum, so a pathological (near-zero
- *  or multi-decade) domain still renders sanely instead of collapsing to a
- *  sliver or growing without bound. */
-const MIN_PLOT_DAYS = 14;
-const MAX_PLOT_HEIGHT = 6000;
-
-/**
- * Pixels-per-day for a given dated domain: `PX_PER_DAY` in the ordinary case,
- * clamped only at the extremes described above. Kept as a small pure helper
- * (rather than a closure capturing mutable state) so `y()` stays a simple
- * function of `day` alone within `computeTimelineLayout`.
- */
-function pxPerDayFor(nowDay: number, minDay: number): number {
-	const domainDays = Math.max(1, nowDay - minDay);
-	if (domainDays < MIN_PLOT_DAYS) return (MIN_PLOT_DAYS * PX_PER_DAY) / domainDays;
-	const rate = PX_PER_DAY;
-	return domainDays * rate > MAX_PLOT_HEIGHT ? MAX_PLOT_HEIGHT / domainDays : rate;
 }
 
 /**
