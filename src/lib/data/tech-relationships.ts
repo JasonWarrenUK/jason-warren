@@ -72,7 +72,6 @@ export const techRelationships: TechRelationship[] = [
 	{ kind: 'leads-to', source: 'Go', target: 'Bubble Tea' },
 	{ kind: 'leads-to', source: 'HTML', target: 'CSS' },
 	{ kind: 'leads-to', source: 'Ink', target: 'HTML' },
-	{ kind: 'leads-to', source: 'Ink', target: 'CSS' },
 	{ kind: 'leads-to', source: 'C#', target: '.NET 8' },
 	{ kind: 'leads-to', source: '.NET 8', target: 'ASP.NET Core' },
 	{ kind: 'leads-to', source: 'Tauri', target: 'Rust' },
