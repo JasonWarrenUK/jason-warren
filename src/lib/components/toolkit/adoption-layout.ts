@@ -905,8 +905,13 @@ interface RailPoint {
 	labelRight: number;
 }
 
+// Every connector arrives at the child's CENTRE (child.x, child.y), tucking
+// under the ring — which renders on top — so all routes read as reaching the
+// same point rather than some stopping at the ring edge and some at the
+// centre. Departures likewise leave the parent's own dot centre or its rail.
+
 /**
- * Branch elbow with a horizontal arrival at the child dot's left edge. The
+ * Branch elbow with a horizontal arrival at the child dot's centre. The
  * corridor defaults to elbowRun before the child; routing may supply another
  * x (always between the parent's dot and rail end).
  */
@@ -918,50 +923,49 @@ function elbowPath(
 ): string {
 	const s = Math.sign(child.y - parent.y);
 	const r = Math.min(geo.cornerRadius, Math.abs(child.y - parent.y) / 2, child.x - corridorX - 2);
-	const arriveX = child.x - child.radius - 2;
 	return [
 		`M ${corridorX - r} ${parent.y}`,
 		`Q ${corridorX} ${parent.y} ${corridorX} ${parent.y + s * r}`,
 		`V ${child.y - s * r}`,
 		`Q ${corridorX} ${child.y} ${corridorX + r} ${child.y}`,
-		`H ${arriveX}`
+		`H ${child.x}`
 	].join(' ');
 }
 
-/** Single-corner connector arriving vertically at the child dot's top or bottom. */
+/** Single-corner connector arriving vertically at the child dot's centre. */
 function verticalArrivalPath(parent: RailPoint, child: RailPoint, geo: LayoutGeometry): string {
 	const s = Math.sign(child.y - parent.y);
 	const r = Math.min(geo.cornerRadius, Math.abs(child.y - parent.y) / 2);
 	return [
 		`M ${child.x - r} ${parent.y}`,
 		`Q ${child.x} ${parent.y} ${child.x} ${parent.y + s * r}`,
-		`V ${child.y - s * (child.radius + 2)}`
+		`V ${child.y}`
 	].join(' ');
 }
 
-/** Dot-to-dot cubic for gaps too tight for an elbow (departs/arrives vertically). */
+/** Dot-to-dot cubic for gaps too tight for an elbow. Departs the parent's
+ *  bottom/top, arrives at the child's centre. */
 function sCurvePath(parent: RailPoint, child: RailPoint): string {
 	const s = Math.sign(child.y - parent.y);
 	const fromY = parent.y + s * (parent.radius + 2);
-	const toY = child.y - s * (child.radius + 2);
-	const midY = (fromY + toY) / 2;
-	return `M ${parent.x} ${fromY} C ${parent.x} ${midY} ${child.x} ${midY} ${child.x} ${toY}`;
+	const midY = (fromY + child.y) / 2;
+	return `M ${parent.x} ${fromY} C ${parent.x} ${midY} ${child.x} ${midY} ${child.x} ${child.y}`;
 }
 
 /**
- * Left-side bracket for a parent and child whose dots leave no vertical room
- * for an s-curve — typically a same-date pair in adjacent lanes whose radii
- * swallow the lane pitch (HTML → CSS). Departs the parent dot's left edge,
- * bulges left and arrives at the child dot's left edge, so the connector
- * stays visible however tightly the dots pack.
+ * Bracket for a parent and child whose dots leave no vertical room for an
+ * s-curve — typically a same-date pair in adjacent lanes whose radii swallow
+ * the lane pitch (HTML → CSS). Departs the parent's forward (right) edge,
+ * bows to the right and arrives at the child's centre, so it never loops back
+ * around the left of the parent yet stays visible however tightly the dots
+ * pack.
  */
 function bracketPath(parent: RailPoint, child: RailPoint, geo: LayoutGeometry): string {
-	const departX = parent.x - parent.radius - 2;
-	const arriveX = child.x - child.radius - 2;
+	const departX = parent.x + parent.radius + 2;
 	const bulge = geo.elbowRun;
 	return [
 		`M ${departX} ${parent.y}`,
-		`C ${departX - bulge} ${parent.y} ${arriveX - bulge} ${child.y} ${arriveX} ${child.y}`
+		`C ${departX + bulge} ${parent.y} ${child.x + bulge} ${child.y} ${child.x} ${child.y}`
 	].join(' ');
 }
 
@@ -989,13 +993,12 @@ function dotToDotVariant(parent: RailPoint, child: RailPoint): ConnectorVariant 
  */
 function branchDropPath(parent: RailPoint, child: RailPoint, geo: LayoutGeometry): string {
 	const s = Math.sign(child.y - parent.y);
-	const arriveX = child.x - child.radius - 2;
-	const r = Math.min(geo.cornerRadius, Math.abs(child.y - parent.y) / 2, arriveX - parent.x - 2);
+	const r = Math.min(geo.cornerRadius, Math.abs(child.y - parent.y) / 2, child.x - parent.x - 2);
 	return [
 		`M ${parent.x} ${parent.y + s * (parent.radius + 2)}`,
 		`V ${child.y - s * r}`,
 		`Q ${parent.x} ${child.y} ${parent.x + r} ${child.y}`,
-		`H ${arriveX}`
+		`H ${child.x}`
 	].join(' ');
 }
 
@@ -1018,7 +1021,9 @@ function gutterArrivalPath(
 		geo.cornerRadius,
 		(child.x - corridorX) / 2 - 1,
 		Math.abs(gutterY - startY) / 2,
-		Math.abs(child.y - gutterY) - child.radius - 2
+		// The final leg runs from the corner down/up to the child's centre; the
+		// corner must fit within that span.
+		Math.abs(child.y - gutterY)
 	);
 	const start = viaRail
 		? `M ${corridorX - r} ${parent.y} Q ${corridorX} ${parent.y} ${corridorX} ${parent.y + s * r}`
@@ -1029,15 +1034,15 @@ function gutterArrivalPath(
 		`Q ${corridorX} ${gutterY} ${corridorX + r} ${gutterY}`,
 		`H ${child.x - r}`,
 		`Q ${child.x} ${gutterY} ${child.x} ${gutterY + s * r}`,
-		`V ${child.y - s * (child.radius + 2)}`
+		`V ${child.y}`
 	].join(' ');
 }
 
-/** Same-lane merge: the final stretch of the retiring rail, recoloured. */
+/** Same-lane merge: the final stretch of the retiring rail into the successor
+ *  dot's centre, recoloured. */
 function handoverPath(parent: RailPoint, child: RailPoint): string {
-	const arriveX = child.x - child.radius - 2;
-	const fromX = Math.max(arriveX - 16, parent.x + parent.radius + 2);
-	return `M ${fromX} ${parent.y} H ${arriveX}`;
+	const fromX = Math.max(child.x - 16, parent.x + parent.radius + 2);
+	return `M ${fromX} ${parent.y} H ${child.x}`;
 }
 
 /**
@@ -1049,8 +1054,7 @@ function handoverPath(parent: RailPoint, child: RailPoint): string {
  */
 function sameLaneBranchPath(parent: RailPoint, child: RailPoint): string {
 	const fromX = parent.x + parent.radius + 2;
-	const arriveX = child.x - child.radius - 2;
-	return `M ${fromX} ${parent.y} H ${arriveX}`;
+	return `M ${fromX} ${parent.y} H ${child.x}`;
 }
 
 /**

@@ -208,11 +208,13 @@ describe('computeAdoptionLayout', () => {
 		const connector = result.connectors.find((c) => c.source === 'HTML' && c.target === 'CSS')!;
 		expect(connector.variant).toBe('bracket');
 
-		// The bracket departs the parent dot's left edge rather than vanishing
-		// underneath the dots.
+		// The bracket departs the parent dot's RIGHT edge (flowing forward, never
+		// looping back around the left) and arrives at the child's centre.
 		const byLabel = new Map(result.placed.map((p) => [p.label, p]));
 		const html = byLabel.get('HTML')!;
-		expect(connector.path.startsWith(`M ${html.x - html.radius - 2} ${html.y}`)).toBe(true);
+		const css = byLabel.get('CSS')!;
+		expect(connector.path.startsWith(`M ${html.x + html.radius + 2} ${html.y}`)).toBe(true);
+		expect(connector.path.endsWith(`${css.x} ${css.y}`)).toBe(true);
 	});
 
 	// ---- branch-drop routing -------------------------------------------------
@@ -477,8 +479,8 @@ describe('computeAdoptionLayout', () => {
 
 		const connector = result.connectors.find((c) => c.target === 'Gamma')!;
 		expect(connector.variant).toBe('gutter-arrival');
-		// Arrives vertically at the dot's top edge, not horizontally at its left.
-		expect(connector.path.endsWith(`V ${gamma.y - gamma.radius - 2}`)).toBe(true);
+		// Arrives vertically at the dot's centre, not horizontally at its edge.
+		expect(connector.path.endsWith(`V ${gamma.y}`)).toBe(true);
 		expect(connector.path).not.toContain('C');
 	});
 

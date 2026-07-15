@@ -37,7 +37,10 @@
 		rightPad: 28,
 		topPad: 28,
 		axisGap: 28, // space under the chart for the year axis
-		railLaneHeight: 26,
+		// Tall enough that two adjacent maxed survey rings (radius ~20 each)
+		// clear one another with a little air; the largest nodes no longer
+		// overlap their neighbours' rails or labels.
+		railLaneHeight: 46,
 		stripLaneHeight: 30,
 		stripGap: 16, // breathing room between the rails and the strip
 		elbowRun: 14, // horizontal approach a branch connector reserves
