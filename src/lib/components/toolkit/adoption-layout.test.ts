@@ -78,6 +78,74 @@ function pathEnd(d: string): { x: number; y: number } {
 	return { x, y };
 }
 
+/** Samples an SVG path densely along every segment, so a curve that bows
+ *  through a node is caught mid-span, not only at its endpoints. Cubic (C) and
+ *  quadratic (Q) segments are evaluated at fixed t-steps; straight commands
+ *  yield their endpoint. Mirrors the M/L/H/V/C/Q subset the builders emit. */
+function samplePath(d: string, steps = 24): { x: number; y: number }[] {
+	const points: { x: number; y: number }[] = [];
+	let x = 0;
+	let y = 0;
+	for (const cmd of d.match(/[MLHVCQ][^MLHVCQ]*/g) ?? []) {
+		const n = [...cmd.slice(1).matchAll(/-?[\d.]+/g)].map((m) => Number(m[0]));
+		const t = cmd[0];
+		if (t === 'M' || t === 'L') {
+			[x, y] = n;
+			points.push({ x, y });
+		} else if (t === 'H') {
+			x = n[0];
+			points.push({ x, y });
+		} else if (t === 'V') {
+			y = n[0];
+			points.push({ x, y });
+		} else if (t === 'C') {
+			const [x1, y1, x2, y2, x3, y3] = n;
+			for (let i = 1; i <= steps; i++) {
+				const u = i / steps;
+				const v = 1 - u;
+				points.push({
+					x: v * v * v * x + 3 * v * v * u * x1 + 3 * v * u * u * x2 + u * u * u * x3,
+					y: v * v * v * y + 3 * v * v * u * y1 + 3 * v * u * u * y2 + u * u * u * y3
+				});
+			}
+			[x, y] = [x3, y3];
+		} else if (t === 'Q') {
+			const [x1, y1, x2, y2] = n;
+			for (let i = 1; i <= steps; i++) {
+				const u = i / steps;
+				const v = 1 - u;
+				points.push({
+					x: v * v * x + 2 * v * u * x1 + u * u * x2,
+					y: v * v * y + 2 * v * u * y1 + u * u * y2
+				});
+			}
+			[x, y] = [x2, y2];
+		}
+	}
+	return points;
+}
+
+/** Asserts no connector strays inside a node that is neither its source nor its
+ *  target — the invariant a dot-to-dot detour exists to preserve. */
+function expectNoRailPiercesForeignNode(result: {
+	connectors: { source: string; target: string; variant: string; path: string }[];
+	placed: PlacedNode[];
+}): void {
+	const byLabel = new Map(result.placed.map((p) => [p.label, p]));
+	for (const connector of result.connectors) {
+		for (const point of samplePath(connector.path)) {
+			for (const node of result.placed) {
+				if (node.label === connector.source || node.label === connector.target) continue;
+				const dist = Math.hypot(point.x - node.x, point.y - node.y);
+				expect(
+					dist,
+					`${connector.source}→${connector.target} [${connector.variant}] enters ${node.label}'s ring`
+				).toBeGreaterThanOrEqual(outerRadiusOf(byLabel.get(node.label)!));
+			}
+		}
+	}
+}
+
 /** Mirrors the real dataset's shape: a handful of lineage families plus isolated nodes. */
 const FIXTURE_ITEMS: TechAdoption[] = [
 	tech('Ink', 'language', '2020-01-01'),
@@ -868,5 +936,99 @@ describe('computeAdoptionLayout', () => {
 				).toFixed(1)}px inside the outer ring`
 			).toBeGreaterThanOrEqual(outerRadiusOf(child) - 0.5);
 		}
+	});
+
+	// ---- dot-to-dot curves must clear intermediate nodes ---------------------
+	// A conceded s-curve/bracket knows only its two endpoints, so a naive curve
+	// bows straight through a node between them. The live instance was
+	// OpenTUI→Bubble Tea (lanes two apart) whose s-curve pierced Go sitting in
+	// the lane between; the same geometry recurs wherever a non-reducible edge
+	// spans a lane occupied by an unrelated node.
+
+	it('detours a dot-to-dot curve clear of a node sitting between its endpoints', () => {
+		// Root → Leaf is a direct edge that survives transitive reduction (Mid is
+		// not on a Root→…→Leaf path), and Mid is placed in the lane between them,
+		// so the Root→Leaf curve would bow through Mid's ring unless detoured.
+		const items: TechAdoption[] = [
+			tech('Root', 'framework', '2021-01-01', 6),
+			tech('Mid', 'language', '2021-06-01', 24),
+			tech('Leaf', 'language', '2022-01-01', 22)
+		];
+		const edges: TechRelationship[] = [
+			{ kind: 'leads-to', source: 'Root', target: 'Mid' },
+			{ kind: 'leads-to', source: 'Root', target: 'Leaf' }
+		];
+		const result = computeAdoptionLayout(items, edges, GEO);
+
+		const rootToLeaf = result.connectors.find((c) => c.source === 'Root' && c.target === 'Leaf');
+		expect(rootToLeaf).toBeDefined();
+		expectNoRailPiercesForeignNode(result);
+	});
+
+	it('keeps a detoured dot-to-dot curve anchored to the parent dot', () => {
+		// The detour widens the bow; it must not move the endpoints. A dot-to-dot
+		// curve still departs the parent's centre.
+		const items: TechAdoption[] = [
+			tech('Root', 'framework', '2021-01-01', 6),
+			tech('Mid', 'language', '2021-06-01', 24),
+			tech('Leaf', 'language', '2022-01-01', 22)
+		];
+		const edges: TechRelationship[] = [
+			{ kind: 'leads-to', source: 'Root', target: 'Mid' },
+			{ kind: 'leads-to', source: 'Root', target: 'Leaf' }
+		];
+		const result = computeAdoptionLayout(items, edges, GEO);
+		const byLabel = new Map(result.placed.map((p) => [p.label, p]));
+		const rootToLeaf = result.connectors.find((c) => c.source === 'Root' && c.target === 'Leaf')!;
+
+		if (rootToLeaf.variant === 'bracket' || rootToLeaf.variant === 's-curve') {
+			const root = byLabel.get('Root')!;
+			expect(rootToLeaf.path.startsWith(`M ${root.x} ${root.y}`)).toBe(true);
+		}
+	});
+
+	it('detours the OpenTUI→Bubble Tea curve clear of Go', () => {
+		// The live case: Go sits in the lane between OpenTUI and Bubble Tea, and
+		// the OpenTUI→Bubble Tea s-curve used to pierce Go's ring.
+		const items: TechAdoption[] = [
+			tech('Shell', 'tool', '2019-01-01', 8),
+			tech('OpenTUI', 'framework', '2024-01-01', 4),
+			tech('Go', 'language', '2023-01-01', 10),
+			tech('Bubble Tea', 'framework', '2024-06-01', 6)
+		];
+		const edges: TechRelationship[] = [
+			{ kind: 'leads-to', source: 'Shell', target: 'OpenTUI' },
+			{ kind: 'leads-to', source: 'Go', target: 'Bubble Tea' },
+			{ kind: 'leads-to', source: 'OpenTUI', target: 'Bubble Tea' }
+		];
+		const result = computeAdoptionLayout(items, edges, GEO);
+		expect(result.connectors.length).toBeGreaterThan(0);
+		expectNoRailPiercesForeignNode(result);
+	});
+
+	it('never enters a foreign node across a dense lineage', () => {
+		// A busy graph with several same-date clusters and cross-lane edges — the
+		// conditions that force dot-to-dot fallbacks — must still route every
+		// connector clear of every unrelated node.
+		const items: TechAdoption[] = [
+			tech('HTML', 'language', '2019-01-01', 24),
+			tech('CSS', 'language', '2019-01-01', 22),
+			tech('JavaScript', 'language', '2019-01-01', 26),
+			tech('Ink', 'framework', '2020-01-01', 6),
+			tech('Tailwind CSS', 'framework', '2021-03-01', 12),
+			tech('Svelte', 'framework', '2021-03-01', 14),
+			tech('TypeScript', 'language', '2020-06-01', 20)
+		];
+		const edges: TechRelationship[] = [
+			{ kind: 'leads-to', source: 'HTML', target: 'CSS' },
+			{ kind: 'leads-to', source: 'CSS', target: 'Tailwind CSS' },
+			{ kind: 'leads-to', source: 'HTML', target: 'JavaScript' },
+			{ kind: 'leads-to', source: 'JavaScript', target: 'TypeScript' },
+			{ kind: 'leads-to', source: 'JavaScript', target: 'Svelte' },
+			{ kind: 'leads-to', source: 'Ink', target: 'JavaScript' }
+		];
+		const result = computeAdoptionLayout(items, edges, GEO);
+		expect(result.connectors.length).toBeGreaterThan(0);
+		expectNoRailPiercesForeignNode(result);
 	});
 });

@@ -975,13 +975,56 @@ function verticalArrivalPath(parent: RailPoint, child: RailPoint, geo: LayoutGeo
 	].join(' ');
 }
 
-/** Dot-to-dot cubic for gaps too tight for an elbow. Departs the parent's
- *  centre, arrives at the child's ring edge (top/bottom). */
-function sCurvePath(parent: RailPoint, child: RailPoint): string {
+/** A cubic bezier's four control points, in order. */
+interface CubicPoints {
+	p0: { x: number; y: number };
+	p1: { x: number; y: number };
+	p2: { x: number; y: number };
+	p3: { x: number; y: number };
+}
+
+/** The default outward bulge a bracket bows by: enough to clear the parent's
+ *  own ring plus a lane's elbow run. */
+function defaultBracketBulge(parent: RailPoint, geo: LayoutGeometry): number {
+	return geo.elbowRun + parent.radius;
+}
+
+/** The four control points a bracket emits for a given bulge. Shared by
+ *  `bracketPath` and the collision test so the tested geometry is provably the
+ *  drawn geometry. */
+function bracketControlPoints(
+	parent: RailPoint,
+	child: RailPoint,
+	bulge: number
+): CubicPoints {
+	const arriveX = child.x - child.outerRadius - 2;
+	return {
+		p0: { x: parent.x, y: parent.y },
+		p1: { x: parent.x + bulge, y: parent.y },
+		p2: { x: arriveX + bulge, y: child.y },
+		p3: { x: arriveX, y: child.y }
+	};
+}
+
+/** The four control points an s-curve emits. Shared by `sCurvePath` and the
+ *  collision test. */
+function sCurveControlPoints(parent: RailPoint, child: RailPoint): CubicPoints {
 	const s = Math.sign(child.y - parent.y);
 	const toY = child.y - s * (child.outerRadius + 2);
 	const midY = (parent.y + toY) / 2;
-	return `M ${parent.x} ${parent.y} C ${parent.x} ${midY} ${child.x} ${midY} ${child.x} ${toY}`;
+	return {
+		p0: { x: parent.x, y: parent.y },
+		p1: { x: parent.x, y: midY },
+		p2: { x: child.x, y: midY },
+		p3: { x: child.x, y: toY }
+	};
+}
+
+/** Dot-to-dot cubic for gaps too tight for an elbow. Departs the parent's
+ *  centre, arrives at the child's ring edge (top/bottom). */
+function sCurvePath(parent: RailPoint, child: RailPoint): string {
+	const { p0, p1, p2, p3 } = sCurveControlPoints(parent, child);
+	return `M ${p0.x} ${p0.y} C ${p1.x} ${p1.y} ${p2.x} ${p2.y} ${p3.x} ${p3.y}`;
 }
 
 /**
@@ -989,15 +1032,44 @@ function sCurvePath(parent: RailPoint, child: RailPoint): string {
  * s-curve — typically a same-date pair in adjacent lanes whose radii swallow
  * the lane pitch (HTML → CSS). Departs the parent's centre, bows to the right
  * and arrives at the child's ring edge, so it never loops back around the left
- * of the parent yet stays visible however tightly the dots pack.
+ * of the parent yet stays visible however tightly the dots pack. `bulgeOverride`
+ * lets routing widen the bow so the curve clears an intermediate node's ring.
  */
-function bracketPath(parent: RailPoint, child: RailPoint, geo: LayoutGeometry): string {
-	const arriveX = child.x - child.outerRadius - 2;
-	const bulge = geo.elbowRun + parent.radius;
-	return [
-		`M ${parent.x} ${parent.y}`,
-		`C ${parent.x + bulge} ${parent.y} ${arriveX + bulge} ${child.y} ${arriveX} ${child.y}`
-	].join(' ');
+function bracketPath(
+	parent: RailPoint,
+	child: RailPoint,
+	geo: LayoutGeometry,
+	bulgeOverride?: number
+): string {
+	const bulge = bulgeOverride ?? defaultBracketBulge(parent, geo);
+	const { p0, p1, p2, p3 } = bracketControlPoints(parent, child, bulge);
+	return [`M ${p0.x} ${p0.y}`, `C ${p1.x} ${p1.y} ${p2.x} ${p2.y} ${p3.x} ${p3.y}`].join(' ');
+}
+
+/** Fixed sample count for the curve/occupant distance test. Fixed (not
+ *  adaptive) so the whole layout stays a pure function of node geometry. */
+const CURVE_SAMPLES = 24;
+/** Clearance a curve must keep from an occupant's ring, matching the +3 margin
+ *  the orthogonal corridor scans use. */
+const CURVE_CLEARANCE = 3;
+
+/** Minimum distance from a cubic bezier to a point, by fixed-step sampling. */
+function cubicMinDistance(curve: CubicPoints, cx: number, cy: number): number {
+	const { p0, p1, p2, p3 } = curve;
+	let min = Infinity;
+	for (let i = 0; i <= CURVE_SAMPLES; i++) {
+		const t = i / CURVE_SAMPLES;
+		const u = 1 - t;
+		const x = u * u * u * p0.x + 3 * u * u * t * p1.x + 3 * u * t * t * p2.x + t * t * t * p3.x;
+		const y = u * u * u * p0.y + 3 * u * u * t * p1.y + 3 * u * t * t * p2.y + t * t * t * p3.y;
+		min = Math.min(min, Math.hypot(x - cx, y - cy));
+	}
+	return min;
+}
+
+/** True when the curve passes within an occupant's ring plus clearance. */
+function curveHitsOccupant(curve: CubicPoints, occupant: RailOccupant): boolean {
+	return cubicMinDistance(curve, occupant.x, occupant.y) < occupant.radius + CURVE_CLEARANCE;
 }
 
 /** Vertical clearance (px) below which an s-curve degenerates into a bracket. */
@@ -1012,6 +1084,54 @@ const MIN_S_CURVE_GAP = 6;
 function dotToDotVariant(parent: RailPoint, child: RailPoint): ConnectorVariant {
 	const gap = Math.abs(child.y - parent.y) - (parent.outerRadius + child.outerRadius + 4);
 	return gap < MIN_S_CURVE_GAP ? 'bracket' : 's-curve';
+}
+
+/** Outward step (px) each detour attempt widens a bracket's bow by. */
+const BULGE_STEP = 4;
+/** Attempt cap for the detour search, mirroring the corridor scans' cap. */
+const BULGE_ATTEMPTS = 8;
+
+/**
+ * A dot-to-dot curve knows only its two endpoints, so it can bow straight
+ * through a node sitting between them. This picks a variant and bulge for the
+ * conceded curve that clears every occupant in a lane strictly between parent
+ * and child: an s-curve that would collide is promoted to a bracket (an s-curve
+ * cannot dodge sideways without moving its endpoints), then the bracket's bow is
+ * widened in fixed steps until it clears, or the attempt cap concedes the widest
+ * bow tried (still an improvement over the default). Deterministic: fixed step,
+ * fixed cap, pure function of geometry.
+ */
+function chooseDotToDotDetour(
+	parent: RailPoint,
+	child: RailPoint,
+	parentLane: number,
+	childLane: number,
+	occupantsByLane: Map<number, RailOccupant[]>,
+	geo: LayoutGeometry
+): { variant: ConnectorVariant; bulge?: number } {
+	const loLane = Math.min(parentLane, childLane);
+	const hiLane = Math.max(parentLane, childLane);
+	const obstacles: RailOccupant[] = [];
+	for (let lane = loLane + 1; lane < hiLane; lane++) {
+		for (const occupant of occupantsByLane.get(lane) ?? []) obstacles.push(occupant);
+	}
+
+	let variant = dotToDotVariant(parent, child);
+	if (obstacles.length === 0) return { variant };
+
+	if (variant === 's-curve') {
+		const sCurve = sCurveControlPoints(parent, child);
+		if (obstacles.some((o) => curveHitsOccupant(sCurve, o))) variant = 'bracket';
+	}
+	if (variant !== 'bracket') return { variant };
+
+	let bulge = defaultBracketBulge(parent, geo);
+	for (let attempt = 0; attempt < BULGE_ATTEMPTS; attempt++) {
+		const curve = bracketControlPoints(parent, child, bulge);
+		if (!obstacles.some((o) => curveHitsOccupant(curve, o))) return { variant, bulge };
+		bulge += BULGE_STEP;
+	}
+	return { variant, bulge };
 }
 
 /**
@@ -1114,6 +1234,9 @@ interface RoutedEdge {
 	corridorX: number | null;
 	/** y of the gutter run; only set for 'gutter-arrival'. */
 	gutterY: number | null;
+	/** Outward bulge (px) for a dot-to-dot curve detoured clear of an
+	 *  intermediate node's ring; absent means the builder's own default. */
+	bulge?: number;
 }
 
 /** One rail node's footprint within its lane, for clearance checks. */
@@ -1365,7 +1488,8 @@ function routeEdges(
 			if (gutter !== null) {
 				return { edge, variant: 'gutter-arrival', corridorX: gutter.corridorX, gutterY: gutter.gutterY };
 			}
-			return { edge, variant: dotToDotVariant(parent, child), corridorX: null, gutterY: null };
+			const detour = chooseDotToDotDetour(parent, child, parentLane, childLane, occupantsByLane, geo);
+			return { edge, variant: detour.variant, corridorX: null, gutterY: null, bulge: detour.bulge };
 		};
 
 		if (parentLane === childLane) {
@@ -1439,7 +1563,7 @@ function emitConnector(routed: RoutedEdge, pointOf: Map<string, RailPoint>, geo:
 			path = verticalArrivalPath(parent, child, geo);
 			break;
 		case 'bracket':
-			path = bracketPath(parent, child, geo);
+			path = bracketPath(parent, child, geo, routed.bulge);
 			break;
 		case 'branch-drop':
 			path = branchDropPath(parent, child, geo);
