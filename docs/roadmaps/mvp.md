@@ -112,7 +112,8 @@ _None._
 
 - [ ] 3DE.1. Typography pass (scale, rhythm, measure) across all routes — **depends on 3DE.0**
 - [ ] 3DE.3. Motion pass: meaningful transitions, respect `prefers-reduced-motion` — **depends on 3DE.1**
-- [ ] 3DE.4. Refine graph aesthetics (edge styling, clustering legibility, constellation view) — **depends on 3DE.5**
+- [ ] 3DE.6. Drastically improve the `/map` graph layout for legibility — the force-directed layout in `ProjectMap.svelte` produces crowded/overlapping clusters and unstable relayouts; target clearer node spacing, edge-crossing reduction, and readable clustering — **depends on 3DE.0**
+- [ ] 3DE.4. Refine graph aesthetics (edge styling, clustering legibility, constellation view) — **depends on 3DE.5, 3DE.6**
 - [ ] 3DE.5. Consistency sweep of semantic colour aliases vs Reasonable Colors usage — **depends on 3DE.0**
 - [ ] 3DE.2. Responsive audit: map / timeline / grids on small viewports — **depends on 3DE.3, 3DE.4**
 
@@ -274,12 +275,15 @@ flowchart TD
 	3DE.3["`*3DE.3*<br/>**Design**<br/>motion pass`"]:::blocked
 	3DE.4["`*3DE.4*<br/>**Design**<br/>graph aesthetics`"]:::blocked
 	3DE.5["`*3DE.5*<br/>**Design**<br/>colour consistency`"]:::blocked
+	3DE.6["`*3DE.6*<br/>**Design**<br/>map layout overhaul`"]:::blocked
 
 	%% M3 — deps
 	3DE.0 --> 3DE.1
 	3DE.0 --> 3DE.5
+	3DE.0 --> 3DE.6
 	3DE.1 --> 3DE.3
 	3DE.5 --> 3DE.4
+	3DE.6 --> 3DE.4
 	3DE.3 --> 3DE.2
 	3DE.4 --> 3DE.2
 
