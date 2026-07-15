@@ -944,12 +944,10 @@ function verticalArrivalPath(parent: RailPoint, child: RailPoint, geo: LayoutGeo
 }
 
 /** Dot-to-dot cubic for gaps too tight for an elbow. Departs the parent's
- *  bottom/top, arrives at the child's centre. */
+ *  centre, arrives at the child's centre (both tuck under their rings). */
 function sCurvePath(parent: RailPoint, child: RailPoint): string {
-	const s = Math.sign(child.y - parent.y);
-	const fromY = parent.y + s * (parent.radius + 2);
-	const midY = (fromY + child.y) / 2;
-	return `M ${parent.x} ${fromY} C ${parent.x} ${midY} ${child.x} ${midY} ${child.x} ${child.y}`;
+	const midY = (parent.y + child.y) / 2;
+	return `M ${parent.x} ${parent.y} C ${parent.x} ${midY} ${child.x} ${midY} ${child.x} ${child.y}`;
 }
 
 /**
@@ -995,7 +993,7 @@ function branchDropPath(parent: RailPoint, child: RailPoint, geo: LayoutGeometry
 	const s = Math.sign(child.y - parent.y);
 	const r = Math.min(geo.cornerRadius, Math.abs(child.y - parent.y) / 2, child.x - parent.x - 2);
 	return [
-		`M ${parent.x} ${parent.y + s * (parent.radius + 2)}`,
+		`M ${parent.x} ${parent.y}`,
 		`V ${child.y - s * r}`,
 		`Q ${parent.x} ${child.y} ${parent.x + r} ${child.y}`,
 		`H ${child.x}`
@@ -1016,7 +1014,9 @@ function gutterArrivalPath(
 ): string {
 	const s = Math.sign(child.y - parent.y);
 	const viaRail = corridorX > parent.x;
-	const startY = viaRail ? parent.y : parent.y + s * (parent.radius + 2);
+	// A dot-departing gutter leaves the parent's centre (under its ring), like
+	// every other departure; a rail-departing one leaves the rail at centre y.
+	const startY = parent.y;
 	const r = Math.min(
 		geo.cornerRadius,
 		(child.x - corridorX) / 2 - 1,

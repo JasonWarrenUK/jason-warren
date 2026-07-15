@@ -238,7 +238,9 @@ describe('computeAdoptionLayout', () => {
 
 		const connector = result.connectors.find((c) => c.target === 'Gamma')!;
 		expect(connector.variant).toBe('branch-drop');
-		expect(connector.path.startsWith(`M ${alpha.x} ${alpha.y + alpha.radius + 2}`)).toBe(true);
+		// Departs the parent dot's centre (tucking under its ring), matching
+		// every other departure and arrival.
+		expect(connector.path.startsWith(`M ${alpha.x} ${alpha.y}`)).toBe(true);
 		// Orthogonal by construction: no cubic segment.
 		expect(connector.path).not.toContain('C');
 	});
