@@ -15,8 +15,9 @@ import {
 	type LayoutGeometry,
 	type PlacedNode
 } from './adoption-layout.js';
-import type { TechAdoption } from '$lib/data/adoption.js';
+import { getTechAdoption, type TechAdoption } from '$lib/data/adoption.js';
 import type { TechRelationship } from '$lib/data/types.js';
+import { techRelationships } from '$lib/data/tech-relationships.js';
 
 const GEO: LayoutGeometry = {
 	width: 920,
@@ -29,6 +30,24 @@ const GEO: LayoutGeometry = {
 	stripGap: 16,
 	elbowRun: 18,
 	cornerRadius: 6,
+	charWidth: 7.2,
+	labelGap: 10
+};
+
+/** The geometry AdoptionTimeline.svelte actually ships with — taller lanes and
+ *  larger rings than the test default. Used for the real-data invariant checks
+ *  so they exercise the exact packing that produced the reported bug. */
+const PROD_GEO: LayoutGeometry = {
+	width: 920,
+	leftPad: 28,
+	rightPad: 28,
+	topPad: 28,
+	axisGap: 28,
+	railLaneHeight: 46,
+	stripLaneHeight: 30,
+	stripGap: 16,
+	elbowRun: 14,
+	cornerRadius: 8,
 	charWidth: 7.2,
 	labelGap: 10
 };
@@ -142,6 +161,33 @@ function expectNoRailPiercesForeignNode(result: {
 					`${connector.source}→${connector.target} [${connector.variant}] enters ${node.label}'s ring`
 				).toBeGreaterThanOrEqual(outerRadiusOf(byLabel.get(node.label)!));
 			}
+		}
+	}
+}
+
+/** Asserts no connector reverses horizontal direction: once a rail has moved
+ *  forward toward its child, it never retreats by more than a parent radius (the
+ *  organic-lead-in budget). A backward-bowing bracket blows past this; a gentle
+ *  monotonic curve stays within it. */
+function expectNoRailReversesDirection(result: {
+	connectors: { source: string; target: string; variant: string; path: string }[];
+	placed: PlacedNode[];
+}): void {
+	const byLabel = new Map(result.placed.map((p) => [p.label, p]));
+	for (const connector of result.connectors) {
+		const points = samplePath(connector.path);
+		if (points.length < 2) continue;
+		const dir = Math.sign(points[points.length - 1].x - points[0].x);
+		if (dir === 0) continue; // purely vertical: no horizontal direction to reverse
+		const tolerance = byLabel.get(connector.source)!.radius;
+		let extreme = points[0].x * dir; // furthest-forward progress so far
+		for (const point of points) {
+			const forward = point.x * dir;
+			expect(
+				forward,
+				`${connector.source}→${connector.target} [${connector.variant}] reverses horizontal direction`
+			).toBeGreaterThanOrEqual(extreme - tolerance);
+			extreme = Math.max(extreme, forward);
 		}
 	}
 }
@@ -285,11 +331,11 @@ describe('computeAdoptionLayout', () => {
 		expect(html.lane > lo && html.lane < hi).toBe(false);
 	});
 
-	it('draws a visible bracket when a same-date parent and child leave no room for an s-curve', () => {
+	it('routes a same-date adjacent-lane pair as a forward-only s-curve', () => {
 		// Mirrors the real HTML/CSS pair: identical adoption dates put both dots
-		// at the same x in adjacent lanes, and high project counts give them
-		// radii that swallow the lane pitch — the s-curve between the dots'
-		// clearance edges inverts into a sub-pixel path drawn backwards.
+		// at the same x in adjacent lanes, and high project counts give them radii
+		// that swallow the lane pitch. This must NOT bow backward: the rail hugs
+		// the column and arrives vertically at the child's ring edge.
 		const items: TechAdoption[] = [
 			tech('HTML', 'language', '2020-01-01', 24),
 			tech('CSS', 'language', '2020-01-01', 22),
@@ -301,15 +347,18 @@ describe('computeAdoptionLayout', () => {
 		];
 		const result = computeAdoptionLayout(items, edges, GEO);
 		const connector = result.connectors.find((c) => c.source === 'HTML' && c.target === 'CSS')!;
-		expect(connector.variant).toBe('bracket');
+		expect(connector.variant).toBe('s-curve');
 
-		// The bracket departs the parent's centre (flowing forward, never
-		// looping back around the left) and arrives at the child's ring edge.
+		// Departs the parent's centre and arrives vertically at the child's ring
+		// edge (top/bottom), never reversing horizontal direction.
 		const byLabel = new Map(result.placed.map((p) => [p.label, p]));
 		const html = byLabel.get('HTML')!;
 		const css = byLabel.get('CSS')!;
 		expect(connector.path.startsWith(`M ${html.x} ${html.y}`)).toBe(true);
-		expect(connector.path.endsWith(`${css.x - css.radius - 2} ${css.y}`)).toBe(true);
+		const end = pathEnd(connector.path);
+		expect(Math.abs(end.x - css.x)).toBeLessThan(0.01); // arrives on the child's column
+		expect(Math.min(html.y, css.y) <= end.y && end.y <= Math.max(html.y, css.y)).toBe(true);
+		expectNoRailReversesDirection(result);
 	});
 
 	// ---- branch-drop routing -------------------------------------------------
@@ -981,7 +1030,7 @@ describe('computeAdoptionLayout', () => {
 		const byLabel = new Map(result.placed.map((p) => [p.label, p]));
 		const rootToLeaf = result.connectors.find((c) => c.source === 'Root' && c.target === 'Leaf')!;
 
-		if (rootToLeaf.variant === 'bracket' || rootToLeaf.variant === 's-curve') {
+		if (rootToLeaf.variant === 's-curve') {
 			const root = byLabel.get('Root')!;
 			expect(rootToLeaf.path.startsWith(`M ${root.x} ${root.y}`)).toBe(true);
 		}
@@ -1004,6 +1053,7 @@ describe('computeAdoptionLayout', () => {
 		const result = computeAdoptionLayout(items, edges, GEO);
 		expect(result.connectors.length).toBeGreaterThan(0);
 		expectNoRailPiercesForeignNode(result);
+		expectNoRailReversesDirection(result);
 	});
 
 	it('never enters a foreign node across a dense lineage', () => {
@@ -1030,5 +1080,13 @@ describe('computeAdoptionLayout', () => {
 		const result = computeAdoptionLayout(items, edges, GEO);
 		expect(result.connectors.length).toBeGreaterThan(0);
 		expectNoRailPiercesForeignNode(result);
+		expectNoRailReversesDirection(result);
+	});
+
+	it('routes the real portfolio lineage without piercing rings or reversing direction', () => {
+		const result = computeAdoptionLayout(getTechAdoption(), techRelationships, PROD_GEO);
+		expect(result.connectors.length).toBeGreaterThan(0);
+		expectNoRailPiercesForeignNode(result);
+		expectNoRailReversesDirection(result);
 	});
 });
