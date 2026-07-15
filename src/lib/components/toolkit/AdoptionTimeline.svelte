@@ -534,18 +534,19 @@
 			stroke-width var(--transition-fast);
 	}
 
-	/* Connectors: branch and merge elbows between rails. */
+	/* Connectors: branch and merge elbows between rails. Held at the rail's quiet
+	   0.4 so a rail's trunk and the branches coming off it read as one line. */
 	.adoption__connector {
 		fill: none;
 		stroke-width: 1.5;
-		stroke-opacity: 0.7;
+		stroke-opacity: 0.4;
 		transition: stroke-opacity var(--transition-fast);
 	}
 
 	/* Dimmed when another tech is highlighted and this edge does not touch it.
-	   Mirrors the rail dim maths (0.7 is the connector's base stroke-opacity). */
+	   Mirrors the rail dim maths (0.4 is the connector's base stroke-opacity). */
 	.adoption__connector--dim {
-		stroke-opacity: calc(0.7 * var(--dim-node));
+		stroke-opacity: calc(0.4 * var(--dim-node));
 	}
 
 	/* Divider between the lineage rails and the no-lineage dot strip. */
