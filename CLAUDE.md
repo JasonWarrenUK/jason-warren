@@ -72,6 +72,12 @@ Conventional Commits: `type(scope): description`
 
 Commit frequently with granular, single-purpose changes.
 
+### Verification Before Commit
+
+`bun run prepare` (runs automatically on `bun install`) installs a pre-commit hook that runs Prettier against staged files only — it blocks a commit from introducing *new* formatting drift, but it cannot see files nobody has touched since it was installed.
+
+CI (`bun run lint`, i.e. `prettier --check .`) checks the **whole repository** on every PR and push to `main`, not just the current diff. Before opening a PR, run `bun run lint` (not a scoped `prettier --check <files>` on just what you touched) alongside `bun run check` and `bun run test`. If it fails on files unrelated to your change, that's pre-existing drift — fix it in its own commit rather than folding it into the feature diff.
+
 ### PR Structure
 
 ```md
