@@ -15,7 +15,12 @@
 
 set -u
 
-output=$(bunx vitest run scripts/check-drift.test.ts 2>&1)
+# NO_COLOR=1: vitest's ANSI colour codes land BETWEEN "passed" and "(N)" in
+# CI's captured output (e.g. "passed\x1b[39m\x1b[22m\x1b[90m (165)"), which
+# silently broke the tolerate-detection grep below on the first real CI
+# run — confirmed by pulling the raw `gh run view --log` output. Plain text
+# keeps the pattern match reliable regardless of terminal/CI colour support.
+output=$(NO_COLOR=1 bunx vitest run scripts/check-drift.test.ts 2>&1)
 status=$?
 
 echo "$output"
