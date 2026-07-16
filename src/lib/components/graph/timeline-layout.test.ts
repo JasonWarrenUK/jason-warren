@@ -61,7 +61,8 @@ function rail(
 		firstCommit,
 		lastCommit,
 		durationDays: firstCommit && lastCommit ? dayDiff(firstCommit, lastCommit) : null,
-		stillLive: overrides.stillLive ?? false
+		stillLive: overrides.stillLive ?? false,
+		labelled: overrides.labelled ?? false
 	};
 }
 

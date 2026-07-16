@@ -115,6 +115,13 @@ export interface TimelineRail {
 	/** Whole days between firstCommit and lastCommit; null when undated. */
 	durationDays: number | null;
 	stillLive: boolean;
+	/**
+	 * True when this rail earns a standing (always-visible) label, mirroring
+	 * `ProjectMap`'s `node.labelled` field — see `selectLabelledSlugs` in
+	 * `data/graph.ts`. Purely a presentation flag; the layout module never
+	 * reads it, it only carries it through `PlacedRail` for the component.
+	 */
+	labelled: boolean;
 }
 
 export interface PlacedRail extends TimelineRail {

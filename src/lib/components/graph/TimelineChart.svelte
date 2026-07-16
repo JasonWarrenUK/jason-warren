@@ -29,13 +29,31 @@
 	// horizontal axis is pure collision-avoidance packing (see
 	// timeline-layout.ts) — it carries no meaning of its own, unlike the
 	// adoption chart's lineage lanes.
+	// `columnWidth` is deliberately tight: with labels hover/standing-gated
+	// (see `.timeline__label` below), an at-rest column only ever has to fit
+	// ONE rail's ring plus hit target, not a permanently-visible name — so the
+	// pitch no longer has to budget for the longest label in the registry
+	// ("Those Who Came Before", 22 characters). `leftGutter`/`rightPad` are
+	// trimmed to match: the year-tick labels are 4 digits and don't need 90px.
+	//
+	// These four numbers are chosen so `chartWidth` (below) lands inside the
+	// page's REAL rendered content width, not just the outer `--layout-max-width`
+	// cap: `.page` (routes/timeline/+page.svelte) is `max-width: 72rem` (1152px)
+	// INCLUDING its own `--layout-padding` (clamps to 3rem/48px per side under
+	// global `box-sizing: border-box`), so the actual space available to the
+	// SVG at desktop widths is ~1056px, not 1152px. With the real registry's
+	// fixed 14-column packing (column count is a function of overlapping rail
+	// intervals, not columnWidth), `columnWidth: 66` plus these gutters lands
+	// chartWidth at ~1026px — comfortably inside that 1056px budget, so the
+	// `width: 100%` CSS scale-down is ~1:1 rather than the ~0.6x squeeze the
+	// previous 1934px viewBox suffered.
 	const GEO: TimelineGeometry = {
 		width: 760,
-		leftGutter: 90,
-		rightPad: 24,
+		leftGutter: 80,
+		rightPad: 20,
 		topPad: 32,
 		bottomPad: 40,
-		columnWidth: 130,
+		columnWidth: 66,
 		laneGap: 16,
 		minRailHeight: 24,
 		nodeRadius: 8,
@@ -47,13 +65,10 @@
 
 	// `layout.width` always echoes `GEO.width` verbatim — the layout module
 	// doesn't grow it with `columnCount` (packing is column-count-agnostic by
-	// design). With 33 real projects front-loaded into 2026, the recent
-	// cluster needs more columns than fit in GEO.width at GEO.columnWidth, so
-	// the viewBox must size itself to the packed content or the rightmost
-	// columns render outside it. This is a rendering concern, not a packing
-	// one — it doesn't touch computeTimelineLayout's algorithm. Zoom/expand
-	// (a later build step) will ease the crush; until then the static chart
-	// simply widens to show every column in full.
+	// design), so the viewBox must size itself to the packed content or the
+	// rightmost columns render outside it. With the tightened GEO above this
+	// still needs to widen for real registry data (14 columns), but now lands
+	// close to the page's real content width instead of ballooning past it.
 	const chartWidth = $derived(
 		Math.max(layout.width, GEO.leftGutter + layout.columnCount * GEO.columnWidth + GEO.rightPad)
 	);
@@ -184,6 +199,25 @@
 		role="group"
 		aria-label="Timeline of projects by lifespan, most recent activity at the top, packed by column with no horizontal meaning"
 	>
+		<!-- Density wash: a faint fill per density band, count-scaled opacity.
+		     Purely a background reassurance signal — a stretch of the chart
+		     with few VISIBLE rail lines (most projects there are short capsules
+		     that don't reach this y-range) can still have several concurrently
+		     "alive" long-running projects passing through it; without this the
+		     stretch reads as broken/empty rather than "quietly busy". Rendered
+		     first so every other layer draws on top of it. -->
+		<g class="timeline__density" aria-hidden="true">
+			{#each layout.density as band (band.yTop)}
+				<rect
+					x={GEO.leftGutter - 8}
+					y={band.yTop}
+					width={chartWidth - GEO.leftGutter - GEO.rightPad + 8}
+					height={Math.max(0, band.yBottom - band.yTop)}
+					fill-opacity={Math.min(0.4, 0.045 * band.count)}
+				/>
+			{/each}
+		</g>
+
 		<!-- Graticule: horizontal year lines, the survey sheet's grid. Time runs
 		     vertically here, so the ticks are horizontal (contrast the adoption
 		     chart's vertical ticks). -->
@@ -201,7 +235,17 @@
 		     carries the geometry, this group intentionally stays empty. -->
 		<g class="timeline__lineage" aria-hidden="true"></g>
 
-		<!-- Rails. -->
+		<!-- Rails. Two passes over the same `layout.placed` list, deliberately
+		     split into separate `<g>` groups: SVG paints strictly in source
+		     order, so with everything in a single per-rail group a LATER rail's
+		     ring can paint over an EARLIER rail's label regardless of the
+		     label's halo stroke — the halo only defends against elements within
+		     the same paint layer, not a sibling group later in the document.
+		     Rendering every ring/rail/hit-target first and every label second
+		     guarantees every visible label sits on top of every ring, independent
+		     of which column or rail index either belongs to. Both passes apply
+		     the identical modifier classes (--active/--dim/--pinned/--labelled)
+		     per rail so the shared CSS state rules keep driving both halves. -->
 		<g class="timeline__rails">
 			{#each layout.placed as rail, index (rail.slug)}
 				<g
@@ -209,6 +253,7 @@
 					class:timeline__rail-group--active={effectiveSlug === rail.slug}
 					class:timeline__rail-group--dim={effectiveSlug !== null && !neighbourhood.has(rail.slug)}
 					class:timeline__rail-group--pinned={pinnedSlug === rail.slug}
+					class:timeline__rail-group--labelled={rail.labelled}
 					style="--reveal-delay: {Math.min(index * 24, 700)}ms; color: {statusColour(
 						rail.status as Parameters<typeof statusColour>[0]
 					)}"
@@ -221,35 +266,27 @@
 					     rail has no lineage-lane concept, unlike the adoption chart. -->
 					<line class="timeline__rail" x1={rail.x} y1={rail.yTop} x2={rail.x} y2={rail.yBottom} />
 
-					<!-- Survey mark at the newer end (yTop = most recent activity).
+					<!-- Survey mark at the initial end (yBottom = inception, firstCommit).
 					     Still-live rails earn the hub ring, marking active work. -->
 					{#if rail.stillLive}
 						<circle
 							class="timeline__ring timeline__ring--hub"
 							cx={rail.x}
-							cy={rail.yTop}
+							cy={rail.yBottom}
 							r={GEO.nodeRadius + GEO.hubRingOffset}
 						/>
 					{/if}
-					<circle class="timeline__ring" cx={rail.x} cy={rail.yTop} r={GEO.nodeRadius} />
-					<circle class="timeline__centre" cx={rail.x} cy={rail.yTop} r="2.8" />
-
-					<text
-						class="timeline__label"
-						aria-hidden="true"
-						x={rail.x + GEO.nodeRadius + 6}
-						y={rail.yTop + 4}
-					>
-						{rail.name}
-					</text>
+					<circle class="timeline__ring" cx={rail.x} cy={rail.yBottom} r={GEO.nodeRadius} />
+					<circle class="timeline__centre" cx={rail.x} cy={rail.yBottom} r="2.8" />
 
 					<!-- Full-disc hit target: an invisible filled circle over the node,
-					     rendered last so it sits topmost for hit-testing. Every visible
-					     element above is pointer-events: none. -->
+					     rendered last in this pass so it sits topmost for hit-testing
+					     among rings/rails. Every visible element above is
+					     pointer-events: none. -->
 					<circle
 						class="timeline__hit"
 						cx={rail.x}
-						cy={rail.yTop}
+						cy={rail.yBottom}
 						r={rail.stillLive ? GEO.nodeRadius + GEO.hubRingOffset : GEO.nodeRadius}
 						role="button"
 						tabindex="0"
@@ -269,6 +306,30 @@
 						onfocus={() => (activeSlug = rail.slug)}
 						onblur={() => (activeSlug = null)}
 					/>
+				</g>
+			{/each}
+		</g>
+
+		<!-- Label pass: every rail's label, painted after every rail's ring
+		     above so no ring can ever clip a label — see the comment on
+		     `.timeline__rails` above. Purely presentational (aria-hidden); the
+		     accessible name lives on the `.timeline__hit` target in the pass
+		     above, so duplicating no interactive semantics here. -->
+		<g class="timeline__labels" aria-hidden="true">
+			{#each layout.placed as rail, index (rail.slug)}
+				<g
+					class="timeline__rail-group"
+					class:timeline__rail-group--active={effectiveSlug === rail.slug}
+					class:timeline__rail-group--dim={effectiveSlug !== null && !neighbourhood.has(rail.slug)}
+					class:timeline__rail-group--pinned={pinnedSlug === rail.slug}
+					class:timeline__rail-group--labelled={rail.labelled}
+					style="--reveal-delay: {Math.min(index * 24, 700)}ms; color: {statusColour(
+						rail.status as Parameters<typeof statusColour>[0]
+					)}"
+				>
+					<text class="timeline__label" x={rail.x + GEO.nodeRadius + 6} y={rail.yBottom + 4}>
+						{rail.name}
+					</text>
 				</g>
 			{/each}
 		</g>
@@ -351,6 +412,17 @@
 		background: var(--color-surface-sunken);
 	}
 
+	/* Density wash: a faint neutral fill, opacity carrying the band's overlap
+	   count (set inline per-rect via fill-opacity, see the markup above) so
+	   busier stretches read as a touch darker paper rather than truly blank.
+	   Uses --color-grid (the same neutral as the graticule lines) rather than
+	   a status colour, since a band can span many differently-coloured rails
+	   at once. */
+	.timeline__density rect {
+		fill: var(--color-border-strong);
+		pointer-events: none;
+	}
+
 	/* Graticule: horizontal year lines, a light dotted rule the way a plotted
 	   chart is ruled, not a solid gridline. */
 	.timeline__graticule line {
@@ -427,6 +499,26 @@
 			opacity var(--dur-micro) var(--ease-standard);
 	}
 
+	/* Labels are hover/standing-set-only, mirroring ProjectMap's
+	   `.map__node:not(--labelled):not(--pinned) .map__label` idiom: with 32
+	   rails packed at a 66px column pitch, every label permanently on-screen
+	   guarantees collisions (see timeline-layout.ts's columnWidth comment).
+	   Only the curated standing set (--labelled, from selectLabelledSlugs)
+	   and a pinned rail show a name at rest; --active (hover/focus, driven by
+	   the .timeline__hit target below) reveals any rail's label on demand —
+	   see the opacity:1 folded into the existing --active rule further down.
+	   :not(--active) is included here (not just --labelled/--pinned) so this
+	   rule's higher specificity (4 class-selectors vs --active's 1) can never
+	   outrank the reveal-on-hover rule for a rail that's active but otherwise
+	   unlabelled — without it, a hovered non-standing rail's OWN label stayed
+	   at opacity:0, a real bug caught by hovering in a live browser. */
+	.timeline__rail-group:not(.timeline__rail-group--labelled):not(.timeline__rail-group--pinned):not(
+			.timeline__rail-group--active
+		)
+		.timeline__label {
+		opacity: 0;
+	}
+
 	/* Full-disc hit target: an invisible filled circle at the outer ring
 	   radius so hover, click and focus fire anywhere in the disc. fill:
 	   transparent (NOT none) is required for hit-testing to work. */
@@ -456,6 +548,7 @@
 	.timeline__rail-group--active .timeline__label {
 		fill: var(--color-text);
 		font-weight: 500;
+		opacity: 1;
 	}
 
 	.timeline__rail-group--active .timeline__rail {
@@ -471,8 +564,17 @@
 		fill-opacity: var(--dim-node);
 	}
 
+	/* Unlike the map/adoption charts' shared --dim-label (a partial fade), a
+	   dimmed rail's label goes fully to 0 here: with 32 rails packed at a
+	   66px column pitch, a standing/pinned label sitting in the densely
+	   clustered top rows can horizontally overlap whichever OTHER rail is
+	   currently hovered/focused (its label draws at full opacity over
+	   everything). A 32%-opacity ghost of that neighbour's text would still
+	   visually clash with the crisp active label; hiding it outright avoids
+	   that clash and keeps the active label as the sole legible thing in a
+	   crowded neighbourhood while it's being read. */
 	.timeline__rail-group--dim .timeline__label {
-		opacity: var(--dim-label);
+		opacity: 0;
 	}
 
 	.timeline__rail-group--dim .timeline__rail {

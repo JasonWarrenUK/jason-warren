@@ -1,9 +1,19 @@
 import sources from '$lib/data/sources.json';
 import { getTimelineProjects } from '$lib/data/queries.js';
-import { getProjectGraph } from '$lib/data/graph.js';
+import { getProjectGraph, selectLabelledSlugs } from '$lib/data/graph.js';
 import { dayDiff } from '$lib/components/graph/timeline-layout.js';
 import type { TimelineRail, TimelineLineage } from '$lib/components/graph/timeline-layout.js';
 import type { Project } from '$lib/data/types.js';
+
+/**
+ * How many rails get a standing (always-visible) label on the timeline. Lower
+ * than the map's `MAP_LABEL_COUNT` (10) because the timeline packs rails into
+ * a narrower, denser column grid than the map's force layout — see
+ * `TimelineChart.svelte`'s `.timeline__label` opacity gating, which mirrors
+ * `ProjectMap.svelte`'s `--labelled`/`--pinned`/hover idiom so only a handful
+ * of names compete for space at rest and the rest reveal on hover/focus/pin.
+ */
+const TIMELINE_LABEL_COUNT = 6;
 
 /** A project counts as still-live once its most recent commit falls within this many days of `now`. */
 const STILL_LIVE_WINDOW_DAYS = 56;
@@ -32,6 +42,7 @@ export function load() {
 	const now = sources.lastSyncedAt;
 
 	const projects = getTimelineProjects();
+	const labelledSlugs = selectLabelledSlugs(projects, TIMELINE_LABEL_COUNT);
 
 	const rails: TimelineRail[] = projects.map((project) => {
 		const firstCommit = project.firstCommit ?? null;
@@ -45,7 +56,8 @@ export function load() {
 			firstCommit,
 			lastCommit,
 			durationDays: firstCommit && lastCommit ? dayDiff(firstCommit, lastCommit) : null,
-			stillLive: isStillLive(project, now)
+			stillLive: isStillLive(project, now),
+			labelled: labelledSlugs.has(project.slug)
 		};
 	});
 
