@@ -25,6 +25,6 @@ export const commonsTraybake: AuthoredProject = {
 	relationships: [],
 	tags: [
 		{ label: 'OpenAI Embeddings', kind: 'ai' },
-		{ label: 'RAG', kind: 'ai' },
+		{ label: 'RAG', kind: 'ai' }
 	]
 };

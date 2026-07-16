@@ -23,6 +23,5 @@ export const sakura: AuthoredProject = {
 		'Swagger-documented REST API on ASP.NET Core 8 with ASP.NET Identity authentication.'
 	],
 	relationships: [],
-	tags: [
-	]
+	tags: []
 };

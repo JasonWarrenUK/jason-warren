@@ -25,6 +25,6 @@ export const facCra: AuthoredProject = {
 	relationships: [],
 	tags: [
 		{ label: 'Playwright', kind: 'tool' },
-		{ label: 'Monorepo', kind: 'tool' },
+		{ label: 'Monorepo', kind: 'tool' }
 	]
 };

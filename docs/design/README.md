@@ -38,7 +38,7 @@ Open the `.dc.html` files directly in a browser (keep `support.js` beside them):
 - `typography.css`: body uses `--font-sans`; all `h1–h4` use `--font-display` weight 600 (h1 letter-spacing −0.015em); code/pre use `--font-mono`.
 - Site-wide conventions from the prototypes:
   - Eyebrows/legends/metadata/status text: mono, 10–11px, weight 500–600, uppercase, letter-spacing 0.08–0.14em.
-  - Territory names and the "extracted into" divider label: display face *italic*.
+  - Territory names and the "extracted into" divider label: display face _italic_.
   - Body: 15–16px, line-height 1.65–1.7, max measure 64ch.
 
 ### 2. Colour — derived warm neutrals
@@ -47,14 +47,30 @@ In `tokens.css` `:root` (light theme):
 
 ```css
 --warmth: 12%; /* the one knob */
---color-surface:        color-mix(in oklab, var(--color-gray-1) calc(100% - var(--warmth)), var(--color-cinnamon-1));
---color-surface-sunken: color-mix(in oklab, var(--color-gray-2) calc(100% - var(--warmth)), var(--color-cinnamon-2));
---color-border:         color-mix(in oklab, var(--color-gray-3) calc(100% - var(--warmth)), var(--color-cinnamon-3));
---color-text:           color-mix(in oklab, var(--color-gray-6) calc(100% - var(--warmth)), var(--color-cinnamon-6));
+--color-surface: color-mix(
+	in oklab,
+	var(--color-gray-1) calc(100% - var(--warmth)),
+	var(--color-cinnamon-1)
+);
+--color-surface-sunken: color-mix(
+	in oklab,
+	var(--color-gray-2) calc(100% - var(--warmth)),
+	var(--color-cinnamon-2)
+);
+--color-border: color-mix(
+	in oklab,
+	var(--color-gray-3) calc(100% - var(--warmth)),
+	var(--color-cinnamon-3)
+);
+--color-text: color-mix(
+	in oklab,
+	var(--color-gray-6) calc(100% - var(--warmth)),
+	var(--color-cinnamon-6)
+);
 /* apply the same pattern to any other neutral aliases (raised, muted, subtle, border-strong) using their current gray shade number */
 
---color-primary: var(--color-blue-4);     /* ink (was azure) */
---color-accent:  var(--color-cinnamon-4); /* oxide — survey-mark red */
+--color-primary: var(--color-blue-4); /* ink (was azure) */
+--color-accent: var(--color-cinnamon-4); /* oxide — survey-mark red */
 ```
 
 - **Edge-token change:** cinnamon is currently assigned to the interactive-fiction theme edge in `graph-style.ts` / tokens; reassign that edge to the unclaimed `--color-red-4` so no edge shares a hue with the accent.
@@ -67,15 +83,19 @@ In `tokens.css` `:root` (light theme):
 Replace the ad-hoc `--transition-*` tokens:
 
 ```css
---ease-standard: cubic-bezier(.45, .05, .25, 1);
---ease-exit: cubic-bezier(.4, 0, 1, 1);
+--ease-standard: cubic-bezier(0.45, 0.05, 0.25, 1);
+--ease-exit: cubic-bezier(0.4, 0, 1, 1);
 --motion-scale: 1;
 --dur-micro: calc(160ms * var(--motion-scale));
 --dur-base: calc(240ms * var(--motion-scale));
 --dur-deliberate: calc(400ms * var(--motion-scale));
 --dur-plate: calc(600ms * var(--motion-scale));
 
-@media (prefers-reduced-motion: reduce) { :root { --motion-scale: 0; } }
+@media (prefers-reduced-motion: reduce) {
+	:root {
+		--motion-scale: 0;
+	}
+}
 ```
 
 Rules: motion only for state changes needing continuity (graph relayout, theme flip, hover/dim, modal). No scroll reveals, loops, parallax. One licence: a route may draw in along its path once on first reveal. Reduced motion = durations collapse to 0; the force sim already ticks synchronously to steady state.
@@ -85,7 +105,7 @@ Rules: motion only for state changes needing continuity (graph relayout, theme f
 - **Canvas:** dotted graticule behind all edges — lines every ~80px (h) / ~100px (v) of the viewBox, `stroke: var(--color-border)`-weight (`--d-grid` ≈ one step lighter than border), `stroke-width: 1`, `stroke-dasharray: 1 6`, on `--color-surface-sunken`.
 - **Nodes → survey marks:** open ring (`fill: none`, `stroke-width: 1.75`, stroke = status colour) + centre dot (r ≈ 2.8, filled). Keep radius formula `r = 8 + 17.5·√(w/max)`. Recency → ring opacity `0.55 + 0.45·recency`. Hubs (and the focused node) get a second outer ring at `r + 7`, `stroke-width 1.25`, opacity 0.6.
 - **Edges → routes:** always curved — quadratic with control point offset perpendicular from the midpoint by `0.14 × length`. Extraction: solid 2px in `--color-accent`, with a two-stroke arrowhead (wing length 9, ±0.42 rad) at the target ring edge. Related/theme: 1.5px dashed `5 4` in category colour. `stroke-linecap: round`.
-- **Territories:** hull per theme cluster (d3-polygon `polygonHull` over member node positions, padded + rounded): fill category tone at 7% opacity, boundary 1px dashed `3 5` at 50% opacity, *italic display-face* territory name (~17–19px) near the hull's upper edge.
+- **Territories:** hull per theme cluster (d3-polygon `polygonHull` over member node positions, padded + rounded): fill category tone at 7% opacity, boundary 1px dashed `3 5` at 50% opacity, _italic display-face_ territory name (~17–19px) near the hull's upper edge.
 - **Labels:** mono micro-caps — hubs 12px weight 600 letter-spacing 1.3–1.5, others 10.5px weight 400; standing set (hubs + top-N) at rest, rest on hover/focus. Label sits below the mark at `y + r + 18`.
 - **Focus state:** focused mark swaps stroke to `--color-accent`; leader line (1px `--color-border-strong`, small terminal dot) to a two-line mono annotation (`NAME · hub` 12px/600; meta 10.5px in muted). **Placement must be collision-aware:** try candidate offsets (±130,−95 / ±150,+60 / 0,−130 / 0,+120), take the first ≥85px from every other node, clamp to the sheet; draw an opaque backing rect (`--color-surface-sunken` at 0.92, radius 4) behind the text.
 - **Dim-others:** keep existing tokens — node 0.28, edge 0.08, label 0.32; transition `opacity var(--dur-deliberate) var(--ease-standard)`.

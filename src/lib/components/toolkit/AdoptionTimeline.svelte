@@ -7,7 +7,11 @@
 	import { techRelationships } from '$lib/data/tech-relationships.js';
 	import { getTechOverlay } from '$lib/data/tech-overlays.js';
 	import { formatMonthYear } from '$lib/format-date.js';
-	import { techKindColour, edgeTypeColour, edgeTypeLabel } from '$lib/components/graph/graph-style.js';
+	import {
+		techKindColour,
+		edgeTypeColour,
+		edgeTypeLabel
+	} from '$lib/components/graph/graph-style.js';
 	import { encodeTechLabel, decodeTechLabel } from '$lib/url-state.js';
 	import { writeParam } from '$lib/url-write.js';
 	import { projectsByTagHref, techViewHref } from '$lib/selection.js';
@@ -117,7 +121,9 @@
 
 	// Authored note for the selected tech, read straight from the overlays —
 	// the same pattern the lineage lines use with techRelationships.
-	const selectedNote = $derived(selected !== null ? getTechOverlay(selected.label)?.note : undefined);
+	const selectedNote = $derived(
+		selected !== null ? getTechOverlay(selected.label)?.note : undefined
+	);
 
 	const selectedLineage = $derived.by((): LineageLine[] => {
 		if (!selected) return [];
@@ -219,7 +225,13 @@
 				<stop offset="1" stop-color="white" stop-opacity="0" />
 			</linearGradient>
 			<mask id="adoption-rail-fade" maskUnits="userSpaceOnUse">
-				<rect x="0" y="0" width={GEO.width} height={layout.height} fill="url(#adoption-rail-fade-gradient)" />
+				<rect
+					x="0"
+					y="0"
+					width={GEO.width}
+					height={layout.height}
+					fill="url(#adoption-rail-fade-gradient)"
+				/>
 			</mask>
 		</defs>
 
@@ -408,16 +420,13 @@
 		</span>
 		{#each presentLineageKinds as kind (kind)}
 			<span class="adoption__legend-item">
-				<span
-					class="adoption__legend-edge"
-					style="border-color: {edgeTypeColour(kind)}"
-				></span>
+				<span class="adoption__legend-edge" style="border-color: {edgeTypeColour(kind)}"></span>
 				{edgeTypeLabel(kind)}
 			</span>
 		{/each}
 		<span class="adoption__legend-note">
-			Each line is coloured by what comes next: leading to a new technology, then
-			merging into its replacement; fading lines are still in use.
+			Each line is coloured by what comes next: leading to a new technology, then merging into its
+			replacement; fading lines are still in use.
 		</span>
 		{#if provisional}
 			<span class="adoption__provisional">
@@ -457,7 +466,10 @@
 		<a href={projectsByTagHref(base, selected.label)} class="modal-action modal-action--secondary">
 			See projects using this
 		</a>
-		<a href={techViewHref(base, 'map', selected.label)} class="modal-action modal-action--secondary">
+		<a
+			href={techViewHref(base, 'map', selected.label)}
+			class="modal-action modal-action--secondary"
+		>
 			See in the map
 		</a>
 	</SelectionModal>

@@ -18,7 +18,5 @@ export const babyNames: AuthoredProject = {
 		'Defensive LLM-output parsing: fence-stripping, bracket-slicing, shape validation, and descriptive errors for empty or malformed responses.'
 	],
 	relationships: [],
-	tags: [
-		{ label: 'Claude API', kind: 'ai' }
-	]
+	tags: [{ label: 'Claude API', kind: 'ai' }]
 };

@@ -170,16 +170,13 @@ describe('project registry', () => {
 		const offenders = authoredProjects
 			.filter(
 				(authored) =>
-					'repoUrl' in authored ||
-					'companionRepoUrls' in authored ||
-					'secondaryRepoUrl' in authored
+					'repoUrl' in authored || 'companionRepoUrls' in authored || 'secondaryRepoUrl' in authored
 			)
 			.map((authored) => authored.slug);
 
-		expect(
-			offenders,
-			`Repository URLs must come from Drift: ${offenders.join(', ')}`
-		).toHaveLength(0);
+		expect(offenders, `Repository URLs must come from Drift: ${offenders.join(', ')}`).toHaveLength(
+			0
+		);
 	});
 
 	it('authored names only exist when they differ from the generated name', () => {
@@ -188,8 +185,7 @@ describe('project registry', () => {
 		for (const authored of authoredProjects) {
 			if (authored.name === undefined) continue;
 
-			const source =
-				sourcesManifest.sources[authored.slug as keyof typeof sourcesManifest.sources];
+			const source = sourcesManifest.sources[authored.slug as keyof typeof sourcesManifest.sources];
 			const generated = defaultProjectFromManifest(authored.slug, source);
 
 			if (authored.name === generated.name) offenders.push(authored.slug);
@@ -205,8 +201,7 @@ describe('project registry', () => {
 		const offenders: string[] = [];
 
 		for (const authored of authoredProjects) {
-			const source =
-				sourcesManifest.sources[authored.slug as keyof typeof sourcesManifest.sources];
+			const source = sourcesManifest.sources[authored.slug as keyof typeof sourcesManifest.sources];
 			const generated = defaultProjectFromManifest(authored.slug, source);
 			const generatedTags = new Set(generated.tags.map((tag) => `${tag.kind}:${tag.label}`));
 
@@ -218,10 +213,9 @@ describe('project registry', () => {
 			}
 		}
 
-		expect(
-			offenders,
-			`Authored tags duplicated from Drift:\n${offenders.join('\n')}`
-		).toHaveLength(0);
+		expect(offenders, `Authored tags duplicated from Drift:\n${offenders.join('\n')}`).toHaveLength(
+			0
+		);
 	});
 
 	it('authored data tags are limited to editorial architecture labels', () => {

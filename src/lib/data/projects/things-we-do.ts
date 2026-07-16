@@ -25,6 +25,6 @@ export const thingsWeDo: AuthoredProject = {
 	relationships: [],
 	tags: [
 		{ label: 'Plotly.js', kind: 'tool' },
-		{ label: 'PWA', kind: 'concept' },
+		{ label: 'PWA', kind: 'concept' }
 	]
 };

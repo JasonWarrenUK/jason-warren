@@ -1,234 +1,1213 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<script src="./support.js"></script>
-</head>
-<body>
-<x-dc>
-<helmet>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,500;0,8..60,600;1,8..60,400;1,8..60,500&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-<style>
-  * { box-sizing: border-box; }
-  html, body { margin: 0; padding: 0; }
-  body { background: #faf7f2; }
-  ::selection { background: rgba(46,93,140,0.16); }
-  a { color: inherit; }
-</style>
-</helmet>
-<div ref="{{ setRoot }}" data-theme="light" style="--d-surface:#faf7f2;--d-raised:#fffdf9;--d-sunken:#f1ece2;--d-text:#211c14;--d-subtle:#5a5245;--d-muted:#988d7b;--d-border:#e6dfd2;--d-border-strong:#d2c8b6;--d-primary:#2e5d8c;--d-primary-soft:#e9eff5;--d-accent:#b0512a;--d-grid:#e8e1d3;--d-st-fin-t:#2e5d8c;--d-st-fin-b:#e5ecf4;--d-st-wip-t:#7a5416;--d-st-wip-b:#f3ead2;background:var(--d-surface);color:var(--d-text);font-family:'IBM Plex Sans',system-ui,sans-serif;min-height:100vh;transition:background 400ms cubic-bezier(.45,.05,.25,1),color 400ms cubic-bezier(.45,.05,.25,1);">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<script src="./support.js"></script>
+	</head>
+	<body>
+		<x-dc>
+			<helmet>
+				<link rel="preconnect" href="https://fonts.googleapis.com" />
+				<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+				<link
+					href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,500;0,8..60,600;1,8..60,400;1,8..60,500&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap"
+					rel="stylesheet"
+				/>
+				<style>
+					* {
+						box-sizing: border-box;
+					}
+					html,
+					body {
+						margin: 0;
+						padding: 0;
+					}
+					body {
+						background: #faf7f2;
+					}
+					::selection {
+						background: rgba(46, 93, 140, 0.16);
+					}
+					a {
+						color: inherit;
+					}
+				</style>
+			</helmet>
+			<div
+				ref="{{ setRoot }}"
+				data-theme="light"
+				style="
+					--d-surface: #faf7f2;
+					--d-raised: #fffdf9;
+					--d-sunken: #f1ece2;
+					--d-text: #211c14;
+					--d-subtle: #5a5245;
+					--d-muted: #988d7b;
+					--d-border: #e6dfd2;
+					--d-border-strong: #d2c8b6;
+					--d-primary: #2e5d8c;
+					--d-primary-soft: #e9eff5;
+					--d-accent: #b0512a;
+					--d-grid: #e8e1d3;
+					--d-st-fin-t: #2e5d8c;
+					--d-st-fin-b: #e5ecf4;
+					--d-st-wip-t: #7a5416;
+					--d-st-wip-b: #f3ead2;
+					background: var(--d-surface);
+					color: var(--d-text);
+					font-family: 'IBM Plex Sans', system-ui, sans-serif;
+					min-height: 100vh;
+					transition:
+						background 400ms cubic-bezier(0.45, 0.05, 0.25, 1),
+						color 400ms cubic-bezier(0.45, 0.05, 0.25, 1);
+				"
+			>
+				<!-- ============ SITE HEADER ============ -->
+				<header
+					style="
+						position: sticky;
+						top: 0;
+						z-index: 100;
+						background: color-mix(in srgb, var(--d-raised) 88%, transparent);
+						backdrop-filter: blur(10px);
+						border-bottom: 1px solid var(--d-border);
+					"
+				>
+					<nav
+						style="
+							max-width: 72rem;
+							margin: 0 auto;
+							padding: 0 clamp(16px, 5vw, 48px);
+							height: 56px;
+							display: flex;
+							align-items: center;
+							justify-content: space-between;
+							gap: 24px;
+						"
+					>
+						<a
+							href="Atlas Home.dc.html"
+							style="
+								display: flex;
+								align-items: center;
+								gap: 10px;
+								text-decoration: none;
+								color: var(--d-text);
+							"
+						>
+							<span
+								style="
+									display: inline-flex;
+									align-items: center;
+									justify-content: center;
+									width: 32px;
+									height: 32px;
+									border-radius: 4px;
+									background: var(--d-primary);
+									color: #fdfbf7;
+									font-family: 'Source Serif 4', serif;
+									font-size: 13px;
+									font-weight: 600;
+									letter-spacing: 0.04em;
+									flex-shrink: 0;
+								"
+								>JW</span
+							>
+							<span style="font-family: 'Source Serif 4', serif; font-size: 17px; font-weight: 500"
+								>Jason Warren</span
+							>
+						</a>
+						<div style="display: flex; align-items: center; gap: 2px">
+							<a
+								href="#projects"
+								style="
+									padding: 8px 12px;
+									font-size: 14px;
+									font-weight: 500;
+									color: var(--d-text);
+									text-decoration: none;
+									border-radius: 6px;
+									box-shadow: inset 0 -2px 0 var(--d-accent);
+								"
+								>Projects</a
+							>
+							<a
+								href="Atlas Map.dc.html"
+								style="
+									padding: 8px 12px;
+									font-size: 14px;
+									font-weight: 500;
+									color: var(--d-subtle);
+									text-decoration: none;
+									border-radius: 6px;
+									transition:
+										color 160ms cubic-bezier(0.45, 0.05, 0.25, 1),
+										background 160ms cubic-bezier(0.45, 0.05, 0.25, 1);
+								"
+								style-hover="color:var(--d-text);background:var(--d-sunken)"
+								>Map</a
+							>
+							<a
+								href="#timeline"
+								style="
+									padding: 8px 12px;
+									font-size: 14px;
+									font-weight: 500;
+									color: var(--d-subtle);
+									text-decoration: none;
+									border-radius: 6px;
+									transition:
+										color 160ms cubic-bezier(0.45, 0.05, 0.25, 1),
+										background 160ms cubic-bezier(0.45, 0.05, 0.25, 1);
+								"
+								style-hover="color:var(--d-text);background:var(--d-sunken)"
+								>Timeline</a
+							>
+							<a
+								href="#toolkit"
+								style="
+									padding: 8px 12px;
+									font-size: 14px;
+									font-weight: 500;
+									color: var(--d-subtle);
+									text-decoration: none;
+									border-radius: 6px;
+									transition:
+										color 160ms cubic-bezier(0.45, 0.05, 0.25, 1),
+										background 160ms cubic-bezier(0.45, 0.05, 0.25, 1);
+								"
+								style-hover="color:var(--d-text);background:var(--d-sunken)"
+								>Toolkit</a
+							>
+							<a
+								href="#about"
+								style="
+									padding: 8px 12px;
+									font-size: 14px;
+									font-weight: 500;
+									color: var(--d-subtle);
+									text-decoration: none;
+									border-radius: 6px;
+									transition:
+										color 160ms cubic-bezier(0.45, 0.05, 0.25, 1),
+										background 160ms cubic-bezier(0.45, 0.05, 0.25, 1);
+								"
+								style-hover="color:var(--d-text);background:var(--d-sunken)"
+								>About</a
+							>
+							<a
+								href="#hire"
+								style="
+									padding: 8px 12px;
+									font-size: 14px;
+									font-weight: 500;
+									color: var(--d-subtle);
+									text-decoration: none;
+									border-radius: 6px;
+									transition:
+										color 160ms cubic-bezier(0.45, 0.05, 0.25, 1),
+										background 160ms cubic-bezier(0.45, 0.05, 0.25, 1);
+								"
+								style-hover="color:var(--d-text);background:var(--d-sunken)"
+								>Hire</a
+							>
+							<a
+								href="#drift-engine"
+								style="
+									padding: 8px 12px;
+									font-size: 14px;
+									font-weight: 500;
+									color: var(--d-subtle);
+									text-decoration: none;
+									border-radius: 6px;
+									transition:
+										color 160ms cubic-bezier(0.45, 0.05, 0.25, 1),
+										background 160ms cubic-bezier(0.45, 0.05, 0.25, 1);
+								"
+								style-hover="color:var(--d-text);background:var(--d-sunken)"
+								>Drift Engine</a
+							>
+							<button
+								type="button"
+								onClick="{{ toggleTheme }}"
+								aria-label="Toggle theme"
+								style="
+									display: inline-flex;
+									align-items: center;
+									gap: 8px;
+									margin-left: 8px;
+									font-family: 'JetBrains Mono', monospace;
+									font-size: 10.5px;
+									font-weight: 500;
+									letter-spacing: 0.1em;
+									text-transform: uppercase;
+									color: var(--d-subtle);
+									background: var(--d-raised);
+									border: 1px solid var(--d-border);
+									border-radius: 999px;
+									padding: 6px 11px;
+									cursor: pointer;
+									transition: border-color 240ms cubic-bezier(0.45, 0.05, 0.25, 1);
+								"
+								style-hover="border-color:var(--d-accent);color:var(--d-text)"
+							>
+								<span
+									style="
+										width: 8px;
+										height: 8px;
+										border-radius: 999px;
+										background: var(--d-accent);
+										display: inline-block;
+									"
+								></span>
+								{{ themeLabel }}
+							</button>
+						</div>
+					</nav>
+				</header>
 
-  <!-- ============ SITE HEADER ============ -->
-  <header style="position:sticky;top:0;z-index:100;background:color-mix(in srgb, var(--d-raised) 88%, transparent);backdrop-filter:blur(10px);border-bottom:1px solid var(--d-border);">
-    <nav style="max-width:72rem;margin:0 auto;padding:0 clamp(16px,5vw,48px);height:56px;display:flex;align-items:center;justify-content:space-between;gap:24px;">
-      <a href="Atlas Home.dc.html" style="display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--d-text);">
-        <span style="display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:4px;background:var(--d-primary);color:#fdfbf7;font-family:'Source Serif 4',serif;font-size:13px;font-weight:600;letter-spacing:0.04em;flex-shrink:0;">JW</span>
-        <span style="font-family:'Source Serif 4',serif;font-size:17px;font-weight:500;">Jason Warren</span>
-      </a>
-      <div style="display:flex;align-items:center;gap:2px;">
-        <a href="#projects" style="padding:8px 12px;font-size:14px;font-weight:500;color:var(--d-text);text-decoration:none;border-radius:6px;box-shadow:inset 0 -2px 0 var(--d-accent);">Projects</a>
-        <a href="Atlas Map.dc.html" style="padding:8px 12px;font-size:14px;font-weight:500;color:var(--d-subtle);text-decoration:none;border-radius:6px;transition:color 160ms cubic-bezier(.45,.05,.25,1),background 160ms cubic-bezier(.45,.05,.25,1);" style-hover="color:var(--d-text);background:var(--d-sunken)">Map</a>
-        <a href="#timeline" style="padding:8px 12px;font-size:14px;font-weight:500;color:var(--d-subtle);text-decoration:none;border-radius:6px;transition:color 160ms cubic-bezier(.45,.05,.25,1),background 160ms cubic-bezier(.45,.05,.25,1);" style-hover="color:var(--d-text);background:var(--d-sunken)">Timeline</a>
-        <a href="#toolkit" style="padding:8px 12px;font-size:14px;font-weight:500;color:var(--d-subtle);text-decoration:none;border-radius:6px;transition:color 160ms cubic-bezier(.45,.05,.25,1),background 160ms cubic-bezier(.45,.05,.25,1);" style-hover="color:var(--d-text);background:var(--d-sunken)">Toolkit</a>
-        <a href="#about" style="padding:8px 12px;font-size:14px;font-weight:500;color:var(--d-subtle);text-decoration:none;border-radius:6px;transition:color 160ms cubic-bezier(.45,.05,.25,1),background 160ms cubic-bezier(.45,.05,.25,1);" style-hover="color:var(--d-text);background:var(--d-sunken)">About</a>
-        <a href="#hire" style="padding:8px 12px;font-size:14px;font-weight:500;color:var(--d-subtle);text-decoration:none;border-radius:6px;transition:color 160ms cubic-bezier(.45,.05,.25,1),background 160ms cubic-bezier(.45,.05,.25,1);" style-hover="color:var(--d-text);background:var(--d-sunken)">Hire</a>
-        <a href="#drift-engine" style="padding:8px 12px;font-size:14px;font-weight:500;color:var(--d-subtle);text-decoration:none;border-radius:6px;transition:color 160ms cubic-bezier(.45,.05,.25,1),background 160ms cubic-bezier(.45,.05,.25,1);" style-hover="color:var(--d-text);background:var(--d-sunken)">Drift Engine</a>
-        <button type="button" onClick="{{ toggleTheme }}" aria-label="Toggle theme" style="display:inline-flex;align-items:center;gap:8px;margin-left:8px;font-family:'JetBrains Mono',monospace;font-size:10.5px;font-weight:500;letter-spacing:0.1em;text-transform:uppercase;color:var(--d-subtle);background:var(--d-raised);border:1px solid var(--d-border);border-radius:999px;padding:6px 11px;cursor:pointer;transition:border-color 240ms cubic-bezier(.45,.05,.25,1);" style-hover="border-color:var(--d-accent);color:var(--d-text)">
-          <span style="width:8px;height:8px;border-radius:999px;background:var(--d-accent);display:inline-block;"></span>
-          {{ themeLabel }}
-        </button>
-      </div>
-    </nav>
-  </header>
+				<div
+					style="
+						max-width: 72rem;
+						margin: 0 auto;
+						padding: 48px clamp(16px, 5vw, 48px) 0;
+						display: flex;
+						flex-direction: column;
+						gap: 40px;
+					"
+				>
+					<!-- breadcrumb -->
+					<nav aria-label="Breadcrumb">
+						<a
+							href="#projects"
+							style="
+								font-size: 14px;
+								color: var(--d-subtle);
+								text-decoration: none;
+								display: inline-flex;
+								align-items: center;
+								gap: 4px;
+								transition: color 160ms cubic-bezier(0.45, 0.05, 0.25, 1);
+							"
+							style-hover="color:var(--d-primary)"
+							>← All projects</a
+						>
+					</nav>
 
-  <div style="max-width:72rem;margin:0 auto;padding:48px clamp(16px,5vw,48px) 0;display:flex;flex-direction:column;gap:40px;">
+					<!-- banner: og image placeholder -->
+					<div
+						style="
+							width: 100%;
+							aspect-ratio: 1200/630;
+							overflow: hidden;
+							border: 1px solid var(--d-border);
+							border-radius: 10px;
+							background: repeating-linear-gradient(
+								-45deg,
+								var(--d-sunken),
+								var(--d-sunken) 12px,
+								var(--d-raised) 12px,
+								var(--d-raised) 24px
+							);
+							display: flex;
+							align-items: center;
+							justify-content: center;
+						"
+					>
+						<span
+							style="
+								font-family: 'JetBrains Mono', monospace;
+								font-size: 12px;
+								letter-spacing: 0.14em;
+								text-transform: uppercase;
+								color: var(--d-muted);
+							"
+							>og card · iris · 1200×630</span
+						>
+					</div>
 
-    <!-- breadcrumb -->
-    <nav aria-label="Breadcrumb"><a href="#projects" style="font-size:14px;color:var(--d-subtle);text-decoration:none;display:inline-flex;align-items:center;gap:4px;transition:color 160ms cubic-bezier(.45,.05,.25,1);" style-hover="color:var(--d-primary)">← All projects</a></nav>
+					<!-- header -->
+					<header style="display: flex; flex-direction: column; gap: 20px">
+						<div
+							style="
+								display: flex;
+								align-items: flex-start;
+								justify-content: space-between;
+								gap: 16px;
+								flex-wrap: wrap;
+							"
+						>
+							<h1
+								style="
+									font-family: 'Source Serif 4', serif;
+									font-size: clamp(34px, 4.5vw, 44px);
+									font-weight: 600;
+									line-height: 1.05;
+									margin: 0;
+								"
+							>
+								Iris
+							</h1>
+							<div style="display: flex; gap: 8px; flex-shrink: 0">
+								<span
+									style="
+										display: inline-flex;
+										align-items: center;
+										font-family: 'JetBrains Mono', monospace;
+										font-size: 10px;
+										font-weight: 600;
+										letter-spacing: 0.08em;
+										text-transform: uppercase;
+										padding: 3px 10px;
+										border-radius: 999px;
+										color: var(--d-st-fin-t);
+										background: var(--d-st-fin-b);
+									"
+									>Complete</span
+								>
+								<span
+									style="
+										display: inline-flex;
+										align-items: center;
+										font-family: 'JetBrains Mono', monospace;
+										font-size: 10px;
+										font-weight: 600;
+										letter-spacing: 0.08em;
+										text-transform: uppercase;
+										padding: 3px 10px;
+										border-radius: 999px;
+										color: var(--d-primary);
+										background: var(--d-primary-soft);
+									"
+									>Solo</span
+								>
+							</div>
+						</div>
+						<p
+							style="
+								font-size: clamp(17px, 2.2vw, 20px);
+								color: var(--d-subtle);
+								line-height: 1.5;
+								margin: 0;
+								max-width: 56rem;
+							"
+						>
+							A three-interface toolkit that converts apprenticeship learner data from CSV into
+							ESFA-compliant ILR XML, with semantic XSD validation.
+						</p>
+						<div style="display: flex; gap: 12px; flex-wrap: wrap">
+							<a
+								href="https://github.com/foundersandcoders/iris"
+								style="
+									display: inline-flex;
+									align-items: center;
+									gap: 6px;
+									font-size: 14px;
+									font-weight: 500;
+									color: var(--d-subtle);
+									text-decoration: none;
+									padding: 5px 10px;
+									border-radius: 5px;
+									border: 1px solid var(--d-border);
+									background: var(--d-surface);
+									transition:
+										color 160ms cubic-bezier(0.45, 0.05, 0.25, 1),
+										border-color 160ms cubic-bezier(0.45, 0.05, 0.25, 1);
+								"
+								style-hover="color:var(--d-primary);border-color:var(--d-primary)"
+							>
+								<svg
+									aria-hidden="true"
+									width="14"
+									height="14"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="2"
+									stroke-linecap="round"
+									stroke-linejoin="round"
+								>
+									<path
+										d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"
+									></path>
+								</svg>
+								Repository
+							</a>
+						</div>
+						<div style="display: flex; flex-wrap: wrap; gap: 6px">
+							<span
+								style="
+									font-family: 'JetBrains Mono', monospace;
+									font-size: 11px;
+									font-weight: 500;
+									padding: 3px 8px;
+									border-radius: 4px;
+									border: 1px solid var(--d-border-strong);
+									background: var(--d-primary-soft);
+									color: var(--d-primary);
+								"
+								>TypeScript</span
+							>
+							<span
+								style="
+									font-family: 'JetBrains Mono', monospace;
+									font-size: 11px;
+									font-weight: 500;
+									padding: 3px 8px;
+									border-radius: 4px;
+									border: 1px solid var(--d-border-strong);
+									background: var(--d-primary-soft);
+									color: var(--d-primary);
+								"
+								>Rust</span
+							>
+							<span
+								style="
+									font-family: 'JetBrains Mono', monospace;
+									font-size: 11px;
+									font-weight: 500;
+									padding: 3px 8px;
+									border-radius: 4px;
+									border: 1px solid var(--d-border);
+									background: var(--d-sunken);
+									color: var(--d-subtle);
+								"
+								>Bun</span
+							>
+							<span
+								style="
+									font-family: 'JetBrains Mono', monospace;
+									font-size: 11px;
+									font-weight: 500;
+									padding: 3px 8px;
+									border-radius: 4px;
+									border: 1px solid var(--d-border);
+									background: var(--d-sunken);
+									color: var(--d-subtle);
+								"
+								>SvelteKit</span
+							>
+							<span
+								style="
+									font-family: 'JetBrains Mono', monospace;
+									font-size: 11px;
+									font-weight: 500;
+									padding: 3px 8px;
+									border-radius: 4px;
+									border: 1px solid var(--d-border);
+									background: var(--d-sunken);
+									color: var(--d-subtle);
+								"
+								>Tauri</span
+							>
+							<span
+								style="
+									font-family: 'JetBrains Mono', monospace;
+									font-size: 11px;
+									font-weight: 500;
+									padding: 3px 8px;
+									border-radius: 4px;
+									border: 1px solid var(--d-border);
+									background: var(--d-sunken);
+									color: var(--d-subtle);
+								"
+								>OpenTUI</span
+							>
+							<span
+								style="
+									font-family: 'JetBrains Mono', monospace;
+									font-size: 11px;
+									font-weight: 500;
+									padding: 3px 8px;
+									border-radius: 4px;
+									border: 1px solid var(--d-border);
+									background: var(--d-sunken);
+									color: var(--d-subtle);
+								"
+								>Vitest</span
+							>
+							<span
+								style="
+									font-family: 'JetBrains Mono', monospace;
+									font-size: 11px;
+									font-weight: 500;
+									padding: 3px 8px;
+									border-radius: 4px;
+									border: 1px solid var(--d-border);
+									background: var(--d-sunken);
+									color: var(--d-subtle);
+								"
+								>XML / XSD</span
+							>
+							<span
+								style="
+									font-family: 'JetBrains Mono', monospace;
+									font-size: 11px;
+									font-weight: 500;
+									padding: 3px 8px;
+									border-radius: 4px;
+									border: 1px solid var(--d-border);
+									background: var(--d-sunken);
+									color: var(--d-subtle);
+								"
+								>No persistence</span
+							>
+						</div>
+						<nav
+							aria-label="See this project in other views"
+							style="display: flex; gap: 12px; flex-wrap: wrap; padding-top: 4px"
+						>
+							<a
+								href="Atlas Map.dc.html"
+								style="
+									font-size: 13.5px;
+									color: var(--d-subtle);
+									text-decoration: none;
+									padding: 4px 12px;
+									border: 1px solid var(--d-border);
+									border-radius: 999px;
+									transition:
+										color 160ms cubic-bezier(0.45, 0.05, 0.25, 1),
+										border-color 160ms cubic-bezier(0.45, 0.05, 0.25, 1);
+								"
+								style-hover="color:var(--d-primary);border-color:var(--d-primary)"
+								>View in map</a
+							>
+							<a
+								href="#timeline"
+								style="
+									font-size: 13.5px;
+									color: var(--d-subtle);
+									text-decoration: none;
+									padding: 4px 12px;
+									border: 1px solid var(--d-border);
+									border-radius: 999px;
+									transition:
+										color 160ms cubic-bezier(0.45, 0.05, 0.25, 1),
+										border-color 160ms cubic-bezier(0.45, 0.05, 0.25, 1);
+								"
+								style-hover="color:var(--d-primary);border-color:var(--d-primary)"
+								>View in timeline</a
+							>
+							<a
+								href="#toolkit"
+								style="
+									font-size: 13.5px;
+									color: var(--d-subtle);
+									text-decoration: none;
+									padding: 4px 12px;
+									border: 1px solid var(--d-border);
+									border-radius: 999px;
+									transition:
+										color 160ms cubic-bezier(0.45, 0.05, 0.25, 1),
+										border-color 160ms cubic-bezier(0.45, 0.05, 0.25, 1);
+								"
+								style-hover="color:var(--d-primary);border-color:var(--d-primary)"
+								>View in toolkit</a
+							>
+						</nav>
+					</header>
 
-    <!-- banner: og image placeholder -->
-    <div style="width:100%;aspect-ratio:1200/630;overflow:hidden;border:1px solid var(--d-border);border-radius:10px;background:repeating-linear-gradient(-45deg, var(--d-sunken), var(--d-sunken) 12px, var(--d-raised) 12px, var(--d-raised) 24px);display:flex;align-items:center;justify-content:center;">
-      <span style="font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:0.14em;text-transform:uppercase;color:var(--d-muted);">og card · iris · 1200×630</span>
-    </div>
+					<!-- body -->
+					<div
+						style="
+							display: grid;
+							grid-template-columns: minmax(0, 1fr) minmax(0, 20rem);
+							gap: 40px;
+							align-items: start;
+						"
+					>
+						<main style="display: flex; flex-direction: column; gap: 40px">
+							<section style="display: flex; flex-direction: column; gap: 16px">
+								<h2
+									style="
+										font-family: 'Source Serif 4', serif;
+										font-size: 22px;
+										font-weight: 600;
+										margin: 0;
+									"
+								>
+									About
+								</h2>
+								<p
+									style="
+										font-size: 15.5px;
+										line-height: 1.7;
+										color: var(--d-subtle);
+										max-width: 64ch;
+										margin: 0;
+									"
+								>
+									Apprenticeship funding submissions demand a strict XML format, and learner data
+									rarely arrives in it. A single TypeScript core handles the conversion and drives
+									three interfaces from one codebase: an OpenTUI terminal UI, direct CLI commands,
+									and a Tauri 2 native desktop app written in Rust. Validation goes beyond
+									structural XML checks by parsing the real ESFA XSD into a registry that resolves
+									types and enforces cardinality and constraints, while header-tolerant CSV parsing
+									and cross-submission consistency checks guard against column reordering and data
+									drift. Close to 1:1 source-to-test mapping with full round-trip coverage of the
+									CSV-to-XML cycle. Built during my time as a staff developer at Founders and
+									Coders, where it processed real apprenticeship data in production.
+								</p>
+							</section>
 
-    <!-- header -->
-    <header style="display:flex;flex-direction:column;gap:20px;">
-      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;">
-        <h1 style="font-family:'Source Serif 4',serif;font-size:clamp(34px,4.5vw,44px);font-weight:600;line-height:1.05;margin:0;">Iris</h1>
-        <div style="display:flex;gap:8px;flex-shrink:0;">
-          <span style="display:inline-flex;align-items:center;font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;padding:3px 10px;border-radius:999px;color:var(--d-st-fin-t);background:var(--d-st-fin-b);">Complete</span>
-          <span style="display:inline-flex;align-items:center;font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;padding:3px 10px;border-radius:999px;color:var(--d-primary);background:var(--d-primary-soft);">Solo</span>
-        </div>
-      </div>
-      <p style="font-size:clamp(17px,2.2vw,20px);color:var(--d-subtle);line-height:1.5;margin:0;max-width:56rem;">A three-interface toolkit that converts apprenticeship learner data from CSV into ESFA-compliant ILR XML, with semantic XSD validation.</p>
-      <div style="display:flex;gap:12px;flex-wrap:wrap;">
-        <a href="https://github.com/foundersandcoders/iris" style="display:inline-flex;align-items:center;gap:6px;font-size:14px;font-weight:500;color:var(--d-subtle);text-decoration:none;padding:5px 10px;border-radius:5px;border:1px solid var(--d-border);background:var(--d-surface);transition:color 160ms cubic-bezier(.45,.05,.25,1),border-color 160ms cubic-bezier(.45,.05,.25,1);" style-hover="color:var(--d-primary);border-color:var(--d-primary)">
-          <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path></svg>
-          Repository
-        </a>
-      </div>
-      <div style="display:flex;flex-wrap:wrap;gap:6px;">
-        <span style="font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:500;padding:3px 8px;border-radius:4px;border:1px solid var(--d-border-strong);background:var(--d-primary-soft);color:var(--d-primary);">TypeScript</span>
-        <span style="font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:500;padding:3px 8px;border-radius:4px;border:1px solid var(--d-border-strong);background:var(--d-primary-soft);color:var(--d-primary);">Rust</span>
-        <span style="font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:500;padding:3px 8px;border-radius:4px;border:1px solid var(--d-border);background:var(--d-sunken);color:var(--d-subtle);">Bun</span>
-        <span style="font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:500;padding:3px 8px;border-radius:4px;border:1px solid var(--d-border);background:var(--d-sunken);color:var(--d-subtle);">SvelteKit</span>
-        <span style="font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:500;padding:3px 8px;border-radius:4px;border:1px solid var(--d-border);background:var(--d-sunken);color:var(--d-subtle);">Tauri</span>
-        <span style="font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:500;padding:3px 8px;border-radius:4px;border:1px solid var(--d-border);background:var(--d-sunken);color:var(--d-subtle);">OpenTUI</span>
-        <span style="font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:500;padding:3px 8px;border-radius:4px;border:1px solid var(--d-border);background:var(--d-sunken);color:var(--d-subtle);">Vitest</span>
-        <span style="font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:500;padding:3px 8px;border-radius:4px;border:1px solid var(--d-border);background:var(--d-sunken);color:var(--d-subtle);">XML / XSD</span>
-        <span style="font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:500;padding:3px 8px;border-radius:4px;border:1px solid var(--d-border);background:var(--d-sunken);color:var(--d-subtle);">No persistence</span>
-      </div>
-      <nav aria-label="See this project in other views" style="display:flex;gap:12px;flex-wrap:wrap;padding-top:4px;">
-        <a href="Atlas Map.dc.html" style="font-size:13.5px;color:var(--d-subtle);text-decoration:none;padding:4px 12px;border:1px solid var(--d-border);border-radius:999px;transition:color 160ms cubic-bezier(.45,.05,.25,1),border-color 160ms cubic-bezier(.45,.05,.25,1);" style-hover="color:var(--d-primary);border-color:var(--d-primary)">View in map</a>
-        <a href="#timeline" style="font-size:13.5px;color:var(--d-subtle);text-decoration:none;padding:4px 12px;border:1px solid var(--d-border);border-radius:999px;transition:color 160ms cubic-bezier(.45,.05,.25,1),border-color 160ms cubic-bezier(.45,.05,.25,1);" style-hover="color:var(--d-primary);border-color:var(--d-primary)">View in timeline</a>
-        <a href="#toolkit" style="font-size:13.5px;color:var(--d-subtle);text-decoration:none;padding:4px 12px;border:1px solid var(--d-border);border-radius:999px;transition:color 160ms cubic-bezier(.45,.05,.25,1),border-color 160ms cubic-bezier(.45,.05,.25,1);" style-hover="color:var(--d-primary);border-color:var(--d-primary)">View in toolkit</a>
-      </nav>
-    </header>
+							<section style="display: flex; flex-direction: column; gap: 16px">
+								<h2
+									style="
+										font-family: 'Source Serif 4', serif;
+										font-size: 22px;
+										font-weight: 600;
+										margin: 0;
+									"
+								>
+									Highlights
+								</h2>
+								<ul
+									style="
+										display: flex;
+										flex-direction: column;
+										gap: 12px;
+										padding: 0;
+										margin: 0;
+										list-style: none;
+									"
+								>
+									<li
+										style="
+											display: grid;
+											grid-template-columns: 20px 1fr;
+											gap: 12px;
+											font-size: 15px;
+											color: var(--d-subtle);
+											line-height: 1.6;
+										"
+									>
+										<span style="color: var(--d-accent); font-weight: 600">→</span
+										><span
+											>Single TypeScript core drives three interfaces: OpenTUI terminal UI, direct
+											CLI commands, and a Tauri 2 (Rust) native desktop app.</span
+										>
+									</li>
+									<li
+										style="
+											display: grid;
+											grid-template-columns: 20px 1fr;
+											gap: 12px;
+											font-size: 15px;
+											color: var(--d-subtle);
+											line-height: 1.6;
+										"
+									>
+										<span style="color: var(--d-accent); font-weight: 600">→</span
+										><span
+											>Schema-driven validation: parses the real ESFA XSD to build a validation
+											registry with type resolution, cardinality and constraint checking. Semantic
+											validation beyond structural XML.</span
+										>
+									</li>
+									<li
+										style="
+											display: grid;
+											grid-template-columns: 20px 1fr;
+											gap: 12px;
+											font-size: 15px;
+											color: var(--d-subtle);
+											line-height: 1.6;
+										"
+									>
+										<span style="color: var(--d-accent); font-weight: 600">→</span
+										><span
+											>Header-tolerant CSV parsing handles column reordering; cross-submission
+											consistency checks guard against data drift between submissions.</span
+										>
+									</li>
+									<li
+										style="
+											display: grid;
+											grid-template-columns: 20px 1fr;
+											gap: 12px;
+											font-size: 15px;
+											color: var(--d-subtle);
+											line-height: 1.6;
+										"
+									>
+										<span style="color: var(--d-accent); font-weight: 600">→</span
+										><span
+											>Close to 1:1 source-to-test mapping with Vitest and Bun test; round-trip
+											tests cover the full CSV → XML → re-parse cycle.</span
+										>
+									</li>
+									<li
+										style="
+											display: grid;
+											grid-template-columns: 20px 1fr;
+											gap: 12px;
+											font-size: 15px;
+											color: var(--d-subtle);
+											line-height: 1.6;
+										"
+									>
+										<span style="color: var(--d-accent); font-weight: 600">→</span
+										><span
+											>Documented like a product: full ADRs, technical specs, dev-log work records,
+											and per-workflow roadmaps.</span
+										>
+									</li>
+								</ul>
+							</section>
 
-    <!-- body -->
-    <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,20rem);gap:40px;align-items:start;">
-      <main style="display:flex;flex-direction:column;gap:40px;">
-        <section style="display:flex;flex-direction:column;gap:16px;">
-          <h2 style="font-family:'Source Serif 4',serif;font-size:22px;font-weight:600;margin:0;">About</h2>
-          <p style="font-size:15.5px;line-height:1.7;color:var(--d-subtle);max-width:64ch;margin:0;">Apprenticeship funding submissions demand a strict XML format, and learner data rarely arrives in it. A single TypeScript core handles the conversion and drives three interfaces from one codebase: an OpenTUI terminal UI, direct CLI commands, and a Tauri 2 native desktop app written in Rust. Validation goes beyond structural XML checks by parsing the real ESFA XSD into a registry that resolves types and enforces cardinality and constraints, while header-tolerant CSV parsing and cross-submission consistency checks guard against column reordering and data drift. Close to 1:1 source-to-test mapping with full round-trip coverage of the CSV-to-XML cycle. Built during my time as a staff developer at Founders and Coders, where it processed real apprenticeship data in production.</p>
-        </section>
+							<section style="display: flex; flex-direction: column; gap: 16px">
+								<h2
+									style="
+										font-family: 'Source Serif 4', serif;
+										font-size: 22px;
+										font-weight: 600;
+										margin: 0;
+									"
+								>
+									By the numbers
+								</h2>
+								<div
+									style="
+										display: grid;
+										grid-template-columns: repeat(auto-fill, minmax(8rem, 1fr));
+										gap: 12px;
+									"
+								>
+									<div
+										style="
+											display: flex;
+											flex-direction: column;
+											gap: 4px;
+											padding: 16px;
+											background: var(--d-raised);
+											border: 1px solid var(--d-border);
+											border-radius: 6px;
+										"
+									>
+										<span
+											style="
+												font-family: 'JetBrains Mono', monospace;
+												font-size: 10px;
+												font-weight: 500;
+												text-transform: uppercase;
+												letter-spacing: 0.08em;
+												color: var(--d-muted);
+											"
+											>Commits</span
+										>
+										<span
+											style="
+												font-family: 'JetBrains Mono', monospace;
+												font-size: 24px;
+												font-weight: 600;
+												color: var(--d-primary);
+											"
+											>720</span
+										>
+										<span
+											style="
+												font-family: 'JetBrains Mono', monospace;
+												font-size: 11px;
+												color: var(--d-muted);
+											"
+											>of 743 total</span
+										>
+									</div>
+									<div
+										style="
+											display: flex;
+											flex-direction: column;
+											gap: 4px;
+											padding: 16px;
+											background: var(--d-raised);
+											border: 1px solid var(--d-border);
+											border-radius: 6px;
+										"
+									>
+										<span
+											style="
+												font-family: 'JetBrains Mono', monospace;
+												font-size: 10px;
+												font-weight: 500;
+												text-transform: uppercase;
+												letter-spacing: 0.08em;
+												color: var(--d-muted);
+											"
+											>Lines added</span
+										>
+										<span
+											style="
+												font-family: 'JetBrains Mono', monospace;
+												font-size: 24px;
+												font-weight: 600;
+												color: var(--d-primary);
+											"
+											>+133,289</span
+										>
+									</div>
+									<div
+										style="
+											display: flex;
+											flex-direction: column;
+											gap: 4px;
+											padding: 16px;
+											background: var(--d-raised);
+											border: 1px solid var(--d-border);
+											border-radius: 6px;
+										"
+									>
+										<span
+											style="
+												font-family: 'JetBrains Mono', monospace;
+												font-size: 10px;
+												font-weight: 500;
+												text-transform: uppercase;
+												letter-spacing: 0.08em;
+												color: var(--d-muted);
+											"
+											>Lines removed</span
+										>
+										<span
+											style="
+												font-family: 'JetBrains Mono', monospace;
+												font-size: 24px;
+												font-weight: 600;
+												color: var(--d-primary);
+											"
+											>−36,397</span
+										>
+									</div>
+									<div
+										style="
+											display: flex;
+											flex-direction: column;
+											gap: 4px;
+											padding: 16px;
+											background: var(--d-raised);
+											border: 1px solid var(--d-border);
+											border-radius: 6px;
+										"
+									>
+										<span
+											style="
+												font-family: 'JetBrains Mono', monospace;
+												font-size: 10px;
+												font-weight: 500;
+												text-transform: uppercase;
+												letter-spacing: 0.08em;
+												color: var(--d-muted);
+											"
+											>Source files</span
+										>
+										<span
+											style="
+												font-family: 'JetBrains Mono', monospace;
+												font-size: 24px;
+												font-weight: 600;
+												color: var(--d-primary);
+											"
+											>28,453</span
+										>
+									</div>
+								</div>
+							</section>
+						</main>
 
-        <section style="display:flex;flex-direction:column;gap:16px;">
-          <h2 style="font-family:'Source Serif 4',serif;font-size:22px;font-weight:600;margin:0;">Highlights</h2>
-          <ul style="display:flex;flex-direction:column;gap:12px;padding:0;margin:0;list-style:none;">
-            <li style="display:grid;grid-template-columns:20px 1fr;gap:12px;font-size:15px;color:var(--d-subtle);line-height:1.6;"><span style="color:var(--d-accent);font-weight:600;">→</span><span>Single TypeScript core drives three interfaces: OpenTUI terminal UI, direct CLI commands, and a Tauri 2 (Rust) native desktop app.</span></li>
-            <li style="display:grid;grid-template-columns:20px 1fr;gap:12px;font-size:15px;color:var(--d-subtle);line-height:1.6;"><span style="color:var(--d-accent);font-weight:600;">→</span><span>Schema-driven validation: parses the real ESFA XSD to build a validation registry with type resolution, cardinality and constraint checking. Semantic validation beyond structural XML.</span></li>
-            <li style="display:grid;grid-template-columns:20px 1fr;gap:12px;font-size:15px;color:var(--d-subtle);line-height:1.6;"><span style="color:var(--d-accent);font-weight:600;">→</span><span>Header-tolerant CSV parsing handles column reordering; cross-submission consistency checks guard against data drift between submissions.</span></li>
-            <li style="display:grid;grid-template-columns:20px 1fr;gap:12px;font-size:15px;color:var(--d-subtle);line-height:1.6;"><span style="color:var(--d-accent);font-weight:600;">→</span><span>Close to 1:1 source-to-test mapping with Vitest and Bun test; round-trip tests cover the full CSV → XML → re-parse cycle.</span></li>
-            <li style="display:grid;grid-template-columns:20px 1fr;gap:12px;font-size:15px;color:var(--d-subtle);line-height:1.6;"><span style="color:var(--d-accent);font-weight:600;">→</span><span>Documented like a product: full ADRs, technical specs, dev-log work records, and per-workflow roadmaps.</span></li>
-          </ul>
-        </section>
+						<aside style="display: flex; flex-direction: column; gap: 24px">
+							<section
+								aria-label="Contribution details"
+								style="
+									display: flex;
+									flex-direction: column;
+									gap: 12px;
+									padding: 20px;
+									background: var(--d-raised);
+									border: 1px solid var(--d-border);
+									border-left: 3px solid var(--d-accent);
+									border-radius: 6px;
+								"
+							>
+								<div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap">
+									<span
+										style="
+											display: inline-flex;
+											align-items: center;
+											font-family: 'JetBrains Mono', monospace;
+											font-size: 10px;
+											font-weight: 600;
+											letter-spacing: 0.08em;
+											text-transform: uppercase;
+											padding: 3px 10px;
+											border-radius: 999px;
+											color: var(--d-primary);
+											background: var(--d-primary-soft);
+										"
+										>Solo</span
+									>
+									<span style="font-size: 13.5px; color: var(--d-muted)"
+										>Solo (Jason) <span style="opacity: 0.75">· Founders and Coders</span></span
+									>
+								</div>
+								<p style="font-size: 13.5px; color: var(--d-subtle); line-height: 1.6; margin: 0">
+									Solo project: designed, built, and maintained entirely by me.
+								</p>
+							</section>
 
-        <section style="display:flex;flex-direction:column;gap:16px;">
-          <h2 style="font-family:'Source Serif 4',serif;font-size:22px;font-weight:600;margin:0;">By the numbers</h2>
-          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(8rem,1fr));gap:12px;">
-            <div style="display:flex;flex-direction:column;gap:4px;padding:16px;background:var(--d-raised);border:1px solid var(--d-border);border-radius:6px;">
-              <span style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:500;text-transform:uppercase;letter-spacing:0.08em;color:var(--d-muted);">Commits</span>
-              <span style="font-family:'JetBrains Mono',monospace;font-size:24px;font-weight:600;color:var(--d-primary);">720</span>
-              <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--d-muted);">of 743 total</span>
-            </div>
-            <div style="display:flex;flex-direction:column;gap:4px;padding:16px;background:var(--d-raised);border:1px solid var(--d-border);border-radius:6px;">
-              <span style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:500;text-transform:uppercase;letter-spacing:0.08em;color:var(--d-muted);">Lines added</span>
-              <span style="font-family:'JetBrains Mono',monospace;font-size:24px;font-weight:600;color:var(--d-primary);">+133,289</span>
-            </div>
-            <div style="display:flex;flex-direction:column;gap:4px;padding:16px;background:var(--d-raised);border:1px solid var(--d-border);border-radius:6px;">
-              <span style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:500;text-transform:uppercase;letter-spacing:0.08em;color:var(--d-muted);">Lines removed</span>
-              <span style="font-family:'JetBrains Mono',monospace;font-size:24px;font-weight:600;color:var(--d-primary);">−36,397</span>
-            </div>
-            <div style="display:flex;flex-direction:column;gap:4px;padding:16px;background:var(--d-raised);border:1px solid var(--d-border);border-radius:6px;">
-              <span style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:500;text-transform:uppercase;letter-spacing:0.08em;color:var(--d-muted);">Source files</span>
-              <span style="font-family:'JetBrains Mono',monospace;font-size:24px;font-weight:600;color:var(--d-primary);">28,453</span>
-            </div>
-          </div>
-        </section>
-      </main>
+							<section
+								aria-label="Related projects"
+								style="display: flex; flex-direction: column; gap: 16px"
+							>
+								<h2
+									style="
+										font-family: 'Source Serif 4', serif;
+										font-size: 20px;
+										font-weight: 600;
+										margin: 0;
+									"
+								>
+									Connections
+								</h2>
+								<!-- neighbourhood graph, Atlas survey style -->
+								<div
+									style="
+										border: 1px solid var(--d-border);
+										border-radius: 8px;
+										background: var(--d-sunken);
+										overflow: hidden;
+									"
+								>
+									<svg viewBox="0 0 320 190" style="width: 100%; height: auto; display: block">
+										<g stroke="var(--d-grid)" stroke-width="1" stroke-dasharray="1 5">
+											<line x1="0" y1="63" x2="320" y2="63"></line>
+											<line x1="0" y1="126" x2="320" y2="126"></line>
+											<line x1="106" y1="0" x2="106" y2="190"></line>
+											<line x1="212" y1="0" x2="212" y2="190"></line>
+										</g>
+										<path
+											d="M110 96 Q160 70 216 92"
+											fill="none"
+											stroke="var(--d-primary)"
+											stroke-width="2"
+										></path>
+										<path
+											d="M216 92 l-9 -3 m9 3 l-8 5"
+											fill="none"
+											stroke="var(--d-primary)"
+											stroke-width="1.5"
+										></path>
+										<circle
+											cx="96"
+											cy="100"
+											r="14"
+											fill="none"
+											stroke="var(--d-st-fin-t)"
+											stroke-width="1.75"
+										></circle>
+										<circle
+											cx="96"
+											cy="100"
+											r="8"
+											fill="none"
+											stroke="var(--d-st-fin-t)"
+											stroke-width="1.25"
+										></circle>
+										<circle cx="96" cy="100" r="2.6" fill="var(--d-st-fin-t)"></circle>
+										<circle
+											cx="228"
+											cy="96"
+											r="9"
+											fill="none"
+											stroke="var(--d-st-wip-t)"
+											stroke-width="1.75"
+										></circle>
+										<circle cx="228" cy="96" r="2.4" fill="var(--d-st-wip-t)"></circle>
+										<text
+											x="96"
+											y="136"
+											text-anchor="middle"
+											font-family="JetBrains Mono"
+											font-size="10.5"
+											letter-spacing="1.4"
+											font-weight="600"
+											fill="var(--d-text)"
+										>
+											IRIS
+										</text>
+										<text
+											x="228"
+											y="126"
+											text-anchor="middle"
+											font-family="JetBrains Mono"
+											font-size="9.5"
+											letter-spacing="1.2"
+											fill="var(--d-subtle)"
+										>
+											SCHEMA FORGE
+										</text>
+										<text
+											x="160"
+											y="52"
+											text-anchor="middle"
+											font-family="Source Serif 4"
+											font-style="italic"
+											font-size="12"
+											fill="var(--d-muted)"
+										>
+											extracted into
+										</text>
+									</svg>
+								</div>
+								<ul
+									style="
+										display: flex;
+										flex-direction: column;
+										gap: 12px;
+										padding: 0;
+										margin: 0;
+										list-style: none;
+									"
+								>
+									<li
+										style="
+											display: flex;
+											align-items: baseline;
+											flex-wrap: wrap;
+											gap: 8px;
+											padding: 12px 16px;
+											background: var(--d-raised);
+											border: 1px solid var(--d-border);
+											border-radius: 6px;
+										"
+									>
+										<span
+											style="
+												font-family: 'JetBrains Mono', monospace;
+												font-size: 10px;
+												font-weight: 600;
+												text-transform: uppercase;
+												letter-spacing: 0.08em;
+												color: var(--d-muted);
+												flex-shrink: 0;
+											"
+											>Extracted into</span
+										>
+										<a
+											href="#project-schema-forge"
+											style="
+												font-weight: 600;
+												color: var(--d-primary);
+												text-decoration: underline;
+												text-underline-offset: 3px;
+												font-size: 14.5px;
+											"
+											>Schema Forge</a
+										>
+										<span
+											style="
+												font-size: 13.5px;
+												color: var(--d-subtle);
+												width: 100%;
+												line-height: 1.55;
+											"
+											>The XSD parsing and validation core was lifted out of Iris into the
+											standalone Schema Forge library.</span
+										>
+									</li>
+								</ul>
+							</section>
+						</aside>
+					</div>
+				</div>
 
-      <aside style="display:flex;flex-direction:column;gap:24px;">
-        <section aria-label="Contribution details" style="display:flex;flex-direction:column;gap:12px;padding:20px;background:var(--d-raised);border:1px solid var(--d-border);border-left:3px solid var(--d-accent);border-radius:6px;">
-          <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
-            <span style="display:inline-flex;align-items:center;font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;padding:3px 10px;border-radius:999px;color:var(--d-primary);background:var(--d-primary-soft);">Solo</span>
-            <span style="font-size:13.5px;color:var(--d-muted);">Solo (Jason) <span style="opacity:0.75;">· Founders and Coders</span></span>
-          </div>
-          <p style="font-size:13.5px;color:var(--d-subtle);line-height:1.6;margin:0;">Solo project: designed, built, and maintained entirely by me.</p>
-        </section>
-
-        <section aria-label="Related projects" style="display:flex;flex-direction:column;gap:16px;">
-          <h2 style="font-family:'Source Serif 4',serif;font-size:20px;font-weight:600;margin:0;">Connections</h2>
-          <!-- neighbourhood graph, Atlas survey style -->
-          <div style="border:1px solid var(--d-border);border-radius:8px;background:var(--d-sunken);overflow:hidden;">
-            <svg viewBox="0 0 320 190" style="width:100%;height:auto;display:block;">
-              <g stroke="var(--d-grid)" stroke-width="1" stroke-dasharray="1 5">
-                <line x1="0" y1="63" x2="320" y2="63"></line>
-                <line x1="0" y1="126" x2="320" y2="126"></line>
-                <line x1="106" y1="0" x2="106" y2="190"></line>
-                <line x1="212" y1="0" x2="212" y2="190"></line>
-              </g>
-              <path d="M110 96 Q160 70 216 92" fill="none" stroke="var(--d-primary)" stroke-width="2"></path>
-              <path d="M216 92 l-9 -3 m9 3 l-8 5" fill="none" stroke="var(--d-primary)" stroke-width="1.5"></path>
-              <circle cx="96" cy="100" r="14" fill="none" stroke="var(--d-st-fin-t)" stroke-width="1.75"></circle>
-              <circle cx="96" cy="100" r="8" fill="none" stroke="var(--d-st-fin-t)" stroke-width="1.25"></circle>
-              <circle cx="96" cy="100" r="2.6" fill="var(--d-st-fin-t)"></circle>
-              <circle cx="228" cy="96" r="9" fill="none" stroke="var(--d-st-wip-t)" stroke-width="1.75"></circle>
-              <circle cx="228" cy="96" r="2.4" fill="var(--d-st-wip-t)"></circle>
-              <text x="96" y="136" text-anchor="middle" font-family="JetBrains Mono" font-size="10.5" letter-spacing="1.4" font-weight="600" fill="var(--d-text)">IRIS</text>
-              <text x="228" y="126" text-anchor="middle" font-family="JetBrains Mono" font-size="9.5" letter-spacing="1.2" fill="var(--d-subtle)">SCHEMA FORGE</text>
-              <text x="160" y="52" text-anchor="middle" font-family="Source Serif 4" font-style="italic" font-size="12" fill="var(--d-muted)">extracted into</text>
-            </svg>
-          </div>
-          <ul style="display:flex;flex-direction:column;gap:12px;padding:0;margin:0;list-style:none;">
-            <li style="display:flex;align-items:baseline;flex-wrap:wrap;gap:8px;padding:12px 16px;background:var(--d-raised);border:1px solid var(--d-border);border-radius:6px;">
-              <span style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:var(--d-muted);flex-shrink:0;">Extracted into</span>
-              <a href="#project-schema-forge" style="font-weight:600;color:var(--d-primary);text-decoration:underline;text-underline-offset:3px;font-size:14.5px;">Schema Forge</a>
-              <span style="font-size:13.5px;color:var(--d-subtle);width:100%;line-height:1.55;">The XSD parsing and validation core was lifted out of Iris into the standalone Schema Forge library.</span>
-            </li>
-          </ul>
-        </section>
-      </aside>
-    </div>
-  </div>
-
-  <!-- ============ FOOTER ============ -->
-  <footer style="border-top:1px solid var(--d-border);margin-top:64px;">
-    <div style="max-width:72rem;margin:0 auto;padding:32px clamp(16px,5vw,48px);">
-      <p style="font-size:13.5px;color:var(--d-muted);margin:0;">Built with <a href="#drift-engine" style="color:var(--d-primary);text-decoration:underline;text-underline-offset:3px;">SvelteKit 2 and Svelte 5</a>. Source on <a href="https://github.com/JasonWarrenUK" style="color:var(--d-primary);text-decoration:underline;text-underline-offset:3px;">GitHub</a>. Find me on <a href="https://bsky.app" style="color:var(--d-primary);text-decoration:underline;text-underline-offset:3px;">Bluesky</a>.</p>
-    </div>
-  </footer>
-</div>
-</x-dc>
-<script type="text/x-dc" data-dc-script data-props="{&quot;defaultTheme&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;light&quot;,&quot;dark&quot;],&quot;default&quot;:&quot;light&quot;,&quot;tsType&quot;:&quot;'light' | 'dark'&quot;,&quot;section&quot;:&quot;Theme&quot;}}">
-class Component extends DCLogic {
-  constructor(props) {
-    super(props);
-    this.state = { theme: (props && props.defaultTheme) || 'light' };
-    this.palettes = {
-      light: {
-        '--d-surface': '#faf7f2', '--d-raised': '#fffdf9', '--d-sunken': '#f1ece2',
-        '--d-text': '#211c14', '--d-subtle': '#5a5245', '--d-muted': '#988d7b',
-        '--d-border': '#e6dfd2', '--d-border-strong': '#d2c8b6',
-        '--d-primary': '#2e5d8c', '--d-primary-soft': '#e9eff5', '--d-accent': '#b0512a',
-        '--d-grid': '#e8e1d3',
-        '--d-st-fin-t': '#2e5d8c', '--d-st-fin-b': '#e5ecf4',
-        '--d-st-wip-t': '#7a5416', '--d-st-wip-b': '#f3ead2'
-      },
-      dark: {
-        '--d-surface': '#16130e', '--d-raised': '#201c15', '--d-sunken': '#100e0a',
-        '--d-text': '#f0ebe1', '--d-subtle': '#ada18c', '--d-muted': '#7a7060',
-        '--d-border': '#322c22', '--d-border-strong': '#48402f',
-        '--d-primary': '#7aa7d4', '--d-primary-soft': '#1c2432', '--d-accent': '#d97a4e',
-        '--d-grid': '#262015',
-        '--d-st-fin-t': '#8fb2d8', '--d-st-fin-b': '#1b2431',
-        '--d-st-wip-t': '#dbb571', '--d-st-wip-b': '#2b2414'
-      }
-    };
-  }
-  applyVars(theme) {
-    if (!this.root) return;
-    const p = this.palettes[theme];
-    for (const k in p) this.root.style.setProperty(k, p[k]);
-    this.root.setAttribute('data-theme', theme);
-  }
-  setRoot = (el) => { this.root = el; if (el) this.applyVars(this.state.theme); };
-  toggleTheme = () => {
-    const t = this.state.theme === 'light' ? 'dark' : 'light';
-    this.setState({ theme: t });
-    this.applyVars(t);
-  };
-  renderVals() {
-    return {
-      setRoot: this.setRoot,
-      toggleTheme: this.toggleTheme,
-      themeLabel: this.state.theme === 'light' ? 'Light' : 'Dark'
-    };
-  }
-}
-</script>
-</body>
+				<!-- ============ FOOTER ============ -->
+				<footer style="border-top: 1px solid var(--d-border); margin-top: 64px">
+					<div style="max-width: 72rem; margin: 0 auto; padding: 32px clamp(16px, 5vw, 48px)">
+						<p style="font-size: 13.5px; color: var(--d-muted); margin: 0">
+							Built with
+							<a
+								href="#drift-engine"
+								style="
+									color: var(--d-primary);
+									text-decoration: underline;
+									text-underline-offset: 3px;
+								"
+								>SvelteKit 2 and Svelte 5</a
+							>. Source on
+							<a
+								href="https://github.com/JasonWarrenUK"
+								style="
+									color: var(--d-primary);
+									text-decoration: underline;
+									text-underline-offset: 3px;
+								"
+								>GitHub</a
+							>. Find me on
+							<a
+								href="https://bsky.app"
+								style="
+									color: var(--d-primary);
+									text-decoration: underline;
+									text-underline-offset: 3px;
+								"
+								>Bluesky</a
+							>.
+						</p>
+					</div>
+				</footer>
+			</div>
+		</x-dc>
+		<script
+			type="text/x-dc"
+			data-dc-script
+			data-props='{"defaultTheme":{"editor":"enum","options":["light","dark"],"default":"light","tsType":"&apos;light&apos; | &apos;dark&apos;","section":"Theme"}}'
+		>
+			class Component extends DCLogic {
+			  constructor(props) {
+			    super(props);
+			    this.state = { theme: (props && props.defaultTheme) || 'light' };
+			    this.palettes = {
+			      light: {
+			        '--d-surface': '#faf7f2', '--d-raised': '#fffdf9', '--d-sunken': '#f1ece2',
+			        '--d-text': '#211c14', '--d-subtle': '#5a5245', '--d-muted': '#988d7b',
+			        '--d-border': '#e6dfd2', '--d-border-strong': '#d2c8b6',
+			        '--d-primary': '#2e5d8c', '--d-primary-soft': '#e9eff5', '--d-accent': '#b0512a',
+			        '--d-grid': '#e8e1d3',
+			        '--d-st-fin-t': '#2e5d8c', '--d-st-fin-b': '#e5ecf4',
+			        '--d-st-wip-t': '#7a5416', '--d-st-wip-b': '#f3ead2'
+			      },
+			      dark: {
+			        '--d-surface': '#16130e', '--d-raised': '#201c15', '--d-sunken': '#100e0a',
+			        '--d-text': '#f0ebe1', '--d-subtle': '#ada18c', '--d-muted': '#7a7060',
+			        '--d-border': '#322c22', '--d-border-strong': '#48402f',
+			        '--d-primary': '#7aa7d4', '--d-primary-soft': '#1c2432', '--d-accent': '#d97a4e',
+			        '--d-grid': '#262015',
+			        '--d-st-fin-t': '#8fb2d8', '--d-st-fin-b': '#1b2431',
+			        '--d-st-wip-t': '#dbb571', '--d-st-wip-b': '#2b2414'
+			      }
+			    };
+			  }
+			  applyVars(theme) {
+			    if (!this.root) return;
+			    const p = this.palettes[theme];
+			    for (const k in p) this.root.style.setProperty(k, p[k]);
+			    this.root.setAttribute('data-theme', theme);
+			  }
+			  setRoot = (el) => { this.root = el; if (el) this.applyVars(this.state.theme); };
+			  toggleTheme = () => {
+			    const t = this.state.theme === 'light' ? 'dark' : 'light';
+			    this.setState({ theme: t });
+			    this.applyVars(t);
+			  };
+			  renderVals() {
+			    return {
+			      setRoot: this.setRoot,
+			      toggleTheme: this.toggleTheme,
+			      themeLabel: this.state.theme === 'light' ? 'Light' : 'Dark'
+			    };
+			  }
+			}
+		</script>
+	</body>
 </html>

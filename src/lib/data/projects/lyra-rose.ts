@@ -21,6 +21,6 @@ export const lyraRose: AuthoredProject = {
 	relationships: [],
 	tags: [
 		{ label: 'GSAP', kind: 'tool' },
-		{ label: 'Web Audio API', kind: 'tool' },
+		{ label: 'Web Audio API', kind: 'tool' }
 	]
 };

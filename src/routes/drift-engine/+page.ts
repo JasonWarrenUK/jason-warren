@@ -126,11 +126,7 @@ linesOfCode:
 // One entry from the drift manifest. Written only by drift sync, and only
 // after passing schema validation. Read directly from the manifest so the
 // example changes whenever Drift syncs the underlying fingerprint.
-const sourcesSnippet = JSON.stringify(
-	{ chirpdb: sourcesManifest.sources.chirpdb },
-	null,
-	'\t'
-);
+const sourcesSnippet = JSON.stringify({ chirpdb: sourcesManifest.sources.chirpdb }, null, '\t');
 
 export async function load() {
 	const [contribution, slug, threads, drift, precedence, sources] = await Promise.all([

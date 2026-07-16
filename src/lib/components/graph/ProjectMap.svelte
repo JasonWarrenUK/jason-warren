@@ -1112,10 +1112,22 @@
 							style="stroke: {colour}; opacity: {0.55 + 0.45 * opacityScale(node)}"
 						/>
 						{#if node.hub || isFocus}
-							<circle class="map__ring map__ring--hub" cx={p.x} cy={p.y} r={r + 7} style="stroke: {colour}" />
+							<circle
+								class="map__ring map__ring--hub"
+								cx={p.x}
+								cy={p.y}
+								r={r + 7}
+								style="stroke: {colour}"
+							/>
 						{/if}
 						<circle class="map__dot" cx={p.x} cy={p.y} r="2.8" style="fill: {colour}" />
-						<circle class="map__hit" cx={p.x} cy={p.y} r={Math.max(r + 10, 22)} fill="transparent" />
+						<circle
+							class="map__hit"
+							cx={p.x}
+							cy={p.y}
+							r={Math.max(r + 10, 22)}
+							fill="transparent"
+						/>
 						<text
 							class="map__label"
 							class:map__label--hub={node.hub}
@@ -1168,12 +1180,24 @@
 								? ''
 								: 's'}</title
 						>
-						<circle class="map__ring" cx={p.x} cy={p.y} r={r} style="stroke: {colour}" />
+						<circle class="map__ring" cx={p.x} cy={p.y} {r} style="stroke: {colour}" />
 						{#if isFocus}
-							<circle class="map__ring map__ring--hub" cx={p.x} cy={p.y} r={r + 7} style="stroke: {colour}" />
+							<circle
+								class="map__ring map__ring--hub"
+								cx={p.x}
+								cy={p.y}
+								r={r + 7}
+								style="stroke: {colour}"
+							/>
 						{/if}
 						<circle class="map__dot" cx={p.x} cy={p.y} r="2.8" style="fill: {colour}" />
-						<circle class="map__hit" cx={p.x} cy={p.y} r={Math.max(r + 10, 22)} fill="transparent" />
+						<circle
+							class="map__hit"
+							cx={p.x}
+							cy={p.y}
+							r={Math.max(r + 10, 22)}
+							fill="transparent"
+						/>
 						<text class="map__label" x={p.x} y={p.y + r + 15} text-anchor="middle">
 							{node.label}
 						</text>
@@ -1392,7 +1416,10 @@
 		<button type="button" class="modal-action modal-action--primary" onclick={pinSelectedTech}>
 			{isPinnedTech ? 'Unpin' : 'Pin this technology'}
 		</button>
-		<a href={projectsByTagHref(base, selectedTech.label)} class="modal-action modal-action--secondary">
+		<a
+			href={projectsByTagHref(base, selectedTech.label)}
+			class="modal-action modal-action--secondary"
+		>
 			See projects using this
 		</a>
 		<a

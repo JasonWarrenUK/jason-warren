@@ -18,6 +18,5 @@ export const sparker: AuthoredProject = {
 		'Neo4j query patterns kept in src/lib/server/ with typed loaders; the graph traversal for co-occurrence is a two-hop match across shared observation fields.'
 	],
 	relationships: [],
-	tags: [
-	]
+	tags: []
 };
