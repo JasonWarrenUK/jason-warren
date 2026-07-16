@@ -2,6 +2,7 @@
 	import { browser } from '$app/environment';
 	import { base } from '$app/paths';
 	import { page } from '$app/stores';
+	import type { ProjectRole } from '$lib/data/types.js';
 	import { formatMonthYear } from '$lib/format-date.js';
 	import { statusColour, statusLabel, statusOrder, edgeTypeColour } from './graph-style.js';
 	import { writeParam } from '$lib/url-write.js';
@@ -114,7 +115,7 @@
 		selected = null;
 	}
 
-	const roleLabel: Record<string, string> = {
+	const roleLabel: Record<ProjectRole, string> = {
 		solo: 'Solo',
 		lead: 'Lead',
 		collaborator: 'Collaborator'
@@ -157,7 +158,7 @@
 				? `${rail.firstCommit} to ${rail.lastCommit}`
 				: rail.firstCommit
 			: 'undated';
-		return `${rail.name}: ${statusLabel[rail.status as keyof typeof statusLabel]}, ${lifespan}`;
+		return `${rail.name}: ${statusLabel[rail.status]}, ${lifespan}`;
 	}
 
 	// --- Reveal animation -----------------------------------------------------
@@ -254,9 +255,7 @@
 					class:timeline__rail-group--dim={effectiveSlug !== null && !neighbourhood.has(rail.slug)}
 					class:timeline__rail-group--pinned={pinnedSlug === rail.slug}
 					class:timeline__rail-group--labelled={rail.labelled}
-					style="--reveal-delay: {Math.min(index * 24, 700)}ms; color: {statusColour(
-						rail.status as Parameters<typeof statusColour>[0]
-					)}"
+					style="--reveal-delay: {Math.min(index * 24, 700)}ms; color: {statusColour(rail.status)}"
 					role="presentation"
 				>
 					<title>{describe(rail)}</title>
@@ -323,9 +322,7 @@
 					class:timeline__rail-group--dim={effectiveSlug !== null && !neighbourhood.has(rail.slug)}
 					class:timeline__rail-group--pinned={pinnedSlug === rail.slug}
 					class:timeline__rail-group--labelled={rail.labelled}
-					style="--reveal-delay: {Math.min(index * 24, 700)}ms; color: {statusColour(
-						rail.status as Parameters<typeof statusColour>[0]
-					)}"
+					style="--reveal-delay: {Math.min(index * 24, 700)}ms; color: {statusColour(rail.status)}"
 				>
 					<text class="timeline__label" x={rail.x + GEO.nodeRadius + 6} y={rail.yBottom + 4}>
 						{rail.name}

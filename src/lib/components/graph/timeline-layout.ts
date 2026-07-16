@@ -35,6 +35,8 @@
  * output on every call.
  */
 
+import type { ProjectRole, ProjectStatus } from '$lib/data/types.js';
+
 // ---------------------------------------------------------------------------
 // Date helpers — single-sourced here; +page.ts imports these.
 // ---------------------------------------------------------------------------
@@ -105,9 +107,9 @@ export interface YearTick {
 export interface TimelineRail {
 	slug: string;
 	name: string;
-	status: string;
+	status: ProjectStatus;
 	tagline: string;
-	role: string;
+	role: ProjectRole;
 	/** ISO `YYYY-MM-DD`, or null when undated. */
 	firstCommit: string | null;
 	/** ISO `YYYY-MM-DD`, or null when undated. */
