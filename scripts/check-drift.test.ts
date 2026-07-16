@@ -12,6 +12,16 @@
  *
  * The last assertion is structural (verified against the schema and constant)
  * rather than via subprocess, since diffFingerprint is not exported.
+ *
+ * Heavy blocking I/O warning: this file's spawnSync calls (up to 30s each)
+ * block their worker's event loop long enough to miss vitest's internal
+ * worker RPC heartbeat if this file shares a worker pool with the rest of
+ * the suite — that produced an intermittent, CI-failing
+ * "[vitest-worker]: Timeout calling onTaskUpdate" even when every test here
+ * passed. package.json's "test" script runs this file as its own separate
+ * `vitest run` invocation for that reason; don't fold it back into a single
+ * `vitest run` without re-isolating it (its own pool/fork config, or keeping
+ * the split invocation).
  */
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
