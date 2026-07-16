@@ -151,6 +151,7 @@
 	// Present statuses only, in the shared status order.
 	const presentStatuses = $derived(statusOrder.filter((s) => rails.some((r) => r.status === s)));
 	const hasLineage = $derived(layout.lineagePaths.length > 0);
+	const hasDensity = $derived(layout.density.length > 0);
 
 	function describe(rail: PlacedRail): string {
 		const lifespan = rail.firstCommit
@@ -231,21 +232,24 @@
 			{/each}
 		</defs>
 
-		<!-- Density wash: a faint fill per density band, count-scaled opacity.
-		     Purely a background reassurance signal — a stretch of the chart
-		     with few VISIBLE rail lines (most projects there are short capsules
-		     that don't reach this y-range) can still have several concurrently
-		     "alive" long-running projects passing through it; without this the
-		     stretch reads as broken/empty rather than "quietly busy". Rendered
-		     first so every other layer draws on top of it. -->
+		<!-- Density gutter: a thin count-scaled bar per density band, seated in
+		     the left margin between the year labels and the first rail column.
+		     A stretch of the chart with few VISIBLE rail lines (most projects
+		     there are short capsules that don't reach this y-range) can still
+		     have several concurrently "alive" long-running projects passing
+		     through it; the gutter bar is what tells you that stretch is
+		     "quietly busy" rather than dead. A full-width background wash read
+		     as noise rather than signal, so density lives only in this margin
+		     strip now — the chart body stays clean. Rendered first so every
+		     other layer draws on top of it. -->
 		<g class="timeline__density" aria-hidden="true">
 			{#each layout.density as band (band.yTop)}
 				<rect
-					x={GEO.leftGutter - 8}
+					x={GEO.leftGutter - 12}
 					y={band.yTop}
-					width={chartWidth - GEO.leftGutter - GEO.rightPad + 8}
+					width={6}
 					height={Math.max(0, band.yBottom - band.yTop)}
-					fill-opacity={Math.min(0.4, 0.045 * band.count)}
+					fill-opacity={Math.min(0.7, 0.08 * band.count)}
 				/>
 			{/each}
 		</g>
@@ -262,10 +266,24 @@
 			{/each}
 		</g>
 
-		<!-- Lineage connectors: rendered container only for now. Extraction
-		     branch-in-time rendering is step 5 — layout.lineagePaths already
-		     carries the geometry, this group intentionally stays empty. -->
-		<g class="timeline__lineage" aria-hidden="true"></g>
+		<!-- Lineage connectors: a quadratic bow from each extracted library's
+		     rail back to the app it was extracted from, anchored at the
+		     library's birth (branchY). Rendered before the rails so every
+		     connector sits underneath the rings/labels it joins. Dim-only on
+		     hover/pin, mirroring AdoptionTimeline's connector treatment —
+		     the active edge holds its base opacity, everything else fades. -->
+		<g class="timeline__lineage" aria-hidden="true">
+			{#each layout.lineagePaths as edge (`${edge.source}-${edge.target}`)}
+				<path
+					class="timeline__connector"
+					class:timeline__connector--dim={effectiveSlug !== null &&
+						edge.source !== effectiveSlug &&
+						edge.target !== effectiveSlug}
+					d={edge.path}
+					style="stroke: {edgeTypeColour('extraction')}"
+				/>
+			{/each}
+		</g>
 
 		<!-- Rails. Two passes over the same `layout.placed` list, deliberately
 		     split into separate `<g>` groups: SVG paints strictly in source
@@ -445,6 +463,12 @@
 				Extraction lineage
 			</span>
 		{/if}
+		{#if hasDensity}
+			<span class="timeline__legend-item">
+				<span class="timeline__legend-density" aria-hidden="true"></span>
+				Concurrent projects
+			</span>
+		{/if}
 	</figcaption>
 </figure>
 
@@ -486,15 +510,33 @@
 		background: var(--color-surface-sunken);
 	}
 
-	/* Density wash: a faint neutral fill, opacity carrying the band's overlap
-	   count (set inline per-rect via fill-opacity, see the markup above) so
-	   busier stretches read as a touch darker paper rather than truly blank.
-	   Uses --color-grid (the same neutral as the graticule lines) rather than
-	   a status colour, since a band can span many differently-coloured rails
-	   at once. */
+	/* Density gutter bar: a thin neutral fill, opacity carrying the band's
+	   overlap count (set inline per-rect via fill-opacity, see the markup
+	   above) so busier year-stretches read as a darker segment of the margin
+	   strip. Uses --color-border-strong rather than a status colour, since a
+	   band can span many differently-coloured rails at once. */
 	.timeline__density rect {
 		fill: var(--color-border-strong);
 		pointer-events: none;
+	}
+
+	/* Lineage connectors: quadratic-bow paths from an app rail back to the
+	   library it extracted, at the extraction moment. Held at the rail's
+	   quiet 0.4 so a rail and the branch coming off it read as one line.
+	   Dim-only — mirrors AdoptionTimeline's connector treatment, no hover
+	   brighten. */
+	.timeline__connector {
+		fill: none;
+		stroke-width: 1.5;
+		stroke-opacity: 0.4;
+		transition: stroke-opacity var(--transition-fast);
+	}
+
+	/* Dimmed when another rail is highlighted and this edge touches neither
+	   endpoint. Mirrors the rail dim maths (0.4 is the connector's base
+	   stroke-opacity). */
+	.timeline__connector--dim {
+		stroke-opacity: calc(0.4 * var(--dim-node));
 	}
 
 	/* Graticule: horizontal year lines, a light dotted rule the way a plotted
@@ -749,6 +791,16 @@
 		flex-shrink: 0;
 	}
 
+	/* Miniature of the density gutter bar: a short filled strip, echoing the
+	   left-margin rects at their darkest. */
+	.timeline__legend-density {
+		display: inline-block;
+		width: 0.35rem;
+		height: 1rem;
+		background: var(--color-border-strong);
+		flex-shrink: 0;
+	}
+
 	/* Visually hidden, available to screen readers. */
 	.timeline__sr {
 		position: absolute;
@@ -813,7 +865,8 @@
 		.timeline__centre,
 		.timeline__label,
 		.timeline__rail,
-		.timeline__rail-fade {
+		.timeline__rail-fade,
+		.timeline__connector {
 			transition: none;
 		}
 	}
