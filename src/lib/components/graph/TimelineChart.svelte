@@ -200,6 +200,37 @@
 		role="group"
 		aria-label="Timeline of projects by lifespan, most recent activity at the top, packed by column with no horizontal meaning"
 	>
+		<!-- Fade gradients for still-live rails: one per still-live rail, each
+		     anchored in userSpaceOnUse at that rail's own (x, yTop) to
+		     (x, yTop - stillLiveFade) — objectBoundingBox (the SVG default)
+		     cannot be used here, because a perfectly vertical line has a
+		     zero-WIDTH bounding box, and the SVG spec disables an
+		     objectBoundingBox paint server entirely (not just the degenerate
+		     axis) whenever either bbox dimension is zero, silently painting
+		     nothing. userSpaceOnUse sidesteps that by working in absolute
+		     coordinates instead of the element's own bbox. currentColor on
+		     each <stop> resolves against the <stop>'s OWN inherited colour,
+		     which a <defs> block never gets from the per-rail <g style="color:
+		     ...">, so the rail's own status colour is threaded in explicitly
+		     via stop-color rather than relying on inheritance. -->
+		<defs>
+			{#each layout.placed as rail (rail.slug)}
+				{#if rail.stillLive}
+					<linearGradient
+						id="timeline-live-fade-{rail.slug}"
+						gradientUnits="userSpaceOnUse"
+						x1={rail.x}
+						y1={rail.yTop}
+						x2={rail.x}
+						y2={rail.yTop - GEO.stillLiveFade}
+					>
+						<stop offset="0" stop-color={statusColour(rail.status)} stop-opacity="0.4" />
+						<stop offset="1" stop-color={statusColour(rail.status)} stop-opacity="0" />
+					</linearGradient>
+				{/if}
+			{/each}
+		</defs>
+
 		<!-- Density wash: a faint fill per density band, count-scaled opacity.
 		     Purely a background reassurance signal — a stretch of the chart
 		     with few VISIBLE rail lines (most projects there are short capsules
@@ -260,21 +291,67 @@
 				>
 					<title>{describe(rail)}</title>
 
-					<!-- Rail line: this project's lifespan, from inception (yBottom) to
-					     most recent activity (yTop). No colour segments — a timeline
-					     rail has no lineage-lane concept, unlike the adoption chart. -->
+					<!-- Rail line: this project's lifespan, from the inception node
+					     (yBottom, firstCommit) to the terminal node (yTop, lastCommit).
+					     No colour segments — a timeline rail has no lineage-lane concept,
+					     unlike the adoption chart. -->
 					<line class="timeline__rail" x1={rail.x} y1={rail.yTop} x2={rail.x} y2={rail.yBottom} />
 
-					<!-- Survey mark at the initial end (yBottom = inception, firstCommit).
-					     Still-live rails earn the hub ring, marking active work. -->
+					<!-- Open-ended fade: still-live rails only. Extends the line past
+					     the terminal node up to `stillLiveFade` px, gradient-stroked to
+					     transparent, so "still going" reads as the rail itself trailing
+					     off rather than a hard stop. A dormant rail has no such segment
+					     and ends cleanly at yTop (rendered by the line above alone). -->
+					{#if rail.stillLive}
+						<line
+							class="timeline__rail-fade"
+							x1={rail.x}
+							y1={rail.yTop}
+							x2={rail.x}
+							y2={rail.yTop - GEO.stillLiveFade}
+							style="stroke: url(#timeline-live-fade-{rail.slug})"
+						/>
+					{/if}
+
+					<!-- Terminal node (yTop = lastCommit, most recent activity, nearest
+					     the `now` line). Still-live rails earn the hub ring here — this
+					     is the end a viewer naturally checks for "is this still going". -->
 					{#if rail.stillLive}
 						<circle
 							class="timeline__ring timeline__ring--hub"
 							cx={rail.x}
-							cy={rail.yBottom}
+							cy={rail.yTop}
 							r={GEO.nodeRadius + GEO.hubRingOffset}
 						/>
 					{/if}
+					<circle class="timeline__ring" cx={rail.x} cy={rail.yTop} r={GEO.nodeRadius} />
+					<circle class="timeline__centre" cx={rail.x} cy={rail.yTop} r="2.8" />
+					<circle
+						class="timeline__hit"
+						cx={rail.x}
+						cy={rail.yTop}
+						r={rail.stillLive ? GEO.nodeRadius + GEO.hubRingOffset : GEO.nodeRadius}
+						role="button"
+						tabindex="0"
+						aria-pressed={pinnedSlug === rail.slug}
+						aria-label="{describe(rail)}. {pinnedSlug === rail.slug
+							? 'Pinned. Activate to unpin'
+							: 'Activate to pin'}"
+						onpointerenter={() => (activeSlug = rail.slug)}
+						onpointerleave={() => (activeSlug = null)}
+						onclick={() => openModal(rail)}
+						onkeydown={(e) => {
+							if (e.key === 'Enter' || e.key === ' ') {
+								e.preventDefault();
+								openModal(rail);
+							}
+						}}
+						onfocus={() => (activeSlug = rail.slug)}
+						onblur={() => (activeSlug = null)}
+					/>
+
+					<!-- Inception node (yBottom = firstCommit). Plain survey mark, no
+					     hub ring — liveness reads at the terminal end above, not here. -->
 					<circle class="timeline__ring" cx={rail.x} cy={rail.yBottom} r={GEO.nodeRadius} />
 					<circle class="timeline__centre" cx={rail.x} cy={rail.yBottom} r="2.8" />
 
@@ -286,7 +363,7 @@
 						class="timeline__hit"
 						cx={rail.x}
 						cy={rail.yBottom}
-						r={rail.stillLive ? GEO.nodeRadius + GEO.hubRingOffset : GEO.nodeRadius}
+						r={GEO.nodeRadius}
 						role="button"
 						tabindex="0"
 						aria-pressed={pinnedSlug === rail.slug}
@@ -478,6 +555,18 @@
 			stroke-width var(--transition-fast);
 	}
 
+	/* Open-ended fade past the terminal node, still-live rails only. Same
+	   width channel as .timeline__rail, but stroked through a per-rail
+	   gradient def (set inline, see the markup above — one gradient per
+	   still-live rail, since userSpaceOnUse coordinates are absolute) instead
+	   of a flat stroke-opacity, so it reads as opaque at the rail end fading
+	   to fully transparent at the open end. */
+	.timeline__rail-fade {
+		stroke-width: 2;
+		pointer-events: none;
+		transition: stroke-width var(--transition-fast);
+	}
+
 	/* Labels: JetBrains Mono micro-caps, the atlas apparatus convention. */
 	.timeline__label {
 		font-family: var(--font-mono);
@@ -553,6 +642,10 @@
 		stroke-width: 3;
 	}
 
+	.timeline__rail-group--active .timeline__rail-fade {
+		stroke-width: 3;
+	}
+
 	.timeline__rail-group--dim .timeline__ring {
 		stroke-opacity: var(--dim-node);
 	}
@@ -576,6 +669,10 @@
 
 	.timeline__rail-group--dim .timeline__rail {
 		stroke-opacity: calc(0.4 * var(--dim-node));
+	}
+
+	.timeline__rail-group--dim .timeline__rail-fade {
+		stroke-opacity: var(--dim-node);
 	}
 
 	/* Pinned project: persistent accent ring so the selection reads as
@@ -715,7 +812,8 @@
 		.timeline__ring,
 		.timeline__centre,
 		.timeline__label,
-		.timeline__rail {
+		.timeline__rail,
+		.timeline__rail-fade {
 			transition: none;
 		}
 	}

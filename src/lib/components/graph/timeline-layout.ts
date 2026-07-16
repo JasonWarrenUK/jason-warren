@@ -90,7 +90,12 @@ export interface TimelineGeometry {
 	/** Survey-mark ring radius. */
 	nodeRadius: number;
 	hubRingOffset: number;
-	/** Px of open-ended fade reserved at the recent (top) end of a still-live rail. */
+	/**
+	 * Px the rail line extends past `yTop` for a still-live project, fading to
+	 * transparent — the open-ended-lifespan signal. The component draws this
+	 * as a separate gradient-stroked segment above `yTop`; a dormant rail has
+	 * no such segment and stops cleanly at `yTop` instead.
+	 */
 	stillLiveFade: number;
 }
 
@@ -532,7 +537,14 @@ export function computeTimelineLayout(
 	const minDay = Math.min(...dated.map((r) => dayValue(r.firstCommit!)));
 	const firstMonth = monthIndexOfDayValue(minDay);
 	const lastMonth = monthIndexOfDayValue(nowDay);
-	const monthBands = computeMonthBands(dated, minDay, nowDay, geo.topPad);
+	// Bands start `stillLiveFade` px below topPad, not at topPad itself, so the
+	// newest rail's yTop always has clean headroom above it for the open-ended
+	// fade to render into — unconditional (not data-dependent on whether the
+	// topmost rail is actually still-live today) to keep this a pure constant
+	// offset rather than a branch on rail data. nowY stays geo.topPad: the
+	// `now` gridline's meaning is unchanged, rails simply sit further below it.
+	const bandsTop = geo.topPad + geo.stillLiveFade;
+	const monthBands = computeMonthBands(dated, minDay, nowDay, bandsTop);
 	const y = makeMonthBandedY(monthBands, firstMonth, lastMonth);
 
 	const placed: PlacedRail[] = dated.map((rail) => {
