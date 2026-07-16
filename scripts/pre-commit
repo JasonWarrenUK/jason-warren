@@ -1,0 +1,33 @@
+#!/bin/sh
+# Pre-commit formatting gate: runs Prettier against staged files only, so a
+# commit can never introduce new formatting drift. Installed into
+# .git/hooks/pre-commit by `bun run prepare` (see scripts/install-hooks.js) —
+# .git/hooks isn't version-controlled, so this script is the source of truth
+# and gets re-linked on every `bun install`.
+#
+# Deliberately checks staged files only (not the whole repo): pre-existing
+# drift elsewhere shouldn't block an unrelated commit, it should surface via
+# `bun run lint` (CI runs this against the full tree on every PR).
+
+staged_files=$(git diff --cached --name-only --diff-filter=ACM)
+
+if [ -z "$staged_files" ]; then
+	exit 0
+fi
+
+formattable=$(echo "$staged_files" | grep -E '\.(js|jsx|ts|tsx|svelte|json|css|md|html|yml|yaml)$' || true)
+
+if [ -z "$formattable" ]; then
+	exit 0
+fi
+
+echo "$formattable" | xargs bunx prettier --check
+status=$?
+
+if [ $status -ne 0 ]; then
+	echo ""
+	echo "Formatting check failed. Run 'bun run format' to fix, then re-stage and commit."
+	exit 1
+fi
+
+exit 0
