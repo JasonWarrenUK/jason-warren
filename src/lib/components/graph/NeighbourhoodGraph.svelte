@@ -134,7 +134,12 @@
 			style="stroke: {centreColour}"
 		/>
 		<circle class="neighbourhood__dot" {cx} {cy} r="2.8" style="fill: {centreColour}" />
-		<text class="neighbourhood__centre-label" x={cx} y={cy + centreRadius + 18} text-anchor="middle">
+		<text
+			class="neighbourhood__centre-label"
+			x={cx}
+			y={cy + centreRadius + 18}
+			text-anchor="middle"
+		>
 			{centre.name}
 		</text>
 	</g>

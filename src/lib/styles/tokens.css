@@ -109,22 +109,38 @@
 		var(--color-gray-1) calc(100% - var(--warmth)),
 		var(--color-cinnamon-1)
 	);
-	--color-surface-raised: color-mix(in oklab, white calc(100% - var(--warmth)), var(--color-cinnamon-1));
+	--color-surface-raised: color-mix(
+		in oklab,
+		white calc(100% - var(--warmth)),
+		var(--color-cinnamon-1)
+	);
 	--color-surface-sunken: color-mix(
 		in oklab,
 		var(--color-gray-2) calc(100% - var(--warmth)),
 		var(--color-cinnamon-2)
 	);
-	--color-border: color-mix(in oklab, var(--color-gray-3) calc(100% - var(--warmth)), var(--color-cinnamon-3));
+	--color-border: color-mix(
+		in oklab,
+		var(--color-gray-3) calc(100% - var(--warmth)),
+		var(--color-cinnamon-3)
+	);
 	--color-border-strong: color-mix(
 		in oklab,
 		var(--color-gray-4) calc(100% - var(--warmth)),
 		var(--color-cinnamon-4)
 	);
 	/* One step lighter than border, for the graph graticule. */
-	--color-grid: color-mix(in oklab, var(--color-gray-2) calc(100% - var(--warmth)), var(--color-cinnamon-3));
+	--color-grid: color-mix(
+		in oklab,
+		var(--color-gray-2) calc(100% - var(--warmth)),
+		var(--color-cinnamon-3)
+	);
 
-	--color-text: color-mix(in oklab, var(--color-gray-6) calc(100% - var(--warmth)), var(--color-cinnamon-6));
+	--color-text: color-mix(
+		in oklab,
+		var(--color-gray-6) calc(100% - var(--warmth)),
+		var(--color-cinnamon-6)
+	);
 	--color-text-subtle: color-mix(
 		in oklab,
 		var(--color-gray-5) calc(100% - var(--warmth)),

@@ -4,7 +4,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { getHeroPool, HERO_COUNT, filterProjects } from './queries.js';
+import { getHeroPool, HERO_COUNT, filterProjects, getTimelineProjects } from './queries.js';
 import { heroScore } from './scoring.js';
 import type { Project, ProjectKind, ProjectRole, ProjectStatus, TechTag } from './types.js';
 
@@ -158,15 +158,17 @@ describe('getHeroPool — pool completeness', () => {
 	// guarding, and it holds for the real registry just as it does for the
 	// synthetic fixtures in the "ordering" describe above.
 	it('real-registry top-N is deterministic and score-ordered', () => {
-		const a = getHeroPool(BASE_NOW).slice(0, HERO_COUNT).map((p) => p.slug);
-		const b = getHeroPool(BASE_NOW).slice(0, HERO_COUNT).map((p) => p.slug);
+		const a = getHeroPool(BASE_NOW)
+			.slice(0, HERO_COUNT)
+			.map((p) => p.slug);
+		const b = getHeroPool(BASE_NOW)
+			.slice(0, HERO_COUNT)
+			.map((p) => p.slug);
 		expect(a).toEqual(b);
 
 		const pool = getHeroPool(BASE_NOW);
 		for (let i = 1; i < pool.length; i++) {
-			expect(heroScore(pool[i - 1], BASE_NOW)).toBeGreaterThanOrEqual(
-				heroScore(pool[i], BASE_NOW)
-			);
+			expect(heroScore(pool[i - 1], BASE_NOW)).toBeGreaterThanOrEqual(heroScore(pool[i], BASE_NOW));
 		}
 	});
 });
@@ -255,6 +257,50 @@ function searchHaystack(p: Project): string {
 		.join(' ')
 		.toLowerCase();
 }
+
+// ---------------------------------------------------------------------------
+// getTimelineProjects — hide-only filter, archived/uncategorised kept
+// ---------------------------------------------------------------------------
+
+describe('getTimelineProjects — hide filter', () => {
+	it('excludes hidden projects but keeps archived and uncategorised', () => {
+		const projects = [
+			makeProject('visible', { commits: 200, lastCommit: '2026-06-18' }),
+			makeProject('hidden', { commits: 500, hide: true, lastCommit: '2026-06-17' }),
+			makeProject('archived-kept', { status: 'archived', lastCommit: '2025-01-01' }),
+			makeProject('uncategorised-kept', { status: 'uncategorised', lastCommit: '2025-06-01' })
+		];
+		const timeline = getTimelineProjects(projects);
+		const slugs = timeline.map((p) => p.slug);
+		expect(slugs).not.toContain('hidden');
+		expect(slugs).toContain('visible');
+		expect(slugs).toContain('archived-kept');
+		expect(slugs).toContain('uncategorised-kept');
+	});
+});
+
+describe('getTimelineProjects — deterministic ordering', () => {
+	it('orders newest inception first, slug ascending as a tiebreak', () => {
+		const projects = [
+			makeProject('zebra', { lastCommit: '2025-01-01' }),
+			makeProject('apple', { lastCommit: '2025-01-01' }),
+			makeProject('newest', { lastCommit: '2026-06-18' })
+		];
+		const timeline = getTimelineProjects(projects);
+		expect(timeline.map((p) => p.slug)).toEqual(['newest', 'apple', 'zebra']);
+	});
+
+	it('is deterministic across repeated calls and independent of input order', () => {
+		const projects = [
+			makeProject('gamma', { lastCommit: '2025-03-01' }),
+			makeProject('alpha', { lastCommit: '2026-01-01' }),
+			makeProject('beta', { lastCommit: '2025-03-01' })
+		];
+		const a = getTimelineProjects(projects).map((p) => p.slug);
+		const b = getTimelineProjects([...projects].reverse()).map((p) => p.slug);
+		expect(a).toEqual(b);
+	});
+});
 
 describe('filterProjects — query search', () => {
 	it('returns all projects when query is absent', () => {

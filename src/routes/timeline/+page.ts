@@ -1,28 +1,78 @@
-import { getAllProjectsByInception } from '$lib/data/queries.js';
-import { getProjectGraph } from '$lib/data/graph.js';
+import sources from '$lib/data/sources.json';
+import { getTimelineProjects } from '$lib/data/queries.js';
+import { getProjectGraph, selectLabelledSlugs } from '$lib/data/graph.js';
+import { dayDiff } from '$lib/components/graph/timeline-layout.js';
+import type { TimelineRail, TimelineLineage } from '$lib/components/graph/timeline-layout.js';
+import type { Project } from '$lib/data/types.js';
+
+/**
+ * How many rails get a standing (always-visible) label on the timeline. Lower
+ * than the map's `MAP_LABEL_COUNT` (10) because the timeline packs rails into
+ * a narrower, denser column grid than the map's force layout — see
+ * `TimelineChart.svelte`'s `.timeline__label` opacity gating, which mirrors
+ * `ProjectMap.svelte`'s `--labelled`/`--pinned`/hover idiom so only a handful
+ * of names compete for space at rest and the rest reveal on hover/focus/pin.
+ */
+const TIMELINE_LABEL_COUNT = 6;
+
+/** A project counts as still-live once its most recent commit falls within this many days of `now`. */
+const STILL_LIVE_WINDOW_DAYS = 56;
+
+/**
+ * Still-live rule (deterministic, honest — metrics only expose lifetime +
+ * trailing-4-week totals, no per-commit histogram): a project reads as
+ * still-live when its status is live/wip AND its last commit sits within
+ * `STILL_LIVE_WINDOW_DAYS` of build-time `now`, OR it has recorded commits in
+ * the trailing four weeks (`metrics.commitsRecent`) — the one signal the
+ * manifest carries that directly means "touched very recently".
+ */
+function isStillLive(project: Project, nowIso: string): boolean {
+	const statusIsActive = project.status === 'live' || project.status === 'wip';
+	const recentByDate =
+		statusIsActive &&
+		project.lastCommit !== undefined &&
+		dayDiff(project.lastCommit, nowIso) <= STILL_LIVE_WINDOW_DAYS;
+	const recentByCommits = (project.metrics?.commitsRecent ?? 0) > 0;
+	return recentByDate || recentByCommits;
+}
 
 export function load() {
-	const ordered = getAllProjectsByInception();
+	// Build-time now, from the last sync — byte-stable across re-runs of the
+	// same build, matching the pattern in queries.ts / scoring.ts.
+	const now = sources.lastSyncedAt;
 
-	const rows = ordered.map((project) => {
-		const inception = project.firstCommit ?? project.lastCommit;
+	const projects = getTimelineProjects();
+	const labelledSlugs = selectLabelledSlugs(projects, TIMELINE_LABEL_COUNT);
+
+	const rails: TimelineRail[] = projects.map((project) => {
+		const firstCommit = project.firstCommit ?? null;
+		const lastCommit = project.lastCommit ?? null;
 		return {
 			slug: project.slug,
 			name: project.name,
 			status: project.status,
-			year: inception ? inception.slice(0, 4) : null
+			tagline: project.tagline,
+			role: project.contribution.role,
+			firstCommit,
+			lastCommit,
+			durationDays: firstCommit && lastCommit ? dayDiff(firstCommit, lastCommit) : null,
+			stillLive: isStillLive(project, now),
+			labelled: labelledSlugs.has(project.slug)
 		};
 	});
 
-	const indexBySlug = new Map(ordered.map((project, index) => [project.slug, index]));
+	const knownSlugs = new Set(rails.map((r) => r.slug));
 
-	// Extraction lineages, expressed as pairs of row indices for the connector curves.
-	const connectors = getProjectGraph()
+	// Extraction lineages, carrying the authored `note` through (previously
+	// dropped by the old +page.ts — a real bug flagged in the timeline plan).
+	const lineage: TimelineLineage[] = getProjectGraph()
 		.edges.filter((edge) => edge.kind === 'extraction')
+		.filter((edge) => knownSlugs.has(edge.source) && knownSlugs.has(edge.target))
 		.map((edge) => ({
-			from: indexBySlug.get(edge.source) ?? 0,
-			to: indexBySlug.get(edge.target) ?? 0
+			source: edge.source,
+			target: edge.target,
+			note: edge.note ?? null
 		}));
 
-	return { rows, connectors };
+	return { rails, lineage, now };
 }

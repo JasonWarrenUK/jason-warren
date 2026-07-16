@@ -6,13 +6,13 @@ description: Forward roadmap for the portfolio site plus Drift decoupling — br
 
 The site is live and substantially built (full routes, graph/timeline/map/toolkit views, 30+ typed projects, the Drift CLI). This roadmap captures what comes next: deepening the site as an artefact, and decoupling Drift's engine from its portfolio-specific couplings so it could power any frontend.
 
-|              | Status                                                                                                                                                                                                                                                                                                                                       | Next Up                                                              | Blocked                                                                   |
-| ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------- | ------------------------------------------------------------------------- |
-| **Content**  | 30+ entries, themes, threads, About, CV/hire; depth audit complete; Colophon/drift-engine rebuilt post-M5 (1CO.5); style-guide pass complete (1CO.8) — **Milestone 1 done**                                                                                                                                                                  | _None._                                                              | _None._                                                                   |
-| **Features** | All 8 tasks done: search, multi-select, cross-view continuity, relayout, tech constellation, lineage edges, polish pass — **Milestone 2 done**                                                                                                                                                                                              | _None._                                                              | _None._                                                                   |
-| **Design**   | Reasonable Colors tokens, dark mode                                                                                                                                                                                                                                                                                                          | Visual direction (3DE.0) — M2 complete, now unblocked                | 3DE.1/3DE.5 blocked on 3DE.0; 3DE.3 blocked on 3DE.1; 3DE.4 blocked on 3DE.5; 3DE.2 blocked on 3DE.3/3DE.4 |
-| **Quality**  | Strict types, data-integrity tests, prerendered                                                                                                                                                                                                                                                                                              | Test coverage (4QU.5) and OG coverage (4QU.4) after M3               | All M4 tasks blocked on M3; a11y (4QU.7) blocked on 4QU.1                 |
-| **Drift**    | 2.5k-line CLI, manifest registry, cache, verbs, Bun migration, boundary doc, config layer, tag taxonomy (5DR.4), engine schema (5DR.5), engine/integration split (5DR.6), branch awareness + staging pipeline (5DR.7), init scaffold (5DR.13), audit verb (5DR.11), author/pin verbs (5DR.15/5DR.16), `flag` verb (5DR.17) — **M5 complete** | Colophon/drift-engine Drift story (1CO.5) delivered                  | Tests & docs (M6) blocked on M3 + M5                                      |
+|              | Status                                                                                                                                                                                                                                                                                                                                       | Next Up                                                | Blocked                                                                                                    |
+| ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------- |
+| **Content**  | 30+ entries, themes, threads, About, CV/hire; depth audit complete; Colophon/drift-engine rebuilt post-M5 (1CO.5); style-guide pass complete (1CO.8) — **Milestone 1 done**                                                                                                                                                                  | _None._                                                | _None._                                                                                                    |
+| **Features** | All 8 tasks done: search, multi-select, cross-view continuity, relayout, tech constellation, lineage edges, polish pass — **Milestone 2 done**                                                                                                                                                                                               | _None._                                                | _None._                                                                                                    |
+| **Design**   | Reasonable Colors tokens, dark mode                                                                                                                                                                                                                                                                                                          | Visual direction (3DE.0) — M2 complete, now unblocked  | 3DE.1/3DE.5 blocked on 3DE.0; 3DE.3 blocked on 3DE.1; 3DE.4 blocked on 3DE.5; 3DE.2 blocked on 3DE.3/3DE.4 |
+| **Quality**  | Strict types, data-integrity tests, prerendered                                                                                                                                                                                                                                                                                              | Test coverage (4QU.5) and OG coverage (4QU.4) after M3 | All M4 tasks blocked on M3; a11y (4QU.7) blocked on 4QU.1                                                  |
+| **Drift**    | 2.5k-line CLI, manifest registry, cache, verbs, Bun migration, boundary doc, config layer, tag taxonomy (5DR.4), engine schema (5DR.5), engine/integration split (5DR.6), branch awareness + staging pipeline (5DR.7), init scaffold (5DR.13), audit verb (5DR.11), author/pin verbs (5DR.15/5DR.16), `flag` verb (5DR.17) — **M5 complete** | Colophon/drift-engine Drift story (1CO.5) delivered    | Tests & docs (M6) blocked on M3 + M5                                                                       |
 
 ---
 
@@ -112,7 +112,8 @@ _None._
 
 - [ ] 3DE.1. Typography pass (scale, rhythm, measure) across all routes — **depends on 3DE.0**
 - [ ] 3DE.3. Motion pass: meaningful transitions, respect `prefers-reduced-motion` — **depends on 3DE.1**
-- [ ] 3DE.4. Refine graph aesthetics (edge styling, clustering legibility, constellation view) — **depends on 3DE.5**
+- [ ] 3DE.6. Drastically improve the `/map` graph layout for legibility — the force-directed layout in `ProjectMap.svelte` produces crowded/overlapping clusters and unstable relayouts; target clearer node spacing, edge-crossing reduction, and readable clustering — **depends on 3DE.0**
+- [ ] 3DE.4. Refine graph aesthetics (edge styling, clustering legibility, constellation view) — **depends on 3DE.5, 3DE.6**
 - [ ] 3DE.5. Consistency sweep of semantic colour aliases vs Reasonable Colors usage — **depends on 3DE.0**
 - [ ] 3DE.2. Responsive audit: map / timeline / grids on small viewports — **depends on 3DE.3, 3DE.4**
 
@@ -171,6 +172,7 @@ _None._
 
 - [ ] 5DR.18. `drift relate <slug> --extracted-from | --powers | --related <target>` verb: writes a `ProjectRelationship` into the slug's `.ts` overlay (creating it via `createOverlayIfAbsent` if needed); target validated against real project slugs; mirrors the `flag`/`author`/`pin` overlay-splice pattern — **depends on 5DR.6**
 - [ ] 5DR.19. `drift link <source-tag> --leads-to | --replaced-by <target-tag>` verb: writes a `TechRelationship` into `tech-relationships.ts`; source/target validated against real tag labels (mirrors the existing data-test contract on `tech-relationships.ts`) — **depends on 5DR.6**
+- [ ] 5DR.20. Intra-span dormancy signal: extend the fingerprint engine to sample commit dates (not just `firstCommit`/`lastCommit`) so a repo's activity gaps become detectable — e.g. a periodic commit-date histogram or an explicit `dormantRanges` field alongside the existing branch-aware measurement in 5DR.7. Unblocks `/timeline` rendering a project's rail as dotted during genuinely dormant stretches (today's `ProjectMetrics` only exposes lifetime totals and a trailing-4-week recency window — verified against `sources.json` — which cannot locate a gap anywhere within a project's lifespan, only whether it's dormant right now) — **depends on 5DR.7**
 
 <a name="m5-blocked"><h4>Blocked (Milestone 5)</h4></a>
 
@@ -274,12 +276,15 @@ flowchart TD
 	3DE.3["`*3DE.3*<br/>**Design**<br/>motion pass`"]:::blocked
 	3DE.4["`*3DE.4*<br/>**Design**<br/>graph aesthetics`"]:::blocked
 	3DE.5["`*3DE.5*<br/>**Design**<br/>colour consistency`"]:::blocked
+	3DE.6["`*3DE.6*<br/>**Design**<br/>map layout overhaul`"]:::blocked
 
 	%% M3 — deps
 	3DE.0 --> 3DE.1
 	3DE.0 --> 3DE.5
+	3DE.0 --> 3DE.6
 	3DE.1 --> 3DE.3
 	3DE.5 --> 3DE.4
+	3DE.6 --> 3DE.4
 	3DE.3 --> 3DE.2
 	3DE.4 --> 3DE.2
 
@@ -331,6 +336,7 @@ flowchart TD
 	5DR.17["`*5DR.17*<br/>**Drift**<br/>flag verb`"]:::done
 	5DR.18["`*5DR.18*<br/>**Drift**<br/>relate verb`"]:::open
 	5DR.19["`*5DR.19*<br/>**Drift**<br/>link verb`"]:::open
+	5DR.20["`*5DR.20*<br/>**Drift**<br/>dormancy signal`"]:::open
 
 	%% M5 — deps
 	5DR.0 --> 5DR.1
@@ -349,6 +355,7 @@ flowchart TD
 	5DR.14 --> 5DR.6
 	5DR.6 --> 5DR.18
 	5DR.6 --> 5DR.19
+	5DR.7 --> 5DR.20
 
 	%% M5 track completers → m5
 	5DR.11 --> m5
@@ -357,6 +364,7 @@ flowchart TD
 	5DR.17 --> m5
 	5DR.18 --> m5
 	5DR.19 --> m5
+	5DR.20 --> m5
 
 	%% M6 — inbound from M3 and M5
 	m3 --> 5DR.8

@@ -12,6 +12,20 @@
  *
  * The last assertion is structural (verified against the schema and constant)
  * rather than via subprocess, since diffFingerprint is not exported.
+ *
+ * Heavy blocking I/O warning: this file's spawnSync calls (up to 30s each)
+ * block their worker's event loop long enough to occasionally miss vitest's
+ * internal worker RPC heartbeat — a "[vitest-worker]: Timeout calling
+ * onTaskUpdate" that fails the process even when every test here passed.
+ * Sharing a worker pool with the rest of the suite made this worse (cross-
+ * file contention), so package.json's "test" script runs this file as its
+ * own separate vitest invocation — but CI's slower/more constrained runner
+ * can still hit the heartbeat timeout on this file ALONE (seen at 79s wall
+ * time vs ~40-60s locally), so that invocation is wrapped by
+ * scripts/run-drift-tests.sh, which tolerates ONLY that exact failure
+ * signature (RPC timeout + a clean "Tests N passed (N)" summary) and still
+ * fails on any real test failure. Don't fold this back into a plain
+ * `vitest run` without keeping both the isolation and the wrapper.
  */
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
@@ -436,7 +450,13 @@ describe('drift tech', () => {
 		expect(source).toContain('Original note.');
 		expect(source).toContain('firstUsed: "2019-06-15"');
 
-		const repeat = runVerbInSandbox(configPath, ['tech', 'set', 'Ink', '--first-used', '2019-06-15']);
+		const repeat = runVerbInSandbox(configPath, [
+			'tech',
+			'set',
+			'Ink',
+			'--first-used',
+			'2019-06-15'
+		]);
 		expect(repeat.status, repeat.stderr).toBe(0);
 		expect(repeat.stdout).toMatch(/already/i);
 		expect(readFileSync(join(dir, 'tech-overlays.ts'), 'utf8')).toBe(source);
@@ -453,7 +473,13 @@ describe('drift tech', () => {
 		expect(unknown.status).toBe(1);
 		expect(unknown.stderr).toMatch(/unknown tech label 'Bogus'/i);
 
-		const badDate = runVerbInSandbox(configPath, ['tech', 'set', 'Ink', '--first-used', '2019-13-01']);
+		const badDate = runVerbInSandbox(configPath, [
+			'tech',
+			'set',
+			'Ink',
+			'--first-used',
+			'2019-13-01'
+		]);
 		expect(badDate.status).toBe(1);
 		expect(badDate.stderr).toMatch(/ISO date/i);
 	});
@@ -702,7 +728,13 @@ describe('drift theme', () => {
 		expect(source).toContain('id: "new-theme"');
 		expect(source).toContain('slugs: ["alpha", "gamma"]');
 
-		const duplicate = runVerbInSandbox(configPath, ['theme', 'create', 'first-theme', '--name', 'X']);
+		const duplicate = runVerbInSandbox(configPath, [
+			'theme',
+			'create',
+			'first-theme',
+			'--name',
+			'X'
+		]);
 		expect(duplicate.status).toBe(1);
 		expect(duplicate.stderr).toMatch(/already exists/i);
 	});
@@ -1592,10 +1624,7 @@ describe('drift relate', () => {
 
 	// ---- project mode: --remove ----------------------------------------------
 
-	function writeNibWithRelationships(
-		dir: string,
-		relationships: string[]
-	): string {
+	function writeNibWithRelationships(dir: string, relationships: string[]): string {
 		const overlayPath = join(dir, 'projects', 'nib.ts');
 		writeFileSync(
 			overlayPath,
@@ -1938,7 +1967,7 @@ describe('drift relate', () => {
 		expect(result.stdout).toMatch(/removed/i);
 
 		const modified = readFileSync(path, 'utf8');
-		expect(modified).not.toContain("source: \"Deno\"");
+		expect(modified).not.toContain('source: "Deno"');
 		expect(modified).toContain('source: "Node.js"');
 		const openBraces = (modified.match(/\{/g) ?? []).length;
 		const closeBraces = (modified.match(/\}/g) ?? []).length;
@@ -2581,12 +2610,7 @@ describe('drift sync', () => {
 
 		expect(result.status, result.stderr).toBe(0);
 		const parsed = JSON.parse(readFileSync(join(dir, 'sources.json'), 'utf8'));
-		expect(parsed.sources[slug].framework).toEqual([
-			'next',
-			'react',
-			'vite',
-			'tailwindcss-3'
-		]);
+		expect(parsed.sources[slug].framework).toEqual(['next', 'react', 'vite', 'tailwindcss-3']);
 	});
 
 	it('falls back to the versionless tailwind identity for unparseable ranges', () => {
@@ -2662,18 +2686,8 @@ describe('drift sync', () => {
 		const parsed = JSON.parse(readFileSync(join(dir, 'sources.json'), 'utf8'));
 		const entry = parsed.sources[slug];
 		expect(entry.runtime).toEqual(['deno']);
-		expect(entry.framework).toEqual([
-			'oak',
-			'@sveltejs/kit',
-			'svelte-5',
-			'vite',
-			'tailwindcss-4'
-		]);
-		expect(entry.database).toEqual([
-			'neo4j-driver',
-			'@supabase/supabase-js',
-			'supabase-postgres'
-		]);
+		expect(entry.framework).toEqual(['oak', '@sveltejs/kit', 'svelte-5', 'vite', 'tailwindcss-4']);
+		expect(entry.database).toEqual(['neo4j-driver', '@supabase/supabase-js', 'supabase-postgres']);
 	});
 
 	it('detects Supabase and its PostgreSQL foundation from a package dependency', () => {
@@ -2721,10 +2735,7 @@ describe('drift sync', () => {
 			join(dir, 'repo', 'engine.svelte.ts'),
 			`import { Story } from 'inkjs';\nexport const story = new Story('');\n`
 		);
-		writeFileSync(
-			join(dir, 'repo', 'files.ts'),
-			`export const source = Bun.file('input.json');\n`
-		);
+		writeFileSync(join(dir, 'repo', 'files.ts'), `export const source = Bun.file('input.json');\n`);
 		const gitEnv = makeGitEnv();
 		spawnSync('git', ['add', '-A'], { cwd: join(dir, 'repo'), env: gitEnv, encoding: 'utf8' });
 		spawnSync('git', ['commit', '-m', 'add source signals', '--no-gpg-sign'], {
@@ -2763,13 +2774,17 @@ describe('drift sync', () => {
 		expect(parsed.sources[slug].techFirstSeen?.inkjs).toBeUndefined();
 	});
 
-	it('dates a dependency to the commit that introduced it, not the repo\'s inception', () => {
+	it("dates a dependency to the commit that introduced it, not the repo's inception", () => {
 		// makeSyncSandbox's init commit (package.json with svelte/@sveltejs/kit/
 		// @tailwindcss/vite) is dated 2000-01-01 by makeGitEnv. Add react in a
 		// LATER commit, dated explicitly, to prove techFirstSeen decouples from
 		// firstCommit — the core regression for the-work's Svelte 5 bug.
 		const repoPath = join(dir, 'repo');
-		const laterEnv = { ...makeGitEnv(), GIT_AUTHOR_DATE: '2025-05-01T00:00:00+00:00', GIT_COMMITTER_DATE: '2025-05-01T00:00:00+00:00' };
+		const laterEnv = {
+			...makeGitEnv(),
+			GIT_AUTHOR_DATE: '2025-05-01T00:00:00+00:00',
+			GIT_COMMITTER_DATE: '2025-05-01T00:00:00+00:00'
+		};
 		writeFileSync(
 			join(repoPath, 'package.json'),
 			JSON.stringify({
@@ -2813,10 +2828,22 @@ describe('drift sync', () => {
 		// committed, and the v5 commit genuinely is its only migration.
 		const repoPath = join(dir, 'repo');
 		rmSync(join(repoPath, '.git'), { recursive: true, force: true });
-		const v4Env = { ...makeGitEnv(), GIT_AUTHOR_DATE: '2022-01-01T00:00:00+00:00', GIT_COMMITTER_DATE: '2022-01-01T00:00:00+00:00' };
+		const v4Env = {
+			...makeGitEnv(),
+			GIT_AUTHOR_DATE: '2022-01-01T00:00:00+00:00',
+			GIT_COMMITTER_DATE: '2022-01-01T00:00:00+00:00'
+		};
 		spawnSync('git', ['init', '-b', 'main'], { cwd: repoPath, env: v4Env, encoding: 'utf8' });
-		spawnSync('git', ['config', 'user.email', 'test@example.com'], { cwd: repoPath, env: v4Env, encoding: 'utf8' });
-		spawnSync('git', ['config', 'user.name', 'Test'], { cwd: repoPath, env: v4Env, encoding: 'utf8' });
+		spawnSync('git', ['config', 'user.email', 'test@example.com'], {
+			cwd: repoPath,
+			env: v4Env,
+			encoding: 'utf8'
+		});
+		spawnSync('git', ['config', 'user.name', 'Test'], {
+			cwd: repoPath,
+			env: v4Env,
+			encoding: 'utf8'
+		});
 		writeFileSync(
 			join(repoPath, 'package.json'),
 			JSON.stringify({ devDependencies: { svelte: '^4.2.0' } })
@@ -2828,7 +2855,11 @@ describe('drift sync', () => {
 			encoding: 'utf8'
 		});
 
-		const v5Env = { ...makeGitEnv(), GIT_AUTHOR_DATE: '2025-05-01T00:00:00+00:00', GIT_COMMITTER_DATE: '2025-05-01T00:00:00+00:00' };
+		const v5Env = {
+			...makeGitEnv(),
+			GIT_AUTHOR_DATE: '2025-05-01T00:00:00+00:00',
+			GIT_COMMITTER_DATE: '2025-05-01T00:00:00+00:00'
+		};
 		writeFileSync(
 			join(repoPath, 'package.json'),
 			JSON.stringify({ devDependencies: { svelte: '^5.45.6' } })
@@ -2853,7 +2884,11 @@ describe('drift sync', () => {
 	it('monorepo: takes the earliest date across workspaces for the same identity', () => {
 		const repoPath = join(dir, 'repo');
 		mkdirSync(join(repoPath, 'apps', 'web'), { recursive: true });
-		const earlyEnv = { ...makeGitEnv(), GIT_AUTHOR_DATE: '2021-01-01T00:00:00+00:00', GIT_COMMITTER_DATE: '2021-01-01T00:00:00+00:00' };
+		const earlyEnv = {
+			...makeGitEnv(),
+			GIT_AUTHOR_DATE: '2021-01-01T00:00:00+00:00',
+			GIT_COMMITTER_DATE: '2021-01-01T00:00:00+00:00'
+		};
 		writeFileSync(
 			join(repoPath, 'apps', 'web', 'package.json'),
 			JSON.stringify({ dependencies: { vite: '^5.0.0' } })
@@ -2867,7 +2902,11 @@ describe('drift sync', () => {
 
 		// Root package.json (from makeSyncSandbox) does not have vite; add it now,
 		// later than the nested workspace's vite commit above.
-		const laterEnv = { ...makeGitEnv(), GIT_AUTHOR_DATE: '2024-01-01T00:00:00+00:00', GIT_COMMITTER_DATE: '2024-01-01T00:00:00+00:00' };
+		const laterEnv = {
+			...makeGitEnv(),
+			GIT_AUTHOR_DATE: '2024-01-01T00:00:00+00:00',
+			GIT_COMMITTER_DATE: '2024-01-01T00:00:00+00:00'
+		};
 		writeFileSync(
 			join(repoPath, 'package.json'),
 			JSON.stringify({
@@ -2945,11 +2984,7 @@ describe('drift sync', () => {
 		expect(entry.framework).toEqual(
 			expect.arrayContaining(['@sveltejs/kit', 'svelte-5', 'fastapi'])
 		);
-		expect(entry.database).toEqual([
-			'@sqlite.org/sqlite-wasm',
-			'supabase-py',
-			'supabase-postgres'
-		]);
+		expect(entry.database).toEqual(['@sqlite.org/sqlite-wasm', 'supabase-py', 'supabase-postgres']);
 	});
 
 	it('merges companion stack and remotes while retaining primary metrics', () => {

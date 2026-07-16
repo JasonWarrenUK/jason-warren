@@ -396,9 +396,7 @@ describe('computeAdoptionLayout', () => {
 		// JavaScript→React bug). No leads-to edge may ever emit 'handover';
 		// same-lane leads-to uses the full-width 'same-lane-branch' instead.
 		const result = computeAdoptionLayout(FIXTURE_ITEMS, FIXTURE_EDGES, GEO);
-		const bySourceTarget = new Map(
-			result.connectors.map((c) => [`${c.source}→${c.target}`, c])
-		);
+		const bySourceTarget = new Map(result.connectors.map((c) => [`${c.source}→${c.target}`, c]));
 		for (const edge of FIXTURE_EDGES) {
 			if (edge.kind !== 'leads-to') continue;
 			const connector = bySourceTarget.get(`${edge.source}→${edge.target}`);

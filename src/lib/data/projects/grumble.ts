@@ -18,7 +18,5 @@ export const grumble: AuthoredProject = {
 		'Undercut modelled with a separate boxWinner field: "who scored" and "who won the box" tracked independently, including the equal-deadwood edge case.'
 	],
 	relationships: [],
-	tags: [
-		{ label: 'Ephemeral / in-memory', kind: 'data' }
-	]
+	tags: [{ label: 'Ephemeral / in-memory', kind: 'data' }]
 };

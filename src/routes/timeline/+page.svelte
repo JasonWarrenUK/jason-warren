@@ -7,20 +7,21 @@
 
 <Seo
 	title="Timeline | Jason Warren"
-	description="Every project ordered by when it started, most recently begun at the top. Extraction lineages are drawn between them: which libraries came out of which applications and when."
+	description="Every project as a lifespan, most recent activity at the top, running proportionally back to its inception."
 />
 
 <div class="page">
 	<header class="page__header">
 		<h1>Timeline</h1>
 		<p class="page__intro">
-			Projects ordered by their inception date, most recently begun at the top. The curves trace
-			extraction lineages: where a library was pulled out of an application, you can see the two
-			threads and how far apart in time they sit.
+			Every project as a vertical lifespan: the top end marks its most recent activity, the bottom
+			its inception, and the length between is genuinely proportional to time. Most recently active
+			work sits at the top; older, quieter projects sink further down. Position left-to-right
+			carries no meaning of its own, it's only there so overlapping lifespans don't collide.
 		</p>
 	</header>
 
-	<TimelineChart rows={data.rows} connectors={data.connectors} />
+	<TimelineChart rails={data.rails} lineage={data.lineage} now={data.now} />
 </div>
 
 <style>

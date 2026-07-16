@@ -56,9 +56,9 @@ Always define semantic aliases; never use Reasonable Colors variables directly i
 
 ```css
 :root {
-  --color-primary: var(--color-azure-3);
-  --color-primary-bg: var(--color-azure-1);
-  --color-primary-text: var(--color-azure-6);
+	--color-primary: var(--color-azure-3);
+	--color-primary-bg: var(--color-azure-1);
+	--color-primary-text: var(--color-azure-6);
 }
 ```
 
@@ -76,16 +76,23 @@ Commit frequently with granular, single-purpose changes.
 
 ```md
 # {{ title }}
+
 ## Overview
+
 {{ overview }}
+
 ## Summary
+
 {{ absurd metaphor }}
+
 > [!TIP]
 > {{ tldr }}
+
 ---
+
 ## Changes
-{{ changes with collapsible details }}
----
+
+## {{ changes with collapsible details }}
 ```
 
 ---

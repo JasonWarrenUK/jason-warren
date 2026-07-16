@@ -28,7 +28,7 @@ authentication.
 
 - `browser_navigate` to `http://localhost:<port>/<route>`
 - `browser_take_screenshot` (full page or viewport) is the fastest way to
-  *see* a layout/visual change — read the saved PNG with the Read tool.
+  _see_ a layout/visual change — read the saved PNG with the Read tool.
 - `browser_snapshot` gives the accessibility tree, which is the fast way to
   confirm ARIA roles/labels moved where a fix intended (e.g. confirming an
   interactive `role="button"` sits on a specific SVG child, not its parent).
@@ -60,7 +60,7 @@ authentication.
   see `scripts/check-drift.test.ts`'s `makeOverlaySandbox`/`runVerbInSandbox`
   helpers for the pattern if verifying a new `drift` verb by hand in a
   scratch directory (`DRIFT_CONFIG=<path-to-drift.config.mjs> bun run
-  scripts/check-drift.js <verb> ...`).
+scripts/check-drift.js <verb> ...`).
 
 ## Cleanup
 

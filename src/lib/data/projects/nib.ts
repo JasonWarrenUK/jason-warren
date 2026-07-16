@@ -24,7 +24,5 @@ export const nib: AuthoredProject = {
 			note: "The Ink runtime was always separable from the game's content; once that was clear it moved into Nib, two files behind a single onInit seam."
 		}
 	],
-	tags: [
-		{ label: 'No persistence', kind: 'data' }
-	]
+	tags: [{ label: 'No persistence', kind: 'data' }]
 };

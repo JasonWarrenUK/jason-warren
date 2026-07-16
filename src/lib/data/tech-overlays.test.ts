@@ -11,7 +11,12 @@ import { describe, it, expect } from 'vitest';
 import { techOverlays, hiddenTechLabels, getTechKindOverrides } from './tech-overlays.js';
 import { CURATED_FIRST_USED, getTechAdoption } from './adoption.js';
 import { projects } from './index.js';
-import { LANGUAGE_TAGS, RUNTIME_TAGS, FRAMEWORK_TAGS, DATABASE_TAGS } from '../../../scripts/tag-taxonomy.js';
+import {
+	LANGUAGE_TAGS,
+	RUNTIME_TAGS,
+	FRAMEWORK_TAGS,
+	DATABASE_TAGS
+} from '../../../scripts/tag-taxonomy.js';
 import type { TagKind, TechSurface } from './types.js';
 
 // The label universe drift itself recognises: every label a project currently
@@ -25,7 +30,15 @@ const allLabels = new Set([
 	)
 ]);
 const VALID_SURFACES: TechSurface[] = ['toolkit', 'map', 'stack', 'relate'];
-const VALID_KINDS: TagKind[] = ['language', 'framework', 'data', 'ai', 'concept', 'tool', 'runtime'];
+const VALID_KINDS: TagKind[] = [
+	'language',
+	'framework',
+	'data',
+	'ai',
+	'concept',
+	'tool',
+	'runtime'
+];
 
 describe('tech overlays', () => {
 	it('every overlay label is a real tag label', () => {

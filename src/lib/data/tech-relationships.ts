@@ -85,5 +85,7 @@ export const techRelationships: TechRelationship[] = [
 	{ kind: 'leads-to', source: 'Svelte 5', target: 'SvelteKit' },
 	{ kind: 'leads-to', source: 'TypeScript', target: 'Svelte 4' },
 	{ kind: 'replaced-by', source: 'Svelte 4', target: 'Svelte 5' },
-	{ kind: 'leads-to', source: 'Ink', target: 'JavaScript' }
+	{ kind: 'leads-to', source: 'Ink', target: 'JavaScript' },
+	{ kind: 'leads-to', source: 'Shell', target: 'Python' },
+	{ kind: 'leads-to', source: 'TypeScript', target: 'Tauri' }
 ];

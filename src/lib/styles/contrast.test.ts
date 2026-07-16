@@ -156,7 +156,8 @@ function resolvePercent(expr: string, scopes: Map<string, string>[]): number {
 		const varMatch = /^var\((--[a-zA-Z0-9-]+)\)$/.exec(subExpr);
 		if (varMatch) {
 			for (const scope of scopes) {
-				if (scope.has(varMatch[1])) return 100 - resolvePercent(scope.get(varMatch[1]) as string, scopes);
+				if (scope.has(varMatch[1]))
+					return 100 - resolvePercent(scope.get(varMatch[1]) as string, scopes);
 			}
 		}
 		const litSub = /^([\d.]+)%$/.exec(subExpr);

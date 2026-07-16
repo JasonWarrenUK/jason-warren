@@ -555,10 +555,7 @@ function assignLanes(
 			if (predecessor !== undefined && laneOf.has(predecessor)) {
 				const predEnd = railEnds.get(predecessor)!;
 				const predGeom = geomByLabel.get(predecessor)!;
-				if (
-					predEnd.lastSuccessor === label &&
-					predGeom.labelRight + geo.labelGap <= dotLeft
-				) {
+				if (predEnd.lastSuccessor === label && predGeom.labelRight + geo.labelGap <= dotLeft) {
 					const lane = laneOf.get(predecessor)!;
 					laneOf.set(label, lane);
 					inherited.add(label);
@@ -576,7 +573,8 @@ function assignLanes(
 				.map((e) => e.source)
 				.sort(byDateThenLabel);
 			const anchor =
-				parents[0] ?? (predecessor !== undefined && laneOf.has(predecessor) ? predecessor : undefined);
+				parents[0] ??
+				(predecessor !== undefined && laneOf.has(predecessor) ? predecessor : undefined);
 
 			let lane = -1;
 			if (anchor !== undefined) {
@@ -1100,9 +1098,7 @@ function chooseDotToDotDetour(
 
 	// Lean away from the obstruction nearest the column's midline.
 	const midX = (parent.x + child.x) / 2;
-	const nearest = obstacles.reduce((a, b) =>
-		Math.abs(b.x - midX) < Math.abs(a.x - midX) ? b : a
-	);
+	const nearest = obstacles.reduce((a, b) => (Math.abs(b.x - midX) < Math.abs(a.x - midX) ? b : a));
 	const side: 1 | -1 = midX - nearest.x >= 0 ? 1 : -1;
 
 	// Slide the curve's fattest point beside the nearest obstacle: an s-curve
@@ -1488,7 +1484,12 @@ function routeEdges(
 						)
 					: null;
 			if (gutter !== null) {
-				return { edge, variant: 'gutter-arrival', corridorX: gutter.corridorX, gutterY: gutter.gutterY };
+				return {
+					edge,
+					variant: 'gutter-arrival',
+					corridorX: gutter.corridorX,
+					gutterY: gutter.gutterY
+				};
 			}
 			const detour = chooseDotToDotDetour(parent, child, parentLane, childLane, occupantsByLane);
 			return {
@@ -1553,7 +1554,11 @@ function routeEdges(
 }
 
 /** Emission phase: a pure RoutedEdge → Connector mapping over the path builders. */
-function emitConnector(routed: RoutedEdge, pointOf: Map<string, RailPoint>, geo: LayoutGeometry): Connector {
+function emitConnector(
+	routed: RoutedEdge,
+	pointOf: Map<string, RailPoint>,
+	geo: LayoutGeometry
+): Connector {
 	const { edge, variant, corridorX } = routed;
 	const parent = pointOf.get(edge.source)!;
 	const child = pointOf.get(edge.target)!;
@@ -1749,7 +1754,8 @@ function computeAllRailSegments(
 		const push = (startX: number, sx: number, kind: LineageKind | null): void => {
 			if (sx - startX <= 0) return; // drop zero-width
 			const prev = segments[segments.length - 1];
-			if (prev && prev.kind === kind) prev.endX = sx; // merge adjacent same-kind
+			if (prev && prev.kind === kind)
+				prev.endX = sx; // merge adjacent same-kind
 			else segments.push({ startX, endX: sx, kind });
 		};
 

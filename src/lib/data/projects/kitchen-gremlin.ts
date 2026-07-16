@@ -18,7 +18,5 @@ export const kitchenGremlin: AuthoredProject = {
 		'Planned: Yjs CRDT as source of truth with SQLite as derived index, plus Voyage-embedding semantic search (designed and specced; not yet built).'
 	],
 	relationships: [],
-	tags: [
-		{ label: 'WASM', kind: 'tool' }
-	]
+	tags: [{ label: 'WASM', kind: 'tool' }]
 };

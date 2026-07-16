@@ -24,14 +24,10 @@ vi.mock('./tech-overlays.js', async (importOriginal) => {
 		...original,
 		techOverlays,
 		hiddenTechLabels: (surface: TechSurface): Set<string> =>
-			new Set(
-				techOverlays.filter((o) => o.hiddenFrom?.includes(surface)).map((o) => o.label)
-			),
+			new Set(techOverlays.filter((o) => o.hiddenFrom?.includes(surface)).map((o) => o.label)),
 		getTechKindOverrides: (): Map<string, TagKind> =>
 			new Map(
-				techOverlays
-					.filter((o) => o.kind !== undefined)
-					.map((o) => [o.label, o.kind as TagKind])
+				techOverlays.filter((o) => o.kind !== undefined).map((o) => [o.label, o.kind as TagKind])
 			)
 	};
 });

@@ -245,10 +245,7 @@ describe('defaultProjectFromManifest', () => {
 	it('derives every companion repository URL in topology order', () => {
 		const project = defaultProjectFromManifest('multi-repo', {
 			remote: 'https://github.com/example/backend',
-			companionRemotes: [
-				'https://github.com/example/frontend',
-				'https://github.com/example/shared'
-			]
+			companionRemotes: ['https://github.com/example/frontend', 'https://github.com/example/shared']
 		});
 
 		expect(project.repoUrl).toBe('https://github.com/example/backend');

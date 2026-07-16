@@ -76,6 +76,27 @@ export function getAllProjectsByInception(): Project[] {
 	return [...projects].sort((a, b) => inception(b).localeCompare(inception(a)));
 }
 
+/**
+ * Projects eligible for the /timeline view: manually-hidden projects only are
+ * excluded. Deliberately DIVERGES from `getHeroPool`, which also drops
+ * archived and uncategorised projects — a timeline is a historical record,
+ * and a finished/archived project is exactly what a lifespan chart wants to
+ * show, so archived/uncategorised are kept here.
+ *
+ * Sort: inception (firstCommit, falling back to lastCommit, then empty)
+ * descending — newest-started first — with slug ascending as a stable
+ * tiebreaker for deterministic prerender, matching `getAllProjectsByInception`
+ * and `getHeroPool`'s own tiebreak discipline.
+ *
+ * @param list - Override the default registry (for testing).
+ */
+export function getTimelineProjects(list: Project[] = projects): Project[] {
+	const inception = (p: Project): string => p.firstCommit ?? p.lastCommit ?? '';
+	return [...list]
+		.filter((p) => !p.hide)
+		.sort((a, b) => inception(b).localeCompare(inception(a)) || a.slug.localeCompare(b.slug));
+}
+
 // ---------------------------------------------------------------------------
 // Filters — designed to be composable via the filterable index
 // ---------------------------------------------------------------------------

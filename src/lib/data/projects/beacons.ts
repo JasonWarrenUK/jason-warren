@@ -23,6 +23,5 @@ export const beacons: AuthoredProject = {
 		'Feature-organised React frontend with an interactive statement-building wizard, framer-motion transitions, and react-window virtualised lists.'
 	],
 	relationships: [],
-	tags: [
-	]
+	tags: []
 };

@@ -18,7 +18,5 @@ export const psyche: AuthoredProject = {
 		'63 storylets and an xUnit suite spanning models, prerequisites, effects, the JSON repository, and end-to-end integration.'
 	],
 	relationships: [],
-	tags: [
-		{ label: 'Document / JSON', kind: 'data' }
-	]
+	tags: [{ label: 'Document / JSON', kind: 'data' }]
 };

@@ -24,6 +24,5 @@ export const craftAndGraft: AuthoredProject = {
 		'PostgreSQL schema and seed scripts driving a product catalogue with an ERD for reference.'
 	],
 	relationships: [],
-	tags: [
-	]
+	tags: []
 };

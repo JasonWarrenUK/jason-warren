@@ -58,7 +58,13 @@ import { parseArgs, promisify } from 'node:util';
 
 const execFileAsync = promisify(execFile);
 // COUPLING [5DR.4]: resolved — tag taxonomy relocated to scripts/tag-taxonomy.js.
-import { EXTENSION_LANGUAGE, LANGUAGE_TAGS, RUNTIME_TAGS, FRAMEWORK_TAGS, DATABASE_TAGS } from './tag-taxonomy.js';
+import {
+	EXTENSION_LANGUAGE,
+	LANGUAGE_TAGS,
+	RUNTIME_TAGS,
+	FRAMEWORK_TAGS,
+	DATABASE_TAGS
+} from './tag-taxonomy.js';
 import { loadConfig, DEFAULTS } from './drift-config.js';
 
 // ---------------------------------------------------------------------------
@@ -533,7 +539,14 @@ async function defaultBranch(repoPath) {
  */
 async function getFirstCommit(repoPath, ref = 'HEAD') {
 	const mineRoots = await git(
-		['log', '--max-parents=0', '--extended-regexp', `--author=${AUTHOR_PATTERN}`, '--format=%cs', ref],
+		[
+			'log',
+			'--max-parents=0',
+			'--extended-regexp',
+			`--author=${AUTHOR_PATTERN}`,
+			'--format=%cs',
+			ref
+		],
 		repoPath
 	);
 	if (mineRoots.ok && mineRoots.out) {
@@ -615,7 +628,12 @@ function detectDependencies(repoPath) {
 				});
 			} else if ('svelte' in allDeps) {
 				framework.push('svelte');
-				detections.push({ identity: 'svelte', file: packagePath, kind: 'pickaxe', needle: 'svelte' });
+				detections.push({
+					identity: 'svelte',
+					file: packagePath,
+					kind: 'pickaxe',
+					needle: 'svelte'
+				});
 			}
 			const svelteVersion = allDeps.svelte;
 			const svelteMajor =
@@ -776,7 +794,9 @@ function detectDependencies(repoPath) {
 					needle: 'npm:vite@'
 				});
 			}
-			const denoTailwind = denoConfig.match(/npm:(?:@tailwindcss\/vite|tailwindcss)@(?:\^|~)?(\d+)/i);
+			const denoTailwind = denoConfig.match(
+				/npm:(?:@tailwindcss\/vite|tailwindcss)@(?:\^|~)?(\d+)/i
+			);
 			if (denoTailwind) {
 				framework.push(`tailwindcss-${denoTailwind[1]}`);
 				detections.push({
@@ -845,7 +865,12 @@ function detectDependencies(repoPath) {
 					});
 				} else if (/flask/i.test(manifestText)) {
 					framework.push('flask');
-					detections.push({ identity: 'flask', file: manifestPath, kind: 'regex', needle: 'flask' });
+					detections.push({
+						identity: 'flask',
+						file: manifestPath,
+						kind: 'regex',
+						needle: 'flask'
+					});
 				} else if (/django/i.test(manifestText)) {
 					framework.push('django');
 					detections.push({
@@ -891,9 +916,7 @@ function detectDependencies(repoPath) {
 		if (projectFile) {
 			const projectPath = join(repoPath, projectFile);
 			const project = readFileSync(projectPath, 'utf8');
-			const target = project.match(
-				/<TargetFramework>net(\d+)(?:\.\d+)?<\/TargetFramework>/i
-			);
+			const target = project.match(/<TargetFramework>net(\d+)(?:\.\d+)?<\/TargetFramework>/i);
 
 			if (target) {
 				runtime.push(`dotnet-${target[1]}`);
@@ -968,7 +991,16 @@ async function dateDetectedTech(repoPath, ref, detections) {
 				// --diff-filter=A is correct here: it filters on the FILE's own
 				// add/delete/modify status, and this query wants the commit that
 				// added the file itself.
-				flags = ['log', '--diff-filter=A', '--follow', '--format=%cs', '--reverse', ref, '--', relPath];
+				flags = [
+					'log',
+					'--diff-filter=A',
+					'--follow',
+					'--format=%cs',
+					'--reverse',
+					ref,
+					'--',
+					relPath
+				];
 			} else if (d.kind === 'pickaxe') {
 				// No --diff-filter here: the pickaxe (-S) already finds the commit
 				// that changed the STRING's occurrence count in the file, which is
@@ -1476,9 +1508,7 @@ function loadManifests() {
 		try {
 			sourceTopology = JSON.parse(readFileSync(topologyPath, 'utf8')).projects ?? {};
 		} catch {
-			process.stderr.write(
-				`Cannot parse ${topologyPath}: continuing without source topology\n`
-			);
+			process.stderr.write(`Cannot parse ${topologyPath}: continuing without source topology\n`);
 		}
 	}
 	warnOnSharedCompanions(sourceTopology);
@@ -3117,7 +3147,15 @@ function createOverlayIfAbsent(slug) {
 // Scalar string fields drift author can set without an editor. pin/hide are
 // deliberately absent (drift flag owns them); arrays and objects need
 // $EDITOR, relate or tag.
-const AUTHOR_EDITABLE_FIELDS = ['name', 'tagline', 'blurb', 'description', 'kind', 'status', 'liveUrl'];
+const AUTHOR_EDITABLE_FIELDS = [
+	'name',
+	'tagline',
+	'blurb',
+	'description',
+	'kind',
+	'status',
+	'liveUrl'
+];
 const AUTHOR_FIELD_ENUMS = {
 	kind: ['app', 'game', 'website', 'toy', 'library', 'tool', 'tui', 'repo'],
 	status: ['live', 'wip', 'finished', 'prototype', 'archived', 'uncategorised']
@@ -3627,9 +3665,7 @@ function spliceObjectProperty(text, sf, ts, objLit, propName, valueSrc) {
  */
 function spliceRemoveObjectProperty(text, sf, ts, objLit, propName) {
 	const props = objLit.properties;
-	const idx = props.findIndex(
-		(p) => ts.isPropertyAssignment(p) && p.name.getText(sf) === propName
-	);
+	const idx = props.findIndex((p) => ts.isPropertyAssignment(p) && p.name.getText(sf) === propName);
 	if (idx === -1) return text;
 	if (idx === 0) {
 		if (props.length > 1) {
@@ -3871,9 +3907,7 @@ async function relateProject({
 				);
 				return;
 			}
-			process.stderr.write(
-				`${RED}Error: '${sourceSlug}' has no relationships to edit.${RESET}\n`
-			);
+			process.stderr.write(`${RED}Error: '${sourceSlug}' has no relationships to edit.${RESET}\n`);
 			process.exit(1);
 		}
 		const arrayLit = relationshipsProp.initializer;
@@ -3961,9 +3995,7 @@ async function relateProject({
 		// flag-style, rather than requiring every overlay to pre-declare it.
 		const insertPos = objLit.getStart(sf) + 1;
 		splicedText =
-			text.slice(0, insertPos) +
-			`\n\trelationships: [${elementSrc}],` +
-			text.slice(insertPos);
+			text.slice(0, insertPos) + `\n\trelationships: [${elementSrc}],` + text.slice(insertPos);
 	}
 
 	writeFileSync(path, splicedText, 'utf8');
@@ -4112,7 +4144,8 @@ async function listAllRelationships(mode) {
 			const relationshipsProp = objLit.properties.find(
 				(p) => ts.isPropertyAssignment(p) && p.name.getText(sf) === 'relationships'
 			);
-			if (!relationshipsProp || !ts.isArrayLiteralExpression(relationshipsProp.initializer)) continue;
+			if (!relationshipsProp || !ts.isArrayLiteralExpression(relationshipsProp.initializer))
+				continue;
 			for (const el of relationshipsProp.initializer.elements) {
 				if (!ts.isObjectLiteralExpression(el)) continue;
 				rows.push({
@@ -4259,7 +4292,12 @@ async function relateTech({
 		return;
 	}
 
-	const elementSrc = buildRelationshipLiteral({ kind, source: sourceLabel, target: targetLabel, note });
+	const elementSrc = buildRelationshipLiteral({
+		kind,
+		source: sourceLabel,
+		target: targetLabel,
+		note
+	});
 	const splicedText = spliceElementIntoArray(text, sf, arrayLit, elementSrc);
 
 	writeFileSync(techRelationshipsPath, splicedText, 'utf8');
@@ -4293,7 +4331,9 @@ async function runRelate({ args, values, palette }) {
 	const [mode, source, kind, target] = args;
 
 	if (mode !== 'project' && mode !== 'tech') {
-		process.stderr.write(`${RED}Error: first argument must be 'project' or 'tech'.\n${usage}${RESET}\n`);
+		process.stderr.write(
+			`${RED}Error: first argument must be 'project' or 'tech'.\n${usage}${RESET}\n`
+		);
 		process.exit(1);
 	}
 	if (!source || !kind || !target) {
@@ -4355,7 +4395,9 @@ async function runRelate({ args, values, palette }) {
 
 	// mode === 'tech'
 	if (!TECH_RELATIONSHIP_KINDS.has(kind)) {
-		process.stderr.write(`${RED}Error: invalid kind '${kind}'. Use one of: leads-to, replaced-by.${RESET}\n`);
+		process.stderr.write(
+			`${RED}Error: invalid kind '${kind}'. Use one of: leads-to, replaced-by.${RESET}\n`
+		);
 		process.exit(1);
 	}
 	if (opMode === 'edit' && newKind !== undefined && !TECH_RELATIONSHIP_KINDS.has(newKind)) {
@@ -4566,7 +4608,8 @@ async function runTech({ args, values, palette }) {
 		const canonicalLabels = [...labelIndex.values()].sort((a, b) => a.localeCompare(b));
 		for (const label of canonicalLabels) {
 			const overlay = overlayByLower.get(label.toLowerCase());
-			const annotation = overlay === undefined ? '' : `  ${DIM}${describeOverlay(overlay).join(' · ')}${RESET}`;
+			const annotation =
+				overlay === undefined ? '' : `  ${DIM}${describeOverlay(overlay).join(' · ')}${RESET}`;
 			process.stdout.write(`${label}${annotation}\n`);
 		}
 		process.stdout.write(`${DIM}${canonicalLabels.length} labels.${RESET}\n`);
@@ -4615,20 +4658,26 @@ async function runTech({ args, values, palette }) {
 
 		let changed = false;
 		if (firstUsed !== undefined) {
-			changed = (await setTechOverlayProperty(label, 'firstUsed', JSON.stringify(firstUsed), palette)) || changed;
+			changed =
+				(await setTechOverlayProperty(label, 'firstUsed', JSON.stringify(firstUsed), palette)) ||
+				changed;
 		}
 		if (note !== undefined) {
-			changed = (await setTechOverlayProperty(label, 'note', JSON.stringify(note), palette)) || changed;
+			changed =
+				(await setTechOverlayProperty(label, 'note', JSON.stringify(note), palette)) || changed;
 		}
 		if (kind !== undefined) {
-			changed = (await setTechOverlayProperty(label, 'kind', JSON.stringify(kind), palette)) || changed;
+			changed =
+				(await setTechOverlayProperty(label, 'kind', JSON.stringify(kind), palette)) || changed;
 		}
 		if (changed) {
 			process.stdout.write(
 				`${GREEN}${BOLD}Set:${RESET} overlay for '${label}'.\n${DIM}Rebuild the site to apply.${RESET}\n`
 			);
 		} else {
-			process.stdout.write(`${YELLOW}Overlay for '${label}' already holds those values — nothing to do.${RESET}\n`);
+			process.stdout.write(
+				`${YELLOW}Overlay for '${label}' already holds those values — nothing to do.${RESET}\n`
+			);
 		}
 		return;
 	}
@@ -4639,8 +4688,7 @@ async function runTech({ args, values, palette }) {
 	const found = findElementByStringField(ts, sf, arrayLit, 'label', label, {
 		caseInsensitive: true
 	});
-	const current =
-		found === null ? [] : (readArrayField(ts, sf, found.element, 'hiddenFrom') ?? []);
+	const current = found === null ? [] : (readArrayField(ts, sf, found.element, 'hiddenFrom') ?? []);
 
 	if (action === 'hide') {
 		const next = TECH_SURFACES.filter((s) => current.includes(s) || requested.includes(s));
@@ -4655,7 +4703,14 @@ async function runTech({ args, values, palette }) {
 			const elementSrc = `{ label: ${JSON.stringify(label)}, hiddenFrom: ${valueSrc} }`;
 			writeTechOverlays(spliceElementIntoArray(text, sf, arrayLit, elementSrc));
 		} else {
-			const { text: splicedText } = spliceObjectProperty(text, sf, ts, found.element, 'hiddenFrom', valueSrc);
+			const { text: splicedText } = spliceObjectProperty(
+				text,
+				sf,
+				ts,
+				found.element,
+				'hiddenFrom',
+				valueSrc
+			);
 			writeTechOverlays(splicedText);
 		}
 		process.stdout.write(
@@ -4683,7 +4738,14 @@ async function runTech({ args, values, palette }) {
 	);
 	let splicedText;
 	if (next.length > 0) {
-		({ text: splicedText } = spliceObjectProperty(text, sf, ts, found.element, 'hiddenFrom', JSON.stringify(next)));
+		({ text: splicedText } = spliceObjectProperty(
+			text,
+			sf,
+			ts,
+			found.element,
+			'hiddenFrom',
+			JSON.stringify(next)
+		));
 	} else if (hasOtherFields) {
 		splicedText = spliceRemoveObjectProperty(text, sf, ts, found.element, 'hiddenFrom');
 	} else {
@@ -4841,7 +4903,13 @@ async function runTag({ args, values, palette }) {
 		if (existsSync(overlayPath)) {
 			const ts = (await import('typescript')).default;
 			const text = readFileSync(overlayPath, 'utf8');
-			const sf = ts.createSourceFile(overlayPath, text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
+			const sf = ts.createSourceFile(
+				overlayPath,
+				text,
+				ts.ScriptTarget.Latest,
+				true,
+				ts.ScriptKind.TS
+			);
 			const objLit = findExportedLiteral(ts, sf, ts.isObjectLiteralExpression);
 			if (objLit) {
 				const tagsProp = objLit.properties.find(
@@ -4860,8 +4928,9 @@ async function runTag({ args, values, palette }) {
 		}
 		const inferred = inferredLabelsForSlug(slug);
 		const suppressedSet = new Set(suppressed);
-		const effective = [...new Set([...inferred, ...authored.map((a) => a.replace(/ \(.*\)$/, ''))])]
-			.filter((label) => !suppressedSet.has(label));
+		const effective = [
+			...new Set([...inferred, ...authored.map((a) => a.replace(/ \(.*\)$/, ''))])
+		].filter((label) => !suppressedSet.has(label));
 
 		process.stdout.write(`${BOLD}${slug}${RESET}\n`);
 		process.stdout.write(`inferred    ${inferred.join(', ') || DIM + 'none' + RESET}\n`);
@@ -4891,9 +4960,7 @@ async function runTag({ args, values, palette }) {
 			label = resolveTechLabel(labelInput, labelIndex, palette, true);
 			kind = explicitKind ?? (await inferKindForLabel(label));
 			if (kind === undefined) {
-				process.stderr.write(
-					`${RED}Error: no known kind for '${label}' — pass --kind.${RESET}\n`
-				);
+				process.stderr.write(`${RED}Error: no known kind for '${label}' — pass --kind.${RESET}\n`);
 				process.exit(1);
 			}
 		} else if (explicitKind !== undefined) {
@@ -4933,7 +5000,14 @@ async function runTag({ args, values, palette }) {
 		// this label in a second pass (positions went stale on the write).
 		{
 			const fresh = await loadOverlayForEdit(slug, palette);
-			const suppressProp = overlayArrayProp(fresh.ts, fresh.sf, fresh.objLit, 'suppressTags', relPath, palette);
+			const suppressProp = overlayArrayProp(
+				fresh.ts,
+				fresh.sf,
+				fresh.objLit,
+				'suppressTags',
+				relPath,
+				palette
+			);
 			if (suppressProp !== null) {
 				const idx = findStringElementIndex(fresh.ts, fresh.sf, suppressProp.initializer, label);
 				if (idx !== -1) {
@@ -4941,7 +5015,13 @@ async function runTag({ args, values, palette }) {
 					// suppressTags authors nothing.
 					const cleaned =
 						suppressProp.initializer.elements.length === 1
-							? spliceRemoveObjectProperty(fresh.text, fresh.sf, fresh.ts, fresh.objLit, 'suppressTags')
+							? spliceRemoveObjectProperty(
+									fresh.text,
+									fresh.sf,
+									fresh.ts,
+									fresh.objLit,
+									'suppressTags'
+								)
 							: spliceRemoveElement(fresh.text, fresh.sf, suppressProp.initializer, idx);
 					writeFileSync(path, cleaned, 'utf8');
 					spawnSync('npx', ['prettier', '--write', path], { stdio: 'ignore' });
@@ -4971,11 +5051,18 @@ async function runTag({ args, values, palette }) {
 		}
 		let splicedText;
 		if (suppressProp !== null) {
-			splicedText = spliceElementIntoArray(text, sf, suppressProp.initializer, JSON.stringify(label));
+			splicedText = spliceElementIntoArray(
+				text,
+				sf,
+				suppressProp.initializer,
+				JSON.stringify(label)
+			);
 		} else {
 			const insertPos = objLit.getStart(sf) + 1;
 			splicedText =
-				text.slice(0, insertPos) + `\n\tsuppressTags: [${JSON.stringify(label)}],` + text.slice(insertPos);
+				text.slice(0, insertPos) +
+				`\n\tsuppressTags: [${JSON.stringify(label)}],` +
+				text.slice(insertPos);
 		}
 		writeFileSync(path, splicedText, 'utf8');
 		spawnSync('npx', ['prettier', '--write', path], { stdio: 'ignore' });
@@ -5001,9 +5088,7 @@ async function runTag({ args, values, palette }) {
 	const sf = ts.createSourceFile(overlayPath, text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
 	const objLit = findExportedLiteral(ts, sf, ts.isObjectLiteralExpression);
 	const suppressProp =
-		objLit === null
-			? null
-			: overlayArrayProp(ts, sf, objLit, 'suppressTags', overlayPath, palette);
+		objLit === null ? null : overlayArrayProp(ts, sf, objLit, 'suppressTags', overlayPath, palette);
 	const idx =
 		suppressProp === null ? -1 : findStringElementIndex(ts, sf, suppressProp.initializer, label);
 	if (idx === -1) {
@@ -5088,7 +5173,9 @@ async function runTheme({ args, values, palette }) {
 	const [action, id, slug] = args;
 	const ACTIONS = ['list', 'create', 'edit', 'add', 'remove', 'delete'];
 	if (!ACTIONS.includes(action ?? '')) {
-		process.stderr.write(`${RED}Error: unknown theme action '${action ?? ''}'.\n${usage}${RESET}\n`);
+		process.stderr.write(
+			`${RED}Error: unknown theme action '${action ?? ''}'.\n${usage}${RESET}\n`
+		);
 		process.exit(1);
 	}
 	if (action !== 'list' && id === undefined) {
@@ -5203,7 +5290,14 @@ async function runTheme({ args, values, palette }) {
 		// first, then re-locate for the second.
 		let workingText = text;
 		if (newName !== undefined) {
-			({ text: workingText } = spliceObjectProperty(workingText, sf, ts, found.element, 'name', JSON.stringify(newName)));
+			({ text: workingText } = spliceObjectProperty(
+				workingText,
+				sf,
+				ts,
+				found.element,
+				'name',
+				JSON.stringify(newName)
+			));
 			writeThemes(workingText);
 		}
 		if (newBlurb !== undefined) {
@@ -6655,10 +6749,7 @@ async function runInteractiveMenu({ manifests, palette, useGum, onProgress, clea
 	// Returns the chosen/typed value, or null if the user escaped at any point.
 	const pickOrCreate = (headerText, candidates, createLabel, createPlaceholder, validate) => {
 		const sorted = [...new Set(candidates)].sort();
-		const items = [
-			`${createLabel}:__create__`,
-			...sorted.map((c) => `${c}:${c}`)
-		];
+		const items = [`${createLabel}:__create__`, ...sorted.map((c) => `${c}:${c}`)];
 		const pick = spawnSync(
 			'gum',
 			[
@@ -6710,7 +6801,9 @@ async function runInteractiveMenu({ manifests, palette, useGum, onProgress, clea
 				`--cursor.foreground=${BRAND_PRIMARY}`,
 				`--selected.foreground=${BRAND_PRIMARY}`,
 				`--item.foreground=${BRAND_ACCENT}`,
-				...rows.map(([label, desc, value]) => (desc ? `${label}  ${desc}:${value}` : `${label}:${value}`))
+				...rows.map(([label, desc, value]) =>
+					desc ? `${label}  ${desc}:${value}` : `${label}:${value}`
+				)
 			],
 			{ stdio: ['inherit', 'pipe', 'inherit'], encoding: 'utf8' }
 		);
@@ -6807,13 +6900,7 @@ async function runInteractiveMenu({ manifests, palette, useGum, onProgress, clea
 		{
 			section: 'Configure',
 			header: 'DRIFT · Configure',
-			rows: [
-				[
-					'Init',
-					'Scaffold drift.config.ts and sources.local.json for this machine',
-					'init'
-				]
-			]
+			rows: [['Init', 'Scaffold drift.config.ts and sources.local.json for this machine', 'init']]
 		},
 		{
 			section: 'Help',
@@ -7029,9 +7116,9 @@ async function runInteractiveMenu({ manifests, palette, useGum, onProgress, clea
 				await runTech({ args: ['list'], values: {}, palette });
 				break;
 			case 'tech-set': {
-				const labels = [...(await buildTechLabelIndex({ includeRelateHidden: true })).values()].sort(
-					(a, b) => a.localeCompare(b)
-				);
+				const labels = [
+					...(await buildTechLabelIndex({ includeRelateHidden: true })).values()
+				].sort((a, b) => a.localeCompare(b));
 				const label = pickOrCreate(
 					'Tech label:',
 					labels,
@@ -7055,9 +7142,9 @@ async function runInteractiveMenu({ manifests, palette, useGum, onProgress, clea
 				break;
 			}
 			case 'tech-visibility': {
-				const labels = [...(await buildTechLabelIndex({ includeRelateHidden: true })).values()].sort(
-					(a, b) => a.localeCompare(b)
-				);
+				const labels = [
+					...(await buildTechLabelIndex({ includeRelateHidden: true })).values()
+				].sort((a, b) => a.localeCompare(b));
 				const label = chooseString('Tech label:', labels);
 				if (label === null) continue outer;
 				const action = choosePlain('Hide or unhide?', [
@@ -7180,7 +7267,11 @@ async function runInteractiveMenu({ manifests, palette, useGum, onProgress, clea
 					while (true) {
 						id = promptText('theme id (kebab-case)');
 						if (id === null) break;
-						const error = validateProjectSlug(id) ?? (themeRows.some((t) => t.id === id) ? `A theme with id '${id}' already exists.` : null);
+						const error =
+							validateProjectSlug(id) ??
+							(themeRows.some((t) => t.id === id)
+								? `A theme with id '${id}' already exists.`
+								: null);
 						if (error === null) break;
 						console.log(`⚠ ${error}`);
 					}
@@ -7202,7 +7293,10 @@ async function runInteractiveMenu({ manifests, palette, useGum, onProgress, clea
 					break;
 				}
 
-				const id = chooseString('Theme:', themeRows.map((t) => t.id));
+				const id = chooseString(
+					'Theme:',
+					themeRows.map((t) => t.id)
+				);
 				if (id === null) continue outer;
 
 				if (action === 'edit') {
@@ -7298,7 +7392,7 @@ async function runInteractiveMenu({ manifests, palette, useGum, onProgress, clea
 						`--item.foreground=${BRAND_ACCENT}`,
 						'Add      Author a new relationship edge:add',
 						'Remove   Delete an existing edge:remove',
-						'Edit     Change an existing edge\'s kind or note:edit'
+						"Edit     Change an existing edge's kind or note:edit"
 					],
 					{ stdio: ['inherit', 'pipe', 'inherit'], encoding: 'utf8' }
 				);
@@ -7540,11 +7634,10 @@ async function runInteractiveMenu({ manifests, palette, useGum, onProgress, clea
 				// Step 5: optional free-text note. Empty is a legitimate "no
 				// note" (runRelate normalises '' and undefined identically);
 				// only a non-zero status (Ctrl-C) aborts the wizard.
-				const noteInput = spawnSync(
-					'gum',
-					['input', '--placeholder', 'note (optional)'],
-					{ stdio: ['inherit', 'pipe', 'inherit'], encoding: 'utf8' }
-				);
+				const noteInput = spawnSync('gum', ['input', '--placeholder', 'note (optional)'], {
+					stdio: ['inherit', 'pipe', 'inherit'],
+					encoding: 'utf8'
+				});
 				if (noteInput.status !== 0) continue outer;
 				const note = noteInput.stdout.trim() || undefined;
 
