@@ -14,14 +14,18 @@
  * rather than via subprocess, since diffFingerprint is not exported.
  *
  * Heavy blocking I/O warning: this file's spawnSync calls (up to 30s each)
- * block their worker's event loop long enough to miss vitest's internal
- * worker RPC heartbeat if this file shares a worker pool with the rest of
- * the suite — that produced an intermittent, CI-failing
- * "[vitest-worker]: Timeout calling onTaskUpdate" even when every test here
- * passed. package.json's "test" script runs this file as its own separate
- * `vitest run` invocation for that reason; don't fold it back into a single
- * `vitest run` without re-isolating it (its own pool/fork config, or keeping
- * the split invocation).
+ * block their worker's event loop long enough to occasionally miss vitest's
+ * internal worker RPC heartbeat — a "[vitest-worker]: Timeout calling
+ * onTaskUpdate" that fails the process even when every test here passed.
+ * Sharing a worker pool with the rest of the suite made this worse (cross-
+ * file contention), so package.json's "test" script runs this file as its
+ * own separate vitest invocation — but CI's slower/more constrained runner
+ * can still hit the heartbeat timeout on this file ALONE (seen at 79s wall
+ * time vs ~40-60s locally), so that invocation is wrapped by
+ * scripts/run-drift-tests.sh, which tolerates ONLY that exact failure
+ * signature (RPC timeout + a clean "Tests N passed (N)" summary) and still
+ * fails on any real test failure. Don't fold this back into a plain
+ * `vitest run` without keeping both the isolation and the wrapper.
  */
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';

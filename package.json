@@ -11,7 +11,7 @@
 		"prepare": "svelte-kit sync || echo ''; bun run scripts/install-hooks.js",
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
 		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
-		"test": "vitest run --exclude \"scripts/check-drift.test.ts\" && vitest run scripts/check-drift.test.ts",
+		"test": "vitest run --exclude \"scripts/check-drift.test.ts\" && sh scripts/run-drift-tests.sh",
 		"test:watch": "vitest",
 		"format": "prettier --write .",
 		"lint": "prettier --check .",
