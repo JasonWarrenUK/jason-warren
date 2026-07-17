@@ -52,7 +52,7 @@
 	   indistinct at one step or invisible at two). Badge -bg/-text pairs
 	   follow the shade-1/shade-6 rule in light and derive the dark bg as
 	   a tint of the darkest hue shade over lamplit ink. --- */
-	--fade-ink-share: 65%;
+	--fade-ink-share: 75%;
 	--progress-in-progress: var(--ink-progress-1);
 	--progress-in-progress-archived: color-mix(
 		in oklab,
