@@ -259,6 +259,34 @@ describe('computeMonthBands — density proportionality', () => {
 		// ...and every one of them is taller than the untouched month.
 		expect(heightOf(apr)).toBeGreaterThan(heightOf(may));
 	});
+
+	it('caps a spiky year at the budget ratio of the median year', () => {
+		// 2024 holds one extremely dense month (twenty overlapping rails) and
+		// eleven empty ones; 2025 and 2026 tick along at a steady overlap of
+		// one. Without the year budget the 2024 spike would balloon its year
+		// past the steady years.
+		const rails: TimelineRail[] = [
+			rail('steady', '2025-01-01', '2026-06-30'),
+			...Array.from({ length: 20 }, (_, i) =>
+				rail(`spike-${String(i).padStart(2, '0')}`, '2024-03-05', '2024-03-20')
+			)
+		];
+		const minDay = dayValue('2024-01-01');
+		const nowDay = dayValue(NOW);
+		const bands = computeMonthBands(rails, minDay, nowDay, GEO.topPad);
+
+		const totals = new Map<number, number>();
+		for (const band of bands.values()) {
+			totals.set(band.year, (totals.get(band.year) ?? 0) + (band.yBottom - band.yTop));
+		}
+		const sorted = [...totals.values()].sort((a, b) => a - b);
+		const median =
+			sorted.length % 2 === 1
+				? sorted[Math.floor(sorted.length / 2)]
+				: (sorted[sorted.length / 2 - 1] + sorted[sorted.length / 2]) / 2;
+		const max = sorted[sorted.length - 1];
+		expect(max / median).toBeLessThanOrEqual(1.8 + 1e-9);
+	});
 });
 
 describe('computeTimelineLayout — no vertical overlap within a column', () => {

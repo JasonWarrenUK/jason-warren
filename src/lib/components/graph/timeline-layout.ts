@@ -291,10 +291,19 @@ export interface MonthBand {
 // reflects its density rather than a fixed calendar span. Raw heights are
 // clamped to shape the ratios, then normalised so the bands sum to a target
 // total plot height.
-const MONTH_BASE_HEIGHT = 14; // px a month gets regardless of density
-const MONTH_HEIGHT_PER_RAIL = 4; // px added per rail overlapping that month
-const MONTH_MIN_HEIGHT = 20; // floor: an empty/quiet month still shows a real gap
-const MONTH_MAX_HEIGHT = 85; // ceiling: one crushed month cannot dominate the axis
+const MONTH_BASE_HEIGHT = 8; // px a month gets regardless of density
+const MONTH_HEIGHT_PER_RAIL = 6; // px added per rail overlapping that month
+const MONTH_MIN_HEIGHT = 10; // floor: an empty/quiet month still shows a real gap
+const MONTH_MAX_HEIGHT = 130; // ceiling: one crushed month cannot dominate the axis
+/**
+ * Per-year height budget: no calendar year may occupy more than this multiple
+ * of the median year's raw height. Without it, a year holding one very dense
+ * month and eleven quiet ones balloons past years of steady work — the spike
+ * is real, but a YEAR's share of the axis should stay comparable to its
+ * peers. Months within an over-budget year compress proportionally, so their
+ * relative densities survive.
+ */
+const YEAR_BUDGET_RATIO = 1.8;
 /** Target total plot height after normalisation — retunes the old fixed-rate
  *  scale's ~1600px "comfortably tall, scrollable" target for a banded scale
  *  where total height is a tuning constant rather than domainDays * rate. */
@@ -344,7 +353,34 @@ export function computeMonthBands(
 		rawTotal += raw;
 	}
 
-	// rawTotal is always > 0 (>= 1 month, each >= MONTH_MIN_HEIGHT), so scale is
+	// Per-year budget pass: cap each calendar year's raw total at
+	// YEAR_BUDGET_RATIO x the median year, compressing that year's months
+	// proportionally. Median over sorted totals (mean of the middle pair for
+	// even counts) — deterministic, no clock, no randomness.
+	const totalsByYear = new Map<number, number>();
+	for (let m = firstMonth; m <= lastMonth; m++) {
+		const { year } = monthIndexToYearMonth(m);
+		totalsByYear.set(year, (totalsByYear.get(year) ?? 0) + rawByMonth.get(m)!);
+	}
+	if (totalsByYear.size > 1) {
+		const sorted = [...totalsByYear.values()].sort((a, b) => a - b);
+		const mid = sorted.length / 2;
+		const median =
+			sorted.length % 2 === 1 ? sorted[Math.floor(mid)] : (sorted[mid - 1] + sorted[mid]) / 2;
+		const budget = YEAR_BUDGET_RATIO * median;
+		rawTotal = 0;
+		for (let m = firstMonth; m <= lastMonth; m++) {
+			const { year } = monthIndexToYearMonth(m);
+			const yearTotal = totalsByYear.get(year)!;
+			if (yearTotal > budget) {
+				rawByMonth.set(m, rawByMonth.get(m)! * (budget / yearTotal));
+			}
+			rawTotal += rawByMonth.get(m)!;
+		}
+	}
+
+	// rawTotal is always > 0 (>= 1 month, each >= MONTH_MIN_HEIGHT before the
+	// budget pass, which only ever scales positive values down), so scale is
 	// finite and positive; scaling preserves the relative heights.
 	const scale = MONTH_BANDS_TARGET_HEIGHT / rawTotal;
 	const bands = new Map<number, MonthBand>();
