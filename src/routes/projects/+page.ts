@@ -1,7 +1,7 @@
 import {
 	getAllProjectsByRecency,
 	getAllKinds,
-	getAllStatuses,
+	anyProjectHasFlag,
 	getTagsByKind
 } from '$lib/data/queries.js';
 
@@ -9,7 +9,11 @@ export function load() {
 	return {
 		projects: getAllProjectsByRecency(),
 		kinds: getAllKinds(),
-		statuses: getAllStatuses(),
+		// Flag chips only render when the registry has something to show for them.
+		presentFlags: {
+			deployed: anyProjectHasFlag('deployed'),
+			archived: anyProjectHasFlag('archived')
+		},
 		tagsByKind: getTagsByKind()
 	};
 }

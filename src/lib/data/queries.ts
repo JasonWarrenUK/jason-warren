@@ -6,10 +6,11 @@
 
 import type {
 	Project,
+	ProjectProgress,
 	ProjectRole,
 	ProjectSlug,
-	ProjectStatus,
 	ProjectKind,
+	ProjectTrack,
 	TagKind
 } from './types.js';
 import { projects } from './index.js';
@@ -27,7 +28,7 @@ export function getBySlug(slug: ProjectSlug): Project | undefined {
  * Returns the full eligible pool sorted by active-substance score (descending),
  * ready for the home-page hero to slice and rotate.
  *
- * Eligible = not archived, not uncategorised, not manually hidden.
+ * Eligible = not archived, editorially triaged (authored track), not hidden.
  * Sort: pinned projects float to the top (above score), then by heroScore desc,
  * then by slug ascending as a stable tiebreaker (deterministic prerender).
  *
@@ -37,9 +38,9 @@ export function getBySlug(slug: ProjectSlug): Project | undefined {
  * @param projectList - Override the default registry (for testing).
  */
 export function getHeroPool(now: number, projectList: Project[] = projects): Project[] {
-	const eligible = projectList.filter(
-		(p) => p.status !== 'archived' && p.status !== 'uncategorised' && !p.hide
-	);
+	// An authored track is the triage signal: manifest-only projects carry
+	// only heuristic stage guesses and have no business fronting the hero.
+	const eligible = projectList.filter((p) => !p.archived && p.trackAuthored && !p.hide);
 
 	return [...eligible].sort((a, b) => {
 		// Pinned projects always float first.
@@ -101,9 +102,14 @@ export function getTimelineProjects(list: Project[] = projects): Project[] {
 // Filters — designed to be composable via the filterable index
 // ---------------------------------------------------------------------------
 
+/** Boolean stage facets: a project matches when the named flag is true. */
+export type ProjectFlag = 'deployed' | 'archived';
+
 export interface ProjectFilters {
 	roles?: Set<ProjectRole>;
-	statuses?: Set<ProjectStatus>;
+	tracks?: Set<ProjectTrack>;
+	progresses?: Set<ProjectProgress>;
+	flags?: Set<ProjectFlag>;
 	kinds?: Set<ProjectKind>;
 	tags?: Set<string>;
 	query?: string;
@@ -123,8 +129,15 @@ export function filterProjects(filters: ProjectFilters): Project[] {
 		if (filters.roles?.size) {
 			if (!filters.roles.has(p.contribution.role)) return false;
 		}
-		if (filters.statuses?.size) {
-			if (!filters.statuses.has(p.status)) return false;
+		if (filters.tracks?.size) {
+			if (!filters.tracks.has(p.track)) return false;
+		}
+		if (filters.progresses?.size) {
+			if (!filters.progresses.has(p.progress)) return false;
+		}
+		if (filters.flags?.size) {
+			const holds = (flag: ProjectFlag): boolean => (flag === 'deployed' ? p.deployed : p.archived);
+			if (![...filters.flags].some(holds)) return false;
 		}
 		if (filters.kinds?.size) {
 			if (!filters.kinds.has(p.kind)) return false;
@@ -207,11 +220,7 @@ export function getAllRoles(): ProjectRole[] {
 	return [...roles];
 }
 
-/** All unique statuses present in the registry. */
-export function getAllStatuses(): ProjectStatus[] {
-	const statuses = new Set<ProjectStatus>();
-	for (const project of projects) {
-		statuses.add(project.status);
-	}
-	return [...statuses];
+/** True when any registry project carries the given stage flag. */
+export function anyProjectHasFlag(flag: ProjectFlag): boolean {
+	return projects.some((p) => (flag === 'deployed' ? p.deployed : p.archived));
 }

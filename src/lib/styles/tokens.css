@@ -242,7 +242,7 @@
 	--space-20: 5rem;
 	--space-24: 6rem;
 
-	/* Badge padding: shared by RoleBadge and StatusBadge, both pill-shaped
+	/* Badge padding: shared by RoleBadge and StageBadge, both pill-shaped
 	   mono labels with the same asymmetric vertical/horizontal padding. */
 	--space-badge: 0.1875rem 0.625rem;
 

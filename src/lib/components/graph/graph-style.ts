@@ -1,6 +1,6 @@
 /**
  * Shared presentation helpers for the graph views (map, neighbourhood, threads).
- * Keeps colour and label vocabulary consistent with StatusBadge and the
+ * Keeps colour and label vocabulary consistent with StageBadge and the
  * semantic tokens in tokens.css, so every connection view reads the same.
  */
 
@@ -20,7 +20,7 @@ import { themes } from '$lib/data/themes.js';
 //
 // THE single source for stage labels, orders and colours. Badges, filters and
 // every graph view import from here; the old status vocabulary was triplicated
-// across StatusBadge, FilterBar and this file, and drifted risk-free no more.
+// across the old StatusBadge, FilterBar and this file; now it lives here alone.
 // ---------------------------------------------------------------------------
 
 /** Track labels: intent, not maturity. A finished spike is a spike that worked. */

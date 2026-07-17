@@ -3,8 +3,8 @@
 	import { goto } from '$app/navigation';
 	import { base } from '$app/paths';
 	import { page } from '$app/stores';
-	import type { ProjectKind, ProjectRole, ProjectStatus } from '$lib/data/types.js';
-	import { filterProjects } from '$lib/data/queries.js';
+	import type { ProjectKind, ProjectProgress, ProjectRole, ProjectTrack } from '$lib/data/types.js';
+	import { filterProjects, type ProjectFlag } from '$lib/data/queries.js';
 	import ProjectGrid from '$lib/components/project/ProjectGrid.svelte';
 	import FilterBar from '$lib/components/filter/FilterBar.svelte';
 	import SearchInput from '$lib/components/filter/SearchInput.svelte';
@@ -25,10 +25,16 @@
 	const activeKinds = $derived(
 		browser ? parseSet<ProjectKind>($page.url.searchParams.get('types')) : new Set<ProjectKind>()
 	);
-	const activeStatuses = $derived(
+	const activeTracks = $derived(
+		browser ? parseSet<ProjectTrack>($page.url.searchParams.get('track')) : new Set<ProjectTrack>()
+	);
+	const activeProgresses = $derived(
 		browser
-			? parseSet<ProjectStatus>($page.url.searchParams.get('statuses'))
-			: new Set<ProjectStatus>()
+			? parseSet<ProjectProgress>($page.url.searchParams.get('progress'))
+			: new Set<ProjectProgress>()
+	);
+	const activeFlags = $derived(
+		browser ? parseSet<ProjectFlag>($page.url.searchParams.get('flags')) : new Set<ProjectFlag>()
 	);
 	const activeQuery = $derived(browser ? ($page.url.searchParams.get('q') ?? '') : '');
 
@@ -49,7 +55,9 @@
 			tags: activeTags,
 			roles: activeRoles,
 			kinds: activeKinds,
-			statuses: activeStatuses,
+			tracks: activeTracks,
+			progresses: activeProgresses,
+			flags: activeFlags,
 			query: activeQuery || undefined
 		}).sort((a, b) => (b.lastCommit ?? '').localeCompare(a.lastCommit ?? ''))
 	);
@@ -95,9 +103,13 @@
 			kinds={data.kinds}
 			{activeKinds}
 			onkind={(kind) => toggleParam(activeKinds, kind, 'types')}
-			statuses={data.statuses}
-			{activeStatuses}
-			onstatus={(s) => toggleParam(activeStatuses, s, 'statuses')}
+			presentFlags={data.presentFlags}
+			{activeTracks}
+			ontrack={(track) => toggleParam(activeTracks, track, 'track')}
+			{activeProgresses}
+			onprogress={(progress) => toggleParam(activeProgresses, progress, 'progress')}
+			{activeFlags}
+			onflag={(flag) => toggleParam(activeFlags, flag, 'flags')}
 			tagsByKind={data.tagsByKind}
 			{activeTags}
 			{activeRoles}

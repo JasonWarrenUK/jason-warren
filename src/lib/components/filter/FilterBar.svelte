@@ -1,5 +1,18 @@
 <script lang="ts">
-	import type { ProjectKind, ProjectRole, ProjectStatus, TagKind } from '$lib/data/types.js';
+	import type {
+		ProjectKind,
+		ProjectProgress,
+		ProjectRole,
+		ProjectTrack,
+		TagKind
+	} from '$lib/data/types.js';
+	import type { ProjectFlag } from '$lib/data/queries.js';
+	import {
+		trackLabel,
+		trackOrder,
+		progressLabel,
+		progressOrder
+	} from '$lib/components/graph/graph-style.js';
 	import FilterChip from './FilterChip.svelte';
 
 	let open = $state(false);
@@ -22,11 +35,14 @@
 		/** Currently active kind filters. */
 		activeKinds: Set<ProjectKind>;
 		onkind: (kind: ProjectKind) => void;
-		/** All ProjectStatus values present in the registry. */
-		statuses: ProjectStatus[];
-		/** Currently active status filters. */
-		activeStatuses: Set<ProjectStatus>;
-		onstatus: (status: ProjectStatus) => void;
+		/** Which boolean stage flags the registry can actually match. */
+		presentFlags: Record<ProjectFlag, boolean>;
+		activeTracks: Set<ProjectTrack>;
+		ontrack: (track: ProjectTrack) => void;
+		activeProgresses: Set<ProjectProgress>;
+		onprogress: (progress: ProjectProgress) => void;
+		activeFlags: Set<ProjectFlag>;
+		onflag: (flag: ProjectFlag) => void;
 		/** Tag labels grouped by TagKind. */
 		tagsByKind: Record<TagKind, string[]>;
 		/** Currently active tag filters. */
@@ -41,9 +57,13 @@
 		kinds,
 		activeKinds,
 		onkind,
-		statuses,
-		activeStatuses,
-		onstatus,
+		presentFlags,
+		activeTracks,
+		ontrack,
+		activeProgresses,
+		onprogress,
+		activeFlags,
+		onflag,
 		tagsByKind,
 		activeTags,
 		activeRoles,
@@ -70,25 +90,13 @@
 		repo: 'Repo'
 	};
 
-	/** Unified status labels — matches StatusBadge exactly. */
-	const statusLabels: Record<ProjectStatus, string> = {
-		live: 'Live',
-		wip: 'Active',
-		finished: 'Complete',
-		prototype: 'Prototype',
-		archived: 'Archived',
-		uncategorised: 'Uncategorised'
+	/** Flag chip labels; the flags themselves come from queries.ProjectFlag. */
+	const flagLabels: Record<ProjectFlag, string> = {
+		deployed: 'Deployed',
+		archived: 'Archived'
 	};
 
-	/** Display order for status chips. Uncategorised appears last — it's a placeholder. */
-	const statusOrder: ProjectStatus[] = [
-		'live',
-		'wip',
-		'finished',
-		'prototype',
-		'archived',
-		'uncategorised'
-	];
+	const flagOrder: ProjectFlag[] = ['deployed', 'archived'];
 
 	const tagKindLabels: Record<TagKind, string> = {
 		language: 'Language',
@@ -142,15 +150,41 @@
 			</details>
 		{/if}
 
-		{#if statuses.length > 0}
-			<details class="filter-group" open={activeStatuses.size > 0}>
-				<summary class="filter-group__summary">Status</summary>
+		<details class="filter-group" open={activeTracks.size > 0}>
+			<summary class="filter-group__summary">Track</summary>
+			<div class="filter-group__chips">
+				{#each trackOrder as track (track)}
+					<FilterChip
+						label={trackLabel[track]}
+						active={activeTracks.has(track)}
+						onclick={() => ontrack(track)}
+					/>
+				{/each}
+			</div>
+		</details>
+
+		<details class="filter-group" open={activeProgresses.size > 0}>
+			<summary class="filter-group__summary">Progress</summary>
+			<div class="filter-group__chips">
+				{#each progressOrder as progress (progress)}
+					<FilterChip
+						label={progressLabel[progress]}
+						active={activeProgresses.has(progress)}
+						onclick={() => onprogress(progress)}
+					/>
+				{/each}
+			</div>
+		</details>
+
+		{#if flagOrder.some((flag) => presentFlags[flag])}
+			<details class="filter-group" open={activeFlags.size > 0}>
+				<summary class="filter-group__summary">Flags</summary>
 				<div class="filter-group__chips">
-					{#each statusOrder.filter((s) => statuses.includes(s)) as s (s)}
+					{#each flagOrder.filter((flag) => presentFlags[flag]) as flag (flag)}
 						<FilterChip
-							label={statusLabels[s]}
-							active={activeStatuses.has(s)}
-							onclick={() => onstatus(s)}
+							label={flagLabels[flag]}
+							active={activeFlags.has(flag)}
+							onclick={() => onflag(flag)}
 						/>
 					{/each}
 				</div>
