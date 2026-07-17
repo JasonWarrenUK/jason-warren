@@ -90,6 +90,7 @@
 
 	<aside class="page__filters">
 		<SearchInput value={activeQuery} onchange={(q) => writeParam('q', q)} />
+
 		<FilterBar
 			kinds={data.kinds}
 			{activeKinds}

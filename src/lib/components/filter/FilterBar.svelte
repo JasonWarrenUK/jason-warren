@@ -2,18 +2,19 @@
 	import type { ProjectKind, ProjectRole, ProjectStatus, TagKind } from '$lib/data/types.js';
 	import FilterChip from './FilterChip.svelte';
 
-	// Collapsed on mobile, expanded on desktop. Default closed so the long
-	// filter list does not dominate small screens; desktop expands on mount.
 	let open = $state(false);
-	$effect(() => {
-		const mq = window.matchMedia('(min-width: 48rem)');
-		const apply = (): void => {
-			open = mq.matches;
-		};
+	/* $effect(() => { // Expanded on desktop
+		// Collapsed on mobile, expanded on desktop. Default closed so there is no
+		// flash of a long list on small screens; desktop expands on mount.
+		const mediaQuery = window.matchMedia('(min-width: 48rem)');
+
+		const apply = (): void => { open = mediaQuery.matches };
 		apply();
-		mq.addEventListener('change', apply);
-		return () => mq.removeEventListener('change', apply);
-	});
+
+		mediaQuery.addEventListener('change', apply);
+
+		return () => mediaQuery.removeEventListener('change', apply);
+	}); */
 
 	interface Props {
 		/** All ProjectKind values present in the registry. */
