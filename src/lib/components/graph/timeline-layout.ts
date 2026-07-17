@@ -489,11 +489,20 @@ function buildLineagePaths(
 		const spanTop = Math.max(library.yTop, app.yTop);
 		if (spanTop >= spanBottom) continue; // no shared span to draw
 
+		// Organic sankey band: the top and bottom edges pinch toward the
+		// band's middle with cubic curves, so the ribbon reads as flow
+		// rather than a stamped rectangle. The pinch caps at 18% of the
+		// span (waist can never self-cross) and 6px (long spans stay
+		// gently waisted rather than hourglassed). Sides stay on the
+		// rails; horizontal extent is untouched.
+		const pinch = Math.min(6, (spanBottom - spanTop) * 0.18);
+		const xThird = app.x + (library.x - app.x) / 3;
+		const xTwoThirds = app.x + (2 * (library.x - app.x)) / 3;
 		const path = [
 			`M ${app.x} ${spanBottom}`,
-			`L ${library.x} ${spanBottom}`,
+			`C ${xThird} ${spanBottom - pinch} ${xTwoThirds} ${spanBottom - pinch} ${library.x} ${spanBottom}`,
 			`L ${library.x} ${spanTop}`,
-			`L ${app.x} ${spanTop}`,
+			`C ${xTwoThirds} ${spanTop + pinch} ${xThird} ${spanTop + pinch} ${app.x} ${spanTop}`,
 			'Z'
 		].join(' ');
 
