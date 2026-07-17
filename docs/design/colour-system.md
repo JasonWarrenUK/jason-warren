@@ -18,7 +18,7 @@ A printed atlas works the other way round. It owns a small, fixed set of inks. A
 
 Two conventions apply across every register:
 
-- **End-of-life is a shade shift within the same hue.** An archived project keeps its progress ink one shade nearer the paper. A superseded technology keeps its mark ink one shade nearer the paper. Old features on survey sheets fade in place.
+- **End-of-life is a shade shift within the same hue.** An archived project keeps its progress ink two shades nearer the paper. A superseded technology keeps its mark ink two shades nearer the paper. Old features on survey sheets fade in place.
 - **Provisional data is drawn provisionally.** Any value produced by heuristic rather than authorship renders with the cartographic unsurveyed convention: dotted stroke where the authored equivalent is solid. The reader can always tell surveyed ground from conjecture.
 
 ## 2. The ink census
@@ -42,13 +42,13 @@ Everything else the old system coloured chromatically goes neutral, glyph-coded 
 
 The old `status` field conflates at least three axes. Decomposed, with provenance per axis (from the drift-engine audit, July 2026):
 
-| Axis       | Values                  | Provenance today                                                  | Encoding                        |
-| ---------- | ----------------------- | ----------------------------------------------------------------- | ------------------------------- |
-| `track`    | exploration \| product  | authored; heuristic default for unauthored projects, drawn dotted | mark treatment (hollow centre)  |
-| `progress` | in-progress \| complete | authored; heuristic default for unauthored projects, drawn dotted | hue ramp                        |
-| `deployed` | boolean                 | authored (`liveUrl` presence); `drift enrich` derives it later    | outer ring mark                 |
-| `activity` | continuous recency      | derived now (`lastCommit`, `commitsRecent`)                       | opacity, floor 0.55             |
-| `archived` | boolean                 | authored; `drift enrich` derives it later                         | shade shift, one step paperward |
+| Axis       | Values                  | Provenance today                                                  | Encoding                         |
+| ---------- | ----------------------- | ----------------------------------------------------------------- | -------------------------------- |
+| `track`    | exploration \| product  | authored; heuristic default for unauthored projects, drawn dotted | mark treatment (hollow centre)   |
+| `progress` | in-progress \| complete | authored; heuristic default for unauthored projects, drawn dotted | hue ramp                         |
+| `deployed` | boolean                 | authored (`liveUrl` presence); `drift enrich` derives it later    | outer ring mark                  |
+| `activity` | continuous recency      | derived now (`lastCommit`, `commitsRecent`)                       | opacity, floor 0.55              |
+| `archived` | boolean                 | authored; `drift enrich` derives it later                         | shade shift, two steps paperward |
 
 Unstaged projects (neither axis authored, heuristic unavailable) render pale neutral, as `uncategorised` does today. Archived projects are exempt from the activity fade; the shade shift is their recession, and stacking both would sink them below findability.
 
@@ -81,7 +81,7 @@ Inherits violet-means-prototype in reverse: violet becomes the _complete_ end. C
 
 The rejected candidate was the green family (chartreuse-4 `#497c00` → green-4 `#008217` under Model B), carrying the site's green-means-healthy association from `live = emerald` (emerald-4 `#008147`) and the vegetation-tint register of survey sheets. It lost on separation: the violet family sits further from oxide, from succession lime and from the amber-adjacent warmth of the paper itself.
 
-**Archived shade shift, with the contrast arithmetic.** Reasonable's shade system guarantees a contrast step per shade difference. Marks sit on `surface-sunken` (shade-2 territory). An active mark at shade 4 has a two-step gap; shifting archived marks to shade 3 in light mode leaves exactly one step, roughly 3:1, the WCAG graphics floor: present, findable, receded. Dark mode mirrors it: active marks at shade 3, archived at shade 4. Concretely, an archived complete project fades violet-4 `#794aff` → violet-3 `#9b70ff` in light mode and violet-3 `#9b70ff` → violet-4 `#794aff` in dark; an archived in-progress project fades purple-4 `#b01fe3` → purple-3 `#d150ff` and the reverse in dark. The same rule colours historic technologies (§5, tech-kind): blue-4 `#006dca` → blue-3 `#0089fc` in light mode, reversed in dark.
+**Archived shade shift: two steps paperward** (amended at review round 2 — the original one-step shift held the 3:1 graphics floor and proved invisible in practice). An active mark at shade 4 in light mode fades to shade 2 when archived; dark mode mirrors it, shade 3 fading to shade 5. That deliberately drops archived marks below the WCAG graphics floor: receding is the point, and their labels and hit targets keep them findable. Concretely, an archived complete project fades violet-4 `#794aff` → violet-2 `#e8daff` in light mode and violet-3 `#9b70ff` → violet-5 `#2d0fbf` in dark; an archived in-progress project fades purple-4 `#b01fe3` → purple-2 `#f7d9ff` and purple-3 `#d150ff` → purple-5 `#660087` in dark. The same rule colours historic technologies (§5, tech-kind): blue-4 `#006dca` → blue-2 `#d4e0ff` in light mode, blue-3 `#0089fc` → blue-5 `#00386d` in dark.
 
 ## 5. The registers
 
@@ -89,7 +89,7 @@ The rejected candidate was the green family (chartreuse-4 `#497c00` → green-4 
 
 **Deployed**: a second concentric ring at `r + 7`, the mark the timeline already uses for still-live rails, promoted to mean exactly one thing everywhere: this project is running somewhere. The map's current second-ring-for-hubs retires; node size already carries weight.
 
-**Tech-kind**: glyph-coded survey marks, all in ink (blue; confirmed at review). A real sheet treats kind as a feature class, and feature classes get symbols. Current stack draws at full shade; historic stack (any tech that is the source of a `replaced-by` edge) draws one shade paperward, same rule as archived projects. The vocabulary (chosen at review, the abstraction-gradient variant), drawn at the 8–14px radii the charts actually use:
+**Tech-kind**: glyph-coded survey marks, all in ink (blue; confirmed at review). A real sheet treats kind as a feature class, and feature classes get symbols. Current stack draws at full shade; historic stack (any tech that is the source of a `replaced-by` edge) draws two shades paperward, same rule as archived projects. The vocabulary (chosen at review, the abstraction-gradient variant), drawn at the 8–14px radii the charts actually use:
 
 | Kind      | Glyph             | Mnemonic                                                                          |
 | --------- | ----------------- | --------------------------------------------------------------------------------- |
@@ -191,7 +191,7 @@ Round 1 (16 July 2026), all six open items ruled:
 2. Ramp family: **violet, purple → violet** (§4)
 3. Glyph vocabulary: **abstraction-gradient variant**; square/diamond accepted for now (§5)
 4. Tech marks in ink (blue): **confirmed**
-5. Archived shade, one step paperward: **confirmed**
+5. Archived shade, one step paperward: **confirmed**, then widened to two steps at round 2 (one step proved invisible)
 6. Archived three: **beacons product · archived, psyche exploration · archived, things-we-do product · complete** (§9)
 
 Two interpretations recorded for correction if wrong:
