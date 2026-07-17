@@ -23,7 +23,8 @@ h6 {
 }
 
 h1 {
-	font-size: var(--text-4xl);
+	font-size: var(--display-h1);
+	line-height: 1.05;
 	letter-spacing: -0.015em;
 }
 h2 {

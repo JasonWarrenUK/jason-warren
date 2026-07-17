@@ -189,6 +189,18 @@
 	--text-apparatus-lg: 0.6875rem;
 	--text-body-tight: 0.9375rem;
 
+	/* Measure: the reading line-length cap for prose (visual-direction §2:
+	   body 15-16px, line-height 1.65-1.7, max 64ch). Every prose/lead block
+	   routes through this so no route re-invents its own width. --measure-lead
+	   matches --measure deliberately: a lead is prose set larger, not wider. */
+	--measure: 64ch;
+	--measure-lead: 64ch;
+
+	/* Display h1 clamp: one fluid page-title size, shared by every route's top
+	   heading. Range matches the spec's clamp(34-58px). Applied on the global
+	   h1 in typography.css; routes no longer set their own font-size. */
+	--display-h1: clamp(2.125rem, 5vw, 3.625rem); /* 34px -> 58px */
+
 	/* --- Spacing --- */
 	--space-1: 0.25rem;
 	--space-2: 0.5rem;
