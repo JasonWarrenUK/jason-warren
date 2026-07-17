@@ -15,15 +15,19 @@
  * hundreds of px on quiet older months; banding gives the crush proportional
  * room without letting quiet months balloon.
  *
- * The horizontal axis carries no semantic meaning at all — it exists purely
- * for collision avoidance. Each project becomes a vertical RAIL running from
- * its `lastCommit` (top/newer end, its most recent activity) to its
- * `firstCommit` (bottom/older end, its inception); rails are packed into the
- * leftmost column that doesn't overlap an already-placed rail, a swapped-axis
- * greedy first-fit analogous in spirit to `adoption-layout.ts`'s strip packer
- * but far simpler — this module deliberately does NOT attempt that module's
- * crossing-minimisation or lane-refinement passes. A timeline's x-axis has no
- * meaning to refine toward; first-fit is the whole story.
+ * The horizontal axis carries exactly ONE semantic: extraction lineage
+ * adjacency. A library and the app it was extracted from always land in
+ * neighbouring columns (app left, library right, so extraction reads
+ * rightward), which keeps their ribbon one column wide and legible.
+ * Everything else about x is pure collision avoidance. Each project becomes
+ * a vertical RAIL running from its `lastCommit` (top/newer end, its most
+ * recent activity) to its `firstCommit` (bottom/older end, its inception);
+ * lineage pairs are placed together into the lowest pair of adjacent free
+ * columns, and every other rail packs into the leftmost column that doesn't
+ * overlap an already-placed rail — a swapped-axis greedy first-fit analogous
+ * in spirit to `adoption-layout.ts`'s strip packer but far simpler; this
+ * module deliberately does NOT attempt that module's crossing-minimisation
+ * or lane-refinement passes.
  *
  * This is a NEW, SIMPLER module than `adoption-layout.ts`. It reuses that
  * module's byte-stable `dayValue` idiom (string slicing, never `new
@@ -470,7 +474,15 @@ function intervalsOverlap(a: Interval, b: Interval): boolean {
  * dominant recent cluster lays out first and packs tightly to the left; the
  * slug tiebreak keeps the result deterministic regardless of input order.
  */
-function packColumns(rails: PlacedRail[], laneGap: number): void {
+/** One extraction pair the packer must keep in adjacent columns. */
+interface LineagePairing {
+	/** Consumer/app slug — takes the left column. */
+	app: string;
+	/** Library slug — takes the right column, so extraction reads rightward. */
+	library: string;
+}
+
+function packColumns(rails: PlacedRail[], laneGap: number, pairs: LineagePairing[] = []): void {
 	const ordered = [...rails].sort(
 		(a, b) =>
 			a.yTop - b.yTop ||
@@ -478,20 +490,74 @@ function packColumns(rails: PlacedRail[], laneGap: number): void {
 			a.slug.localeCompare(b.slug)
 	);
 
-	const columns: Interval[][] = [];
-	for (const rail of ordered) {
-		const padded: Interval = { top: rail.yTop - laneGap / 2, bottom: rail.yBottom + laneGap / 2 };
+	const bySlug = new Map(rails.map((r) => [r.slug, r]));
+	// Pair lookup, both directions. Only pairs whose members are both in this
+	// packing run participate; edges to undated or filtered rails degrade to
+	// plain first-fit for the member that IS here.
+	const partnerOf = new Map<string, { partner: string; side: 'app' | 'library' }>();
+	for (const pair of pairs) {
+		if (!bySlug.has(pair.app) || !bySlug.has(pair.library)) continue;
+		partnerOf.set(pair.app, { partner: pair.library, side: 'app' });
+		partnerOf.set(pair.library, { partner: pair.app, side: 'library' });
+	}
 
-		let column = columns.findIndex(
-			(occupied) => !occupied.some((iv) => intervalsOverlap(iv, padded))
-		);
-		if (column === -1) {
-			column = columns.length;
-			columns.push([]);
-		}
-		columns[column].push(padded);
+	const columns: Interval[][] = [];
+	const placedSlugs = new Set<string>();
+
+	const paddedOf = (rail: PlacedRail): Interval => ({
+		top: rail.yTop - laneGap / 2,
+		bottom: rail.yBottom + laneGap / 2
+	});
+	const fits = (column: number, iv: Interval): boolean =>
+		column >= columns.length || !columns[column].some((occupied) => intervalsOverlap(occupied, iv));
+	const occupy = (column: number, iv: Interval, rail: PlacedRail): void => {
+		while (columns.length <= column) columns.push([]);
+		columns[column].push(iv);
 		rail.column = column;
 		rail.x = 0; // x is resolved by the caller once columnCount is known.
+		placedSlugs.add(rail.slug);
+	};
+
+	for (const rail of ordered) {
+		if (placedSlugs.has(rail.slug)) continue; // placed earlier as a pair member
+
+		const pairing = partnerOf.get(rail.slug);
+		const partner = pairing ? bySlug.get(pairing.partner) : undefined;
+
+		// Reaching the first member of an unplaced pair places BOTH members:
+		// the lowest c where the app fits column c and the library fits c+1.
+		if (pairing && partner && !placedSlugs.has(partner.slug)) {
+			const app = pairing.side === 'app' ? rail : partner;
+			const library = pairing.side === 'app' ? partner : rail;
+			const appPadded = paddedOf(app);
+			const libraryPadded = paddedOf(library);
+			let c = 0;
+			while (!(fits(c, appPadded) && fits(c + 1, libraryPadded))) c++;
+			occupy(c, appPadded, app);
+			occupy(c + 1, libraryPadded, library);
+			continue;
+		}
+
+		const padded = paddedOf(rail);
+
+		// Partner already placed by an earlier pair (a rail shared by two
+		// pairs — not in today's data): try the adjacent columns on the
+		// side extraction should read from, then degrade to first-fit.
+		if (pairing && partner && placedSlugs.has(partner.slug)) {
+			const preferred =
+				pairing.side === 'library'
+					? [partner.column + 1, partner.column - 1]
+					: [partner.column - 1, partner.column + 1];
+			const target = preferred.find((t) => t >= 0 && fits(t, padded));
+			if (target !== undefined) {
+				occupy(target, padded, rail);
+				continue;
+			}
+		}
+
+		let column = 0;
+		while (!fits(column, padded)) column++;
+		occupy(column, padded, rail);
 	}
 }
 
@@ -574,7 +640,14 @@ export function computeTimelineLayout(
 		};
 	});
 
-	packColumns(placed, geo.laneGap);
+	// Extraction pairs pack into adjacent columns (app left, library right)
+	// so their ribbons stay one column wide. edge.source is the library,
+	// edge.target the app — see buildLineagePaths.
+	const pairs: LineagePairing[] = lineage.map((edge) => ({
+		app: edge.target,
+		library: edge.source
+	}));
+	packColumns(placed, geo.laneGap, pairs);
 
 	const columnCount = placed.length === 0 ? 0 : Math.max(...placed.map((p) => p.column)) + 1;
 	for (const rail of placed) {

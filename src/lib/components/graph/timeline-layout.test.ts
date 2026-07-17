@@ -29,6 +29,7 @@ import {
 	type TimelineRail
 } from './timeline-layout.js';
 import { getTimelineProjects } from '$lib/data/queries.js';
+import { getProjectGraph } from '$lib/data/graph.js';
 
 const NOW = '2026-07-14';
 
@@ -294,25 +295,42 @@ describe('computeTimelineLayout — no vertical overlap within a column', () => 
 	});
 });
 
-describe('computeTimelineLayout — greedy leftmost (first-fit correctness)', () => {
-	it('places a rail in the lowest-index column that fits, not a later one', () => {
-		// a and b overlap (must differ in column); c starts after both end, so it
-		// must reuse column 0 rather than opening a third column.
+describe('computeTimelineLayout — lineage-adjacent packing', () => {
+	it('places an extraction pair in adjacent columns, app left, library right', () => {
+		// library was extracted from app mid-flight; both overlap in time, so
+		// without the pairing they could land in any two columns.
 		const rails: TimelineRail[] = [
-			rail('a', '2026-01-01', '2026-03-01'),
-			rail('b', '2026-01-15', '2026-02-15'),
-			rail('c', '2025-01-01', '2025-02-01')
+			rail('app', '2025-01-01', '2026-05-01'),
+			rail('library', '2025-09-01', '2026-04-01'),
+			rail('bystander', '2025-02-01', '2026-03-01')
 		];
-		const result = computeTimelineLayout(rails, [], NOW, GEO);
+		const lineage: TimelineLineage[] = [{ source: 'library', target: 'app', note: null }];
+		const result = computeTimelineLayout(rails, lineage, NOW, GEO);
 		const byLabel = new Map(result.placed.map((p) => [p.slug, p]));
-		expect(byLabel.get('a')!.column).not.toBe(byLabel.get('b')!.column);
-		// c is chronologically earlier (lower yTop is later in time; c has the
-		// largest yTop of the three) and non-overlapping with whichever of a/b
-		// occupies column 0, so it must land in column 0.
-		expect(byLabel.get('c')!.column).toBe(0);
+		expect(byLabel.get('library')!.column).toBe(byLabel.get('app')!.column + 1);
 	});
 
-	it('never opens a new column when an earlier one has room', () => {
+	it('keeps every real-registry extraction pair adjacent, app left', () => {
+		const rails = realRails();
+		const knownSlugs = new Set(rails.map((r) => r.slug));
+		const lineage: TimelineLineage[] = getProjectGraph()
+			.edges.filter((e) => e.kind === 'extraction')
+			.filter((e) => knownSlugs.has(e.source) && knownSlugs.has(e.target))
+			.map((e) => ({ source: e.source, target: e.target, note: e.note ?? null }));
+		expect(lineage.length).toBeGreaterThan(0);
+
+		const result = computeTimelineLayout(rails, lineage, NOW, GEO);
+		const byLabel = new Map(result.placed.map((p) => [p.slug, p]));
+		for (const edge of lineage) {
+			const library = byLabel.get(edge.source)!;
+			const app = byLabel.get(edge.target)!;
+			expect(library.column, `${edge.source} should sit one column right of ${edge.target}`).toBe(
+				app.column + 1
+			);
+		}
+	});
+
+	it('still packs non-pair rails densely into the leftmost free column', () => {
 		// Three sequential, non-overlapping rails must all pack into column 0.
 		const rails: TimelineRail[] = [
 			rail('first', '2026-01-01', '2026-01-05'),
@@ -322,6 +340,13 @@ describe('computeTimelineLayout — greedy leftmost (first-fit correctness)', ()
 		const result = computeTimelineLayout(rails, [], NOW, GEO);
 		expect(result.columnCount).toBe(1);
 		expect(result.placed.every((p) => p.column === 0)).toBe(true);
+	});
+
+	it('an edge to a missing rail degrades to plain first-fit without throwing', () => {
+		const rails: TimelineRail[] = [rail('app', '2025-01-01', '2026-05-01')];
+		const lineage: TimelineLineage[] = [{ source: 'ghost', target: 'app', note: null }];
+		const result = computeTimelineLayout(rails, lineage, NOW, GEO);
+		expect(result.placed[0].column).toBe(0);
 	});
 });
 
