@@ -1436,35 +1436,82 @@
 			</div>
 		{/if}
 
-		<!-- Stage key (project modes only) -->
+		<!-- Stage key (project modes only): one group per axis, each entry a
+		     mini survey mark drawn the way the chart draws it, so the legend
+		     never conflates the hue, centre-dot, outer-ring and fade channels. -->
 		{#if activeMode !== 'technologies'}
 			<div class="map__legend-group" aria-hidden="true">
-				<span class="map__legend-title">Stage</span>
+				<span class="map__legend-title">Progress</span>
 				{#each progressOrder.filter( (p) => projectNodes.some((n) => n.progress === p) ) as progress (progress)}
 					<span class="map__legend-item">
-						<span class="map__swatch" style="background: {progressColour(progress)}"></span>
+						<svg class="map__legend-mark" viewBox="0 0 16 16">
+							<circle
+								class="map__legend-ring"
+								cx="8"
+								cy="8"
+								r="5"
+								style="stroke: {progressColour(progress)}"
+							/>
+							<circle
+								class="map__legend-dot"
+								cx="8"
+								cy="8"
+								r="1.8"
+								style="fill: {progressColour(progress)}"
+							/>
+						</svg>
 						{progressLabel[progress]}
 					</span>
 				{/each}
-				{#if projectNodes.some((n) => n.track === 'exploration')}
-					<span class="map__legend-item">
-						<span class="map__swatch map__swatch--hollow"></span>
-						Spike
-					</span>
-				{/if}
-				{#if projectNodes.some((n) => n.deployed)}
-					<span class="map__legend-item">
-						<span class="map__swatch map__swatch--ringed"></span>
-						Deployed
-					</span>
-				{/if}
-				{#if projectNodes.some((n) => n.archived)}
-					<span class="map__legend-item">
-						<span class="map__swatch" style="background: {progressColour('complete', true)}"></span>
-						Archived
-					</span>
-				{/if}
 			</div>
+			{#if projectNodes.some((n) => n.track === 'exploration')}
+				<div class="map__legend-group" aria-hidden="true">
+					<span class="map__legend-title">Track</span>
+					<span class="map__legend-item">
+						<svg class="map__legend-mark" viewBox="0 0 16 16">
+							<circle class="map__legend-ring" cx="8" cy="8" r="5" />
+							<circle class="map__legend-ring" cx="8" cy="8" r="1.8" stroke-width="1.25" />
+						</svg>
+						Spike (hollow centre)
+					</span>
+				</div>
+			{/if}
+			{#if projectNodes.some((n) => n.deployed || n.archived)}
+				<div class="map__legend-group" aria-hidden="true">
+					<span class="map__legend-title">Flags</span>
+					{#if projectNodes.some((n) => n.deployed)}
+						<span class="map__legend-item">
+							<svg class="map__legend-mark" viewBox="0 0 16 16">
+								<circle class="map__legend-ring" cx="8" cy="8" r="4.2" />
+								<circle class="map__legend-ring map__legend-ring--outer" cx="8" cy="8" r="6.6" />
+								<circle class="map__legend-dot" cx="8" cy="8" r="1.6" />
+							</svg>
+							Deployed (outer ring)
+						</span>
+					{/if}
+					{#if projectNodes.some((n) => n.archived)}
+						<span class="map__legend-item">
+							<svg class="map__legend-mark" viewBox="0 0 16 16">
+								<circle
+									class="map__legend-ring"
+									cx="8"
+									cy="8"
+									r="5"
+									style="stroke: {progressColour('complete', true)}"
+								/>
+								<circle
+									class="map__legend-dot"
+									cx="8"
+									cy="8"
+									r="1.8"
+									style="fill: {progressColour('complete', true)}"
+								/>
+							</svg>
+							Archived (faded)
+						</span>
+					{/if}
+				</div>
+			{/if}
 		{/if}
 
 		<p class="map__note">
@@ -1851,19 +1898,27 @@
 		fill: var(--tech-mark);
 	}
 
-	/* Spike: hollow mark, the exploration-track convention in miniature. */
-	.map__swatch--hollow {
-		background: transparent;
-		border: 1.5px solid var(--color-text-subtle);
+	/* Stage-key mini marks: drawn exactly as the chart draws its survey
+	   marks, so each legend entry shows its own channel undistorted. */
+	.map__legend-mark {
+		width: 1rem;
+		height: 1rem;
+		flex-shrink: 0;
 	}
 
-	/* Deployed: the outer-ring mark in miniature, drawn with a box-shadow
-	   ring around a solid core. */
-	.map__swatch--ringed {
-		background: var(--color-text-subtle);
-		box-shadow:
-			0 0 0 2px var(--color-surface),
-			0 0 0 3px var(--color-text-subtle);
+	.map__legend-ring {
+		fill: none;
+		stroke: var(--color-text-subtle);
+		stroke-width: 1.5;
+	}
+
+	.map__legend-ring--outer {
+		stroke-width: 1;
+		opacity: 0.5;
+	}
+
+	.map__legend-dot {
+		fill: var(--color-text-subtle);
 	}
 
 	.map__swatch--line {
