@@ -1517,19 +1517,20 @@
 		<p class="map__note">
 			{#if activeMode === 'relationships'}
 				Solid lines trace engine extraction: a library pulled out of an application. Dashed lines
-				mark related work. Coloured threads link projects in a shared theme; each theme has its own
-				colour and toggle. Switch to "By stack" to cluster by shared technology, or "Technologies"
-				to explore the tech landscape directly.
+				mark related work and theme links; point at a theme in the key to ink just its routes.
+				Switch to "By stack" to cluster by shared technology, or "Technologies" to explore the tech
+				landscape directly.
 			{:else if activeMode === 'stack'}
 				Projects cluster by shared technology: runtime, framework, data layer, and tooling. Dense
 				nodes share multiple tools; outliers use a distinct stack. Switch to "Relationships" for
 				curated connections, or "Technologies" to see the tech nodes themselves.
 			{:else}
-				Every technology in the registry, sized by how many projects use it and coloured by kind.
-				Lines connect technologies that appear together in the same project. Language tags
-				(TypeScript, Go, etc.) are shown as nodes but have no edges — they connect almost
-				everything, so they cluster nothing useful. Arrowed lines trace lineage: what led to what,
-				and what replaced what. Click any node to see the projects that use it.
+				Every technology in the registry, sized by how many projects use it and shaped by kind:
+				rings for languages, hexagons for frameworks, triangles for runtimes. Lines connect
+				technologies that appear together in the same project. Language tags (TypeScript, Go, etc.)
+				are shown as nodes but have no edges — they connect almost everything, so they cluster
+				nothing useful. Arrowed lines trace lineage: what led to what, and what replaced what. Click
+				any node to see the projects that use it.
 			{/if}
 			{#if activeMode !== 'technologies'}
 				Node size tracks commit activity; fainter dots are older. Click a node to pin it or navigate
@@ -1838,28 +1839,34 @@
 		}
 	}
 
+	/* Legend: a centred column of titled rows, sharing one visual language
+	   with the timeline and toolkit keys — mono small-caps titles leading
+	   centred entry rows. */
 	.map__legend {
 		display: flex;
-		flex-wrap: wrap;
-		gap: var(--space-6);
-		padding-top: var(--space-4);
+		flex-direction: column;
+		align-items: center;
+		gap: var(--space-3);
+		padding-top: var(--space-5);
 		border-top: 1px solid var(--color-border);
 	}
 
 	.map__legend-group {
 		display: flex;
 		align-items: center;
+		justify-content: center;
 		flex-wrap: wrap;
-		gap: var(--space-2);
+		gap: var(--space-2) var(--space-3);
 	}
 
 	.map__legend-title {
-		font-size: var(--text-xs);
-		font-weight: 700;
+		font-family: var(--font-mono);
+		font-size: var(--text-apparatus-lg);
+		font-weight: 600;
 		text-transform: uppercase;
-		letter-spacing: 0.06em;
+		letter-spacing: 0.12em;
 		color: var(--color-text-muted);
-		margin-right: var(--space-1);
+		margin-right: var(--space-2);
 	}
 
 	.map__legend-item {
@@ -1965,10 +1972,11 @@
 	}
 
 	.map__note {
-		flex-basis: 100%;
+		max-width: 64ch;
 		margin: 0;
 		font-size: var(--text-xs);
 		color: var(--color-text-muted);
+		text-align: center;
 	}
 
 	.map-modal__tagline {

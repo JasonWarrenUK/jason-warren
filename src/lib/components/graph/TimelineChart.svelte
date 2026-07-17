@@ -892,23 +892,26 @@
 			transform var(--transition-slow) var(--reveal-delay);
 	}
 
+	/* Legend: a centred column of titled rows, one per channel, sharing one
+	   visual language with the map and toolkit keys. */
 	.timeline__legend {
 		display: flex;
 		flex-direction: column;
+		align-items: center;
 		gap: var(--space-3);
 		margin-top: var(--space-6);
-		padding-top: var(--space-4);
+		padding-top: var(--space-5);
 		border-top: 1px solid var(--color-border);
 		font-size: var(--text-sm);
 		color: var(--color-text-subtle);
 	}
 
-	/* One titled row per channel, matching the map and toolkit keys. */
 	.timeline__legend-row {
 		display: flex;
 		flex-wrap: wrap;
 		align-items: center;
-		gap: var(--space-5);
+		justify-content: center;
+		gap: var(--space-2) var(--space-5);
 	}
 
 	.timeline__legend-title {
@@ -918,7 +921,6 @@
 		letter-spacing: 0.12em;
 		text-transform: uppercase;
 		color: var(--color-text-muted);
-		min-width: 5.5rem;
 	}
 
 	.timeline__legend-item {
@@ -928,8 +930,8 @@
 	}
 
 	.timeline__swatch-mark {
-		width: 0.85rem;
-		height: 0.85rem;
+		width: 1rem;
+		height: 1rem;
 		flex-shrink: 0;
 	}
 
