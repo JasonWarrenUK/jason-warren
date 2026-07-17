@@ -14,11 +14,13 @@
 	};
 </script>
 
-<span class="role-badge role-badge--{role}" aria-label="Role: {labels[role]}">
+<span class="role-badge" aria-label="Role: {labels[role]}">
 	{labels[role]}
 </span>
 
 <style>
+	/* Neutral paper pill: the word does the work (colour-system.md §5,
+	   roles register). Three hues left the census with this change. */
 	.role-badge {
 		display: inline-flex;
 		align-items: center;
@@ -30,20 +32,8 @@
 		padding: var(--space-badge);
 		border-radius: var(--radius-full);
 		white-space: nowrap;
-	}
-
-	.role-badge--solo {
-		color: var(--color-solo-text);
-		background-color: var(--color-solo-bg);
-	}
-
-	.role-badge--lead {
-		color: var(--color-lead-text);
-		background-color: var(--color-lead-bg);
-	}
-
-	.role-badge--collaborator {
-		color: var(--color-collaborator-text);
-		background-color: var(--color-collaborator-bg);
+		color: var(--color-text-subtle);
+		background-color: transparent;
+		border: 1px solid var(--color-border-strong);
 	}
 </style>

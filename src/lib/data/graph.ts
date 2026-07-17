@@ -307,19 +307,22 @@ export function selectLabelledSlugs(
 	const hubSlugs = getHubSlugs(projectList);
 	for (const slug of hubSlugs) selected.add(slug);
 
-	// Fill remaining slots via round-robin until the count is met.
+	// Fill remaining slots via round-robin until the count is met. Each queue
+	// discards already-selected entries until it can offer something new, so a
+	// round where every queue's HEAD is a duplicate (common once hubs or a
+	// multi-axis leader are in the set) doesn't read as "drained" and strand
+	// the remaining slots.
 	while (selected.size < count) {
 		let advanced = false;
 		for (const queue of queues) {
-			const next = queue.shift();
+			let next = queue.shift();
+			while (next && selected.has(next.slug)) next = queue.shift();
 			if (!next) continue;
-			if (!selected.has(next.slug)) {
-				selected.add(next.slug);
-				advanced = true;
-				if (selected.size >= count) break;
-			}
+			selected.add(next.slug);
+			advanced = true;
+			if (selected.size >= count) break;
 		}
-		if (!advanced) break; // every queue is drained
+		if (!advanced) break; // every queue is genuinely drained
 	}
 
 	return selected;

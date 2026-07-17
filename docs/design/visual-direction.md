@@ -37,6 +37,8 @@
 
 ## 3. Colour
 
+> **Superseded in part** by [`colour-system.md`](./colour-system.md), the ground-up colour redesign (July 2026). The warm-neutral derivation below still holds; the chromatic vocabulary (primary/accent roles, status, edge and theme hues) is now specified there.
+
 Everything routes through the semantic aliases, as now. Two rules:
 
 **Chromatic tokens stay pure Reasonable Colors.**
@@ -104,7 +106,7 @@ Draw it as a survey, not a simulation.
 
 - **Canvas:** dotted graticule (1px, `1 6` dash, `--color-border`-weight) on `--color-surface-sunken`, behind all edges.
 - **Nodes — survey marks:** open ring + centre point, not filled blobs. Ring radius keeps the existing formula `r = 8 + 17.5·√(w/max)`; stroke = status colour; recency → ring opacity 0.55–1.0; hubs get a second outer ring.
-- **Edges — routes:** always curved (quadratic, slight bow). Extraction = solid 2px; related/theme = 1.5px dashed `5 4`; tech lineage keeps arrowheads, restyled as route arrowheads. Category colour from the existing edge tokens, unchanged.
+- **Edges — routes:** always curved (quadratic, slight bow). Extraction = solid 2px; related/theme = 1.5px dashed `5 4`; tech lineage keeps arrowheads, restyled as route arrowheads. ~~Category colour from the existing edge tokens, unchanged.~~ Edge colour is now specified by [`colour-system.md`](./colour-system.md): extraction in oxide, succession in lime/raspberry, theme and category webs in quiet neutrals with oxide progressive disclosure.
 - **Territories:** convex hull per theme cluster (d3-polygon `polygonHull`, padded and rounded): 7% tint fill, dashed 1px boundary, _italic serif_ territory name at the centroid. This is the move that makes `/map` and `ThemeTerritories` unmistakably one system.
 - **Labels:** project names in JetBrains Mono micro-caps (uppercase, ~1.2px tracking); standing set only (hubs + top-N) at rest, others on hover/focus.
 - **Focus state:** mark swaps to the accent double-ring; leader line to a mono annotation (`WYRD · hub` / `wip · 3 routes · Go`). Dim-others reuses the existing tokens: `--dim-node: 0.28`, `--dim-edge: 0.08`, `--dim-label: 0.32`.

@@ -4,9 +4,22 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { getHeroPool, HERO_COUNT, filterProjects, getTimelineProjects } from './queries.js';
+import {
+	getHeroPool,
+	HERO_COUNT,
+	filterProjects,
+	getTimelineProjects,
+	type ProjectFlag
+} from './queries.js';
 import { heroScore } from './scoring.js';
-import type { Project, ProjectKind, ProjectRole, ProjectStatus, TechTag } from './types.js';
+import type {
+	Project,
+	ProjectKind,
+	ProjectProgress,
+	ProjectRole,
+	ProjectTrack,
+	TechTag
+} from './types.js';
 
 // ---------------------------------------------------------------------------
 // Fixture helpers
@@ -17,7 +30,11 @@ const BASE_NOW = Date.parse('2026-06-18');
 function makeProject(
 	slug: string,
 	overrides: {
-		status?: ProjectStatus;
+		track?: ProjectTrack;
+		trackAuthored?: boolean;
+		progress?: ProjectProgress;
+		deployed?: boolean;
+		archived?: boolean;
 		commits?: number;
 		lastCommit?: string;
 		pin?: boolean;
@@ -38,7 +55,12 @@ function makeProject(
 		kind: 'repo',
 		contribution: { role: 'solo', commitShare: 1 },
 		tags: overrides.tags ?? [],
-		status: overrides.status ?? 'live',
+		track: overrides.track ?? 'product',
+		trackAuthored: overrides.trackAuthored ?? true,
+		progress: overrides.progress ?? 'in-progress',
+		progressAuthored: true,
+		deployed: overrides.deployed ?? false,
+		archived: overrides.archived ?? false,
 		repoUrl: `https://github.com/JasonWarrenUK/${slug}`,
 		highlights: [],
 		relationships: [],
@@ -57,17 +79,17 @@ describe('getHeroPool — eligible filter', () => {
 	it('excludes archived projects', () => {
 		const projects = [
 			makeProject('active', { commits: 200, lastCommit: '2026-06-18' }),
-			makeProject('dead', { status: 'archived', commits: 500, lastCommit: '2026-06-17' })
+			makeProject('dead', { archived: true, commits: 500, lastCommit: '2026-06-17' })
 		];
 		const pool = getHeroPool(BASE_NOW, projects);
 		expect(pool.map((p) => p.slug)).not.toContain('dead');
 		expect(pool.map((p) => p.slug)).toContain('active');
 	});
 
-	it('excludes uncategorised projects', () => {
+	it('excludes untriaged projects (heuristic-only track)', () => {
 		const projects = [
 			makeProject('known', { commits: 200 }),
-			makeProject('unknown', { status: 'uncategorised', commits: 500 })
+			makeProject('unknown', { trackAuthored: false, commits: 500 })
 		];
 		const pool = getHeroPool(BASE_NOW, projects);
 		expect(pool.map((p) => p.slug)).not.toContain('unknown');
@@ -190,9 +212,22 @@ describe('filterProjects — single dimension', () => {
 		expect(result.every((p) => p.kind === 'app')).toBe(true);
 	});
 
-	it('filters by a single status', () => {
-		const result = filterProjects({ statuses: new Set<ProjectStatus>(['wip']) });
-		expect(result.every((p) => p.status === 'wip')).toBe(true);
+	it('filters by a single track', () => {
+		const result = filterProjects({ tracks: new Set<ProjectTrack>(['exploration']) });
+		expect(result.length).toBeGreaterThan(0);
+		expect(result.every((p) => p.track === 'exploration')).toBe(true);
+	});
+
+	it('filters by a single progress', () => {
+		const result = filterProjects({ progresses: new Set<ProjectProgress>(['in-progress']) });
+		expect(result.length).toBeGreaterThan(0);
+		expect(result.every((p) => p.progress === 'in-progress')).toBe(true);
+	});
+
+	it('filters by a stage flag', () => {
+		const result = filterProjects({ flags: new Set<ProjectFlag>(['archived']) });
+		expect(result.length).toBeGreaterThan(0);
+		expect(result.every((p) => p.archived)).toBe(true);
 	});
 
 	it('filters by a single role', () => {
@@ -208,19 +243,20 @@ describe('filterProjects — multi-value within a dimension (OR)', () => {
 		expect(result.every((p) => p.kind === 'app' || p.kind === 'library')).toBe(true);
 	});
 
-	it('matches projects satisfying either status (OR within dimension)', () => {
-		const result = filterProjects({ statuses: new Set<ProjectStatus>(['live', 'wip']) });
-		expect(result.every((p) => p.status === 'live' || p.status === 'wip')).toBe(true);
+	it('matches projects satisfying either flag (OR within dimension)', () => {
+		const result = filterProjects({ flags: new Set<ProjectFlag>(['deployed', 'archived']) });
+		expect(result.length).toBeGreaterThan(0);
+		expect(result.every((p) => p.deployed || p.archived)).toBe(true);
 	});
 });
 
 describe('filterProjects — cross-dimension (AND)', () => {
-	it('requires both kind and status to match (AND across dimensions)', () => {
+	it('requires both kind and progress to match (AND across dimensions)', () => {
 		const result = filterProjects({
 			kinds: new Set<ProjectKind>(['app']),
-			statuses: new Set<ProjectStatus>(['live'])
+			progresses: new Set<ProjectProgress>(['complete'])
 		});
-		expect(result.every((p) => p.kind === 'app' && p.status === 'live')).toBe(true);
+		expect(result.every((p) => p.kind === 'app' && p.progress === 'complete')).toBe(true);
 	});
 });
 
@@ -263,19 +299,19 @@ function searchHaystack(p: Project): string {
 // ---------------------------------------------------------------------------
 
 describe('getTimelineProjects — hide filter', () => {
-	it('excludes hidden projects but keeps archived and uncategorised', () => {
+	it('excludes hidden projects but keeps archived and untriaged', () => {
 		const projects = [
 			makeProject('visible', { commits: 200, lastCommit: '2026-06-18' }),
 			makeProject('hidden', { commits: 500, hide: true, lastCommit: '2026-06-17' }),
-			makeProject('archived-kept', { status: 'archived', lastCommit: '2025-01-01' }),
-			makeProject('uncategorised-kept', { status: 'uncategorised', lastCommit: '2025-06-01' })
+			makeProject('archived-kept', { archived: true, lastCommit: '2025-01-01' }),
+			makeProject('untriaged-kept', { trackAuthored: false, lastCommit: '2025-06-01' })
 		];
 		const timeline = getTimelineProjects(projects);
 		const slugs = timeline.map((p) => p.slug);
 		expect(slugs).not.toContain('hidden');
 		expect(slugs).toContain('visible');
 		expect(slugs).toContain('archived-kept');
-		expect(slugs).toContain('uncategorised-kept');
+		expect(slugs).toContain('untriaged-kept');
 	});
 });
 

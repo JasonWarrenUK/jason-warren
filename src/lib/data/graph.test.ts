@@ -202,7 +202,8 @@ describe('selectLabelledSlugs', () => {
 			kind: 'tool',
 			contribution: { role: 'solo' },
 			tags: [],
-			status: 'finished',
+			track: 'product',
+			progress: 'complete',
 			repoUrl: '',
 			highlights: [],
 			relationships: [],
@@ -238,6 +239,20 @@ describe('selectLabelledSlugs', () => {
 		];
 		const labelled = selectLabelledSlugs(list, 4);
 		expect([...labelled].sort()).toEqual(['active', 'big', 'mine', 'recent']);
+	});
+
+	it('keeps filling when a round of axis heads are all already selected', () => {
+		// A tops recency; B tops the other three axes. In round two every
+		// queue's head is a duplicate (the recency queue offers B, the rest
+		// offer A), which the old early-exit misread as "queues drained",
+		// stranding C below the requested count.
+		const list = [
+			faux('a', { last: '2026-06-10', linesAdded: 1, linesOfCode: 1, commitsRecent: 1 }),
+			faux('b', { last: '2026-06-09', linesAdded: 99, linesOfCode: 99, commitsRecent: 99 }),
+			faux('c', {})
+		];
+		const labelled = selectLabelledSlugs(list, 3) as Set<string>;
+		expect([...labelled].sort()).toEqual(['a', 'b', 'c']);
 	});
 
 	it('dedupes a project that leads multiple axes, then fills from the rest', () => {

@@ -1,14 +1,15 @@
 /**
  * WCAG contrast assertions for the Atlas warm-neutral palette.
  *
- * tokens.css derives every neutral surface/border/text alias via
- * `color-mix(in oklab, ...)` over Reasonable Colors variables (see the
- * --warmth knob and its comment there). Because the mix ratio is asserted
- * rather than eyeballed, this test resolves the actual CSS — parsing
- * tokens.css's custom-property declarations and the Reasonable Colors
- * palette, then reproducing the oklab color-mix maths in code — so a future
- * change to --warmth, a shade, or a token wiring is caught here rather than
- * shipped as an invisible contrast regression.
+ * tokens.css defines every colour token once, with light-dark() carrying
+ * both themes, and derives neutrals via `color-mix(in oklab, ...)` over
+ * Reasonable Colors variables (see the --warmth knob and its comment
+ * there). Because the mix ratio is asserted rather than eyeballed, this
+ * test resolves the actual CSS — parsing tokens.css's custom-property
+ * declarations and the Reasonable Colors palette, then reproducing the
+ * light-dark() selection and oklab color-mix maths in code — so a future
+ * change to --warmth, a shade, or a token wiring is caught here rather
+ * than shipped as an invisible contrast regression.
  *
  * Mirrors the pattern in data.test.ts: collect every failing pair into an
  * array and assert its length, so one run reports every offender at once.
@@ -25,6 +26,7 @@ const RC_PATH = fileURLToPath(
 );
 
 const toOklab = converter('oklab');
+const toOklch = converter('oklch');
 
 /** Parses `--name: value;` declarations out of one `{ ... }` block's body. */
 function parseDeclarations(blockBody: string): Map<string, string> {
@@ -75,24 +77,45 @@ function parseRcPalette(): Map<string, string> {
 	return palette;
 }
 
+type ThemeName = 'light' | 'dark';
+
+/** Splits a function's argument list at its single top-level comma. */
+function splitAtTopLevelComma(inner: string): [string, string] {
+	let depth = 0;
+	for (let i = 0; i < inner.length; i++) {
+		if (inner[i] === '(') depth++;
+		else if (inner[i] === ')') depth--;
+		else if (inner[i] === ',' && depth === 0) {
+			return [inner.slice(0, i).trim(), inner.slice(i + 1).trim()];
+		}
+	}
+	throw new Error(`No top-level comma in: ${inner}`);
+}
+
 /**
- * Resolves a token value to a concrete hex colour, given a lookup scope
- * (declarations from the active theme block, falling back to the RC
- * palette and the light-theme :root block for tokens the dark block
- * doesn't override).
+ * Resolves a token value to a concrete hex colour for one theme, given a
+ * lookup scope (the single :root block's declarations, falling back to the
+ * RC palette). light-dark() picks its first argument for the light theme
+ * and its second for dark; everything else resolves theme-independently.
  */
-function resolveColour(value: string, scopes: Map<string, string>[]): string {
+function resolveColour(value: string, scopes: Map<string, string>[], theme: ThemeName): string {
 	const trimmed = value.trim();
 
 	if (trimmed.startsWith('#')) return trimmed;
 	if (trimmed === 'white') return '#ffffff';
 	if (trimmed === 'black') return '#000000';
 
+	const ldMatch = /^light-dark\(\s*([\s\S]+)\)$/.exec(trimmed);
+	if (ldMatch) {
+		const [lightArg, darkArg] = splitAtTopLevelComma(ldMatch[1]);
+		return resolveColour(theme === 'dark' ? darkArg : lightArg, scopes, theme);
+	}
+
 	const varMatch = /^var\((--[a-zA-Z0-9-]+)\)$/.exec(trimmed);
 	if (varMatch) {
 		const name = varMatch[1];
 		for (const scope of scopes) {
-			if (scope.has(name)) return resolveColour(scope.get(name) as string, scopes);
+			if (scope.has(name)) return resolveColour(scope.get(name) as string, scopes, theme);
 		}
 		throw new Error(`Unresolved token: ${name}`);
 	}
@@ -100,23 +123,12 @@ function resolveColour(value: string, scopes: Map<string, string>[]): string {
 	const mixMatch = /^color-mix\(\s*in oklab\s*,\s*([\s\S]+)\)$/.exec(trimmed);
 	if (mixMatch) {
 		// Split the two "colour [percentage]" arguments on the top-level comma.
-		const inner = mixMatch[1];
-		let depth = 0;
-		let splitAt = -1;
-		for (let i = 0; i < inner.length; i++) {
-			if (inner[i] === '(') depth++;
-			else if (inner[i] === ')') depth--;
-			else if (inner[i] === ',' && depth === 0) {
-				splitAt = i;
-				break;
-			}
-		}
-		if (splitAt === -1) throw new Error(`Malformed color-mix: ${trimmed}`);
-		const [aRaw, aPctRaw] = splitColourAndPercent(inner.slice(0, splitAt).trim());
-		const [bRaw, bPctRaw] = splitColourAndPercent(inner.slice(splitAt + 1).trim());
+		const [aArg, bArg] = splitAtTopLevelComma(mixMatch[1]);
+		const [aRaw, aPctRaw] = splitColourAndPercent(aArg);
+		const [bRaw, bPctRaw] = splitColourAndPercent(bArg);
 
-		const colourA = resolveColour(aRaw, scopes);
-		const colourB = resolveColour(bRaw, scopes);
+		const colourA = resolveColour(aRaw, scopes, theme);
+		const colourB = resolveColour(bRaw, scopes, theme);
 		const pctA = aPctRaw !== null ? resolvePercent(aPctRaw, scopes) : null;
 		const pctB = bPctRaw !== null ? resolvePercent(bPctRaw, scopes) : null;
 		// CSS color-mix: if only one percentage given, the other is its complement.
@@ -145,10 +157,17 @@ function splitColourAndPercent(arg: string): [string, string | null] {
 	return [arg, null];
 }
 
-/** Resolves a percentage expression, either a literal `12%` or `calc(100% - var(--warmth))`, to a number 0-100. */
+/** Resolves a percentage expression: a literal `12%`, a `var(--token)` holding one, or `calc(100% - var(--warmth))`. */
 function resolvePercent(expr: string, scopes: Map<string, string>[]): number {
 	const literal = /^([\d.]+)%$/.exec(expr);
 	if (literal) return Number(literal[1]);
+
+	const varRef = /^var\((--[a-zA-Z0-9-]+)\)$/.exec(expr);
+	if (varRef) {
+		for (const scope of scopes) {
+			if (scope.has(varRef[1])) return resolvePercent(scope.get(varRef[1]) as string, scopes);
+		}
+	}
 
 	const calcMatch = /^calc\(\s*100%\s*-\s*(.+)\)$/.exec(expr);
 	if (calcMatch) {
@@ -194,20 +213,16 @@ beforeAll(() => {
 	const rootBody = extractBlock(css, /:root\s*\{/);
 	const rootDecls = parseDeclarations(rootBody);
 
-	const darkBody = extractBlock(css, /:root\[data-theme=['"]dark['"]\]\s*\{/);
-	const darkDecls = parseDeclarations(darkBody);
-
+	// Both themes read the same single :root block; light-dark() inside each
+	// token value is what differs, selected per theme inside resolveColour.
 	themes = [
 		{
 			label: 'light',
-			resolve: (name: string) => resolveColour(`var(${name})`, [rootDecls, rcPalette])
+			resolve: (name: string) => resolveColour(`var(${name})`, [rootDecls, rcPalette], 'light')
 		},
 		{
 			label: 'dark',
-			// Dark overrides sit in front of the light :root and the RC palette,
-			// matching the cascade: :root[data-theme='dark'] only overrides a
-			// subset of tokens, the rest fall through to :root.
-			resolve: (name: string) => resolveColour(`var(${name})`, [darkDecls, rootDecls, rcPalette])
+			resolve: (name: string) => resolveColour(`var(${name})`, [rootDecls, rcPalette], 'dark')
 		}
 	];
 });
@@ -231,15 +246,48 @@ const BODY_PAIRS: [string, string, number][] = [
 	['--color-text-muted', '--color-surface-raised', 3],
 	['--color-primary-text', '--color-primary-bg', 4.5],
 	['--color-accent-text', '--color-accent-bg', 4.5],
-	['--color-live-text', '--color-live-bg', 4.5],
-	['--color-wip-text', '--color-wip-bg', 4.5],
-	['--color-finished-text', '--color-finished-bg', 4.5],
-	['--color-prototype-text', '--color-prototype-bg', 4.5],
-	['--color-archived-text', '--color-archived-bg', 4.5],
-	['--color-uncategorised-text', '--color-uncategorised-bg', 4.5],
-	['--color-solo-text', '--color-solo-bg', 4.5],
-	['--color-lead-text', '--color-lead-bg', 4.5],
-	['--color-collaborator-text', '--color-collaborator-bg', 4.5]
+	['--progress-in-progress-text', '--progress-in-progress-bg', 4.5],
+	['--progress-complete-text', '--progress-complete-bg', 4.5]
+];
+
+/**
+ * Graphics-contrast floor for the chromatic inks against the survey sheet
+ * they draw on. WCAG 1.4.11 asks 3:1 for meaningful graphics; Reasonable's
+ * shade arithmetic delivers it (shade 4 on shade-2 paper ≈ diff 2), and this
+ * pins that so an ink or surface retune cannot silently sink a mark.
+ */
+const INK_PAIRS: [string, string, number][] = [
+	['--ink', '--color-surface-sunken', 3],
+	['--ink-oxide', '--color-surface-sunken', 3],
+	['--ink-succession-fwd', '--color-surface-sunken', 3],
+	['--ink-succession-back', '--color-surface-sunken', 3],
+	['--ink-progress-1', '--color-surface-sunken', 3],
+	['--ink-progress-2', '--color-surface-sunken', 3]
+];
+
+/**
+ * The end-of-life fade must stay inside a corridor: findable against the
+ * sheet (one review round made archived marks literally invisible in light
+ * mode). Each row is [token, reference, minRatio].
+ */
+const FADE_PAIRS: [string, string, number][] = [
+	['--progress-in-progress-archived', '--color-surface-sunken', 2.2],
+	['--progress-complete-archived', '--color-surface-sunken', 2.2],
+	['--tech-mark-historic', '--color-surface-sunken', 2.2]
+];
+
+/**
+ * Distinctness is a CHROMA property, not a luminance one — a faded mark at
+ * similar lightness to its active ink is fully legible yet reads as a
+ * different kind of thing only when its colourfulness has visibly drained
+ * (the review lesson: a luminance-ratio pin let an indistinct fade through).
+ * Each row is [activeToken, fadedToken, maxChromaShare]: the faded ink's
+ * oklch chroma must not exceed that share of the active ink's.
+ */
+const FADE_CHROMA_PAIRS: [string, string, number][] = [
+	['--progress-in-progress', '--progress-in-progress-archived', 0.55],
+	['--progress-complete', '--progress-complete-archived', 0.55],
+	['--tech-mark', '--tech-mark-historic', 0.55]
 ];
 
 describe('Atlas palette contrast', () => {
@@ -267,6 +315,66 @@ describe('Atlas palette contrast', () => {
 					failures.push(
 						`${theme.label}: ${textToken} (${text}) on ${surfaceToken} (${surface}) = ` +
 							`${ratio.toFixed(2)}:1, needs ${minRatio}:1`
+					);
+				}
+			}
+		}
+		expect(failures, failures.join('\n')).toHaveLength(0);
+	});
+
+	it('holds every chromatic ink to the graphics floor on the survey sheet, in both themes', () => {
+		const failures: string[] = [];
+		for (const theme of themes) {
+			for (const [inkToken, surfaceToken, minRatio] of INK_PAIRS) {
+				const ink = theme.resolve(inkToken);
+				const surface = theme.resolve(surfaceToken);
+				const ratio = wcagContrast(ink, surface);
+				if (ratio < minRatio) {
+					failures.push(
+						`${theme.label}: ${inkToken} (${ink}) on ${surfaceToken} (${surface}) = ` +
+							`${ratio.toFixed(2)}:1, needs ${minRatio}:1`
+					);
+				}
+			}
+		}
+		expect(failures, failures.join('\n')).toHaveLength(0);
+	});
+
+	it('keeps the end-of-life fade findable against the sheet, in both themes', () => {
+		const failures: string[] = [];
+		for (const theme of themes) {
+			for (const [token, reference, minRatio] of FADE_PAIRS) {
+				const a = theme.resolve(token);
+				const b = theme.resolve(reference);
+				const ratio = wcagContrast(a, b);
+				if (ratio < minRatio) {
+					failures.push(
+						`${theme.label}: ${token} (${a}) vs ${reference} (${b}) = ` +
+							`${ratio.toFixed(2)}:1, needs ${minRatio}:1`
+					);
+				}
+			}
+		}
+		expect(failures, failures.join('\n')).toHaveLength(0);
+	});
+
+	it('drains enough chroma from the fade that it reads as distinct from its active ink, in both themes', () => {
+		const failures: string[] = [];
+		for (const theme of themes) {
+			for (const [activeToken, fadedToken, maxShare] of FADE_CHROMA_PAIRS) {
+				const active = toOklch(theme.resolve(activeToken));
+				const faded = toOklch(theme.resolve(fadedToken));
+				const activeChroma = active?.c ?? 0;
+				const fadedChroma = faded?.c ?? 0;
+				if (activeChroma === 0) {
+					failures.push(`${theme.label}: ${activeToken} resolved with zero chroma`);
+					continue;
+				}
+				const share = fadedChroma / activeChroma;
+				if (share > maxShare) {
+					failures.push(
+						`${theme.label}: ${fadedToken} keeps ${(share * 100).toFixed(0)}% of ` +
+							`${activeToken}'s chroma, max ${maxShare * 100}%`
 					);
 				}
 			}

@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { base } from '$app/paths';
 	import type { Project } from '$lib/data/types.js';
-	import StatusBadge from '$lib/components/project/StatusBadge.svelte';
+	import StageBadge from '$lib/components/project/StageBadge.svelte';
 	import TechTagList from '$lib/components/project/TechTagList.svelte';
 	import ExpandableCard from '$lib/components/project/ExpandableCard.svelte';
 
@@ -76,7 +76,7 @@
 					>
 						<div class="hero-rotation__card-header">
 							<div class="hero-rotation__card-meta">
-								<StatusBadge status={project.status} />
+								<StageBadge {project} />
 							</div>
 							<h3 class="hero-rotation__card-name">{project.name}</h3>
 							<p class="hero-rotation__card-tagline">{project.tagline}</p>

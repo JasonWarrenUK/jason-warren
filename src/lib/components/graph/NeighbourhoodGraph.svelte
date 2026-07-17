@@ -1,19 +1,33 @@
 <script lang="ts">
-	import type { ProjectStatus } from '$lib/data/types.js';
-	import { statusColour } from './graph-style.js';
+	import type { Project } from '$lib/data/types.js';
+	import { progressColour } from './graph-style.js';
+
+	/** The stage fields a survey mark needs to draw itself. */
+	type StageMark = Pick<
+		Project,
+		'track' | 'trackAuthored' | 'progress' | 'progressAuthored' | 'archived' | 'deployed'
+	>;
 
 	interface NeighbourPoint {
 		slug: string;
 		name: string;
-		status: ProjectStatus;
+		stage: StageMark;
 		kind: 'extraction' | 'related';
 		direction: 'outgoing' | 'incoming';
 	}
 
 	interface Props {
-		centre: { name: string; status: ProjectStatus };
+		centre: { name: string; stage: StageMark };
 		neighbours: NeighbourPoint[];
 	}
+
+	/** Heuristic stage draws dotted: the unsurveyed convention. */
+	const provisional = (stage: StageMark): boolean =>
+		!stage.trackAuthored || !stage.progressAuthored;
+
+	/** Centre dot style: exploration draws hollow where product draws solid. */
+	const dotStyle = (stage: StageMark, colour: string): string =>
+		stage.track === 'exploration' ? `fill: none; stroke: ${colour}` : `fill: ${colour}`;
 
 	let { centre, neighbours }: Props = $props();
 
@@ -61,7 +75,7 @@
 	const gridLinesY = [height / 3, (height * 2) / 3];
 	const gridLinesX = [width / 3, (width * 2) / 3];
 
-	const centreColour = $derived(statusColour(centre.status));
+	const centreColour = $derived(progressColour(centre.stage.progress, centre.stage.archived));
 </script>
 
 <svg
@@ -92,21 +106,31 @@
 
 	<g class="neighbourhood__nodes">
 		{#each placed as neighbour (neighbour.slug)}
-			{@const colour = statusColour(neighbour.status)}
+			{@const colour = progressColour(neighbour.stage.progress, neighbour.stage.archived)}
 			<g>
 				<circle
 					class="neighbourhood__ring"
+					class:neighbourhood__ring--provisional={provisional(neighbour.stage)}
 					cx={neighbour.x}
 					cy={neighbour.y}
 					r={neighbourRadius}
 					style="stroke: {colour}"
 				/>
+				{#if neighbour.stage.deployed}
+					<circle
+						class="neighbourhood__ring neighbourhood__ring--deployed"
+						cx={neighbour.x}
+						cy={neighbour.y}
+						r={neighbourRadius + 4}
+						style="stroke: {colour}"
+					/>
+				{/if}
 				<circle
 					class="neighbourhood__dot"
 					cx={neighbour.x}
 					cy={neighbour.y}
 					r="2.4"
-					style="fill: {colour}"
+					style={dotStyle(neighbour.stage, colour)}
 				/>
 				<text
 					class="neighbourhood__label"
@@ -121,19 +145,28 @@
 
 		<circle
 			class="neighbourhood__ring neighbourhood__ring--centre"
+			class:neighbourhood__ring--provisional={provisional(centre.stage)}
 			{cx}
 			{cy}
 			r={centreRadius}
 			style="stroke: {centreColour}"
 		/>
+		{#if centre.stage.deployed}
+			<circle
+				class="neighbourhood__ring neighbourhood__ring--hub"
+				{cx}
+				{cy}
+				r={centreRadius + 6}
+				style="stroke: {centreColour}"
+			/>
+		{/if}
 		<circle
-			class="neighbourhood__ring neighbourhood__ring--hub"
+			class="neighbourhood__dot"
 			{cx}
 			{cy}
-			r={centreRadius + 6}
-			style="stroke: {centreColour}"
+			r="2.8"
+			style={dotStyle(centre.stage, centreColour)}
 		/>
-		<circle class="neighbourhood__dot" {cx} {cy} r="2.8" style="fill: {centreColour}" />
 		<text
 			class="neighbourhood__centre-label"
 			x={cx}
@@ -163,7 +196,7 @@
 	}
 
 	.neighbourhood__edge--extraction {
-		stroke: var(--color-primary);
+		stroke: var(--edge-extraction);
 		stroke-width: 2;
 	}
 
@@ -182,9 +215,22 @@
 		stroke-width: 1.75;
 	}
 
-	.neighbourhood__ring--hub {
+	/* Deployed marks: the outer ring means "this runs somewhere" (the one
+	   meaning the second ring carries anywhere on the site). */
+	.neighbourhood__ring--hub,
+	.neighbourhood__ring--deployed {
 		stroke-width: 1.25;
 		opacity: 0.6;
+	}
+
+	/* Heuristic stage: the unsurveyed convention, dotted ring. */
+	.neighbourhood__ring--provisional {
+		stroke-dasharray: 2 3;
+	}
+
+	/* Hollow (exploration) dots stroke at a fine weight; solid dots ignore it. */
+	.neighbourhood__dot {
+		stroke-width: 1.25;
 	}
 
 	.neighbourhood__label {

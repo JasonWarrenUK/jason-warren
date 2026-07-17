@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { base } from '$app/paths';
-	import StatusBadge from '$lib/components/project/StatusBadge.svelte';
+	import StageBadge from '$lib/components/project/StageBadge.svelte';
 	import RoleBadge from '$lib/components/project/RoleBadge.svelte';
 	import TechTagList from '$lib/components/project/TechTagList.svelte';
 	import HighlightsList from '$lib/components/project/HighlightsList.svelte';
@@ -60,7 +60,7 @@
 		<div class="page__header-top">
 			<h1 class="page__title">{data.project.name}</h1>
 			<div class="page__badges">
-				<StatusBadge status={data.project.status} />
+				<StageBadge project={data.project} />
 				<RoleBadge role={data.project.contribution.role} />
 			</div>
 		</div>

@@ -29,7 +29,7 @@ import type { TagKind } from './types.js';
 export interface TechNode {
 	/** Exact tag label, e.g. "TypeScript", "SvelteKit", "Neo4j". */
 	label: string;
-	/** Tag kind — drives colour via `techKindColour`. */
+	/** Tag kind — drives the glyph shape via `kindGlyph`. */
 	kind: TagKind;
 	/** Number of projects in the registry that carry this label. */
 	projectCount: number;

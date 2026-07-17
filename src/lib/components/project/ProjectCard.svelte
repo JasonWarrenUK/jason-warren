@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { base } from '$app/paths';
 	import type { Project } from '$lib/data/types.js';
-	import StatusBadge from './StatusBadge.svelte';
+	import StageBadge from './StageBadge.svelte';
 	import RoleBadge from './RoleBadge.svelte';
 	import TechTagList from './TechTagList.svelte';
 	import ExternalLink from '$lib/components/ui/ExternalLink.svelte';
@@ -22,7 +22,7 @@
 				<header class="project-card__header">
 					<h3 class="project-card__name">{project.name}</h3>
 					<div class="project-card__badges">
-						<StatusBadge status={project.status} />
+						<StageBadge {project} />
 						<RoleBadge role={project.contribution.role} />
 					</div>
 				</header>

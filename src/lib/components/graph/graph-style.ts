@@ -1,45 +1,52 @@
 /**
  * Shared presentation helpers for the graph views (map, neighbourhood, threads).
- * Keeps colour and label vocabulary consistent with StatusBadge and the
+ * Keeps colour and label vocabulary consistent with StageBadge and the
  * semantic tokens in tokens.css, so every connection view reads the same.
  */
 
-import type { EdgeCategory, LineageKind, ProjectStatus, TagKind } from '$lib/data/types.js';
+import type {
+	EdgeCategory,
+	LineageKind,
+	ProjectProgress,
+	ProjectTrack,
+	TagKind
+} from '$lib/data/types.js';
 import type { GraphEdge } from '$lib/data/graph.js';
 import { themes } from '$lib/data/themes.js';
 
-/** Status colour token, matching the status badges. */
-export function statusColour(status: ProjectStatus): string {
-	const map: Record<ProjectStatus, string> = {
-		live: 'var(--color-live)',
-		wip: 'var(--color-wip)',
-		finished: 'var(--color-finished)',
-		prototype: 'var(--color-prototype)',
-		archived: 'var(--color-archived)',
-		uncategorised: 'var(--color-uncategorised)'
-	};
-	return map[status];
-}
+// ---------------------------------------------------------------------------
+// Track × progress vocabulary (colour-system.md §3)
+//
+// THE single source for stage labels, orders and colours. Badges, filters and
+// every graph view import from here; the old status vocabulary was triplicated
+// across the old StatusBadge, FilterBar and this file; now it lives here alone.
+// ---------------------------------------------------------------------------
 
-/** Status labels, identical to the badge vocabulary. */
-export const statusLabel: Record<ProjectStatus, string> = {
-	live: 'Live',
-	wip: 'Active',
-	finished: 'Complete',
-	prototype: 'Prototype',
-	archived: 'Archived',
-	uncategorised: 'Uncategorised'
+/** Track labels: intent, not maturity. A finished spike is a spike that worked. */
+export const trackLabel: Record<ProjectTrack, string> = {
+	exploration: 'Spike',
+	product: 'Product'
 };
 
-/** Ordered status list for legends. Uncategorised last — it's a placeholder. */
-export const statusOrder: ProjectStatus[] = [
-	'live',
-	'wip',
-	'finished',
-	'prototype',
-	'archived',
-	'uncategorised'
-];
+export const progressLabel: Record<ProjectProgress, string> = {
+	'in-progress': 'Building',
+	complete: 'Complete'
+};
+
+export const trackOrder: ProjectTrack[] = ['product', 'exploration'];
+
+export const progressOrder: ProjectProgress[] = ['in-progress', 'complete'];
+
+/**
+ * Progress ink for a project's marks, rails and rings. Archived applies the
+ * end-of-life convention: the same hue, one shade nearer the paper.
+ */
+export function progressColour(progress: ProjectProgress, archived = false): string {
+	if (progress === 'in-progress') {
+		return archived ? 'var(--progress-in-progress-archived)' : 'var(--progress-in-progress)';
+	}
+	return archived ? 'var(--progress-complete-archived)' : 'var(--progress-complete)';
+}
 
 /** Human-readable label for an edge kind, phrased from source to target. */
 export function edgeLabel(kind: GraphEdge['kind']): string {
@@ -71,9 +78,13 @@ export function isLineageKind(type: string): type is LineageKind {
 	return type === 'leads-to' || type === 'replaced-by';
 }
 
-/** CSS colour token for a theme edge. */
-export function themeColour(themeId: string): string {
-	return `var(--color-edge-theme-${themeId})`;
+/**
+ * Colour token for a theme edge. Quiet paper neutral: theme identity is
+ * carried by labels and the chip-lift interaction, never by hue
+ * (colour-system.md §5, label-first themes).
+ */
+export function themeColour(): string {
+	return 'var(--color-border-strong)';
 }
 
 /** id → name lookup, built from themes.ts. */
@@ -99,34 +110,118 @@ export const themeIds: string[] = themes.map((t) => t.id);
  */
 export type EdgeType = GraphEdge['kind'] | ThemeEdgeType | EdgeCategory | LineageKind;
 
-/** Colour token for a shared-tech category edge. Decorative, distinct hues. */
-export function categoryColour(category: EdgeCategory): string {
-	return `var(--color-edge-${category})`;
+/**
+ * Colour token for a shared-tech category edge. Quiet paper neutral: the
+ * category webs rest as base linework, and the legend's chips lift one
+ * category at a time to oxide (colour-system.md §5, quiet webs).
+ */
+export function categoryColour(): string {
+	return 'var(--color-border-strong)';
+}
+
+// ---------------------------------------------------------------------------
+// Tech-kind glyphs (colour-system.md §5)
+//
+// Kind is a feature class, and feature classes get symbols: every tech mark
+// draws in the one tech ink, and its SHAPE carries the kind. The vocabulary
+// is the abstraction-gradient variant chosen at the design review:
+// language = ring + centre dot (the base survey mark; languages are the
+// stations everything else is measured from), framework = hexagon (an
+// assembly you build inside), runtime = triangle (engine), data = diamond
+// (store), tool = square (a block you pick up), ai = four-point star
+// (spark), concept = dashed ring (abstract, unbuilt).
+//
+// Single source for node marks AND legend mini-glyphs, so the legend always
+// draws exactly what the chart draws.
+// ---------------------------------------------------------------------------
+
+export interface KindGlyph {
+	/** 'circle' kinds draw <circle> rings; 'path' kinds draw kindGlyphPath. */
+	shape: 'circle' | 'path';
+	/** Concept's ring dashes — longer dashes than the dotted-provisional convention, and fixed to the glyph rather than the data. */
+	dashed?: boolean;
+	/** Language keeps the survey mark's solid centre dot; every other kind is its shape alone. */
+	centreDot?: boolean;
+}
+
+/** Glyph spec per tag kind. */
+export function kindGlyph(kind: TagKind): KindGlyph {
+	if (kind === 'language') return { shape: 'circle', centreDot: true };
+	if (kind === 'concept') return { shape: 'circle', dashed: true };
+	return { shape: 'path' };
+}
+
+/** Regular polygon path with every vertex on the circumradius `r`. */
+function regularPolygonPath(
+	cx: number,
+	cy: number,
+	r: number,
+	sides: number,
+	startAngle: number
+): string {
+	const points: string[] = [];
+	for (let i = 0; i < sides; i++) {
+		const angle = startAngle + (2 * Math.PI * i) / sides;
+		points.push(
+			`${(cx + r * Math.cos(angle)).toFixed(2)} ${(cy + r * Math.sin(angle)).toFixed(2)}`
+		);
+	}
+	return `M ${points.join(' L ')} Z`;
+}
+
+/** Four-point star: outer vertices on `r`, inner pinched to `r * innerRatio`. */
+function starPath(cx: number, cy: number, r: number, innerRatio = 0.42): string {
+	const points: string[] = [];
+	for (let i = 0; i < 8; i++) {
+		const angle = -Math.PI / 2 + (Math.PI * i) / 4;
+		const radius = i % 2 === 0 ? r : r * innerRatio;
+		points.push(
+			`${(cx + radius * Math.cos(angle)).toFixed(2)} ${(cy + radius * Math.sin(angle)).toFixed(2)}`
+		);
+	}
+	return `M ${points.join(' L ')} Z`;
+}
+
+/** Path `d` for the polygon glyph kinds. Circle kinds never reach here. */
+export function kindGlyphPath(kind: TagKind, cx: number, cy: number, r: number): string {
+	switch (kind) {
+		case 'framework':
+			return regularPolygonPath(cx, cy, r, 6, -Math.PI / 2);
+		case 'runtime':
+			return regularPolygonPath(cx, cy, r, 3, -Math.PI / 2);
+		case 'data':
+			// Diamond: a pointy-top square, vertices on the axes.
+			return regularPolygonPath(cx, cy, r, 4, -Math.PI / 2);
+		case 'tool':
+			// Square: axis-aligned, corners on the diagonals.
+			return regularPolygonPath(cx, cy, r, 4, -Math.PI / 4);
+		case 'ai':
+			return starPath(cx, cy, r);
+		default:
+			// language/concept are circle kinds; this arm exists for exhaustiveness.
+			return regularPolygonPath(cx, cy, r, 6, -Math.PI / 2);
+	}
 }
 
 /**
- * Colour token for a tech node by its tag kind. Language tags take the primary
- * colour (they are the spine of the toolkit); all other kinds use the same edge
- * category tokens so colour vocabulary stays consistent across map and timeline.
- *
- * Single-sourced here so both `AdoptionTimeline` and `ProjectMap` (tech mode)
- * use the same mapping.
+ * The tech-mark ink: current stack in the drawing ink, historic stack one
+ * shade paperward (the end-of-life convention). A technology is historic
+ * when it is the source of any `replaced-by` edge.
  */
-export function techKindColour(kind: TagKind): string {
-	if (kind === 'language') return 'var(--color-primary)';
-	if (kind === 'concept') return 'var(--color-edge-concept)';
-	// runtime, framework, data, ai, tool are all EdgeCategory members.
-	return categoryColour(kind as Exclude<TagKind, 'language' | 'concept'>);
+export function techMarkColour(historic: boolean): string {
+	return historic ? 'var(--tech-mark-historic)' : 'var(--tech-mark)';
 }
 
 /** Colour token for any edge type, curated or category. */
 export function edgeTypeColour(type: EdgeType): string {
-	if (type === 'extraction') return 'var(--color-primary)';
+	// Extraction is the authored survey mark of one project begetting
+	// another; it draws in oxide, the accent ink (colour-system.md §5).
+	if (type === 'extraction') return 'var(--edge-extraction)';
 	if (type === 'related') return 'var(--color-text-subtle)';
 	if (type === 'leads-to') return 'var(--color-edge-lineage-leads-to)';
 	if (type === 'replaced-by') return 'var(--color-edge-lineage-replaced-by)';
-	if (isThemeEdgeType(type)) return themeColour(type.slice('theme:'.length));
-	return categoryColour(type as EdgeCategory);
+	if (isThemeEdgeType(type)) return themeColour();
+	return categoryColour();
 }
 
 /** Short legend label for a shared-tech category. */

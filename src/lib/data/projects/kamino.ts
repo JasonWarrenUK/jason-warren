@@ -10,7 +10,8 @@ export const kamino: AuthoredProject = {
 		'A universal project template that serves as the starting point for apprenticeship work, with stack-agnostic Claude Code config that clones cleanly via degit. The value is in the automation: a post-commit hook auto-extracts KSB (Knowledge, Skills, Behaviours) portfolio evidence from commit messages, a docs hook reminds you to sync documentation when source changes, and a pre-push hook validates that tests pass before any remote push. The interactive /project/init skill ties it together, scaffolding MCP server connections, a roadmap, and the first ADR.',
 	kind: 'tool',
 	contribution: { role: 'solo' },
-	status: 'finished',
+	track: 'product',
+	progress: 'complete',
 	highlights: [
 		'Post-commit hook auto-extracts KSB portfolio evidence from commit messages.',
 		'post-commit-docs hook reminds to sync documentation when source changes.',

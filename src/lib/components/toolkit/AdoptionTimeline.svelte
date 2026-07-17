@@ -8,7 +8,9 @@
 	import { getTechOverlay } from '$lib/data/tech-overlays.js';
 	import { formatMonthYear } from '$lib/format-date.js';
 	import {
-		techKindColour,
+		kindGlyph,
+		kindGlyphPath,
+		techMarkColour,
 		edgeTypeColour,
 		edgeTypeLabel
 	} from '$lib/components/graph/graph-style.js';
@@ -30,8 +32,6 @@
 	}
 
 	let { items, provisional = false }: Props = $props();
-
-	// Colour by tag kind — single-sourced in graph-style.ts via techKindColour.
 
 	// --- Geometry -----------------------------------------------------------
 	// A horizontal time axis rendered as a git-branch graph: each lineage-
@@ -190,6 +190,14 @@
 	];
 	const presentKinds = $derived(kindLegend.filter((k) => items.some((i) => i.kind === k.kind)));
 
+	// Historic stack: sources of `replaced-by` edges fade one shade paperward,
+	// the same end-of-life convention archived projects use. Kind itself is
+	// carried by glyph shape, not hue (colour-system.md §5).
+	const historicLabels = new Set(
+		techRelationships.filter((r) => r.kind === 'replaced-by').map((r) => r.source)
+	);
+	const hasHistoric = $derived(items.some((i) => historicLabels.has(i.label)));
+
 	// Edge-type legend: only the lineage kinds actually drawn on this chart
 	// (mirrors presentKinds, keyed off the layout's connectors instead of items).
 	const LINEAGE_KINDS = ['leads-to', 'replaced-by'] as const;
@@ -292,12 +300,15 @@
 		<!-- Technologies. -->
 		<g class="adoption__items">
 			{#each layout.placed as item, index (item.label)}
+				{@const glyph = kindGlyph(item.kind)}
 				<g
 					class="adoption__item"
 					class:adoption__item--active={effectiveLabel === item.label}
 					class:adoption__item--dim={effectiveLabel !== null && !neighbourhood.has(item.label)}
 					class:adoption__item--pinned={pinnedLabel === item.label}
-					style="--reveal-delay: {Math.min(index * 28, 700)}ms; color: {techKindColour(item.kind)}"
+					style="--reveal-delay: {Math.min(index * 28, 700)}ms; color: {techMarkColour(
+						historicLabels.has(item.label)
+					)}"
 					role="presentation"
 				>
 					<title>{describe(item)}</title>
@@ -340,8 +351,23 @@
 							r={item.radius + HUB_RING_OFFSET}
 						/>
 					{/if}
-					<circle class="adoption__ring" cx={item.x} cy={item.y} r={item.radius} />
-					<circle class="adoption__centre" cx={item.x} cy={item.y} r="2.8" />
+					{#if glyph.shape === 'circle'}
+						<circle
+							class="adoption__ring"
+							class:adoption__ring--dashed={glyph.dashed}
+							cx={item.x}
+							cy={item.y}
+							r={item.radius}
+						/>
+					{:else}
+						<path
+							class="adoption__ring"
+							d={kindGlyphPath(item.kind, item.x, item.y, item.radius)}
+						/>
+					{/if}
+					{#if glyph.centreDot}
+						<circle class="adoption__centre" cx={item.x} cy={item.y} r="2.8" />
+					{/if}
 					<text
 						class="adoption__label"
 						aria-hidden="true"
@@ -395,39 +421,83 @@
 		{/each}
 	</ul>
 
+	<!-- Legend: one titled row per channel, so shape (kind), shade (stack
+	     state), ring treatment (date provenance) and edge colour
+	     (succession) each get their own explanation instead of one
+	     undifferentiated line. -->
 	<figcaption class="adoption__legend">
-		{#each presentKinds as entry (entry.kind)}
+		<div class="adoption__legend-row">
+			<span class="adoption__legend-title">Kind</span>
+			{#each presentKinds as entry (entry.kind)}
+				{@const chipGlyph = kindGlyph(entry.kind)}
+				<span class="adoption__legend-item">
+					<svg class="adoption__swatch-mark" viewBox="0 0 14 14" aria-hidden="true">
+						{#if chipGlyph.shape === 'circle'}
+							<circle
+								class="adoption__swatch-ring"
+								class:adoption__swatch-ring--dashed={chipGlyph.dashed}
+								cx="7"
+								cy="7"
+								r="5"
+							/>
+						{:else}
+							<path class="adoption__swatch-ring" d={kindGlyphPath(entry.kind, 7, 7, 5.5)} />
+						{/if}
+						{#if chipGlyph.centreDot}
+							<circle class="adoption__swatch-centre" cx="7" cy="7" r="1.6" />
+						{/if}
+					</svg>
+					{entry.label}
+				</span>
+			{/each}
+			<span class="adoption__legend-note">Mark size reflects how many projects use it.</span>
+		</div>
+		{#if hasHistoric}
+			<div class="adoption__legend-row">
+				<span class="adoption__legend-title">Stack</span>
+				<span class="adoption__legend-item">
+					<span class="adoption__swatch adoption__swatch--current"></span>
+					In use
+				</span>
+				<span class="adoption__legend-item">
+					<span class="adoption__swatch adoption__swatch--historic"></span>
+					Superseded (faded)
+				</span>
+			</div>
+		{/if}
+		<div class="adoption__legend-row">
+			<span class="adoption__legend-title">Date</span>
 			<span class="adoption__legend-item">
-				<span class="adoption__swatch" style="background: {techKindColour(entry.kind)}"></span>
-				{entry.label}
+				<svg class="adoption__swatch-mark" viewBox="0 0 14 14" aria-hidden="true">
+					<circle class="adoption__swatch-hub" cx="7" cy="7" r="6" />
+					<circle class="adoption__swatch-ring" cx="7" cy="7" r="4" />
+					<circle class="adoption__swatch-centre" cx="7" cy="7" r="1.6" />
+				</svg>
+				Authored (outer ring)
 			</span>
-		{/each}
-		<span class="adoption__legend-note">Dot size reflects how many projects use it.</span>
-		<span class="adoption__legend-item">
-			<svg class="adoption__swatch-mark" viewBox="0 0 14 14" aria-hidden="true">
-				<circle class="adoption__swatch-hub" cx="7" cy="7" r="6" />
-				<circle class="adoption__swatch-ring" cx="7" cy="7" r="4" />
-				<circle class="adoption__swatch-centre" cx="7" cy="7" r="1.6" />
-			</svg>
-			Authored date
-		</span>
-		<span class="adoption__legend-item">
-			<svg class="adoption__swatch-mark" viewBox="0 0 14 14" aria-hidden="true">
-				<circle class="adoption__swatch-ring" cx="7" cy="7" r="5" />
-				<circle class="adoption__swatch-centre" cx="7" cy="7" r="1.6" />
-			</svg>
-			Estimated from project history
-		</span>
-		{#each presentLineageKinds as kind (kind)}
 			<span class="adoption__legend-item">
-				<span class="adoption__legend-edge" style="border-color: {edgeTypeColour(kind)}"></span>
-				{edgeTypeLabel(kind)}
+				<svg class="adoption__swatch-mark" viewBox="0 0 14 14" aria-hidden="true">
+					<circle class="adoption__swatch-ring" cx="7" cy="7" r="5" />
+					<circle class="adoption__swatch-centre" cx="7" cy="7" r="1.6" />
+				</svg>
+				Estimated from project history
 			</span>
-		{/each}
-		<span class="adoption__legend-note">
-			Each line is coloured by what comes next: leading to a new technology, then merging into its
-			replacement; fading lines are still in use.
-		</span>
+		</div>
+		{#if presentLineageKinds.length > 0}
+			<div class="adoption__legend-row">
+				<span class="adoption__legend-title">Succession</span>
+				{#each presentLineageKinds as kind (kind)}
+					<span class="adoption__legend-item">
+						<span class="adoption__legend-edge" style="border-color: {edgeTypeColour(kind)}"></span>
+						{edgeTypeLabel(kind)}
+					</span>
+				{/each}
+				<span class="adoption__legend-note">
+					Each line is coloured by what comes next: leading to a new technology, then merging into
+					its replacement; fading lines are still in use.
+				</span>
+			</div>
+		{/if}
 		{#if provisional}
 			<span class="adoption__provisional">
 				Dates are approximate; uncurated technologies are estimated from project history.
@@ -513,6 +583,12 @@
 	   the map. The ring takes the item group's kind colour via currentColor but
 	   at reduced opacity so kind reads quietly (the map's calm register); the
 	   solid centre point carries the full kind colour for a crisp plotted dot. */
+	/* Concept glyph: a dashed ring — longer dashes than provisional dotting,
+	   fixed to the glyph rather than the data. */
+	.adoption__ring--dashed {
+		stroke-dasharray: 4 3;
+	}
+
 	.adoption__ring {
 		fill: none;
 		stroke: currentColor;
@@ -698,16 +774,35 @@
 		transition: opacity var(--transition-slow);
 	}
 
+	/* Legend: a centred column of titled rows, one per channel, sharing one
+	   visual language with the map and timeline keys. */
 	.adoption__legend {
 		display: flex;
-		flex-wrap: wrap;
+		flex-direction: column;
 		align-items: center;
-		gap: var(--space-5);
+		gap: var(--space-3);
 		margin-top: var(--space-6);
-		padding-top: var(--space-4);
+		padding-top: var(--space-5);
 		border-top: 1px solid var(--color-border);
 		font-size: var(--text-sm);
 		color: var(--color-text-subtle);
+	}
+
+	.adoption__legend-row {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		justify-content: center;
+		gap: var(--space-2) var(--space-5);
+	}
+
+	.adoption__legend-title {
+		font-family: var(--font-mono);
+		font-size: var(--text-apparatus-lg);
+		font-weight: 600;
+		letter-spacing: 0.12em;
+		text-transform: uppercase;
+		color: var(--color-text-muted);
 	}
 
 	.adoption__legend-item {
@@ -723,13 +818,22 @@
 		flex-shrink: 0;
 	}
 
+	.adoption__swatch--current {
+		background: var(--tech-mark);
+	}
+
+	/* Superseded stack: the end-of-life shade, two steps paperward. */
+	.adoption__swatch--historic {
+		background: var(--tech-mark-historic);
+	}
+
 	/* Curated / derived legend swatches: miniature survey marks mirroring the
 	   real node shape (ring + solid centre; curated earns a second, quieter hub
 	   ring). Uses the primary colour as a stand-in since the actual dots are
 	   coloured by kind. */
 	.adoption__swatch-mark {
-		width: 0.85rem;
-		height: 0.85rem;
+		width: 1rem;
+		height: 1rem;
 		flex-shrink: 0;
 		color: var(--color-primary);
 	}
@@ -767,7 +871,8 @@
 	}
 
 	.adoption__provisional {
-		flex-basis: 100%;
+		max-width: 64ch;
+		text-align: center;
 		font-size: var(--text-xs);
 		color: var(--color-text-muted);
 		font-style: italic;

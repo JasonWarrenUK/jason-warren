@@ -29,6 +29,7 @@ import {
 	type TimelineRail
 } from './timeline-layout.js';
 import { getTimelineProjects } from '$lib/data/queries.js';
+import { getProjectGraph } from '$lib/data/graph.js';
 
 const NOW = '2026-07-14';
 
@@ -55,7 +56,11 @@ function rail(
 	return {
 		slug,
 		name: overrides.name ?? slug,
-		status: overrides.status ?? 'live',
+		track: overrides.track ?? 'product',
+		progress: overrides.progress ?? 'in-progress',
+		archived: overrides.archived ?? false,
+		deployed: overrides.deployed ?? false,
+		stageProvisional: overrides.stageProvisional ?? false,
 		tagline: overrides.tagline ?? '',
 		role: overrides.role ?? 'solo',
 		firstCommit,
@@ -73,7 +78,10 @@ function realRails(): TimelineRail[] {
 	return getTimelineProjects().map((p) =>
 		rail(p.slug, p.firstCommit ?? null, p.lastCommit ?? null, {
 			name: p.name,
-			status: p.status,
+			track: p.track,
+			progress: p.progress,
+			archived: p.archived,
+			deployed: p.deployed,
 			tagline: p.tagline,
 			role: p.contribution.role
 		})
@@ -251,6 +259,34 @@ describe('computeMonthBands — density proportionality', () => {
 		// ...and every one of them is taller than the untouched month.
 		expect(heightOf(apr)).toBeGreaterThan(heightOf(may));
 	});
+
+	it('caps a spiky year at the budget ratio of the median year', () => {
+		// 2024 holds one extremely dense month (twenty overlapping rails) and
+		// eleven empty ones; 2025 and 2026 tick along at a steady overlap of
+		// one. Without the year budget the 2024 spike would balloon its year
+		// past the steady years.
+		const rails: TimelineRail[] = [
+			rail('steady', '2025-01-01', '2026-06-30'),
+			...Array.from({ length: 20 }, (_, i) =>
+				rail(`spike-${String(i).padStart(2, '0')}`, '2024-03-05', '2024-03-20')
+			)
+		];
+		const minDay = dayValue('2024-01-01');
+		const nowDay = dayValue(NOW);
+		const bands = computeMonthBands(rails, minDay, nowDay, GEO.topPad);
+
+		const totals = new Map<number, number>();
+		for (const band of bands.values()) {
+			totals.set(band.year, (totals.get(band.year) ?? 0) + (band.yBottom - band.yTop));
+		}
+		const sorted = [...totals.values()].sort((a, b) => a - b);
+		const median =
+			sorted.length % 2 === 1
+				? sorted[Math.floor(sorted.length / 2)]
+				: (sorted[sorted.length / 2 - 1] + sorted[sorted.length / 2]) / 2;
+		const max = sorted[sorted.length - 1];
+		expect(max / median).toBeLessThanOrEqual(1.8 + 1e-9);
+	});
 });
 
 describe('computeTimelineLayout — no vertical overlap within a column', () => {
@@ -287,25 +323,42 @@ describe('computeTimelineLayout — no vertical overlap within a column', () => 
 	});
 });
 
-describe('computeTimelineLayout — greedy leftmost (first-fit correctness)', () => {
-	it('places a rail in the lowest-index column that fits, not a later one', () => {
-		// a and b overlap (must differ in column); c starts after both end, so it
-		// must reuse column 0 rather than opening a third column.
+describe('computeTimelineLayout — lineage-adjacent packing', () => {
+	it('places an extraction pair in adjacent columns, app left, library right', () => {
+		// library was extracted from app mid-flight; both overlap in time, so
+		// without the pairing they could land in any two columns.
 		const rails: TimelineRail[] = [
-			rail('a', '2026-01-01', '2026-03-01'),
-			rail('b', '2026-01-15', '2026-02-15'),
-			rail('c', '2025-01-01', '2025-02-01')
+			rail('app', '2025-01-01', '2026-05-01'),
+			rail('library', '2025-09-01', '2026-04-01'),
+			rail('bystander', '2025-02-01', '2026-03-01')
 		];
-		const result = computeTimelineLayout(rails, [], NOW, GEO);
+		const lineage: TimelineLineage[] = [{ source: 'library', target: 'app', note: null }];
+		const result = computeTimelineLayout(rails, lineage, NOW, GEO);
 		const byLabel = new Map(result.placed.map((p) => [p.slug, p]));
-		expect(byLabel.get('a')!.column).not.toBe(byLabel.get('b')!.column);
-		// c is chronologically earlier (lower yTop is later in time; c has the
-		// largest yTop of the three) and non-overlapping with whichever of a/b
-		// occupies column 0, so it must land in column 0.
-		expect(byLabel.get('c')!.column).toBe(0);
+		expect(byLabel.get('library')!.column).toBe(byLabel.get('app')!.column + 1);
 	});
 
-	it('never opens a new column when an earlier one has room', () => {
+	it('keeps every real-registry extraction pair adjacent, app left', () => {
+		const rails = realRails();
+		const knownSlugs = new Set(rails.map((r) => r.slug));
+		const lineage: TimelineLineage[] = getProjectGraph()
+			.edges.filter((e) => e.kind === 'extraction')
+			.filter((e) => knownSlugs.has(e.source) && knownSlugs.has(e.target))
+			.map((e) => ({ source: e.source, target: e.target, note: e.note ?? null }));
+		expect(lineage.length).toBeGreaterThan(0);
+
+		const result = computeTimelineLayout(rails, lineage, NOW, GEO);
+		const byLabel = new Map(result.placed.map((p) => [p.slug, p]));
+		for (const edge of lineage) {
+			const library = byLabel.get(edge.source)!;
+			const app = byLabel.get(edge.target)!;
+			expect(library.column, `${edge.source} should sit one column right of ${edge.target}`).toBe(
+				app.column + 1
+			);
+		}
+	});
+
+	it('still packs non-pair rails densely into the leftmost free column', () => {
 		// Three sequential, non-overlapping rails must all pack into column 0.
 		const rails: TimelineRail[] = [
 			rail('first', '2026-01-01', '2026-01-05'),
@@ -315,6 +368,52 @@ describe('computeTimelineLayout — greedy leftmost (first-fit correctness)', ()
 		const result = computeTimelineLayout(rails, [], NOW, GEO);
 		expect(result.columnCount).toBe(1);
 		expect(result.placed.every((p) => p.column === 0)).toBe(true);
+	});
+
+	it('an edge to a missing rail degrades to plain first-fit without throwing', () => {
+		const rails: TimelineRail[] = [rail('app', '2025-01-01', '2026-05-01')];
+		const lineage: TimelineLineage[] = [{ source: 'ghost', target: 'app', note: null }];
+		const result = computeTimelineLayout(rails, lineage, NOW, GEO);
+		expect(result.placed[0].column).toBe(0);
+	});
+});
+
+describe('computeTimelineLayout — extraction ribbons', () => {
+	it('spans from the library inception to the earlier-ending terminal, one column wide', () => {
+		const rails: TimelineRail[] = [
+			rail('app', '2025-01-01', '2026-05-01'),
+			rail('library', '2025-09-01', '2026-02-01') // born mid-app, ends before it
+		];
+		const lineage: TimelineLineage[] = [{ source: 'library', target: 'app', note: 'why' }];
+		const result = computeTimelineLayout(rails, lineage, NOW, GEO);
+		const byLabel = new Map(result.placed.map((p) => [p.slug, p]));
+		const library = byLabel.get('library')!;
+		const app = byLabel.get('app')!;
+
+		expect(result.lineagePaths).toHaveLength(1);
+		const ribbon = result.lineagePaths[0];
+		// Bottom of the span: the library's inception (its birth).
+		expect(ribbon.yBottom).toBe(library.yBottom);
+		// Top of the span: the earlier-ending terminal — here the library's,
+		// since it stopped before the app did (earlier date = larger y).
+		expect(ribbon.yTop).toBe(Math.max(library.yTop, app.yTop));
+		expect(ribbon.yTop).toBe(library.yTop);
+		// One column wide: the packer put the pair adjacent, so the ribbon's
+		// horizontal extent is exactly the column pitch.
+		expect(Math.abs(library.x - app.x)).toBe(GEO.columnWidth);
+		// The note carries through for the modal.
+		expect(ribbon.note).toBe('why');
+	});
+
+	it('drops a degenerate pair whose shared span is empty', () => {
+		// The app ended before the library was born — nothing ran together.
+		const rails: TimelineRail[] = [
+			rail('app', '2023-01-01', '2023-06-01'),
+			rail('library', '2025-01-01', '2026-01-01')
+		];
+		const lineage: TimelineLineage[] = [{ source: 'library', target: 'app', note: null }];
+		const result = computeTimelineLayout(rails, lineage, NOW, GEO);
+		expect(result.lineagePaths).toHaveLength(0);
 	});
 });
 

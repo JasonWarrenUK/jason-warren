@@ -21,15 +21,17 @@ const STILL_LIVE_WINDOW_DAYS = 56;
 /**
  * Still-live rule (deterministic, honest — metrics only expose lifetime +
  * trailing-4-week totals, no per-commit histogram): a project reads as
- * still-live when its status is live/wip AND its last commit sits within
- * `STILL_LIVE_WINDOW_DAYS` of build-time `now`, OR it has recorded commits in
- * the trailing four weeks (`metrics.commitsRecent`) — the one signal the
- * manifest carries that directly means "touched very recently".
+ * still-live when it is unarchived and either being built or running
+ * somewhere AND its last commit sits within `STILL_LIVE_WINDOW_DAYS` of
+ * build-time `now`, OR it has recorded commits in the trailing four weeks
+ * (`metrics.commitsRecent`) — the one signal the manifest carries that
+ * directly means "touched very recently".
  */
 function isStillLive(project: Project, nowIso: string): boolean {
-	const statusIsActive = project.status === 'live' || project.status === 'wip';
+	const stageIsActive =
+		!project.archived && (project.progress === 'in-progress' || project.deployed);
 	const recentByDate =
-		statusIsActive &&
+		stageIsActive &&
 		project.lastCommit !== undefined &&
 		dayDiff(project.lastCommit, nowIso) <= STILL_LIVE_WINDOW_DAYS;
 	const recentByCommits = (project.metrics?.commitsRecent ?? 0) > 0;
@@ -50,7 +52,11 @@ export function load() {
 		return {
 			slug: project.slug,
 			name: project.name,
-			status: project.status,
+			track: project.track,
+			progress: project.progress,
+			archived: project.archived,
+			deployed: project.deployed,
+			stageProvisional: !project.trackAuthored || !project.progressAuthored,
 			tagline: project.tagline,
 			role: project.contribution.role,
 			firstCommit,

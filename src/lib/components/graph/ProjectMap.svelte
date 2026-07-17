@@ -9,7 +9,8 @@
 		EDGE_CATEGORIES,
 		type LineageKind,
 		type ProjectKind,
-		type ProjectStatus,
+		type ProjectProgress,
+		type ProjectTrack,
 		type TagKind
 	} from '$lib/data/types.js';
 	import { techRelationships } from '$lib/data/tech-relationships.js';
@@ -39,13 +40,16 @@
 		techViewHref
 	} from '$lib/selection.js';
 	import {
-		statusColour,
-		statusLabel,
-		statusOrder,
+		progressColour,
+		progressLabel,
+		progressOrder,
+		trackLabel,
 		categoryColour,
 		edgeTypeColour,
 		edgeTypeLabel,
-		techKindColour,
+		kindGlyph,
+		kindGlyphPath,
+		techMarkColour,
 		themeColour,
 		themeEdgeType,
 		isThemeEdgeType,
@@ -61,7 +65,12 @@
 		slug: string;
 		name: string;
 		tagline: string;
-		status: ProjectStatus;
+		track: ProjectTrack;
+		progress: ProjectProgress;
+		archived: boolean;
+		deployed: boolean;
+		/** True when track or progress is a heuristic guess; draws dotted. */
+		stageProvisional: boolean;
 		kind: ProjectKind;
 		hub: boolean;
 		labelled: boolean;
@@ -158,6 +167,13 @@
 
 	const projectKinds = $derived([...new Set(projectNodes.map((n) => n.kind))].sort());
 	const techKinds = $derived([...new Set(techNodes.map((n) => n.kind))].sort() as TagKind[]);
+
+	// Historic stack: any tech that is the source of a `replaced-by` edge has
+	// been superseded, and its mark fades one shade paperward (the same
+	// end-of-life convention archived projects use).
+	const historicTechLabels = new Set(
+		techRelationships.filter((r) => r.kind === 'replaced-by').map((r) => r.source)
+	);
 
 	const edgeTypes = $derived.by((): EdgeType[] => {
 		const present: EdgeType[] = [];
@@ -343,7 +359,6 @@
 	interface TerritoryHull {
 		id: string;
 		name: string;
-		tone: string;
 		path: string;
 		labelX: number;
 		labelY: number;
@@ -367,7 +382,6 @@
 			hulls.push({
 				id: territory.id,
 				name: territory.name,
-				tone: themeColour(territory.id),
 				path: roundedHullPath(padded),
 				labelX: cx,
 				labelY: topY + 22
@@ -539,6 +553,16 @@
 		return hiddenTechKinds.has(node.kind);
 	}
 
+	// Progressive disclosure (colour-system.md §6): the theme and category
+	// webs rest in paper neutrals; pointing at (or keyboard-focusing) a
+	// Connections chip inks that one system of routes in oxide. Isolating a
+	// type via its chip lifts it the same way.
+	let liftedEdgeType = $state<EdgeType | null>(null);
+
+	function edgeLifted(type: EdgeType): boolean {
+		return liftedEdgeType === type || isolatedEdgeTypes.has(type);
+	}
+
 	function edgeHidden(source: string, target: string, type: EdgeType): boolean {
 		const typeHidden = isolateMode
 			? isolatedEdgeTypes.size > 0 && !isolatedEdgeTypes.has(type)
@@ -685,7 +709,11 @@
 		const r = radiusScale(node);
 		const others = projectNodes.filter((n) => n.slug !== highlight).map((n) => projectPos(n.slug));
 		const routeCount = [...(adjacency.get(highlight) ?? [])].length;
-		const meta = `${statusLabel[node.status]} · ${routeCount} route${routeCount === 1 ? '' : 's'}`;
+		const stage =
+			node.track === 'exploration'
+				? `${trackLabel[node.track]} · ${progressLabel[node.progress]}`
+				: progressLabel[node.progress];
+		const meta = `${stage} · ${routeCount} route${routeCount === 1 ? '' : 's'}`;
 		return buildAnnotation(p, r, node.name.toUpperCase(), node.hub, meta, others);
 	});
 
@@ -946,16 +974,12 @@
 		<!-- Territory hulls: theme clusters as surveyed regions, behind routes/marks. -->
 		{#if territoryHulls.length > 0}
 			<g class="map__territories">
+				<!-- Paper-tint hulls with italic serif names: the label carries the
+				     theme's identity, the way it already does everywhere else. -->
 				{#each territoryHulls as hull (hull.id)}
-					<path class="map__territory-fill" d={hull.path} style="fill: {hull.tone}" />
-					<path class="map__territory-boundary" d={hull.path} style="stroke: {hull.tone}" />
-					<text
-						class="map__territory-label"
-						x={hull.labelX}
-						y={hull.labelY}
-						text-anchor="middle"
-						style="fill: {hull.tone}"
-					>
+					<path class="map__territory-fill" d={hull.path} />
+					<path class="map__territory-boundary" d={hull.path} />
+					<text class="map__territory-label" x={hull.labelX} y={hull.labelY} text-anchor="middle">
 						{hull.name}
 					</text>
 				{/each}
@@ -963,7 +987,8 @@
 		{/if}
 
 		{#if activeMode === 'relationships'}
-			<!-- Theme edges: one per (pair, theme), each coloured by its theme. -->
+			<!-- Theme edges: one quiet paper-neutral web at rest; the legend's
+			     chips lift one theme's routes to oxide at a time. -->
 			<g class="map__edges">
 				{#each themeEdges as edge (`theme:${edge.theme}:${edge.source}-${edge.target}`)}
 					{@const a = projectPos(edge.source)}
@@ -971,13 +996,13 @@
 					{#if a && b}
 						<path
 							class="map__edge map__edge--theme"
+							class:map__edge--lifted={edgeLifted(themeEdgeType(edge.theme))}
 							class:map__edge--dim={edgeDimmed(edge.source, edge.target)}
 							class:map__edge--hidden={edgeHidden(
 								edge.source,
 								edge.target,
 								themeEdgeType(edge.theme)
 							)}
-							style="stroke: {themeColour(edge.theme)}"
 							fill="none"
 							d={routePath(a, b)}
 						/>
@@ -1013,7 +1038,7 @@
 				{/each}
 			</g>
 		{:else if activeMode === 'stack'}
-			<!-- Stack mode: shared-tech edges coloured by category. -->
+			<!-- Stack mode: one quiet shared-tech web; category chips lift. -->
 			<g class="map__edges">
 				{#each sharedEdges as edge (`shared:${edge.category}:${edge.source}-${edge.target}`)}
 					{@const a = projectPos(edge.source)}
@@ -1021,9 +1046,9 @@
 					{#if a && b}
 						<path
 							class="map__edge map__edge--shared"
+							class:map__edge--lifted={edgeLifted(edge.category)}
 							class:map__edge--dim={edgeDimmed(edge.source, edge.target)}
 							class:map__edge--hidden={edgeHidden(edge.source, edge.target, edge.category)}
-							style="stroke: {categoryColour(edge.category)}"
 							fill="none"
 							d={routePath(a, b)}
 						/>
@@ -1077,7 +1102,9 @@
 					{@const r = radiusScale(node)}
 					{@const p = projectPos(node.slug)}
 					{@const isFocus = effectiveHighlight === node.slug}
-					{@const colour = isFocus ? 'var(--color-accent)' : statusColour(node.status)}
+					{@const colour = isFocus
+						? 'var(--color-accent)'
+						: progressColour(node.progress, node.archived)}
 					<a
 						class="map__node"
 						class:map__node--dim={nodeDimmed(node)}
@@ -1106,12 +1133,16 @@
 						<title>{node.name}: {node.tagline}</title>
 						<circle
 							class="map__ring"
+							class:map__ring--provisional={node.stageProvisional}
 							cx={p.x}
 							cy={p.y}
 							{r}
 							style="stroke: {colour}; opacity: {0.55 + 0.45 * opacityScale(node)}"
 						/>
-						{#if node.hub || isFocus}
+						{#if node.deployed || isFocus}
+							<!-- Outer ring = deployed (the site-wide second-ring meaning);
+							     the focused mark keeps its accent double-ring emphasis.
+							     Hub emphasis retired — node size already carries weight. -->
 							<circle
 								class="map__ring map__ring--hub"
 								cx={p.x}
@@ -1120,7 +1151,15 @@
 								style="stroke: {colour}"
 							/>
 						{/if}
-						<circle class="map__dot" cx={p.x} cy={p.y} r="2.8" style="fill: {colour}" />
+						<circle
+							class="map__dot"
+							cx={p.x}
+							cy={p.y}
+							r="2.8"
+							style={node.track === 'exploration'
+								? `fill: none; stroke: ${colour}; stroke-width: 1.25`
+								: `fill: ${colour}`}
+						/>
 						<circle
 							class="map__hit"
 							cx={p.x}
@@ -1149,7 +1188,10 @@
 					{@const r = techRadiusScale(node)}
 					{@const p = techPos(node.label)}
 					{@const isFocus = effectiveHighlight === node.label}
-					{@const colour = isFocus ? 'var(--color-accent)' : techKindColour(node.kind)}
+					{@const glyph = kindGlyph(node.kind)}
+					{@const colour = isFocus
+						? 'var(--color-accent)'
+						: techMarkColour(historicTechLabels.has(node.label))}
 					<a
 						class="map__node map__node--tech"
 						class:map__node--dim={techNodeDimmed(node)}
@@ -1180,7 +1222,25 @@
 								? ''
 								: 's'}</title
 						>
-						<circle class="map__ring" cx={p.x} cy={p.y} {r} style="stroke: {colour}" />
+						<!-- Kind is carried by glyph shape, not hue: every tech mark
+						     draws in the tech ink, historic stack one shade paperward
+						     (colour-system.md §5). -->
+						{#if glyph.shape === 'circle'}
+							<circle
+								class="map__ring"
+								class:map__ring--dashed={glyph.dashed}
+								cx={p.x}
+								cy={p.y}
+								{r}
+								style="stroke: {colour}"
+							/>
+						{:else}
+							<path
+								class="map__ring"
+								d={kindGlyphPath(node.kind, p.x, p.y, r)}
+								style="stroke: {colour}"
+							/>
+						{/if}
 						{#if isFocus}
 							<circle
 								class="map__ring map__ring--hub"
@@ -1190,7 +1250,9 @@
 								style="stroke: {colour}"
 							/>
 						{/if}
-						<circle class="map__dot" cx={p.x} cy={p.y} r="2.8" style="fill: {colour}" />
+						{#if glyph.centreDot}
+							<circle class="map__dot" cx={p.x} cy={p.y} r="2.8" style="fill: {colour}" />
+						{/if}
 						<circle
 							class="map__hit"
 							cx={p.x}
@@ -1290,6 +1352,10 @@
 						class:map__toggle--off={edgeTypeChipOff(type)}
 						aria-pressed={!edgeTypeChipOff(type)}
 						onclick={() => toggleEdgeType(type)}
+						onpointerenter={() => (liftedEdgeType = type)}
+						onpointerleave={() => (liftedEdgeType = null)}
+						onfocus={() => (liftedEdgeType = type)}
+						onblur={() => (liftedEdgeType = null)}
 					>
 						<span
 							class="map__swatch map__swatch--line"
@@ -1306,6 +1372,7 @@
 			<span class="map__legend-title">Types</span>
 			{#if activeMode === 'technologies'}
 				{#each techKinds as kind (kind)}
+					{@const chipGlyph = kindGlyph(kind)}
 					<button
 						type="button"
 						class="map__toggle"
@@ -1313,7 +1380,22 @@
 						aria-pressed={!hiddenTechKinds.has(kind)}
 						onclick={() => toggleTechKind(kind)}
 					>
-						<span class="map__swatch" style="background: {techKindColour(kind)}"></span>
+						<svg class="map__swatch-glyph" viewBox="0 0 14 14" aria-hidden="true">
+							{#if chipGlyph.shape === 'circle'}
+								<circle
+									cx="7"
+									cy="7"
+									r="5"
+									class="map__swatch-glyph-mark"
+									class:map__swatch-glyph-mark--dashed={chipGlyph.dashed}
+								/>
+							{:else}
+								<path d={kindGlyphPath(kind, 7, 7, 5.5)} class="map__swatch-glyph-mark" />
+							{/if}
+							{#if chipGlyph.centreDot}
+								<circle cx="7" cy="7" r="1.6" class="map__swatch-glyph-dot" />
+							{/if}
+						</svg>
 						{kind}
 					</button>
 				{/each}
@@ -1354,35 +1436,101 @@
 			</div>
 		{/if}
 
-		<!-- Status key (project modes only) -->
+		<!-- Stage key (project modes only): one group per axis, each entry a
+		     mini survey mark drawn the way the chart draws it, so the legend
+		     never conflates the hue, centre-dot, outer-ring and fade channels. -->
 		{#if activeMode !== 'technologies'}
 			<div class="map__legend-group" aria-hidden="true">
-				<span class="map__legend-title">Status</span>
-				{#each statusOrder.filter( (s) => projectNodes.some((n) => n.status === s) ) as status (status)}
+				<span class="map__legend-title">Progress</span>
+				{#each progressOrder.filter( (p) => projectNodes.some((n) => n.progress === p) ) as progress (progress)}
 					<span class="map__legend-item">
-						<span class="map__swatch" style="background: {statusColour(status)}"></span>
-						{statusLabel[status]}
+						<svg class="map__legend-mark" viewBox="0 0 16 16">
+							<circle
+								class="map__legend-ring"
+								cx="8"
+								cy="8"
+								r="5"
+								style="stroke: {progressColour(progress)}"
+							/>
+							<circle
+								class="map__legend-dot"
+								cx="8"
+								cy="8"
+								r="1.8"
+								style="fill: {progressColour(progress)}"
+							/>
+						</svg>
+						{progressLabel[progress]}
 					</span>
 				{/each}
 			</div>
+			{#if projectNodes.some((n) => n.track === 'exploration')}
+				<div class="map__legend-group" aria-hidden="true">
+					<span class="map__legend-title">Track</span>
+					<span class="map__legend-item">
+						<svg class="map__legend-mark" viewBox="0 0 16 16">
+							<circle class="map__legend-ring" cx="8" cy="8" r="5" />
+							<circle class="map__legend-ring" cx="8" cy="8" r="1.8" stroke-width="1.25" />
+						</svg>
+						Spike (hollow centre)
+					</span>
+				</div>
+			{/if}
+			{#if projectNodes.some((n) => n.deployed || n.archived)}
+				<div class="map__legend-group" aria-hidden="true">
+					<span class="map__legend-title">Flags</span>
+					{#if projectNodes.some((n) => n.deployed)}
+						<span class="map__legend-item">
+							<svg class="map__legend-mark" viewBox="0 0 16 16">
+								<circle class="map__legend-ring" cx="8" cy="8" r="4.2" />
+								<circle class="map__legend-ring map__legend-ring--outer" cx="8" cy="8" r="6.6" />
+								<circle class="map__legend-dot" cx="8" cy="8" r="1.6" />
+							</svg>
+							Deployed (outer ring)
+						</span>
+					{/if}
+					{#if projectNodes.some((n) => n.archived)}
+						<span class="map__legend-item">
+							<svg class="map__legend-mark" viewBox="0 0 16 16">
+								<circle
+									class="map__legend-ring"
+									cx="8"
+									cy="8"
+									r="5"
+									style="stroke: {progressColour('complete', true)}"
+								/>
+								<circle
+									class="map__legend-dot"
+									cx="8"
+									cy="8"
+									r="1.8"
+									style="fill: {progressColour('complete', true)}"
+								/>
+							</svg>
+							Archived (faded)
+						</span>
+					{/if}
+				</div>
+			{/if}
 		{/if}
 
 		<p class="map__note">
 			{#if activeMode === 'relationships'}
 				Solid lines trace engine extraction: a library pulled out of an application. Dashed lines
-				mark related work. Coloured threads link projects in a shared theme; each theme has its own
-				colour and toggle. Switch to "By stack" to cluster by shared technology, or "Technologies"
-				to explore the tech landscape directly.
+				mark related work and theme links; point at a theme in the key to ink just its routes.
+				Switch to "By stack" to cluster by shared technology, or "Technologies" to explore the tech
+				landscape directly.
 			{:else if activeMode === 'stack'}
 				Projects cluster by shared technology: runtime, framework, data layer, and tooling. Dense
 				nodes share multiple tools; outliers use a distinct stack. Switch to "Relationships" for
 				curated connections, or "Technologies" to see the tech nodes themselves.
 			{:else}
-				Every technology in the registry, sized by how many projects use it and coloured by kind.
-				Lines connect technologies that appear together in the same project. Language tags
-				(TypeScript, Go, etc.) are shown as nodes but have no edges — they connect almost
-				everything, so they cluster nothing useful. Arrowed lines trace lineage: what led to what,
-				and what replaced what. Click any node to see the projects that use it.
+				Every technology in the registry, sized by how many projects use it and shaped by kind:
+				rings for languages, hexagons for frameworks, triangles for runtimes. Lines connect
+				technologies that appear together in the same project. Language tags (TypeScript, Go, etc.)
+				are shown as nodes but have no edges — they connect almost everything, so they cluster
+				nothing useful. Arrowed lines trace lineage: what led to what, and what replaced what. Click
+				any node to see the projects that use it.
 			{/if}
 			{#if activeMode !== 'technologies'}
 				Node size tracks commit activity; fainter dots are older. Click a node to pin it or navigate
@@ -1453,12 +1601,16 @@
 		stroke-dasharray: 1 6;
 	}
 
+	/* Territories: paper-tint regions named by their italic serif labels,
+	   like any political map — the label identifies, never the hue. */
 	.map__territory-fill {
+		fill: var(--color-border-strong);
 		opacity: 0.07;
 	}
 
 	.map__territory-boundary {
 		fill: none;
+		stroke: var(--color-border-strong);
 		stroke-width: 1;
 		stroke-dasharray: 3 5;
 		opacity: 0.5;
@@ -1468,6 +1620,7 @@
 		font-family: var(--font-display);
 		font-style: italic;
 		font-size: 18px;
+		fill: var(--color-text-subtle);
 		opacity: 0.9;
 		pointer-events: none;
 	}
@@ -1481,7 +1634,7 @@
 	}
 
 	.map__edge--extraction {
-		stroke: var(--color-accent);
+		stroke: var(--edge-extraction);
 		stroke-width: 2;
 		/* First-reveal route inking: drawn in along its path once, the first
 		   time the sim settles (routesInked flips true in ProjectMap's
@@ -1515,17 +1668,21 @@
 		opacity: 0.6;
 	}
 
-	.map__edge--theme {
-		/* stroke colour set inline per-theme */
+	/* Theme and category webs rest as quiet paper linework; identity comes
+	   from labels and the chip-lift, never from hue (colour-system.md §5). */
+	.map__edge--theme,
+	.map__edge--shared {
+		stroke: var(--color-border-strong);
 		stroke-width: 1.5;
 		stroke-dasharray: 5 4;
 		opacity: 0.5;
 	}
 
-	.map__edge--shared {
-		stroke-width: 1.5;
-		stroke-dasharray: 5 4;
-		opacity: 0.5;
+	/* The lifted web: one system of routes inked in oxide at a time, driven
+	   by chip hover/focus or an isolate toggle. */
+	.map__edge--lifted {
+		stroke: var(--ink-oxide);
+		opacity: 0.9;
 	}
 
 	.map__edge--co-occurrence {
@@ -1565,6 +1722,17 @@
 		transition:
 			r var(--dur-micro) var(--ease-standard),
 			stroke var(--dur-base) var(--ease-standard);
+	}
+
+	/* Heuristic stage: the unsurveyed convention, dotted ring. */
+	.map__ring--provisional {
+		stroke-dasharray: 2 3;
+	}
+
+	/* Concept glyph: a dashed ring — longer dashes than provisional dotting,
+	   and fixed to the glyph rather than the data. */
+	.map__ring--dashed {
+		stroke-dasharray: 4 3;
 	}
 
 	.map__ring--hub {
@@ -1671,28 +1839,34 @@
 		}
 	}
 
+	/* Legend: a centred column of titled rows, sharing one visual language
+	   with the timeline and toolkit keys — mono small-caps titles leading
+	   centred entry rows. */
 	.map__legend {
 		display: flex;
-		flex-wrap: wrap;
-		gap: var(--space-6);
-		padding-top: var(--space-4);
+		flex-direction: column;
+		align-items: center;
+		gap: var(--space-3);
+		padding-top: var(--space-5);
 		border-top: 1px solid var(--color-border);
 	}
 
 	.map__legend-group {
 		display: flex;
 		align-items: center;
+		justify-content: center;
 		flex-wrap: wrap;
-		gap: var(--space-2);
+		gap: var(--space-2) var(--space-3);
 	}
 
 	.map__legend-title {
-		font-size: var(--text-xs);
-		font-weight: 700;
+		font-family: var(--font-mono);
+		font-size: var(--text-apparatus-lg);
+		font-weight: 600;
 		text-transform: uppercase;
-		letter-spacing: 0.06em;
+		letter-spacing: 0.12em;
 		color: var(--color-text-muted);
-		margin-right: var(--space-1);
+		margin-right: var(--space-2);
 	}
 
 	.map__legend-item {
@@ -1708,6 +1882,50 @@
 		height: 0.85rem;
 		border-radius: var(--radius-full);
 		flex-shrink: 0;
+	}
+
+	/* Kind chips: mini-glyphs drawn from the same vocabulary as the marks. */
+	.map__swatch-glyph {
+		width: 0.85rem;
+		height: 0.85rem;
+		flex-shrink: 0;
+	}
+
+	.map__swatch-glyph-mark {
+		fill: none;
+		stroke: var(--tech-mark);
+		stroke-width: 1.5;
+	}
+
+	.map__swatch-glyph-mark--dashed {
+		stroke-dasharray: 4 3;
+	}
+
+	.map__swatch-glyph-dot {
+		fill: var(--tech-mark);
+	}
+
+	/* Stage-key mini marks: drawn exactly as the chart draws its survey
+	   marks, so each legend entry shows its own channel undistorted. */
+	.map__legend-mark {
+		width: 1rem;
+		height: 1rem;
+		flex-shrink: 0;
+	}
+
+	.map__legend-ring {
+		fill: none;
+		stroke: var(--color-text-subtle);
+		stroke-width: 1.5;
+	}
+
+	.map__legend-ring--outer {
+		stroke-width: 1;
+		opacity: 0.5;
+	}
+
+	.map__legend-dot {
+		fill: var(--color-text-subtle);
 	}
 
 	.map__swatch--line {
@@ -1754,10 +1972,11 @@
 	}
 
 	.map__note {
-		flex-basis: 100%;
+		max-width: 64ch;
 		margin: 0;
 		font-size: var(--text-xs);
 		color: var(--color-text-muted);
+		text-align: center;
 	}
 
 	.map-modal__tagline {

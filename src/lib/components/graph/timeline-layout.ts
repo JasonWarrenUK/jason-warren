@@ -15,15 +15,19 @@
  * hundreds of px on quiet older months; banding gives the crush proportional
  * room without letting quiet months balloon.
  *
- * The horizontal axis carries no semantic meaning at all — it exists purely
- * for collision avoidance. Each project becomes a vertical RAIL running from
- * its `lastCommit` (top/newer end, its most recent activity) to its
- * `firstCommit` (bottom/older end, its inception); rails are packed into the
- * leftmost column that doesn't overlap an already-placed rail, a swapped-axis
- * greedy first-fit analogous in spirit to `adoption-layout.ts`'s strip packer
- * but far simpler — this module deliberately does NOT attempt that module's
- * crossing-minimisation or lane-refinement passes. A timeline's x-axis has no
- * meaning to refine toward; first-fit is the whole story.
+ * The horizontal axis carries exactly ONE semantic: extraction lineage
+ * adjacency. A library and the app it was extracted from always land in
+ * neighbouring columns (app left, library right, so extraction reads
+ * rightward), which keeps their ribbon one column wide and legible.
+ * Everything else about x is pure collision avoidance. Each project becomes
+ * a vertical RAIL running from its `lastCommit` (top/newer end, its most
+ * recent activity) to its `firstCommit` (bottom/older end, its inception);
+ * lineage pairs are placed together into the lowest pair of adjacent free
+ * columns, and every other rail packs into the leftmost column that doesn't
+ * overlap an already-placed rail — a swapped-axis greedy first-fit analogous
+ * in spirit to `adoption-layout.ts`'s strip packer but far simpler; this
+ * module deliberately does NOT attempt that module's crossing-minimisation
+ * or lane-refinement passes.
  *
  * This is a NEW, SIMPLER module than `adoption-layout.ts`. It reuses that
  * module's byte-stable `dayValue` idiom (string slicing, never `new
@@ -35,7 +39,7 @@
  * output on every call.
  */
 
-import type { ProjectRole, ProjectStatus } from '$lib/data/types.js';
+import type { ProjectProgress, ProjectRole, ProjectTrack } from '$lib/data/types.js';
 
 // ---------------------------------------------------------------------------
 // Date helpers — single-sourced here; +page.ts imports these.
@@ -112,7 +116,12 @@ export interface YearTick {
 export interface TimelineRail {
 	slug: string;
 	name: string;
-	status: ProjectStatus;
+	track: ProjectTrack;
+	progress: ProjectProgress;
+	archived: boolean;
+	deployed: boolean;
+	/** True when track or progress is a heuristic guess; draws dotted-provisional. */
+	stageProvisional: boolean;
 	tagline: string;
 	role: ProjectRole;
 	/** ISO `YYYY-MM-DD`, or null when undated. */
@@ -155,10 +164,12 @@ export interface LineagePath {
 	source: string;
 	target: string;
 	note: string | null;
-	/** Complete SVG 'd' attribute; the component renders it verbatim. */
+	/** Complete SVG 'd' attribute for the ribbon; the component renders it verbatim. */
 	path: string;
-	/** y of the extraction moment — the library's yTop. */
-	branchY: number;
+	/** Top of the ribbon span — the earlier-ending terminal of the pair. */
+	yTop: number;
+	/** Bottom of the ribbon span — the library's inception (its birth). */
+	yBottom: number;
 }
 
 export interface DensityBand {
@@ -280,10 +291,19 @@ export interface MonthBand {
 // reflects its density rather than a fixed calendar span. Raw heights are
 // clamped to shape the ratios, then normalised so the bands sum to a target
 // total plot height.
-const MONTH_BASE_HEIGHT = 14; // px a month gets regardless of density
-const MONTH_HEIGHT_PER_RAIL = 4; // px added per rail overlapping that month
-const MONTH_MIN_HEIGHT = 20; // floor: an empty/quiet month still shows a real gap
-const MONTH_MAX_HEIGHT = 85; // ceiling: one crushed month cannot dominate the axis
+const MONTH_BASE_HEIGHT = 8; // px a month gets regardless of density
+const MONTH_HEIGHT_PER_RAIL = 6; // px added per rail overlapping that month
+const MONTH_MIN_HEIGHT = 10; // floor: an empty/quiet month still shows a real gap
+const MONTH_MAX_HEIGHT = 130; // ceiling: one crushed month cannot dominate the axis
+/**
+ * Per-year height budget: no calendar year may occupy more than this multiple
+ * of the median year's raw height. Without it, a year holding one very dense
+ * month and eleven quiet ones balloons past years of steady work — the spike
+ * is real, but a YEAR's share of the axis should stay comparable to its
+ * peers. Months within an over-budget year compress proportionally, so their
+ * relative densities survive.
+ */
+const YEAR_BUDGET_RATIO = 1.8;
 /** Target total plot height after normalisation — retunes the old fixed-rate
  *  scale's ~1600px "comfortably tall, scrollable" target for a banded scale
  *  where total height is a tuning constant rather than domainDays * rate. */
@@ -333,7 +353,34 @@ export function computeMonthBands(
 		rawTotal += raw;
 	}
 
-	// rawTotal is always > 0 (>= 1 month, each >= MONTH_MIN_HEIGHT), so scale is
+	// Per-year budget pass: cap each calendar year's raw total at
+	// YEAR_BUDGET_RATIO x the median year, compressing that year's months
+	// proportionally. Median over sorted totals (mean of the middle pair for
+	// even counts) — deterministic, no clock, no randomness.
+	const totalsByYear = new Map<number, number>();
+	for (let m = firstMonth; m <= lastMonth; m++) {
+		const { year } = monthIndexToYearMonth(m);
+		totalsByYear.set(year, (totalsByYear.get(year) ?? 0) + rawByMonth.get(m)!);
+	}
+	if (totalsByYear.size > 1) {
+		const sorted = [...totalsByYear.values()].sort((a, b) => a - b);
+		const mid = sorted.length / 2;
+		const median =
+			sorted.length % 2 === 1 ? sorted[Math.floor(mid)] : (sorted[mid - 1] + sorted[mid]) / 2;
+		const budget = YEAR_BUDGET_RATIO * median;
+		rawTotal = 0;
+		for (let m = firstMonth; m <= lastMonth; m++) {
+			const { year } = monthIndexToYearMonth(m);
+			const yearTotal = totalsByYear.get(year)!;
+			if (yearTotal > budget) {
+				rawByMonth.set(m, rawByMonth.get(m)! * (budget / yearTotal));
+			}
+			rawTotal += rawByMonth.get(m)!;
+		}
+	}
+
+	// rawTotal is always > 0 (>= 1 month, each >= MONTH_MIN_HEIGHT before the
+	// budget pass, which only ever scales positive values down), so scale is
 	// finite and positive; scaling preserves the relative heights.
 	const scale = MONTH_BANDS_TARGET_HEIGHT / rawTotal;
 	const bands = new Map<number, MonthBand>();
@@ -415,12 +462,15 @@ export function computeDensity(placed: PlacedRail[]): DensityBand[] {
 // ---------------------------------------------------------------------------
 
 /**
- * Builds the extraction-lineage connectors: a quadratic bow from the app
- * rail (still running at the extraction moment) to the library rail's node,
- * anchored at `branchY = yTop(library)` — the library's birth, i.e. the
- * extraction moment. Edges whose source or target isn't among the placed
- * (dated) rails are silently dropped (mirrors `adoption-layout.ts`'s
- * ghost-edge handling).
+ * Builds the extraction-lineage ribbons: a filled band between the pair's
+ * adjacent rails (the packer guarantees adjacency), spanning from the
+ * library's inception (its birth — the extraction moment) up to whichever
+ * of the two terminal nodes comes first in time. The band reads as the
+ * period both projects ran together after the extraction. Edges whose
+ * source or target isn't among the placed (dated) rails are silently
+ * dropped (mirrors `adoption-layout.ts`'s ghost-edge handling), as is a
+ * degenerate pair whose shared span is empty (the app ended before the
+ * library was born — data that shouldn't exist, but must not crash).
  */
 function buildLineagePaths(
 	lineage: TimelineLineage[],
@@ -432,14 +482,38 @@ function buildLineagePaths(
 		const app = placedBySlug.get(edge.target);
 		if (!library || !app || library.undated || app.undated) continue;
 
-		const branchY = library.yTop;
-		// Clamp the departure point into the app rail's own span so the branch
-		// never appears to leave the rail before it existed or after it ended.
-		const departY = Math.min(Math.max(branchY, app.yTop), app.yBottom);
-		const midX = (app.x + library.x) / 2;
-		const path = `M ${app.x} ${departY} Q ${midX} ${branchY} ${library.x} ${branchY}`;
+		// yBottom = the library's inception; yTop = the earlier-ending
+		// terminal (earlier date = larger y, so the LOWER terminal wins...
+		// on this axis "comes first" means max of the two yTops).
+		const spanBottom = library.yBottom;
+		const spanTop = Math.max(library.yTop, app.yTop);
+		if (spanTop >= spanBottom) continue; // no shared span to draw
 
-		paths.push({ source: edge.source, target: edge.target, note: edge.note, path, branchY });
+		// Organic sankey band: the top and bottom edges pinch toward the
+		// band's middle with cubic curves, so the ribbon reads as flow
+		// rather than a stamped rectangle. The pinch caps at 18% of the
+		// span (waist can never self-cross) and 6px (long spans stay
+		// gently waisted rather than hourglassed). Sides stay on the
+		// rails; horizontal extent is untouched.
+		const pinch = Math.min(6, (spanBottom - spanTop) * 0.18);
+		const xThird = app.x + (library.x - app.x) / 3;
+		const xTwoThirds = app.x + (2 * (library.x - app.x)) / 3;
+		const path = [
+			`M ${app.x} ${spanBottom}`,
+			`C ${xThird} ${spanBottom - pinch} ${xTwoThirds} ${spanBottom - pinch} ${library.x} ${spanBottom}`,
+			`L ${library.x} ${spanTop}`,
+			`C ${xTwoThirds} ${spanTop + pinch} ${xThird} ${spanTop + pinch} ${app.x} ${spanTop}`,
+			'Z'
+		].join(' ');
+
+		paths.push({
+			source: edge.source,
+			target: edge.target,
+			note: edge.note,
+			path,
+			yTop: spanTop,
+			yBottom: spanBottom
+		});
 	}
 	return paths;
 }
@@ -465,7 +539,15 @@ function intervalsOverlap(a: Interval, b: Interval): boolean {
  * dominant recent cluster lays out first and packs tightly to the left; the
  * slug tiebreak keeps the result deterministic regardless of input order.
  */
-function packColumns(rails: PlacedRail[], laneGap: number): void {
+/** One extraction pair the packer must keep in adjacent columns. */
+interface LineagePairing {
+	/** Consumer/app slug — takes the left column. */
+	app: string;
+	/** Library slug — takes the right column, so extraction reads rightward. */
+	library: string;
+}
+
+function packColumns(rails: PlacedRail[], laneGap: number, pairs: LineagePairing[] = []): void {
 	const ordered = [...rails].sort(
 		(a, b) =>
 			a.yTop - b.yTop ||
@@ -473,20 +555,74 @@ function packColumns(rails: PlacedRail[], laneGap: number): void {
 			a.slug.localeCompare(b.slug)
 	);
 
-	const columns: Interval[][] = [];
-	for (const rail of ordered) {
-		const padded: Interval = { top: rail.yTop - laneGap / 2, bottom: rail.yBottom + laneGap / 2 };
+	const bySlug = new Map(rails.map((r) => [r.slug, r]));
+	// Pair lookup, both directions. Only pairs whose members are both in this
+	// packing run participate; edges to undated or filtered rails degrade to
+	// plain first-fit for the member that IS here.
+	const partnerOf = new Map<string, { partner: string; side: 'app' | 'library' }>();
+	for (const pair of pairs) {
+		if (!bySlug.has(pair.app) || !bySlug.has(pair.library)) continue;
+		partnerOf.set(pair.app, { partner: pair.library, side: 'app' });
+		partnerOf.set(pair.library, { partner: pair.app, side: 'library' });
+	}
 
-		let column = columns.findIndex(
-			(occupied) => !occupied.some((iv) => intervalsOverlap(iv, padded))
-		);
-		if (column === -1) {
-			column = columns.length;
-			columns.push([]);
-		}
-		columns[column].push(padded);
+	const columns: Interval[][] = [];
+	const placedSlugs = new Set<string>();
+
+	const paddedOf = (rail: PlacedRail): Interval => ({
+		top: rail.yTop - laneGap / 2,
+		bottom: rail.yBottom + laneGap / 2
+	});
+	const fits = (column: number, iv: Interval): boolean =>
+		column >= columns.length || !columns[column].some((occupied) => intervalsOverlap(occupied, iv));
+	const occupy = (column: number, iv: Interval, rail: PlacedRail): void => {
+		while (columns.length <= column) columns.push([]);
+		columns[column].push(iv);
 		rail.column = column;
 		rail.x = 0; // x is resolved by the caller once columnCount is known.
+		placedSlugs.add(rail.slug);
+	};
+
+	for (const rail of ordered) {
+		if (placedSlugs.has(rail.slug)) continue; // placed earlier as a pair member
+
+		const pairing = partnerOf.get(rail.slug);
+		const partner = pairing ? bySlug.get(pairing.partner) : undefined;
+
+		// Reaching the first member of an unplaced pair places BOTH members:
+		// the lowest c where the app fits column c and the library fits c+1.
+		if (pairing && partner && !placedSlugs.has(partner.slug)) {
+			const app = pairing.side === 'app' ? rail : partner;
+			const library = pairing.side === 'app' ? partner : rail;
+			const appPadded = paddedOf(app);
+			const libraryPadded = paddedOf(library);
+			let c = 0;
+			while (!(fits(c, appPadded) && fits(c + 1, libraryPadded))) c++;
+			occupy(c, appPadded, app);
+			occupy(c + 1, libraryPadded, library);
+			continue;
+		}
+
+		const padded = paddedOf(rail);
+
+		// Partner already placed by an earlier pair (a rail shared by two
+		// pairs — not in today's data): try the adjacent columns on the
+		// side extraction should read from, then degrade to first-fit.
+		if (pairing && partner && placedSlugs.has(partner.slug)) {
+			const preferred =
+				pairing.side === 'library'
+					? [partner.column + 1, partner.column - 1]
+					: [partner.column - 1, partner.column + 1];
+			const target = preferred.find((t) => t >= 0 && fits(t, padded));
+			if (target !== undefined) {
+				occupy(target, padded, rail);
+				continue;
+			}
+		}
+
+		let column = 0;
+		while (!fits(column, padded)) column++;
+		occupy(column, padded, rail);
 	}
 }
 
@@ -569,7 +705,14 @@ export function computeTimelineLayout(
 		};
 	});
 
-	packColumns(placed, geo.laneGap);
+	// Extraction pairs pack into adjacent columns (app left, library right)
+	// so their ribbons stay one column wide. edge.source is the library,
+	// edge.target the app — see buildLineagePaths.
+	const pairs: LineagePairing[] = lineage.map((edge) => ({
+		app: edge.target,
+		library: edge.source
+	}));
+	packColumns(placed, geo.laneGap, pairs);
 
 	const columnCount = placed.length === 0 ? 0 : Math.max(...placed.map((p) => p.column)) + 1;
 	for (const rail of placed) {

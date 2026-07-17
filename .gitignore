@@ -29,3 +29,4 @@ src/lib/data/.drift-cache.json
 # Per-machine Drift engine config (see drift.config.example.ts for the template)
 /drift.config.ts
 /.codex-pets/tinker
+.playwright-mcp/

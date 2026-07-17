@@ -9,7 +9,8 @@ export const rimewarden: AuthoredProject = {
 		"A personal prototype for tracking a Frosthaven board-game campaign: town resources, party composition, and scenario unlocks. Built with SvelteKit and Svelte 5 runes, it uses a class-based CampaignManager store with localStorage persistence and JSON import/export over a strongly-typed domain model covering resources, building costs, scenario links and party composition. D2 diagram generation builds the campaign's scenario-progression graph directly from saved state, styling completed, pending, and unknown nodes; the affordableBuildings derivation checks resource sufficiency against building costs without server involvement.",
 	kind: 'tool',
 	contribution: { role: 'solo' },
-	status: 'prototype',
+	track: 'exploration',
+	progress: 'complete',
 	highlights: [
 		'Svelte 5 runes class-based CampaignManager store ($state/$derived) with localStorage persistence and JSON import/export.',
 		'D2 diagram generation from campaign data: programmatically builds a styled scenario-progression graph with completed/pending/unknown node classes.',

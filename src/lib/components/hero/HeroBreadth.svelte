@@ -2,18 +2,19 @@
 	import { base } from '$app/paths';
 	import { getStackGroups } from '$lib/data/stack.js';
 
-	// Collapsed on mobile, expanded on desktop. Default closed so there is no
-	// flash of a long list on small screens; desktop expands on mount.
 	let open = $state(false);
-	$effect(() => {
-		const mq = window.matchMedia('(min-width: 48rem)');
-		const apply = (): void => {
-			open = mq.matches;
-		};
+	/* $effect(() => { // Expanded on desktop
+		// Collapsed on mobile, expanded on desktop. Default closed so there is no
+		// flash of a long list on small screens; desktop expands on mount.
+		const mediaQuery = window.matchMedia('(min-width: 48rem)');
+
+		const apply = (): void => { open = mediaQuery.matches };
 		apply();
-		mq.addEventListener('change', apply);
-		return () => mq.removeEventListener('change', apply);
-	});
+
+		mediaQuery.addEventListener('change', apply);
+
+		return () => mediaQuery.removeEventListener('change', apply);
+	}); */
 
 	// The polyglot stack claim, derived from the project registry so it can
 	// never claim a technology no project actually uses.

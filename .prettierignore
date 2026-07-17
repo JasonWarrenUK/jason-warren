@@ -6,3 +6,7 @@ bun.lock
 
 # Hand-authored; prettier misreads the PR-template separators as headings.
 CLAUDE.md
+
+# Owned by the roadmap CLI, which enforces its own canonical form (tabs,
+# trailing newline) and refuses to recompute non-canonical files.
+.claude/roadmaps.json

@@ -4,7 +4,7 @@
 	import { page } from '$app/stores';
 	import type { ProjectRole } from '$lib/data/types.js';
 	import { formatMonthYear } from '$lib/format-date.js';
-	import { statusColour, statusLabel, statusOrder, edgeTypeColour } from './graph-style.js';
+	import { progressColour, progressLabel, progressOrder, trackLabel } from './graph-style.js';
 	import { writeParam } from '$lib/url-write.js';
 	import { validatePin, nextPinValue, projectHref } from '$lib/selection.js';
 	import SelectionModal from '$lib/components/ui/SelectionModal.svelte';
@@ -50,7 +50,7 @@
 	// previous 1934px viewBox suffered.
 	const GEO: TimelineGeometry = {
 		width: 760,
-		leftGutter: 80,
+		leftGutter: 64,
 		rightPad: 20,
 		topPad: 32,
 		bottomPad: 40,
@@ -148,9 +148,29 @@
 		return path?.note ?? null;
 	});
 
-	// Present statuses only, in the shared status order.
-	const presentStatuses = $derived(statusOrder.filter((s) => rails.some((r) => r.status === s)));
+	// Present progress values only, in the shared order; plus which of the
+	// auxiliary treatments (spike hollow, deployed ring, archived fade) the
+	// legend actually needs to explain for this dataset.
+	const presentProgresses = $derived(
+		progressOrder.filter((p) => rails.some((r) => r.progress === p))
+	);
+	const hasSpikes = $derived(rails.some((r) => r.track === 'exploration'));
+	const hasDeployed = $derived(rails.some((r) => r.deployed));
+	const hasArchived = $derived(rails.some((r) => r.archived));
+
+	/** Rail ink: progress hue, shade-shifted paperward when archived. */
+	const railColour = (rail: TimelineRail): string => progressColour(rail.progress, rail.archived);
+
+	/** Stage phrase for aria text: `Spike · Complete, archived`. */
+	function stagePhrase(rail: TimelineRail): string {
+		const base =
+			rail.track === 'exploration'
+				? `${trackLabel[rail.track]} · ${progressLabel[rail.progress]}`
+				: progressLabel[rail.progress];
+		return rail.archived ? `${base}, archived` : base;
+	}
 	const hasLineage = $derived(layout.lineagePaths.length > 0);
+	const hasDensity = $derived(layout.density.length > 0);
 
 	function describe(rail: PlacedRail): string {
 		const lifespan = rail.firstCommit
@@ -158,7 +178,7 @@
 				? `${rail.firstCommit} to ${rail.lastCommit}`
 				: rail.firstCommit
 			: 'undated';
-		return `${rail.name}: ${statusLabel[rail.status]}, ${lifespan}`;
+		return `${rail.name}: ${stagePhrase(rail)}, ${lifespan}`;
 	}
 
 	// --- Reveal animation -----------------------------------------------------
@@ -224,28 +244,31 @@
 						x2={rail.x}
 						y2={rail.yTop - GEO.stillLiveFade}
 					>
-						<stop offset="0" stop-color={statusColour(rail.status)} stop-opacity="0.4" />
-						<stop offset="1" stop-color={statusColour(rail.status)} stop-opacity="0" />
+						<stop offset="0" stop-color={railColour(rail)} stop-opacity="0.4" />
+						<stop offset="1" stop-color={railColour(rail)} stop-opacity="0" />
 					</linearGradient>
 				{/if}
 			{/each}
 		</defs>
 
-		<!-- Density wash: a faint fill per density band, count-scaled opacity.
-		     Purely a background reassurance signal — a stretch of the chart
-		     with few VISIBLE rail lines (most projects there are short capsules
-		     that don't reach this y-range) can still have several concurrently
-		     "alive" long-running projects passing through it; without this the
-		     stretch reads as broken/empty rather than "quietly busy". Rendered
-		     first so every other layer draws on top of it. -->
+		<!-- Density gutter: a thin count-scaled bar per density band, seated in
+		     the left margin between the year labels and the first rail column.
+		     A stretch of the chart with few VISIBLE rail lines (most projects
+		     there are short capsules that don't reach this y-range) can still
+		     have several concurrently "alive" long-running projects passing
+		     through it; the gutter bar is what tells you that stretch is
+		     "quietly busy" rather than dead. A full-width background wash read
+		     as noise rather than signal, so density lives only in this margin
+		     strip now — the chart body stays clean. Rendered first so every
+		     other layer draws on top of it. -->
 		<g class="timeline__density" aria-hidden="true">
 			{#each layout.density as band (band.yTop)}
 				<rect
-					x={GEO.leftGutter - 8}
+					x={GEO.leftGutter - 18}
 					y={band.yTop}
-					width={chartWidth - GEO.leftGutter - GEO.rightPad + 8}
+					width={10}
 					height={Math.max(0, band.yBottom - band.yTop)}
-					fill-opacity={Math.min(0.4, 0.045 * band.count)}
+					fill-opacity={Math.min(0.7, 0.08 * band.count)}
 				/>
 			{/each}
 		</g>
@@ -255,17 +278,31 @@
 		     chart's vertical ticks). -->
 		<g class="timeline__graticule" aria-hidden="true">
 			{#each layout.ticks as tick (tick.year)}
-				<line x1={GEO.leftGutter - 8} y1={tick.y} x2={chartWidth - GEO.rightPad} y2={tick.y} />
-				<text class="timeline__tick-label" x={GEO.leftGutter - 14} y={tick.y + 4}>
+				<line x1={GEO.leftGutter - 4} y1={tick.y} x2={chartWidth - GEO.rightPad} y2={tick.y} />
+				<text class="timeline__tick-label" x={GEO.leftGutter - 26} y={tick.y + 4}>
 					{tick.year}
 				</text>
 			{/each}
 		</g>
 
-		<!-- Lineage connectors: rendered container only for now. Extraction
-		     branch-in-time rendering is step 5 — layout.lineagePaths already
-		     carries the geometry, this group intentionally stays empty. -->
-		<g class="timeline__lineage" aria-hidden="true"></g>
+		<!-- Extraction ribbons: a filled oxide band between each pair's
+		     adjacent rails, spanning from the library's inception to
+		     whichever terminal comes first — the period both projects ran
+		     together after the extraction. Rendered before the rails so
+		     every ribbon sits underneath the rings/labels it joins.
+		     Dim-only on hover/pin: the touching ribbon holds its base
+		     opacity, everything else fades. -->
+		<g class="timeline__lineage" aria-hidden="true">
+			{#each layout.lineagePaths as edge (`${edge.source}-${edge.target}`)}
+				<path
+					class="timeline__ribbon"
+					class:timeline__ribbon--dim={effectiveSlug !== null &&
+						edge.source !== effectiveSlug &&
+						edge.target !== effectiveSlug}
+					d={edge.path}
+				/>
+			{/each}
+		</g>
 
 		<!-- Rails. Two passes over the same `layout.placed` list, deliberately
 		     split into separate `<g>` groups: SVG paints strictly in source
@@ -286,7 +323,7 @@
 					class:timeline__rail-group--dim={effectiveSlug !== null && !neighbourhood.has(rail.slug)}
 					class:timeline__rail-group--pinned={pinnedSlug === rail.slug}
 					class:timeline__rail-group--labelled={rail.labelled}
-					style="--reveal-delay: {Math.min(index * 24, 700)}ms; color: {statusColour(rail.status)}"
+					style="--reveal-delay: {Math.min(index * 24, 700)}ms; color: {railColour(rail)}"
 					role="presentation"
 				>
 					<title>{describe(rail)}</title>
@@ -314,9 +351,10 @@
 					{/if}
 
 					<!-- Terminal node (yTop = lastCommit, most recent activity, nearest
-					     the `now` line). Still-live rails earn the hub ring here — this
-					     is the end a viewer naturally checks for "is this still going". -->
-					{#if rail.stillLive}
+					     the `now` line). Deployed projects earn the outer ring here —
+					     the one meaning the second ring carries anywhere on the site:
+					     this runs somewhere. Liveness reads from the rail fade above. -->
+					{#if rail.deployed}
 						<circle
 							class="timeline__ring timeline__ring--hub"
 							cx={rail.x}
@@ -324,13 +362,25 @@
 							r={GEO.nodeRadius + GEO.hubRingOffset}
 						/>
 					{/if}
-					<circle class="timeline__ring" cx={rail.x} cy={rail.yTop} r={GEO.nodeRadius} />
-					<circle class="timeline__centre" cx={rail.x} cy={rail.yTop} r="2.8" />
+					<circle
+						class="timeline__ring"
+						class:timeline__ring--provisional={rail.stageProvisional}
+						cx={rail.x}
+						cy={rail.yTop}
+						r={GEO.nodeRadius}
+					/>
+					<circle
+						class="timeline__centre"
+						class:timeline__centre--hollow={rail.track === 'exploration'}
+						cx={rail.x}
+						cy={rail.yTop}
+						r="2.8"
+					/>
 					<circle
 						class="timeline__hit"
 						cx={rail.x}
 						cy={rail.yTop}
-						r={rail.stillLive ? GEO.nodeRadius + GEO.hubRingOffset : GEO.nodeRadius}
+						r={rail.deployed ? GEO.nodeRadius + GEO.hubRingOffset : GEO.nodeRadius}
 						role="button"
 						tabindex="0"
 						aria-pressed={pinnedSlug === rail.slug}
@@ -351,9 +401,21 @@
 					/>
 
 					<!-- Inception node (yBottom = firstCommit). Plain survey mark, no
-					     hub ring — liveness reads at the terminal end above, not here. -->
-					<circle class="timeline__ring" cx={rail.x} cy={rail.yBottom} r={GEO.nodeRadius} />
-					<circle class="timeline__centre" cx={rail.x} cy={rail.yBottom} r="2.8" />
+					     outer ring — deployment reads at the terminal end above, not here. -->
+					<circle
+						class="timeline__ring"
+						class:timeline__ring--provisional={rail.stageProvisional}
+						cx={rail.x}
+						cy={rail.yBottom}
+						r={GEO.nodeRadius}
+					/>
+					<circle
+						class="timeline__centre"
+						class:timeline__centre--hollow={rail.track === 'exploration'}
+						cx={rail.x}
+						cy={rail.yBottom}
+						r="2.8"
+					/>
 
 					<!-- Full-disc hit target: an invisible filled circle over the node,
 					     rendered last in this pass so it sits topmost for hit-testing
@@ -399,7 +461,7 @@
 					class:timeline__rail-group--dim={effectiveSlug !== null && !neighbourhood.has(rail.slug)}
 					class:timeline__rail-group--pinned={pinnedSlug === rail.slug}
 					class:timeline__rail-group--labelled={rail.labelled}
-					style="--reveal-delay: {Math.min(index * 24, 700)}ms; color: {statusColour(rail.status)}"
+					style="--reveal-delay: {Math.min(index * 24, 700)}ms; color: {railColour(rail)}"
 				>
 					<text class="timeline__label" x={rail.x + GEO.nodeRadius + 6} y={rail.yBottom + 4}>
 						{rail.name}
@@ -416,34 +478,125 @@
 		{/each}
 	</ul>
 
+	<!-- Legend: one titled row per channel, matching the map and toolkit
+	     keys, so hue, mark treatment, ribbon and gutter each get their own
+	     explanation instead of one undifferentiated line. -->
 	<figcaption class="timeline__legend">
-		{#each presentStatuses as status (status)}
-			<span class="timeline__legend-item">
-				<svg class="timeline__swatch-mark" viewBox="0 0 14 14" aria-hidden="true">
-					<circle
-						class="timeline__swatch-ring"
-						cx="7"
-						cy="7"
-						r="5"
-						style="color: {statusColour(status)}"
-					/>
-					<circle
-						class="timeline__swatch-centre"
-						cx="7"
-						cy="7"
-						r="1.6"
-						style="color: {statusColour(status)}"
-					/>
-				</svg>
-				{statusLabel[status]}
-			</span>
-		{/each}
-		{#if hasLineage}
-			<span class="timeline__legend-item">
-				<span class="timeline__legend-edge" style="border-color: {edgeTypeColour('extraction')}"
-				></span>
-				Extraction lineage
-			</span>
+		<div class="timeline__legend-row">
+			<span class="timeline__legend-title">Progress</span>
+			{#each presentProgresses as progress (progress)}
+				<span class="timeline__legend-item">
+					<svg class="timeline__swatch-mark" viewBox="0 0 14 14" aria-hidden="true">
+						<circle
+							class="timeline__swatch-ring"
+							cx="7"
+							cy="7"
+							r="5"
+							style="color: {progressColour(progress)}"
+						/>
+						<circle
+							class="timeline__swatch-centre"
+							cx="7"
+							cy="7"
+							r="1.6"
+							style="color: {progressColour(progress)}"
+						/>
+					</svg>
+					{progressLabel[progress]}
+				</span>
+			{/each}
+		</div>
+		{#if hasSpikes || hasDeployed || hasArchived}
+			<div class="timeline__legend-row">
+				<span class="timeline__legend-title">Marks</span>
+				{#if hasSpikes}
+					<span class="timeline__legend-item">
+						<svg class="timeline__swatch-mark" viewBox="0 0 14 14" aria-hidden="true">
+							<circle
+								class="timeline__swatch-ring"
+								cx="7"
+								cy="7"
+								r="5"
+								style="color: var(--color-text-subtle)"
+							/>
+							<circle
+								class="timeline__swatch-hollow"
+								cx="7"
+								cy="7"
+								r="1.6"
+								style="color: var(--color-text-subtle)"
+							/>
+						</svg>
+						Spike (hollow centre)
+					</span>
+				{/if}
+				{#if hasDeployed}
+					<span class="timeline__legend-item">
+						<svg class="timeline__swatch-mark" viewBox="0 0 14 14" aria-hidden="true">
+							<circle
+								class="timeline__swatch-ring"
+								cx="7"
+								cy="7"
+								r="4"
+								style="color: var(--color-text-subtle)"
+							/>
+							<circle
+								class="timeline__swatch-ring timeline__swatch-ring--outer"
+								cx="7"
+								cy="7"
+								r="6.2"
+								style="color: var(--color-text-subtle)"
+							/>
+							<circle
+								class="timeline__swatch-centre"
+								cx="7"
+								cy="7"
+								r="1.4"
+								style="color: var(--color-text-subtle)"
+							/>
+						</svg>
+						Deployed (outer ring)
+					</span>
+				{/if}
+				{#if hasArchived}
+					<span class="timeline__legend-item">
+						<svg class="timeline__swatch-mark" viewBox="0 0 14 14" aria-hidden="true">
+							<circle
+								class="timeline__swatch-ring"
+								cx="7"
+								cy="7"
+								r="5"
+								style="color: {progressColour('complete', true)}"
+							/>
+							<circle
+								class="timeline__swatch-centre"
+								cx="7"
+								cy="7"
+								r="1.6"
+								style="color: {progressColour('complete', true)}"
+							/>
+						</svg>
+						Archived (faded)
+					</span>
+				{/if}
+			</div>
+		{/if}
+		{#if hasLineage || hasDensity}
+			<div class="timeline__legend-row">
+				<span class="timeline__legend-title">Context</span>
+				{#if hasLineage}
+					<span class="timeline__legend-item">
+						<span class="timeline__legend-ribbon" aria-hidden="true"></span>
+						Extraction lineage (shared span)
+					</span>
+				{/if}
+				{#if hasDensity}
+					<span class="timeline__legend-item">
+						<span class="timeline__legend-density" aria-hidden="true"></span>
+						Concurrent projects (gutter)
+					</span>
+				{/if}
+			</div>
 		{/if}
 	</figcaption>
 </figure>
@@ -486,15 +639,34 @@
 		background: var(--color-surface-sunken);
 	}
 
-	/* Density wash: a faint neutral fill, opacity carrying the band's overlap
-	   count (set inline per-rect via fill-opacity, see the markup above) so
-	   busier stretches read as a touch darker paper rather than truly blank.
-	   Uses --color-grid (the same neutral as the graticule lines) rather than
-	   a status colour, since a band can span many differently-coloured rails
-	   at once. */
+	/* Density gutter bar: a thin neutral fill, opacity carrying the band's
+	   overlap count (set inline per-rect via fill-opacity, see the markup
+	   above) so busier year-stretches read as a darker segment of the margin
+	   strip. Uses --color-border-strong rather than a status colour, since a
+	   band can span many differently-coloured rails at once. */
 	.timeline__density rect {
-		fill: var(--color-border-strong);
+		/* Oxide wash: sepia hachures in the sheet's margin (colour-system.md
+		   §5, density register). Opacity carries the count, set per-rect. */
+		fill: var(--ink-oxide);
 		pointer-events: none;
+	}
+
+	/* Extraction ribbons: translucent oxide bands between adjacent lineage
+	   rails — the sankey read of a library running alongside the app it
+	   came from. Quiet enough that the rails stay the subject. Dim-only,
+	   no hover brighten. */
+	.timeline__ribbon {
+		fill: var(--ink-oxide);
+		fill-opacity: 0.14;
+		stroke: none;
+		pointer-events: none;
+		transition: fill-opacity var(--transition-fast);
+	}
+
+	/* Dimmed when another rail is highlighted and this ribbon touches
+	   neither endpoint. Mirrors the edge dim maths. */
+	.timeline__ribbon--dim {
+		fill-opacity: calc(0.14 * var(--dim-node));
 	}
 
 	/* Graticule: horizontal year lines, a light dotted rule the way a plotted
@@ -531,16 +703,30 @@
 		transform-origin: center;
 	}
 
-	/* Hub ring: a second, quieter outer ring marking a still-live project. */
+	/* Outer ring: a second, quieter ring marking a deployed project — the
+	   one meaning the second ring carries anywhere on the site. */
 	.timeline__ring--hub {
 		stroke-width: 1.25;
 		stroke-opacity: 0.4;
 		pointer-events: none;
 	}
 
+	/* Heuristic stage: the unsurveyed convention, dotted where authored
+	   marks draw solid. */
+	.timeline__ring--provisional {
+		stroke-dasharray: 2 3;
+	}
+
 	.timeline__centre {
 		fill: currentColor;
 		pointer-events: none;
+	}
+
+	/* Exploration track: hollow centre dot where product draws solid. */
+	.timeline__centre--hollow {
+		fill: none;
+		stroke: currentColor;
+		stroke-width: 1.25;
 	}
 
 	/* Rail: this project's lifespan line, coloured by status via currentColor.
@@ -706,16 +892,35 @@
 			transform var(--transition-slow) var(--reveal-delay);
 	}
 
+	/* Legend: a centred column of titled rows, one per channel, sharing one
+	   visual language with the map and toolkit keys. */
 	.timeline__legend {
 		display: flex;
-		flex-wrap: wrap;
+		flex-direction: column;
 		align-items: center;
-		gap: var(--space-5);
+		gap: var(--space-3);
 		margin-top: var(--space-6);
-		padding-top: var(--space-4);
+		padding-top: var(--space-5);
 		border-top: 1px solid var(--color-border);
 		font-size: var(--text-sm);
 		color: var(--color-text-subtle);
+	}
+
+	.timeline__legend-row {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		justify-content: center;
+		gap: var(--space-2) var(--space-5);
+	}
+
+	.timeline__legend-title {
+		font-family: var(--font-mono);
+		font-size: var(--text-apparatus-lg);
+		font-weight: 600;
+		letter-spacing: 0.12em;
+		text-transform: uppercase;
+		color: var(--color-text-muted);
 	}
 
 	.timeline__legend-item {
@@ -725,8 +930,8 @@
 	}
 
 	.timeline__swatch-mark {
-		width: 0.85rem;
-		height: 0.85rem;
+		width: 1rem;
+		height: 1rem;
 		flex-shrink: 0;
 	}
 
@@ -741,11 +946,34 @@
 		fill: currentColor;
 	}
 
-	.timeline__legend-edge {
+	.timeline__swatch-hollow {
+		fill: none;
+		stroke: currentColor;
+		stroke-width: 1;
+	}
+
+	.timeline__swatch-ring--outer {
+		stroke-width: 1;
+		stroke-opacity: 0.4;
+	}
+
+	/* Miniature of the extraction ribbon: a small translucent oxide band. */
+	.timeline__legend-ribbon {
 		display: inline-block;
 		width: 1.25rem;
-		height: 0;
-		border-top: 2px solid;
+		height: 0.75rem;
+		background: var(--ink-oxide);
+		opacity: 0.25;
+		flex-shrink: 0;
+	}
+
+	/* Miniature of the density gutter bar: a short filled strip, echoing the
+	   left-margin rects at their darkest. */
+	.timeline__legend-density {
+		display: inline-block;
+		width: 0.35rem;
+		height: 1rem;
+		background: var(--color-border-strong);
 		flex-shrink: 0;
 	}
 
@@ -813,7 +1041,8 @@
 		.timeline__centre,
 		.timeline__label,
 		.timeline__rail,
-		.timeline__rail-fade {
+		.timeline__rail-fade,
+		.timeline__ribbon {
 			transition: none;
 		}
 	}
