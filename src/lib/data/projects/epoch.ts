@@ -10,6 +10,8 @@ export const epoch: AuthoredProject = {
 	kind: 'app',
 	contribution: { role: 'solo' },
 	status: 'finished',
+	track: 'product',
+	progress: 'complete',
 	highlights: [
 		'Significance-ranking pipeline scores events using Wikidata sitelink counts, entity-type detection, named-event prefixes, and link density.',
 		'Aggressive content filtering strips sports results, malformed markup, and citation fragments before events are shown.',

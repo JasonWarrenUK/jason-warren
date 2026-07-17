@@ -21,6 +21,16 @@ export type ProjectStatus =
 	| 'archived'
 	| 'uncategorised';
 
+/**
+ * The stage decomposition (docs/design/colour-system.md §3). `status`
+ * conflated intent, state, deployment and retirement in one field; these
+ * two authored axes carry the first pair, with `deployed` derived from
+ * liveUrl and `archived` an authored end-state flag on Project.
+ */
+export type ProjectTrack = 'exploration' | 'product';
+
+export type ProjectProgress = 'in-progress' | 'complete';
+
 export type ProjectKind = 'app' | 'game' | 'website' | 'toy' | 'library' | 'tool' | 'tui' | 'repo';
 
 export type TagKind = 'language' | 'framework' | 'data' | 'ai' | 'concept' | 'tool' | 'runtime';
@@ -259,6 +269,12 @@ export interface AuthoredProject {
 	 */
 	suppressTags?: string[];
 	status?: ProjectStatus;
+	/** Intent: a spike proving an idea, or a product meant to be used. */
+	track?: ProjectTrack;
+	/** State: still being built, or arrived at its intended shape. */
+	progress?: ProjectProgress;
+	/** End-state flag: the work is shelved. Renders as a shade shift, never a new hue. */
+	archived?: boolean;
 	liveUrl?: string;
 	highlights?: string[];
 	relationships?: ProjectRelationship[];
@@ -291,6 +307,16 @@ export interface Project {
 	contribution: Contribution;
 	tags: TechTag[];
 	status: ProjectStatus;
+	track: ProjectTrack;
+	/** True when track was authored; heuristic values render dotted-provisional. */
+	trackAuthored: boolean;
+	progress: ProjectProgress;
+	/** True when progress was authored; heuristic values render dotted-provisional. */
+	progressAuthored: boolean;
+	/** Derived: the project runs somewhere (liveUrl is present). */
+	deployed: boolean;
+	/** Authored end-state flag; encoded as a shade shift of the progress ink. */
+	archived: boolean;
 	repoUrl: string;
 	/** URLs of companion repos, preserving Drift's tracked topology order. */
 	companionRepoUrls: string[];

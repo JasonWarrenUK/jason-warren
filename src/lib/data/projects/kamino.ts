@@ -11,6 +11,8 @@ export const kamino: AuthoredProject = {
 	kind: 'tool',
 	contribution: { role: 'solo' },
 	status: 'finished',
+	track: 'product',
+	progress: 'complete',
 	highlights: [
 		'Post-commit hook auto-extracts KSB portfolio evidence from commit messages.',
 		'post-commit-docs hook reminds to sync documentation when source changes.',

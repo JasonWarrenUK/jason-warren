@@ -15,6 +15,8 @@ export const chirpdb: AuthoredProject = {
 		contributionNote: 'PLACEHOLDER'
 	},
 	status: 'wip',
+	track: 'product',
+	progress: 'in-progress',
 	highlights: [
 		'Dual ingestion pipelines: GOV.UK URL scraping and PDF upload, both producing structured incident records.',
 		'SHA-256 deduplication prevents duplicate reports across ingestion runs.',

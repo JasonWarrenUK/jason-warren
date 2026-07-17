@@ -10,6 +10,8 @@ export const riffle: AuthoredProject = {
 	kind: 'library',
 	contribution: { role: 'solo' },
 	status: 'finished',
+	track: 'product',
+	progress: 'complete',
 	highlights: [
 		'Card/deck/hand system: draw, play, discard across multiple hands with pinned cards, max hand sizes, and per-hand state.',
 		'Difficulty checks: broad and narrow curves with configurable scalers, human-readable labels (almost impossible → straightforward), roll tracking.',

@@ -10,6 +10,8 @@ export const rimewarden: AuthoredProject = {
 	kind: 'tool',
 	contribution: { role: 'solo' },
 	status: 'prototype',
+	track: 'exploration',
+	progress: 'complete',
 	highlights: [
 		'Svelte 5 runes class-based CampaignManager store ($state/$derived) with localStorage persistence and JSON import/export.',
 		'D2 diagram generation from campaign data: programmatically builds a styled scenario-progression graph with completed/pending/unknown node classes.',

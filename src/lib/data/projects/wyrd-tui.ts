@@ -11,6 +11,8 @@ export const wyrdTui: AuthoredProject = {
 	kind: 'tui',
 	contribution: { role: 'solo' },
 	status: 'wip',
+	track: 'product',
+	progress: 'in-progress',
 	highlights: [
 		'Custom read-only Cypher subset: parser, evaluator, MATCH/WHERE/RETURN/ORDER BY, aggregations, bidirectional and variable-length traversals, date variables with offset arithmetic.',
 		'Three-way JSONC git merge driver (its own binary): non-conflicting changes merge cleanly; scalars resolve last-write-wins by timestamp; arrays union.',

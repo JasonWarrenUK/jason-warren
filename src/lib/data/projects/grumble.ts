@@ -10,6 +10,8 @@ export const grumble: AuthoredProject = {
 	kind: 'tool',
 	contribution: { role: 'solo' },
 	status: 'finished',
+	track: 'product',
+	progress: 'complete',
 	highlights: [
 		'Pure, framework-free scoring library in src/lib/scoring/ with comprehensive unit tests via bun:test.',
 		'Full Gin Rummy ruleset: deadwood calculation, gin/big-gin/undercut bonuses, line bonuses, game bonuses, multi-game match history.',

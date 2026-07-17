@@ -10,6 +10,9 @@ export const psyche: AuthoredProject = {
 	kind: 'app',
 	contribution: { role: 'solo' },
 	status: 'archived',
+	track: 'exploration',
+	progress: 'complete',
+	archived: true,
 	highlights: [
 		'Six-attribute personality model (Self-Assurance, Compassion, Ambition, Drive, Discernment, Bravery): no HP, no stats, both extremes dysfunctional.',
 		'Quality-based-narrative storylet engine: filter by prerequisites, priority with randomised tie-breaking, apply effects, mark played.',

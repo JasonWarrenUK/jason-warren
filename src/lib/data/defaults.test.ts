@@ -224,6 +224,47 @@ describe('defaultProjectFromManifest', () => {
 		expect(project.status).toBe('uncategorised');
 	});
 
+	it('defaults track heuristically: long-and-large reads as product', () => {
+		const product = defaultProjectFromManifest('big-old', {
+			firstCommit: '2025-01-01',
+			lastCommit: '2025-12-01',
+			linesOfCode: 20_000
+		});
+		expect(product.track).toBe('product');
+		expect(product.trackAuthored).toBe(false);
+	});
+
+	it('defaults track heuristically: short or small reads as exploration', () => {
+		const shortSpan = defaultProjectFromManifest('quick', {
+			firstCommit: '2026-06-01',
+			lastCommit: '2026-06-20',
+			linesOfCode: 20_000
+		});
+		const small = defaultProjectFromManifest('tiny', {
+			firstCommit: '2025-01-01',
+			lastCommit: '2025-12-01',
+			linesOfCode: 800
+		});
+		const undated = defaultProjectFromManifest('no-dates', { linesOfCode: 20_000 });
+		expect(shortSpan.track).toBe('exploration');
+		expect(small.track).toBe('exploration');
+		expect(undated.track).toBe('exploration');
+	});
+
+	it('defaults progress heuristically from recent commits', () => {
+		const active = defaultProjectFromManifest('busy', { commitsRecent: 3 });
+		const dormant = defaultProjectFromManifest('quiet', { commitsRecent: 0 });
+		expect(active.progress).toBe('in-progress');
+		expect(dormant.progress).toBe('complete');
+		expect(active.progressAuthored).toBe(false);
+	});
+
+	it('defaults deployed and archived to false', () => {
+		const project = defaultProjectFromManifest('some-repo', {});
+		expect(project.deployed).toBe(false);
+		expect(project.archived).toBe(false);
+	});
+
 	it('infers solo contribution from sole-author manifest', () => {
 		const manifest: SyncedSource = { commits: 10, commitsMine: 10 };
 		const project = defaultProjectFromManifest('my-repo', manifest);
@@ -272,6 +313,37 @@ describe('defaultProjectFromManifest', () => {
 
 describe('mergeAuthored', () => {
 	const base = defaultProjectFromManifest('test-slug', { languages: ['TypeScript'] });
+
+	it('authored track and progress win and flip the provenance flags', () => {
+		const merged = mergeAuthored(base, {
+			slug: 'test-slug',
+			track: 'product',
+			progress: 'complete'
+		});
+		expect(merged.track).toBe('product');
+		expect(merged.trackAuthored).toBe(true);
+		expect(merged.progress).toBe('complete');
+		expect(merged.progressAuthored).toBe(true);
+	});
+
+	it('keeps heuristic track/progress with false provenance when unauthored', () => {
+		const merged = mergeAuthored(base, { slug: 'test-slug', name: 'Renamed' });
+		expect(merged.track).toBe(base.track);
+		expect(merged.trackAuthored).toBe(false);
+		expect(merged.progressAuthored).toBe(false);
+	});
+
+	it('derives deployed from the merged liveUrl', () => {
+		const deployed = mergeAuthored(base, { slug: 'test-slug', liveUrl: 'https://example.com' });
+		const not = mergeAuthored(base, { slug: 'test-slug' });
+		expect(deployed.deployed).toBe(true);
+		expect(not.deployed).toBe(false);
+	});
+
+	it('merges an authored archived flag', () => {
+		const merged = mergeAuthored(base, { slug: 'test-slug', archived: true });
+		expect(merged.archived).toBe(true);
+	});
 
 	it('preserves an authored role when commit-share inference disagrees', () => {
 		const inferred = defaultProjectFromManifest('team-project', {

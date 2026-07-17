@@ -10,6 +10,8 @@ export const cogni: AuthoredProject = {
 	kind: 'app',
 	contribution: { role: 'solo' },
 	status: 'prototype',
+	track: 'exploration',
+	progress: 'complete',
 	highlights: [
 		'17 two-axis compasses organised in three tiers; constraint propagation crosshatches quadrants that would contradict already-set positions.',
 		'10+ methodology evaluations (TDD, Scrum, Shape Up, Kanban, XP, etc.) with per-methodology friction explanations.',

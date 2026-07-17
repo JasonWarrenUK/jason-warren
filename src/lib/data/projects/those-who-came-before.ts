@@ -10,6 +10,8 @@ export const thoseWhoCameBefore: AuthoredProject = {
 	kind: 'game',
 	contribution: { role: 'solo' },
 	status: 'prototype',
+	track: 'exploration',
+	progress: 'in-progress',
 	highlights: [
 		'Intent-free geometric-primitive grammar: produces physical structures, never item types; classification is entirely downstream.',
 		'Culture-biased weighted selection with a probability floor plus a plausibility checker that re-rolls invalid forms.',

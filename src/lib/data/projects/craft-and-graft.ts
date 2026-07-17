@@ -16,6 +16,8 @@ export const craftAndGraft: AuthoredProject = {
 			'Led the React storefront on a FAC-30 cohort e-commerce project: session-based auth with bcrypt and connect-pg-simple, product views fetched live from an Express/PostgreSQL API, Netlify CD pipeline and two GitHub Actions bots covering CI ergonomics from the first sprint.'
 	},
 	status: 'finished',
+	track: 'product',
+	progress: 'complete',
 	highlights: [
 		'Full session-based auth: bcrypt-hashed passwords, PostgreSQL-backed sessions via connect-pg-simple, with login/signup/logout controllers in the API.',
 		'React storefront where nav and views adapt to login status, with products fetched live from the Express API companion repo.',

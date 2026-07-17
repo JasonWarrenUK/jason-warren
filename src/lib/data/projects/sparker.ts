@@ -10,6 +10,8 @@ export const sparker: AuthoredProject = {
 	kind: 'app',
 	contribution: { role: 'solo' },
 	status: 'prototype',
+	track: 'exploration',
+	progress: 'complete',
 	highlights: [
 		'Graph-native data model: (Student)<-[:ABOUT]-(Observation)-[:HAS_FIELD {value}]->(FieldDefinition). Correlation discovery as a Cypher traversal.',
 		"Flexible user-defined field system: text, number, boolean, tags, datetime. Adapts to any school's observation vocabulary.",

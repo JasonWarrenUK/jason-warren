@@ -10,6 +10,8 @@ export const babyNames: AuthoredProject = {
 	kind: 'toy',
 	contribution: { role: 'solo' },
 	status: 'finished',
+	track: 'product',
+	progress: 'complete',
 	highlights: [
 		'No local dataset: all names generated on demand via the Claude API.',
 		'Three-screen taste-learning loop: set preferences, rate generated examples, receive personalised results.',

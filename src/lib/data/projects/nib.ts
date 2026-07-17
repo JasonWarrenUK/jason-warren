@@ -10,6 +10,8 @@ export const nib: AuthoredProject = {
 	kind: 'library',
 	contribution: { role: 'solo' },
 	status: 'finished',
+	track: 'product',
+	progress: 'complete',
 	highlights: [
 		'Single onInit injection seam: game-specific BindExternalFunction calls and data registration in one callback, nowhere else.',
 		'tick counter bridges non-reactive inkjs to Svelte 5 runes: UI reads tick inside $derived, so getVariable() re-evaluates on every continue().',

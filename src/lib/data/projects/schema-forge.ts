@@ -10,6 +10,8 @@ export const schemaForge: AuthoredProject = {
 	kind: 'library',
 	contribution: { role: 'solo' },
 	status: 'wip',
+	track: 'product',
+	progress: 'in-progress',
 	highlights: [
 		'XSD parsing into SchemaRegistry objects with element trees, lookup maps, and full constraint metadata.',
 		'Data validation against XSD-defined constraints: types, patterns, cardinality, ranges, enumerations.',

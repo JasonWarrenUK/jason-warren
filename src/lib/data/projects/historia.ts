@@ -10,6 +10,8 @@ export const historia: AuthoredProject = {
 	kind: 'website',
 	contribution: { role: 'solo' },
 	status: 'prototype',
+	track: 'exploration',
+	progress: 'complete',
 	highlights: [
 		'Real GIS map rendering with MapLibre GL, a custom atlas style and a dedicated map renderer.',
 		'Hand-authored historical data covering kingdoms, events, artefacts and geography.',

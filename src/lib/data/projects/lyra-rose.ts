@@ -10,6 +10,8 @@ export const lyraRose: AuthoredProject = {
 	kind: 'toy',
 	contribution: { role: 'solo' },
 	status: 'wip',
+	track: 'product',
+	progress: 'in-progress',
 	highlights: [
 		'Pluggable renderer architecture for both surfaces and interiors from day one: adding a new surface or interior type is "write a new renderer," not modifying core opening logic.',
 		'Viewport-bounded layout discipline at every level: nothing scrolls anywhere in the system. Interior content that exceeds the viewport paginates, animates, or reflows within a contained region.',

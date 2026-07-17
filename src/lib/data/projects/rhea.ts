@@ -10,6 +10,8 @@ export const rhea: AuthoredProject = {
 	kind: 'app',
 	contribution: { role: 'solo' },
 	status: 'prototype',
+	track: 'exploration',
+	progress: 'complete',
 	highlights: [
 		'Named sub-workflows (Themis/Metis/Theia) share a common generation engine with the Anthropic SDK and LangChain, making each workflow independently maintainable.',
 		'Provenance/cascade pattern: every generated module carries a changelog, confidence score (high/medium/low), and auto-cited research sources.',

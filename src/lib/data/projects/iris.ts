@@ -13,6 +13,8 @@ export const iris: AuthoredProject = {
 		collaboration: { team: 'Solo (Jason)', employer: 'Founders and Coders' }
 	},
 	status: 'finished',
+	track: 'product',
+	progress: 'complete',
 	highlights: [
 		'Single TypeScript core drives three interfaces: OpenTUI terminal UI, direct CLI commands, and a Tauri 2 (Rust) native desktop app.',
 		'Schema-driven validation: parses the real ESFA XSD to build a validation registry with type resolution, cardinality and constraint checking. Semantic validation beyond structural XML.',

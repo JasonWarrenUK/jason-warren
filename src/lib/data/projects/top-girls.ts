@@ -10,6 +10,8 @@ export const topGirls: AuthoredProject = {
 	kind: 'game',
 	contribution: { role: 'solo' },
 	status: 'finished',
+	track: 'product',
+	progress: 'complete',
 	highlights: [
 		'Idiomatic Svelte 5 runes throughout: $state, $derived. No redundant lifecycle flags.',
 		'Atropos 3D card-tilt effect integrated and documented to its four-div DOM structure requirement.',

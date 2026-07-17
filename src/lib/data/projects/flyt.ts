@@ -10,6 +10,8 @@ export const flyt: AuthoredProject = {
 	kind: 'game',
 	contribution: { role: 'solo' },
 	status: 'wip',
+	track: 'product',
+	progress: 'in-progress',
 	highlights: [
 		'Custom DendryNexus compiler: scripts/compile-dendry.js parses .dry format → static/game.json, consumed by the hand-written Riffle engine.',
 		'Authored .dry narrative content across two story areas: the contest and the great-hall.',

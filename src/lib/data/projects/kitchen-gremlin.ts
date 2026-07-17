@@ -10,6 +10,8 @@ export const kitchenGremlin: AuthoredProject = {
 	kind: 'app',
 	contribution: { role: 'solo' },
 	status: 'wip',
+	track: 'product',
+	progress: 'in-progress',
 	highlights: [
 		'SQLite/WASM in a Web Worker, persisted to OPFS; in-memory fallback when OPFS is unavailable.',
 		'Normalised schema with an FTS5 full-text search index and synonym expansion (explicit ingredient ontology stub).',

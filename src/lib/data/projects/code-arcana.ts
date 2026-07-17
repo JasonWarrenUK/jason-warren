@@ -10,6 +10,8 @@ export const codeArcana: AuthoredProject = {
 	kind: 'website',
 	contribution: { role: 'solo' },
 	status: 'finished',
+	track: 'product',
+	progress: 'complete',
 	highlights: [
 		'All 78 cards written: 22 Major Arcana and 56 Minor Arcana across four suits (Cups/Wands/Swords/Pentacles).',
 		'Every card has a full essay, keywords, a one-line coding insight, and connections to related cards.',

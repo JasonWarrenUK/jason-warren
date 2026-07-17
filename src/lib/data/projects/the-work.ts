@@ -10,6 +10,8 @@ export const theWork: AuthoredProject = {
 	kind: 'game',
 	contribution: { role: 'solo' },
 	status: 'wip',
+	track: 'product',
+	progress: 'in-progress',
 	highlights: [
 		'Ink narrative engine, via Nib, drives branching dialogue across 15 per-hour chapter files.',
 		'Six-level idea progression, 7 domains, 21 disciplines (every domain pairing), per-idea orthodoxy scoring (−100 to +100).',

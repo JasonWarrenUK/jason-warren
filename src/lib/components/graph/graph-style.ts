@@ -4,9 +4,50 @@
  * semantic tokens in tokens.css, so every connection view reads the same.
  */
 
-import type { EdgeCategory, LineageKind, ProjectStatus, TagKind } from '$lib/data/types.js';
+import type {
+	EdgeCategory,
+	LineageKind,
+	ProjectProgress,
+	ProjectStatus,
+	ProjectTrack,
+	TagKind
+} from '$lib/data/types.js';
 import type { GraphEdge } from '$lib/data/graph.js';
 import { themes } from '$lib/data/themes.js';
+
+// ---------------------------------------------------------------------------
+// Track × progress vocabulary (colour-system.md §3)
+//
+// THE single source for stage labels, orders and colours. Badges, filters and
+// every graph view import from here; the old status vocabulary was triplicated
+// across StatusBadge, FilterBar and this file, and drifted risk-free no more.
+// ---------------------------------------------------------------------------
+
+/** Track labels: intent, not maturity. A finished spike is a spike that worked. */
+export const trackLabel: Record<ProjectTrack, string> = {
+	exploration: 'Spike',
+	product: 'Product'
+};
+
+export const progressLabel: Record<ProjectProgress, string> = {
+	'in-progress': 'Building',
+	complete: 'Complete'
+};
+
+export const trackOrder: ProjectTrack[] = ['product', 'exploration'];
+
+export const progressOrder: ProjectProgress[] = ['in-progress', 'complete'];
+
+/**
+ * Progress ink for a project's marks, rails and rings. Archived applies the
+ * end-of-life convention: the same hue, one shade nearer the paper.
+ */
+export function progressColour(progress: ProjectProgress, archived = false): string {
+	if (progress === 'in-progress') {
+		return archived ? 'var(--progress-in-progress-archived)' : 'var(--progress-in-progress)';
+	}
+	return archived ? 'var(--progress-complete-archived)' : 'var(--progress-complete)';
+}
 
 /** Status colour token, matching the status badges. */
 export function statusColour(status: ProjectStatus): string {

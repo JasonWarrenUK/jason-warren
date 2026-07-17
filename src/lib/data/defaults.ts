@@ -201,6 +201,28 @@ export function inferContribution(manifest: SyncedSource): Contribution {
 // Default project builder
 // ---------------------------------------------------------------------------
 
+/** Track heuristic: a repo that spans real time and real size reads as a
+ *  product; anything smaller or shorter reads as a spike. Thresholds are
+ *  tunable; wrong guesses are visible by design (heuristic values render
+ *  dotted-provisional until authored — colour-system.md §3). */
+const TRACK_HEURISTIC_MIN_SPAN_DAYS = 90;
+const TRACK_HEURISTIC_MIN_LINES = 5000;
+
+function inferTrack(manifest: SyncedSource): Project['track'] {
+	const { firstCommit, lastCommit, linesOfCode } = manifest;
+	if (!firstCommit || !lastCommit) return 'exploration';
+	const spanDays = (Date.parse(lastCommit) - Date.parse(firstCommit)) / 86_400_000;
+	return spanDays > TRACK_HEURISTIC_MIN_SPAN_DAYS && (linesOfCode ?? 0) > TRACK_HEURISTIC_MIN_LINES
+		? 'product'
+		: 'exploration';
+}
+
+/** Progress heuristic: commits in the trailing four weeks mean it's being
+ *  built; silence means it has arrived at whatever shape it will keep. */
+function inferProgress(manifest: SyncedSource): Project['progress'] {
+	return (manifest.commitsRecent ?? 0) > 0 ? 'in-progress' : 'complete';
+}
+
 /**
  * Produces a complete Project from a manifest entry. Every required field is
  * populated with a safe default; no field is undefined. withSyncedMetrics then
@@ -220,6 +242,12 @@ export function defaultProjectFromManifest(slug: string, manifest: SyncedSource)
 		contribution: inferContribution(manifest),
 		tags: inferTags(manifest),
 		status: 'uncategorised',
+		track: inferTrack(manifest),
+		trackAuthored: false,
+		progress: inferProgress(manifest),
+		progressAuthored: false,
+		deployed: false, // recomputed from liveUrl in mergeAuthored; no manifest source
+		archived: false,
 		repoUrl: manifest.remote ?? `https://github.com/JasonWarrenUK/${slug}`,
 		companionRepoUrls: manifest.companionRemotes ?? [],
 		highlights: [],
@@ -309,6 +337,10 @@ export function mergeAuthored(base: Project, authored: AuthoredProject | undefin
 		mergedTags = mergedTags.filter((t) => !suppressed.has(t.label));
 	}
 
+	// Deployed is derived, never authored: it is exactly "the merged project
+	// has a liveUrl", recomputed here so an authored liveUrl flips it.
+	const mergedLiveUrl = authored.liveUrl !== undefined ? authored.liveUrl : base.liveUrl;
+
 	return {
 		slug: authored.slug !== undefined ? authored.slug : base.slug,
 		name: authored.name !== undefined ? authored.name : base.name,
@@ -319,9 +351,15 @@ export function mergeAuthored(base: Project, authored: AuthoredProject | undefin
 		contribution: mergeContribution(base.contribution, authored.contribution),
 		tags: mergedTags,
 		status: authored.status !== undefined ? authored.status : base.status,
+		track: authored.track !== undefined ? authored.track : base.track,
+		trackAuthored: authored.track !== undefined,
+		progress: authored.progress !== undefined ? authored.progress : base.progress,
+		progressAuthored: authored.progress !== undefined,
+		deployed: mergedLiveUrl !== undefined,
+		archived: authored.archived !== undefined ? authored.archived : base.archived,
 		repoUrl: base.repoUrl,
 		companionRepoUrls: base.companionRepoUrls,
-		liveUrl: authored.liveUrl !== undefined ? authored.liveUrl : base.liveUrl,
+		liveUrl: mergedLiveUrl,
 		highlights: authored.highlights !== undefined ? authored.highlights : base.highlights,
 		relationships:
 			authored.relationships !== undefined ? authored.relationships : base.relationships,

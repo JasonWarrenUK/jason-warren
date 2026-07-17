@@ -10,6 +10,8 @@ export const theTongue: AuthoredProject = {
 	kind: 'game',
 	contribution: { role: 'solo' },
 	status: 'live',
+	track: 'product',
+	progress: 'complete',
 	liveUrl: 'https://the-tongue.vercel.app',
 	highlights: [
 		'Procedural language generation from a numeric seed: phoneme inventory, syllable templates, 32-word core lexicon, 4x3 terrain map.',
