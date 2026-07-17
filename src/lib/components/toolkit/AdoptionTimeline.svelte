@@ -421,61 +421,83 @@
 		{/each}
 	</ul>
 
+	<!-- Legend: one titled row per channel, so shape (kind), shade (stack
+	     state), ring treatment (date provenance) and edge colour
+	     (succession) each get their own explanation instead of one
+	     undifferentiated line. -->
 	<figcaption class="adoption__legend">
-		{#each presentKinds as entry (entry.kind)}
-			{@const chipGlyph = kindGlyph(entry.kind)}
+		<div class="adoption__legend-row">
+			<span class="adoption__legend-title">Kind</span>
+			{#each presentKinds as entry (entry.kind)}
+				{@const chipGlyph = kindGlyph(entry.kind)}
+				<span class="adoption__legend-item">
+					<svg class="adoption__swatch-mark" viewBox="0 0 14 14" aria-hidden="true">
+						{#if chipGlyph.shape === 'circle'}
+							<circle
+								class="adoption__swatch-ring"
+								class:adoption__swatch-ring--dashed={chipGlyph.dashed}
+								cx="7"
+								cy="7"
+								r="5"
+							/>
+						{:else}
+							<path class="adoption__swatch-ring" d={kindGlyphPath(entry.kind, 7, 7, 5.5)} />
+						{/if}
+						{#if chipGlyph.centreDot}
+							<circle class="adoption__swatch-centre" cx="7" cy="7" r="1.6" />
+						{/if}
+					</svg>
+					{entry.label}
+				</span>
+			{/each}
+			<span class="adoption__legend-note">Mark size reflects how many projects use it.</span>
+		</div>
+		{#if hasHistoric}
+			<div class="adoption__legend-row">
+				<span class="adoption__legend-title">Stack</span>
+				<span class="adoption__legend-item">
+					<span class="adoption__swatch adoption__swatch--current"></span>
+					In use
+				</span>
+				<span class="adoption__legend-item">
+					<span class="adoption__swatch adoption__swatch--historic"></span>
+					Superseded (faded)
+				</span>
+			</div>
+		{/if}
+		<div class="adoption__legend-row">
+			<span class="adoption__legend-title">Date</span>
 			<span class="adoption__legend-item">
 				<svg class="adoption__swatch-mark" viewBox="0 0 14 14" aria-hidden="true">
-					{#if chipGlyph.shape === 'circle'}
-						<circle
-							class="adoption__swatch-ring"
-							class:adoption__swatch-ring--dashed={chipGlyph.dashed}
-							cx="7"
-							cy="7"
-							r="5"
-						/>
-					{:else}
-						<path class="adoption__swatch-ring" d={kindGlyphPath(entry.kind, 7, 7, 5.5)} />
-					{/if}
-					{#if chipGlyph.centreDot}
-						<circle class="adoption__swatch-centre" cx="7" cy="7" r="1.6" />
-					{/if}
+					<circle class="adoption__swatch-hub" cx="7" cy="7" r="6" />
+					<circle class="adoption__swatch-ring" cx="7" cy="7" r="4" />
+					<circle class="adoption__swatch-centre" cx="7" cy="7" r="1.6" />
 				</svg>
-				{entry.label}
+				Authored (outer ring)
 			</span>
-		{/each}
-		{#if hasHistoric}
 			<span class="adoption__legend-item">
-				<span class="adoption__swatch adoption__swatch--historic"></span>
-				Superseded (faded)
+				<svg class="adoption__swatch-mark" viewBox="0 0 14 14" aria-hidden="true">
+					<circle class="adoption__swatch-ring" cx="7" cy="7" r="5" />
+					<circle class="adoption__swatch-centre" cx="7" cy="7" r="1.6" />
+				</svg>
+				Estimated from project history
 			</span>
+		</div>
+		{#if presentLineageKinds.length > 0}
+			<div class="adoption__legend-row">
+				<span class="adoption__legend-title">Succession</span>
+				{#each presentLineageKinds as kind (kind)}
+					<span class="adoption__legend-item">
+						<span class="adoption__legend-edge" style="border-color: {edgeTypeColour(kind)}"></span>
+						{edgeTypeLabel(kind)}
+					</span>
+				{/each}
+				<span class="adoption__legend-note">
+					Each line is coloured by what comes next: leading to a new technology, then merging into
+					its replacement; fading lines are still in use.
+				</span>
+			</div>
 		{/if}
-		<span class="adoption__legend-note">Mark size reflects how many projects use it.</span>
-		<span class="adoption__legend-item">
-			<svg class="adoption__swatch-mark" viewBox="0 0 14 14" aria-hidden="true">
-				<circle class="adoption__swatch-hub" cx="7" cy="7" r="6" />
-				<circle class="adoption__swatch-ring" cx="7" cy="7" r="4" />
-				<circle class="adoption__swatch-centre" cx="7" cy="7" r="1.6" />
-			</svg>
-			Authored date
-		</span>
-		<span class="adoption__legend-item">
-			<svg class="adoption__swatch-mark" viewBox="0 0 14 14" aria-hidden="true">
-				<circle class="adoption__swatch-ring" cx="7" cy="7" r="5" />
-				<circle class="adoption__swatch-centre" cx="7" cy="7" r="1.6" />
-			</svg>
-			Estimated from project history
-		</span>
-		{#each presentLineageKinds as kind (kind)}
-			<span class="adoption__legend-item">
-				<span class="adoption__legend-edge" style="border-color: {edgeTypeColour(kind)}"></span>
-				{edgeTypeLabel(kind)}
-			</span>
-		{/each}
-		<span class="adoption__legend-note">
-			Each line is coloured by what comes next: leading to a new technology, then merging into its
-			replacement; fading lines are still in use.
-		</span>
 		{#if provisional}
 			<span class="adoption__provisional">
 				Dates are approximate; uncurated technologies are estimated from project history.
@@ -754,14 +776,31 @@
 
 	.adoption__legend {
 		display: flex;
-		flex-wrap: wrap;
-		align-items: center;
-		gap: var(--space-5);
+		flex-direction: column;
+		gap: var(--space-3);
 		margin-top: var(--space-6);
 		padding-top: var(--space-4);
 		border-top: 1px solid var(--color-border);
 		font-size: var(--text-sm);
 		color: var(--color-text-subtle);
+	}
+
+	/* One titled row per channel. */
+	.adoption__legend-row {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: var(--space-5);
+	}
+
+	.adoption__legend-title {
+		font-family: var(--font-mono);
+		font-size: var(--text-apparatus-lg);
+		font-weight: 600;
+		letter-spacing: 0.12em;
+		text-transform: uppercase;
+		color: var(--color-text-muted);
+		min-width: 5.5rem;
 	}
 
 	.adoption__legend-item {
@@ -777,7 +816,11 @@
 		flex-shrink: 0;
 	}
 
-	/* Superseded stack: the end-of-life shade, one step paperward. */
+	.adoption__swatch--current {
+		background: var(--tech-mark);
+	}
+
+	/* Superseded stack: the end-of-life shade, two steps paperward. */
 	.adoption__swatch--historic {
 		background: var(--tech-mark-historic);
 	}
