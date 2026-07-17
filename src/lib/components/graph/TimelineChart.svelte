@@ -636,7 +636,9 @@
 	   strip. Uses --color-border-strong rather than a status colour, since a
 	   band can span many differently-coloured rails at once. */
 	.timeline__density rect {
-		fill: var(--color-border-strong);
+		/* Oxide wash: sepia hachures in the sheet's margin (colour-system.md
+		   §5, density register). Opacity carries the count, set per-rect. */
+		fill: var(--ink-oxide);
 		pointer-events: none;
 	}
 

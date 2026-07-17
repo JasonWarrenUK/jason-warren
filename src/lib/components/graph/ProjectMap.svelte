@@ -1524,7 +1524,7 @@
 	}
 
 	.map__edge--extraction {
-		stroke: var(--color-accent);
+		stroke: var(--edge-extraction);
 		stroke-width: 2;
 		/* First-reveal route inking: drawn in along its path once, the first
 		   time the sim settles (routesInked flips true in ProjectMap's

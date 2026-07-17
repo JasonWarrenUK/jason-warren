@@ -196,7 +196,7 @@
 	}
 
 	.neighbourhood__edge--extraction {
-		stroke: var(--color-primary);
+		stroke: var(--edge-extraction);
 		stroke-width: 2;
 	}
 

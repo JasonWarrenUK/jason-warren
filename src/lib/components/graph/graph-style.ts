@@ -128,7 +128,9 @@ export function techKindColour(kind: TagKind): string {
 
 /** Colour token for any edge type, curated or category. */
 export function edgeTypeColour(type: EdgeType): string {
-	if (type === 'extraction') return 'var(--color-primary)';
+	// Extraction is the authored survey mark of one project begetting
+	// another; it draws in oxide, the accent ink (colour-system.md §5).
+	if (type === 'extraction') return 'var(--edge-extraction)';
 	if (type === 'related') return 'var(--color-text-subtle)';
 	if (type === 'leads-to') return 'var(--color-edge-lineage-leads-to)';
 	if (type === 'replaced-by') return 'var(--color-edge-lineage-replaced-by)';
