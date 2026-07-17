@@ -641,7 +641,10 @@
 		<dl class="spec">
 			<div class="spec__row">
 				<dt>Type</dt>
-				<dd>Inter for the interface; JetBrains Mono, Space Grotesk and others for the cards.</dd>
+				<dd>
+					Source Serif 4 for display, IBM Plex Sans for prose, JetBrains Mono for the apparatus; the
+					same three set the OG cards, where a project's data model picks the name's face.
+				</dd>
 			</div>
 			<div class="spec__row">
 				<dt>Colour</dt>

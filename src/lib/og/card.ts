@@ -79,11 +79,21 @@ const fonts = [
 		weight: 700,
 		style: 'normal'
 	},
+	// Source Serif 4 is the Atlas display face; satori needs a static woff, so
+	// this reads the non-variable @fontsource/source-serif-4 at build time (the
+	// browser still gets the variable package via the root layout). Two
+	// treatments — upright 700 and italic 600 — carry two data models below.
 	{
-		name: 'Space Grotesk',
-		data: loadFont('space-grotesk', 'space-grotesk-latin-700-normal.woff'),
+		name: 'Source Serif 4',
+		data: loadFont('source-serif-4', 'source-serif-4-latin-700-normal.woff'),
 		weight: 700,
 		style: 'normal'
+	},
+	{
+		name: 'Source Serif 4',
+		data: loadFont('source-serif-4', 'source-serif-4-latin-600-italic.woff'),
+		weight: 600,
+		style: 'italic'
 	},
 	{
 		name: 'JetBrains Mono',
@@ -92,10 +102,10 @@ const fonts = [
 		style: 'normal'
 	},
 	{
-		name: 'Sora',
-		data: loadFont('sora', 'sora-latin-700-normal.woff'),
+		name: 'JetBrains Mono',
+		data: loadFont('jetbrains-mono', 'jetbrains-mono-latin-700-italic.woff'),
 		weight: 700,
-		style: 'normal'
+		style: 'italic'
 	}
 ] as const;
 
@@ -205,13 +215,31 @@ const dataModelOrder: DataModel[] = [
 	'none'
 ];
 
-const dataModelFont: Record<DataModel, string> = {
-	graph: 'Space Grotesk',
-	document: 'JetBrains Mono',
-	vector: 'Sora',
-	relational: 'IBM Plex Sans',
-	ephemeral: 'Inter',
-	none: 'Inter'
+/** One name typeface treatment: family + weight + style, resolved by satori. */
+interface FontTreatment {
+	family: string;
+	weight: number;
+	style: 'normal' | 'italic';
+}
+
+/**
+ * Data model → name typeface. Five distinguishable treatments across the three
+ * Atlas faces (Source Serif 4, JetBrains Mono, IBM Plex Sans), split by
+ * weight/style so each model still reads as its own mark:
+ *   - graph      → serif italic  (the most distinctive; echoes the graph views'
+ *                  italic-serif territory names)
+ *   - relational → serif upright (structured, persistent)
+ *   - document   → mono upright  (data-shaped)
+ *   - vector     → mono italic   (data-shaped sibling)
+ *   - ephemeral/none → sans      (the plain default)
+ */
+const dataModelFont: Record<DataModel, FontTreatment> = {
+	graph: { family: 'Source Serif 4', weight: 600, style: 'italic' },
+	document: { family: 'JetBrains Mono', weight: 700, style: 'normal' },
+	vector: { family: 'JetBrains Mono', weight: 700, style: 'italic' },
+	relational: { family: 'Source Serif 4', weight: 700, style: 'normal' },
+	ephemeral: { family: 'IBM Plex Sans', weight: 700, style: 'normal' },
+	none: { family: 'IBM Plex Sans', weight: 700, style: 'normal' }
 };
 
 /** Classify one data-tag label into a model class. */
@@ -413,7 +441,7 @@ export async function renderOgCard(card: OgCard): Promise<Buffer> {
 	const palette = card.kind ? kindPalette[card.kind] : defaultPalette;
 	const seed = hash(card.seed);
 	const archetype = runtimeArchetype(card.runtime);
-	const nameFont = dataModelFont[card.dataModel ?? 'none'];
+	const nameTreatment = dataModelFont[card.dataModel ?? 'none'];
 	const iconPaths = (card.languages ?? [])
 		.slice(0, MAX_LANGUAGE_GLYPHS)
 		.map((language) => languageIcon[language] ?? fallbackIcon);
@@ -469,9 +497,10 @@ export async function renderOgCard(card: OgCard): Promise<Buffer> {
 								props: {
 									style: {
 										fontSize: 92,
-										fontWeight: 700,
+										fontWeight: nameTreatment.weight,
+										fontStyle: nameTreatment.style,
 										lineHeight: 1.05,
-										fontFamily: nameFont
+										fontFamily: nameTreatment.family
 									},
 									children: card.title
 								}
