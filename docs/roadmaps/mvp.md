@@ -42,13 +42,13 @@ The site is live and substantially built: full routes, the graph/timeline/map/to
 
 **Goal:** Give the site a distinct visual identity, settling a design direction first so every polish task flows from it.
 
-- [ ] **3DE.0** — Define visual direction / signature: mood, type pairing, motion language, graph styling principles _(depends on M2)_
-- [ ] **3DE.1** — Typography pass (scale, rhythm, measure) across all routes _(blocked — depends on 3DE.0)_
+- [x] **3DE.0** — Define visual direction / signature: mood, type pairing, motion language, graph styling principles
+- [ ] **3DE.1** — Typography pass (scale, rhythm, measure) across all routes _(depends on 3DE.0)_
 - [ ] **3DE.2** — Responsive audit: map / timeline / grids on small viewports _(blocked — depends on 3DE.3, 3DE.4)_
 - [ ] **3DE.3** — Motion pass: meaningful transitions, respect prefers-reduced-motion _(blocked — depends on 3DE.1)_
 - [ ] **3DE.4** — Refine graph aesthetics (edge styling, clustering legibility, constellation view) _(blocked — depends on 3DE.5, 3DE.6)_
-- [ ] **3DE.5** — Consistency sweep of semantic colour aliases vs Reasonable Colors usage _(blocked — depends on 3DE.0)_
-- [ ] **3DE.6** — Drastically improve the /map graph layout for legibility _(blocked — depends on 3DE.0)_
+- [ ] **3DE.5** — Consistency sweep of semantic colour aliases vs Reasonable Colors usage _(depends on 3DE.0)_
+- [ ] **3DE.6** — Drastically improve the /map graph layout for legibility _(depends on 3DE.0)_
 
 ---
 
@@ -84,7 +84,7 @@ The site is live and substantially built: full routes, the graph/timeline/map/to
 - [x] **5DR.15** — drift author verb: scaffold and open a project overlay _(depends on 5DR.6)_
 - [x] **5DR.16** — drift pin verb: set pin in a project overlay _(depends on 5DR.6)_
 - [x] **5DR.17** — drift flag verb: the pin and hide overlay flags under one verb _(depends on 5DR.16)_
-- [ ] **5DR.18** — drift relate verb: write a ProjectRelationship into a project overlay _(depends on 5DR.6)_
+- [x] **5DR.18** — drift relate verb: write a ProjectRelationship into a project overlay
 - [ ] **5DR.19** — drift link verb: write a TechRelationship into tech-relationships.ts _(depends on 5DR.6)_
 - [ ] **5DR.20** — Intra-span dormancy signal: sample commit dates so activity gaps become detectable _(depends on 5DR.7)_
 - [ ] **5DR.21** — Improve role detection: richer signals than commit share for the solo/lead/collaborator inference _(depends on 5DR.6)_
@@ -258,7 +258,7 @@ graph LR
 	5DR.10 --> M6
 	5DR.8 --> M6
 	5DR.9 --> M6
-	class 3DE.0,4QU.8,5DR.18,5DR.19,5DR.20,5DR.21,5DR.22 todo
-	class 3DE.1,3DE.2,3DE.3,3DE.4,3DE.5,3DE.6,4QU.1,4QU.3,4QU.4,4QU.5,4QU.7,5DR.10,5DR.23,5DR.8,5DR.9 blocked
-	class 1CO.1,1CO.10,1CO.2,1CO.3,1CO.4,1CO.5,1CO.6,1CO.7,1CO.8,1CO.9,2FE.1,2FE.2,2FE.3,2FE.4,2FE.5,2FE.6,2FE.7,2FE.8,5DR.0,5DR.1,5DR.11,5DR.12,5DR.13,5DR.14,5DR.15,5DR.16,5DR.17,5DR.2,5DR.3,5DR.4,5DR.5,5DR.6,5DR.7 done
+	class 3DE.1,3DE.5,3DE.6,4QU.8,5DR.19,5DR.20,5DR.21,5DR.22 todo
+	class 3DE.2,3DE.3,3DE.4,4QU.1,4QU.3,4QU.4,4QU.5,4QU.7,5DR.10,5DR.23,5DR.8,5DR.9 blocked
+	class 1CO.1,1CO.10,1CO.2,1CO.3,1CO.4,1CO.5,1CO.6,1CO.7,1CO.8,1CO.9,2FE.1,2FE.2,2FE.3,2FE.4,2FE.5,2FE.6,2FE.7,2FE.8,3DE.0,5DR.0,5DR.1,5DR.11,5DR.12,5DR.13,5DR.14,5DR.15,5DR.16,5DR.17,5DR.18,5DR.2,5DR.3,5DR.4,5DR.5,5DR.6,5DR.7 done
 ```

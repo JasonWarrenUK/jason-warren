@@ -154,7 +154,7 @@
 					{
 						"id": "3DE.0",
 						"description": "Define visual direction / signature: mood, type pairing, motion language, graph styling principles",
-						"status": "todo",
+						"status": "done",
 						"dependsOn": [
 							"M2"
 						]
@@ -162,7 +162,7 @@
 					{
 						"id": "3DE.1",
 						"description": "Typography pass (scale, rhythm, measure) across all routes",
-						"status": "blocked",
+						"status": "todo",
 						"dependsOn": [
 							"3DE.0"
 						]
@@ -196,7 +196,7 @@
 					{
 						"id": "3DE.5",
 						"description": "Consistency sweep of semantic colour aliases vs Reasonable Colors usage",
-						"status": "blocked",
+						"status": "todo",
 						"dependsOn": [
 							"3DE.0"
 						]
@@ -204,7 +204,7 @@
 					{
 						"id": "3DE.6",
 						"description": "Drastically improve the /map graph layout for legibility",
-						"status": "blocked",
+						"status": "todo",
 						"dependsOn": [
 							"3DE.0"
 						]
@@ -391,7 +391,7 @@
 					{
 						"id": "5DR.18",
 						"description": "drift relate verb: write a ProjectRelationship into a project overlay",
-						"status": "todo",
+						"status": "done",
 						"dependsOn": [
 							"5DR.6"
 						]
