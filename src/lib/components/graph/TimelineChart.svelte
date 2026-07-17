@@ -478,109 +478,125 @@
 		{/each}
 	</ul>
 
+	<!-- Legend: one titled row per channel, matching the map and toolkit
+	     keys, so hue, mark treatment, ribbon and gutter each get their own
+	     explanation instead of one undifferentiated line. -->
 	<figcaption class="timeline__legend">
-		{#each presentProgresses as progress (progress)}
-			<span class="timeline__legend-item">
-				<svg class="timeline__swatch-mark" viewBox="0 0 14 14" aria-hidden="true">
-					<circle
-						class="timeline__swatch-ring"
-						cx="7"
-						cy="7"
-						r="5"
-						style="color: {progressColour(progress)}"
-					/>
-					<circle
-						class="timeline__swatch-centre"
-						cx="7"
-						cy="7"
-						r="1.6"
-						style="color: {progressColour(progress)}"
-					/>
-				</svg>
-				{progressLabel[progress]}
-			</span>
-		{/each}
-		{#if hasSpikes}
-			<span class="timeline__legend-item">
-				<svg class="timeline__swatch-mark" viewBox="0 0 14 14" aria-hidden="true">
-					<circle
-						class="timeline__swatch-ring"
-						cx="7"
-						cy="7"
-						r="5"
-						style="color: var(--color-text-subtle)"
-					/>
-					<circle
-						class="timeline__swatch-hollow"
-						cx="7"
-						cy="7"
-						r="1.6"
-						style="color: var(--color-text-subtle)"
-					/>
-				</svg>
-				Spike (hollow centre)
-			</span>
+		<div class="timeline__legend-row">
+			<span class="timeline__legend-title">Progress</span>
+			{#each presentProgresses as progress (progress)}
+				<span class="timeline__legend-item">
+					<svg class="timeline__swatch-mark" viewBox="0 0 14 14" aria-hidden="true">
+						<circle
+							class="timeline__swatch-ring"
+							cx="7"
+							cy="7"
+							r="5"
+							style="color: {progressColour(progress)}"
+						/>
+						<circle
+							class="timeline__swatch-centre"
+							cx="7"
+							cy="7"
+							r="1.6"
+							style="color: {progressColour(progress)}"
+						/>
+					</svg>
+					{progressLabel[progress]}
+				</span>
+			{/each}
+		</div>
+		{#if hasSpikes || hasDeployed || hasArchived}
+			<div class="timeline__legend-row">
+				<span class="timeline__legend-title">Marks</span>
+				{#if hasSpikes}
+					<span class="timeline__legend-item">
+						<svg class="timeline__swatch-mark" viewBox="0 0 14 14" aria-hidden="true">
+							<circle
+								class="timeline__swatch-ring"
+								cx="7"
+								cy="7"
+								r="5"
+								style="color: var(--color-text-subtle)"
+							/>
+							<circle
+								class="timeline__swatch-hollow"
+								cx="7"
+								cy="7"
+								r="1.6"
+								style="color: var(--color-text-subtle)"
+							/>
+						</svg>
+						Spike (hollow centre)
+					</span>
+				{/if}
+				{#if hasDeployed}
+					<span class="timeline__legend-item">
+						<svg class="timeline__swatch-mark" viewBox="0 0 14 14" aria-hidden="true">
+							<circle
+								class="timeline__swatch-ring"
+								cx="7"
+								cy="7"
+								r="4"
+								style="color: var(--color-text-subtle)"
+							/>
+							<circle
+								class="timeline__swatch-ring timeline__swatch-ring--outer"
+								cx="7"
+								cy="7"
+								r="6.2"
+								style="color: var(--color-text-subtle)"
+							/>
+							<circle
+								class="timeline__swatch-centre"
+								cx="7"
+								cy="7"
+								r="1.4"
+								style="color: var(--color-text-subtle)"
+							/>
+						</svg>
+						Deployed (outer ring)
+					</span>
+				{/if}
+				{#if hasArchived}
+					<span class="timeline__legend-item">
+						<svg class="timeline__swatch-mark" viewBox="0 0 14 14" aria-hidden="true">
+							<circle
+								class="timeline__swatch-ring"
+								cx="7"
+								cy="7"
+								r="5"
+								style="color: {progressColour('complete', true)}"
+							/>
+							<circle
+								class="timeline__swatch-centre"
+								cx="7"
+								cy="7"
+								r="1.6"
+								style="color: {progressColour('complete', true)}"
+							/>
+						</svg>
+						Archived (faded)
+					</span>
+				{/if}
+			</div>
 		{/if}
-		{#if hasDeployed}
-			<span class="timeline__legend-item">
-				<svg class="timeline__swatch-mark" viewBox="0 0 14 14" aria-hidden="true">
-					<circle
-						class="timeline__swatch-ring"
-						cx="7"
-						cy="7"
-						r="4"
-						style="color: var(--color-text-subtle)"
-					/>
-					<circle
-						class="timeline__swatch-ring timeline__swatch-ring--outer"
-						cx="7"
-						cy="7"
-						r="6.2"
-						style="color: var(--color-text-subtle)"
-					/>
-					<circle
-						class="timeline__swatch-centre"
-						cx="7"
-						cy="7"
-						r="1.4"
-						style="color: var(--color-text-subtle)"
-					/>
-				</svg>
-				Deployed (outer ring)
-			</span>
-		{/if}
-		{#if hasArchived}
-			<span class="timeline__legend-item">
-				<svg class="timeline__swatch-mark" viewBox="0 0 14 14" aria-hidden="true">
-					<circle
-						class="timeline__swatch-ring"
-						cx="7"
-						cy="7"
-						r="5"
-						style="color: {progressColour('complete', true)}"
-					/>
-					<circle
-						class="timeline__swatch-centre"
-						cx="7"
-						cy="7"
-						r="1.6"
-						style="color: {progressColour('complete', true)}"
-					/>
-				</svg>
-				Archived (faded)
-			</span>
-		{/if}
-		{#if hasLineage}
-			<span class="timeline__legend-item">
-				<span class="timeline__legend-ribbon" aria-hidden="true"></span>
-				Extraction lineage (shared span)
-			</span>
-		{/if}
-		{#if hasDensity}
-			<span class="timeline__legend-item">
-				<span class="timeline__legend-density" aria-hidden="true"></span>
-				Concurrent projects
-			</span>
+		{#if hasLineage || hasDensity}
+			<div class="timeline__legend-row">
+				<span class="timeline__legend-title">Context</span>
+				{#if hasLineage}
+					<span class="timeline__legend-item">
+						<span class="timeline__legend-ribbon" aria-hidden="true"></span>
+						Extraction lineage (shared span)
+					</span>
+				{/if}
+				{#if hasDensity}
+					<span class="timeline__legend-item">
+						<span class="timeline__legend-density" aria-hidden="true"></span>
+						Concurrent projects (gutter)
+					</span>
+				{/if}
+			</div>
 		{/if}
 	</figcaption>
 </figure>
@@ -878,14 +894,31 @@
 
 	.timeline__legend {
 		display: flex;
-		flex-wrap: wrap;
-		align-items: center;
-		gap: var(--space-5);
+		flex-direction: column;
+		gap: var(--space-3);
 		margin-top: var(--space-6);
 		padding-top: var(--space-4);
 		border-top: 1px solid var(--color-border);
 		font-size: var(--text-sm);
 		color: var(--color-text-subtle);
+	}
+
+	/* One titled row per channel, matching the map and toolkit keys. */
+	.timeline__legend-row {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: var(--space-5);
+	}
+
+	.timeline__legend-title {
+		font-family: var(--font-mono);
+		font-size: var(--text-apparatus-lg);
+		font-weight: 600;
+		letter-spacing: 0.12em;
+		text-transform: uppercase;
+		color: var(--color-text-muted);
+		min-width: 5.5rem;
 	}
 
 	.timeline__legend-item {
