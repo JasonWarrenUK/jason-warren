@@ -359,7 +359,6 @@
 	interface TerritoryHull {
 		id: string;
 		name: string;
-		tone: string;
 		path: string;
 		labelX: number;
 		labelY: number;
@@ -383,7 +382,6 @@
 			hulls.push({
 				id: territory.id,
 				name: territory.name,
-				tone: themeColour(territory.id),
 				path: roundedHullPath(padded),
 				labelX: cx,
 				labelY: topY + 22
@@ -553,6 +551,16 @@
 
 	function techNodeHidden(node: TechMapNode): boolean {
 		return hiddenTechKinds.has(node.kind);
+	}
+
+	// Progressive disclosure (colour-system.md §6): the theme and category
+	// webs rest in paper neutrals; pointing at (or keyboard-focusing) a
+	// Connections chip inks that one system of routes in oxide. Isolating a
+	// type via its chip lifts it the same way.
+	let liftedEdgeType = $state<EdgeType | null>(null);
+
+	function edgeLifted(type: EdgeType): boolean {
+		return liftedEdgeType === type || isolatedEdgeTypes.has(type);
 	}
 
 	function edgeHidden(source: string, target: string, type: EdgeType): boolean {
@@ -966,16 +974,12 @@
 		<!-- Territory hulls: theme clusters as surveyed regions, behind routes/marks. -->
 		{#if territoryHulls.length > 0}
 			<g class="map__territories">
+				<!-- Paper-tint hulls with italic serif names: the label carries the
+				     theme's identity, the way it already does everywhere else. -->
 				{#each territoryHulls as hull (hull.id)}
-					<path class="map__territory-fill" d={hull.path} style="fill: {hull.tone}" />
-					<path class="map__territory-boundary" d={hull.path} style="stroke: {hull.tone}" />
-					<text
-						class="map__territory-label"
-						x={hull.labelX}
-						y={hull.labelY}
-						text-anchor="middle"
-						style="fill: {hull.tone}"
-					>
+					<path class="map__territory-fill" d={hull.path} />
+					<path class="map__territory-boundary" d={hull.path} />
+					<text class="map__territory-label" x={hull.labelX} y={hull.labelY} text-anchor="middle">
 						{hull.name}
 					</text>
 				{/each}
@@ -983,7 +987,8 @@
 		{/if}
 
 		{#if activeMode === 'relationships'}
-			<!-- Theme edges: one per (pair, theme), each coloured by its theme. -->
+			<!-- Theme edges: one quiet paper-neutral web at rest; the legend's
+			     chips lift one theme's routes to oxide at a time. -->
 			<g class="map__edges">
 				{#each themeEdges as edge (`theme:${edge.theme}:${edge.source}-${edge.target}`)}
 					{@const a = projectPos(edge.source)}
@@ -991,13 +996,13 @@
 					{#if a && b}
 						<path
 							class="map__edge map__edge--theme"
+							class:map__edge--lifted={edgeLifted(themeEdgeType(edge.theme))}
 							class:map__edge--dim={edgeDimmed(edge.source, edge.target)}
 							class:map__edge--hidden={edgeHidden(
 								edge.source,
 								edge.target,
 								themeEdgeType(edge.theme)
 							)}
-							style="stroke: {themeColour(edge.theme)}"
 							fill="none"
 							d={routePath(a, b)}
 						/>
@@ -1033,7 +1038,7 @@
 				{/each}
 			</g>
 		{:else if activeMode === 'stack'}
-			<!-- Stack mode: shared-tech edges coloured by category. -->
+			<!-- Stack mode: one quiet shared-tech web; category chips lift. -->
 			<g class="map__edges">
 				{#each sharedEdges as edge (`shared:${edge.category}:${edge.source}-${edge.target}`)}
 					{@const a = projectPos(edge.source)}
@@ -1041,9 +1046,9 @@
 					{#if a && b}
 						<path
 							class="map__edge map__edge--shared"
+							class:map__edge--lifted={edgeLifted(edge.category)}
 							class:map__edge--dim={edgeDimmed(edge.source, edge.target)}
 							class:map__edge--hidden={edgeHidden(edge.source, edge.target, edge.category)}
-							style="stroke: {categoryColour(edge.category)}"
 							fill="none"
 							d={routePath(a, b)}
 						/>
@@ -1347,6 +1352,10 @@
 						class:map__toggle--off={edgeTypeChipOff(type)}
 						aria-pressed={!edgeTypeChipOff(type)}
 						onclick={() => toggleEdgeType(type)}
+						onpointerenter={() => (liftedEdgeType = type)}
+						onpointerleave={() => (liftedEdgeType = null)}
+						onfocus={() => (liftedEdgeType = type)}
+						onblur={() => (liftedEdgeType = null)}
 					>
 						<span
 							class="map__swatch map__swatch--line"
@@ -1544,12 +1553,16 @@
 		stroke-dasharray: 1 6;
 	}
 
+	/* Territories: paper-tint regions named by their italic serif labels,
+	   like any political map — the label identifies, never the hue. */
 	.map__territory-fill {
+		fill: var(--color-border-strong);
 		opacity: 0.07;
 	}
 
 	.map__territory-boundary {
 		fill: none;
+		stroke: var(--color-border-strong);
 		stroke-width: 1;
 		stroke-dasharray: 3 5;
 		opacity: 0.5;
@@ -1559,6 +1572,7 @@
 		font-family: var(--font-display);
 		font-style: italic;
 		font-size: 18px;
+		fill: var(--color-text-subtle);
 		opacity: 0.9;
 		pointer-events: none;
 	}
@@ -1606,17 +1620,21 @@
 		opacity: 0.6;
 	}
 
-	.map__edge--theme {
-		/* stroke colour set inline per-theme */
+	/* Theme and category webs rest as quiet paper linework; identity comes
+	   from labels and the chip-lift, never from hue (colour-system.md §5). */
+	.map__edge--theme,
+	.map__edge--shared {
+		stroke: var(--color-border-strong);
 		stroke-width: 1.5;
 		stroke-dasharray: 5 4;
 		opacity: 0.5;
 	}
 
-	.map__edge--shared {
-		stroke-width: 1.5;
-		stroke-dasharray: 5 4;
-		opacity: 0.5;
+	/* The lifted web: one system of routes inked in oxide at a time, driven
+	   by chip hover/focus or an isolate toggle. */
+	.map__edge--lifted {
+		stroke: var(--ink-oxide);
+		opacity: 0.9;
 	}
 
 	.map__edge--co-occurrence {

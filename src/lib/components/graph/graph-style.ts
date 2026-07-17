@@ -78,9 +78,13 @@ export function isLineageKind(type: string): type is LineageKind {
 	return type === 'leads-to' || type === 'replaced-by';
 }
 
-/** CSS colour token for a theme edge. */
-export function themeColour(themeId: string): string {
-	return `var(--color-edge-theme-${themeId})`;
+/**
+ * Colour token for a theme edge. Quiet paper neutral: theme identity is
+ * carried by labels and the chip-lift interaction, never by hue
+ * (colour-system.md §5, label-first themes).
+ */
+export function themeColour(): string {
+	return 'var(--color-border-strong)';
 }
 
 /** id → name lookup, built from themes.ts. */
@@ -106,24 +110,13 @@ export const themeIds: string[] = themes.map((t) => t.id);
  */
 export type EdgeType = GraphEdge['kind'] | ThemeEdgeType | EdgeCategory | LineageKind;
 
-/** Colour token for a shared-tech category edge. Decorative, distinct hues. */
-export function categoryColour(category: EdgeCategory): string {
-	return `var(--color-edge-${category})`;
-}
-
 /**
- * Colour token for a tech node by its tag kind. Language tags take the primary
- * colour (they are the spine of the toolkit); all other kinds use the same edge
- * category tokens so colour vocabulary stays consistent across map and timeline.
- *
- * Single-sourced here so both `AdoptionTimeline` and `ProjectMap` (tech mode)
- * use the same mapping.
+ * Colour token for a shared-tech category edge. Quiet paper neutral: the
+ * category webs rest as base linework, and the legend's chips lift one
+ * category at a time to oxide (colour-system.md §5, quiet webs).
  */
-export function techKindColour(kind: TagKind): string {
-	if (kind === 'language') return 'var(--color-primary)';
-	if (kind === 'concept') return 'var(--color-edge-concept)';
-	// runtime, framework, data, ai, tool are all EdgeCategory members.
-	return categoryColour(kind as Exclude<TagKind, 'language' | 'concept'>);
+export function categoryColour(): string {
+	return 'var(--color-border-strong)';
 }
 
 // ---------------------------------------------------------------------------
@@ -227,8 +220,8 @@ export function edgeTypeColour(type: EdgeType): string {
 	if (type === 'related') return 'var(--color-text-subtle)';
 	if (type === 'leads-to') return 'var(--color-edge-lineage-leads-to)';
 	if (type === 'replaced-by') return 'var(--color-edge-lineage-replaced-by)';
-	if (isThemeEdgeType(type)) return themeColour(type.slice('theme:'.length));
-	return categoryColour(type as EdgeCategory);
+	if (isThemeEdgeType(type)) return themeColour();
+	return categoryColour();
 }
 
 /** Short legend label for a shared-tech category. */

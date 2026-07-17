@@ -33,8 +33,6 @@
 
 	let { items, provisional = false }: Props = $props();
 
-	// Colour by tag kind — single-sourced in graph-style.ts via techKindColour.
-
 	// --- Geometry -----------------------------------------------------------
 	// A horizontal time axis rendered as a git-branch graph: each lineage-
 	// connected technology is a rail running from its adoption date until it
