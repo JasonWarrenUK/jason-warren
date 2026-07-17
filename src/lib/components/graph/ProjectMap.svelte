@@ -47,7 +47,9 @@
 		categoryColour,
 		edgeTypeColour,
 		edgeTypeLabel,
-		techKindColour,
+		kindGlyph,
+		kindGlyphPath,
+		techMarkColour,
 		themeColour,
 		themeEdgeType,
 		isThemeEdgeType,
@@ -165,6 +167,13 @@
 
 	const projectKinds = $derived([...new Set(projectNodes.map((n) => n.kind))].sort());
 	const techKinds = $derived([...new Set(techNodes.map((n) => n.kind))].sort() as TagKind[]);
+
+	// Historic stack: any tech that is the source of a `replaced-by` edge has
+	// been superseded, and its mark fades one shade paperward (the same
+	// end-of-life convention archived projects use).
+	const historicTechLabels = new Set(
+		techRelationships.filter((r) => r.kind === 'replaced-by').map((r) => r.source)
+	);
 
 	const edgeTypes = $derived.by((): EdgeType[] => {
 		const present: EdgeType[] = [];
@@ -1174,7 +1183,10 @@
 					{@const r = techRadiusScale(node)}
 					{@const p = techPos(node.label)}
 					{@const isFocus = effectiveHighlight === node.label}
-					{@const colour = isFocus ? 'var(--color-accent)' : techKindColour(node.kind)}
+					{@const glyph = kindGlyph(node.kind)}
+					{@const colour = isFocus
+						? 'var(--color-accent)'
+						: techMarkColour(historicTechLabels.has(node.label))}
 					<a
 						class="map__node map__node--tech"
 						class:map__node--dim={techNodeDimmed(node)}
@@ -1205,7 +1217,25 @@
 								? ''
 								: 's'}</title
 						>
-						<circle class="map__ring" cx={p.x} cy={p.y} {r} style="stroke: {colour}" />
+						<!-- Kind is carried by glyph shape, not hue: every tech mark
+						     draws in the tech ink, historic stack one shade paperward
+						     (colour-system.md §5). -->
+						{#if glyph.shape === 'circle'}
+							<circle
+								class="map__ring"
+								class:map__ring--dashed={glyph.dashed}
+								cx={p.x}
+								cy={p.y}
+								{r}
+								style="stroke: {colour}"
+							/>
+						{:else}
+							<path
+								class="map__ring"
+								d={kindGlyphPath(node.kind, p.x, p.y, r)}
+								style="stroke: {colour}"
+							/>
+						{/if}
 						{#if isFocus}
 							<circle
 								class="map__ring map__ring--hub"
@@ -1215,7 +1245,9 @@
 								style="stroke: {colour}"
 							/>
 						{/if}
-						<circle class="map__dot" cx={p.x} cy={p.y} r="2.8" style="fill: {colour}" />
+						{#if glyph.centreDot}
+							<circle class="map__dot" cx={p.x} cy={p.y} r="2.8" style="fill: {colour}" />
+						{/if}
 						<circle
 							class="map__hit"
 							cx={p.x}
@@ -1331,6 +1363,7 @@
 			<span class="map__legend-title">Types</span>
 			{#if activeMode === 'technologies'}
 				{#each techKinds as kind (kind)}
+					{@const chipGlyph = kindGlyph(kind)}
 					<button
 						type="button"
 						class="map__toggle"
@@ -1338,7 +1371,22 @@
 						aria-pressed={!hiddenTechKinds.has(kind)}
 						onclick={() => toggleTechKind(kind)}
 					>
-						<span class="map__swatch" style="background: {techKindColour(kind)}"></span>
+						<svg class="map__swatch-glyph" viewBox="0 0 14 14" aria-hidden="true">
+							{#if chipGlyph.shape === 'circle'}
+								<circle
+									cx="7"
+									cy="7"
+									r="5"
+									class="map__swatch-glyph-mark"
+									class:map__swatch-glyph-mark--dashed={chipGlyph.dashed}
+								/>
+							{:else}
+								<path d={kindGlyphPath(kind, 7, 7, 5.5)} class="map__swatch-glyph-mark" />
+							{/if}
+							{#if chipGlyph.centreDot}
+								<circle cx="7" cy="7" r="1.6" class="map__swatch-glyph-dot" />
+							{/if}
+						</svg>
 						{kind}
 					</button>
 				{/each}
@@ -1615,6 +1663,12 @@
 		stroke-dasharray: 2 3;
 	}
 
+	/* Concept glyph: a dashed ring — longer dashes than provisional dotting,
+	   and fixed to the glyph rather than the data. */
+	.map__ring--dashed {
+		stroke-dasharray: 4 3;
+	}
+
 	.map__ring--hub {
 		stroke-width: 1.25;
 		opacity: 0.6;
@@ -1756,6 +1810,27 @@
 		height: 0.85rem;
 		border-radius: var(--radius-full);
 		flex-shrink: 0;
+	}
+
+	/* Kind chips: mini-glyphs drawn from the same vocabulary as the marks. */
+	.map__swatch-glyph {
+		width: 0.85rem;
+		height: 0.85rem;
+		flex-shrink: 0;
+	}
+
+	.map__swatch-glyph-mark {
+		fill: none;
+		stroke: var(--tech-mark);
+		stroke-width: 1.5;
+	}
+
+	.map__swatch-glyph-mark--dashed {
+		stroke-dasharray: 4 3;
+	}
+
+	.map__swatch-glyph-dot {
+		fill: var(--tech-mark);
 	}
 
 	/* Spike: hollow mark, the exploration-track convention in miniature. */
