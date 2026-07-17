@@ -156,10 +156,17 @@ function splitColourAndPercent(arg: string): [string, string | null] {
 	return [arg, null];
 }
 
-/** Resolves a percentage expression, either a literal `12%` or `calc(100% - var(--warmth))`, to a number 0-100. */
+/** Resolves a percentage expression: a literal `12%`, a `var(--token)` holding one, or `calc(100% - var(--warmth))`. */
 function resolvePercent(expr: string, scopes: Map<string, string>[]): number {
 	const literal = /^([\d.]+)%$/.exec(expr);
 	if (literal) return Number(literal[1]);
+
+	const varRef = /^var\((--[a-zA-Z0-9-]+)\)$/.exec(expr);
+	if (varRef) {
+		for (const scope of scopes) {
+			if (scope.has(varRef[1])) return resolvePercent(scope.get(varRef[1]) as string, scopes);
+		}
+	}
 
 	const calcMatch = /^calc\(\s*100%\s*-\s*(.+)\)$/.exec(expr);
 	if (calcMatch) {
@@ -257,6 +264,21 @@ const INK_PAIRS: [string, string, number][] = [
 	['--ink-progress-2', '--color-surface-sunken', 3]
 ];
 
+/**
+ * The end-of-life fade must stay inside a corridor: findable against the
+ * sheet (round 3 made archived marks literally invisible in light mode) AND
+ * visibly separated from its active ink (round 2's one-step shift was
+ * indistinguishable). Each row is [token, reference, minRatio].
+ */
+const FADE_PAIRS: [string, string, number][] = [
+	['--progress-in-progress-archived', '--color-surface-sunken', 2.2],
+	['--progress-complete-archived', '--color-surface-sunken', 2.2],
+	['--tech-mark-historic', '--color-surface-sunken', 2.2],
+	['--progress-in-progress', '--progress-in-progress-archived', 1.25],
+	['--progress-complete', '--progress-complete-archived', 1.25],
+	['--tech-mark', '--tech-mark-historic', 1.25]
+];
+
 describe('Atlas palette contrast', () => {
 	it('resolves the warm-neutral tokens to plausible hex colours', () => {
 		// Sanity check on the resolver itself, independent of the ratio
@@ -299,6 +321,24 @@ describe('Atlas palette contrast', () => {
 				if (ratio < minRatio) {
 					failures.push(
 						`${theme.label}: ${inkToken} (${ink}) on ${surfaceToken} (${surface}) = ` +
+							`${ratio.toFixed(2)}:1, needs ${minRatio}:1`
+					);
+				}
+			}
+		}
+		expect(failures, failures.join('\n')).toHaveLength(0);
+	});
+
+	it('keeps the end-of-life fade findable AND separated from its active ink, in both themes', () => {
+		const failures: string[] = [];
+		for (const theme of themes) {
+			for (const [token, reference, minRatio] of FADE_PAIRS) {
+				const a = theme.resolve(token);
+				const b = theme.resolve(reference);
+				const ratio = wcagContrast(a, b);
+				if (ratio < minRatio) {
+					failures.push(
+						`${theme.label}: ${token} (${a}) vs ${reference} (${b}) = ` +
 							`${ratio.toFixed(2)}:1, needs ${minRatio}:1`
 					);
 				}
