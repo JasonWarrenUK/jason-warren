@@ -26,6 +26,7 @@ const RC_PATH = fileURLToPath(
 );
 
 const toOklab = converter('oklab');
+const toOklch = converter('oklch');
 
 /** Parses `--name: value;` declarations out of one `{ ... }` block's body. */
 function parseDeclarations(blockBody: string): Map<string, string> {
@@ -266,17 +267,27 @@ const INK_PAIRS: [string, string, number][] = [
 
 /**
  * The end-of-life fade must stay inside a corridor: findable against the
- * sheet (round 3 made archived marks literally invisible in light mode) AND
- * visibly separated from its active ink (round 2's one-step shift was
- * indistinguishable). Each row is [token, reference, minRatio].
+ * sheet (one review round made archived marks literally invisible in light
+ * mode). Each row is [token, reference, minRatio].
  */
 const FADE_PAIRS: [string, string, number][] = [
 	['--progress-in-progress-archived', '--color-surface-sunken', 2.2],
 	['--progress-complete-archived', '--color-surface-sunken', 2.2],
-	['--tech-mark-historic', '--color-surface-sunken', 2.2],
-	['--progress-in-progress', '--progress-in-progress-archived', 1.25],
-	['--progress-complete', '--progress-complete-archived', 1.25],
-	['--tech-mark', '--tech-mark-historic', 1.25]
+	['--tech-mark-historic', '--color-surface-sunken', 2.2]
+];
+
+/**
+ * Distinctness is a CHROMA property, not a luminance one — a faded mark at
+ * similar lightness to its active ink is fully legible yet reads as a
+ * different kind of thing only when its colourfulness has visibly drained
+ * (the review lesson: a luminance-ratio pin let an indistinct fade through).
+ * Each row is [activeToken, fadedToken, maxChromaShare]: the faded ink's
+ * oklch chroma must not exceed that share of the active ink's.
+ */
+const FADE_CHROMA_PAIRS: [string, string, number][] = [
+	['--progress-in-progress', '--progress-in-progress-archived', 0.55],
+	['--progress-complete', '--progress-complete-archived', 0.55],
+	['--tech-mark', '--tech-mark-historic', 0.55]
 ];
 
 describe('Atlas palette contrast', () => {
@@ -329,7 +340,7 @@ describe('Atlas palette contrast', () => {
 		expect(failures, failures.join('\n')).toHaveLength(0);
 	});
 
-	it('keeps the end-of-life fade findable AND separated from its active ink, in both themes', () => {
+	it('keeps the end-of-life fade findable against the sheet, in both themes', () => {
 		const failures: string[] = [];
 		for (const theme of themes) {
 			for (const [token, reference, minRatio] of FADE_PAIRS) {
@@ -340,6 +351,30 @@ describe('Atlas palette contrast', () => {
 					failures.push(
 						`${theme.label}: ${token} (${a}) vs ${reference} (${b}) = ` +
 							`${ratio.toFixed(2)}:1, needs ${minRatio}:1`
+					);
+				}
+			}
+		}
+		expect(failures, failures.join('\n')).toHaveLength(0);
+	});
+
+	it('drains enough chroma from the fade that it reads as distinct from its active ink, in both themes', () => {
+		const failures: string[] = [];
+		for (const theme of themes) {
+			for (const [activeToken, fadedToken, maxShare] of FADE_CHROMA_PAIRS) {
+				const active = toOklch(theme.resolve(activeToken));
+				const faded = toOklch(theme.resolve(fadedToken));
+				const activeChroma = active?.c ?? 0;
+				const fadedChroma = faded?.c ?? 0;
+				if (activeChroma === 0) {
+					failures.push(`${theme.label}: ${activeToken} resolved with zero chroma`);
+					continue;
+				}
+				const share = fadedChroma / activeChroma;
+				if (share > maxShare) {
+					failures.push(
+						`${theme.label}: ${fadedToken} keeps ${(share * 100).toFixed(0)}% of ` +
+							`${activeToken}'s chroma, max ${maxShare * 100}%`
 					);
 				}
 			}

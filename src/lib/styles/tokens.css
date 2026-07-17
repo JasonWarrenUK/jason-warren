@@ -47,17 +47,20 @@
 	/* --- Registers: meanings mapped onto inks (colour-system.md §5) ---
 	   Components consume these, never the inks directly. Archived and
 	   historic are the end-of-life fade: a fixed-ratio oklab mix of the
-	   ACTIVE ink toward the sunken paper — the hue survives, muted, in
-	   both themes (shade-shifting on Reasonable's scale proved either
-	   indistinct at one step or invisible at two). Badge -bg/-text pairs
-	   follow the shade-1/shade-6 rule in light and derive the dark bg as
-	   a tint of the darkest hue shade over lamplit ink. --- */
-	--fade-ink-share: 75%;
+	   ACTIVE ink toward the mid neutral, which drains the chroma while
+	   holding the lightness — the faded mark stays fully readable AND
+	   unmistakably duller than its active ink. (Two earlier attempts
+	   failed one way each: shade-shifting was indistinct or invisible;
+	   mixing toward the paper traded distinctness for legibility on a
+	   single knob.) Badge -bg/-text pairs follow the shade-1/shade-6
+	   rule in light and derive the dark bg as a tint of the darkest hue
+	   shade over lamplit ink. --- */
+	--fade-ink-share: 40%;
 	--progress-in-progress: var(--ink-progress-1);
 	--progress-in-progress-archived: color-mix(
 		in oklab,
 		var(--ink-progress-1) var(--fade-ink-share),
-		var(--color-surface-sunken)
+		var(--color-text-muted)
 	);
 	--progress-in-progress-bg: light-dark(
 		var(--color-purple-1),
@@ -68,7 +71,7 @@
 	--progress-complete-archived: color-mix(
 		in oklab,
 		var(--ink-progress-2) var(--fade-ink-share),
-		var(--color-surface-sunken)
+		var(--color-text-muted)
 	);
 	--progress-complete-bg: light-dark(
 		var(--color-violet-1),
@@ -80,7 +83,7 @@
 	--tech-mark-historic: color-mix(
 		in oklab,
 		var(--ink) var(--fade-ink-share),
-		var(--color-surface-sunken)
+		var(--color-text-muted)
 	);
 
 	/* --- Primary (chrome family, drawn from the ink). Dark bg derives as a

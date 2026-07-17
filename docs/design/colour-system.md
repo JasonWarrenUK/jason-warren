@@ -18,7 +18,7 @@ A printed atlas works the other way round. It owns a small, fixed set of inks. A
 
 Two conventions apply across every register:
 
-- **End-of-life is a fade within the same hue.** An archived project keeps its progress ink, mixed a fixed ratio toward the paper. A superseded technology keeps its mark ink the same way. Old features on survey sheets fade in place.
+- **End-of-life is a fade within the same hue.** An archived project keeps its progress ink, its chroma drained by a fixed-ratio mix toward the mid neutral. A superseded technology keeps its mark ink the same way. Old features on survey sheets fade in place.
 - **Provisional data is drawn provisionally.** Any value produced by heuristic rather than authorship renders with the cartographic unsurveyed convention: dotted stroke where the authored equivalent is solid. The reader can always tell surveyed ground from conjecture.
 
 ## 2. The ink census
@@ -42,13 +42,13 @@ Everything else the old system coloured chromatically goes neutral, glyph-coded 
 
 The old `status` field conflates at least three axes. Decomposed, with provenance per axis (from the drift-engine audit, July 2026):
 
-| Axis       | Values                  | Provenance today                                                  | Encoding                          |
-| ---------- | ----------------------- | ----------------------------------------------------------------- | --------------------------------- |
-| `track`    | exploration \| product  | authored; heuristic default for unauthored projects, drawn dotted | mark treatment (hollow centre)    |
-| `progress` | in-progress \| complete | authored; heuristic default for unauthored projects, drawn dotted | hue ramp                          |
-| `deployed` | boolean                 | authored (`liveUrl` presence); `drift enrich` derives it later    | outer ring mark                   |
-| `activity` | continuous recency      | derived now (`lastCommit`, `commitsRecent`)                       | opacity, floor 0.55               |
-| `archived` | boolean                 | authored; `drift enrich` derives it later                         | fixed-ratio fade toward the paper |
+| Axis       | Values                  | Provenance today                                                  | Encoding                       |
+| ---------- | ----------------------- | ----------------------------------------------------------------- | ------------------------------ |
+| `track`    | exploration \| product  | authored; heuristic default for unauthored projects, drawn dotted | mark treatment (hollow centre) |
+| `progress` | in-progress \| complete | authored; heuristic default for unauthored projects, drawn dotted | hue ramp                       |
+| `deployed` | boolean                 | authored (`liveUrl` presence); `drift enrich` derives it later    | outer ring mark                |
+| `activity` | continuous recency      | derived now (`lastCommit`, `commitsRecent`)                       | opacity, floor 0.55            |
+| `archived` | boolean                 | authored; `drift enrich` derives it later                         | fixed-ratio chroma drain       |
 
 Unstaged projects (neither axis authored, heuristic unavailable) render pale neutral, as `uncategorised` does today. Archived projects are exempt from the activity fade; the shade shift is their recession, and stacking both would sink them below findability.
 
@@ -81,7 +81,7 @@ Inherits violet-means-prototype in reverse: violet becomes the _complete_ end. C
 
 The rejected candidate was the green family (chartreuse-4 `#497c00` → green-4 `#008217` under Model B), carrying the site's green-means-healthy association from `live = emerald` (emerald-4 `#008147`) and the vegetation-tint register of survey sheets. It lost on separation: the violet family sits further from oxide, from succession lime and from the amber-adjacent warmth of the paper itself.
 
-**The end-of-life fade: a fixed-ratio mix toward the paper** (amended twice at review; the history is the lesson). The original one-step Reasonable shade shift held the 3:1 graphics floor and proved indistinguishable from active; the two-step shift that replaced it made archived marks literally invisible on light paper. Reasonable's shade granularity offers nothing between those two failures, so the fade leaves the shade system: an archived or superseded mark's ink is `color-mix(in oklab, <active ink> 75%, var(--color-surface-sunken))`. The hue survives, visibly muted; both themes follow from the one rule because both mix inputs are already theme-resolved. The corridor is pinned by tests in both themes: faded ink ≥2.2:1 against the sheet (findable) and active ink ≥1.25:1 against its own fade (separated). The same rule colours historic technologies (§5, tech-kind).
+**The end-of-life fade: a chroma drain, not a lightness shift** (amended three times at review; the history is the lesson). The one-step Reasonable shade shift was indistinguishable from active; the two-step shift was invisible on light paper; mixing toward the paper put distinctness and legibility on one knob, where raising either lowered the other. What "faded" actually needs is both at once, and they live on different axes: an archived or superseded mark's ink is `color-mix(in oklab, <active ink> 40%, var(--color-text-muted))` — the mix toward the mid neutral drains the COLOURFULNESS while holding the LIGHTNESS, so the mark stays fully readable and reads as unmistakably duller than its active ink. Both themes follow from one rule because both mix inputs are theme-resolved. The corridor is pinned by tests in both themes: faded ink ≥2.2:1 against the sheet (findable) and faded chroma ≤55% of the active ink's oklch chroma (distinct — a luminance pin cannot measure this, which is how an indistinct fade slipped through review). The same rule colours historic technologies (§5, tech-kind).
 
 ## 5. The registers
 
