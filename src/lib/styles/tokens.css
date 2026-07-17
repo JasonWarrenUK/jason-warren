@@ -32,14 +32,49 @@
 	   shade-difference contrast rule below keeps holding. --- */
 	--warmth: 12%;
 
-	/* --- Primary (ink — the azure → blue shift for Atlas) --- */
-	--color-primary: light-dark(var(--color-blue-4), var(--color-blue-3));
+	/* --- The ink census (docs/design/colour-system.md §2) ---
+	   The complete chromatic vocabulary: six inks, closed set. Everything
+	   chromatic on the site is one of these or a paper neutral; a new
+	   feature that wants colour reuses an ink through different symbology
+	   or amends the design doc. Dark lifts each one shade brighter. --- */
+	--ink: light-dark(var(--color-blue-4), var(--color-blue-3));
+	--ink-oxide: light-dark(var(--color-cinnamon-4), var(--color-cinnamon-3));
+	--ink-succession-fwd: light-dark(var(--color-lime-4), var(--color-lime-3));
+	--ink-succession-back: light-dark(var(--color-raspberry-4), var(--color-raspberry-3));
+	--ink-progress-1: light-dark(var(--color-purple-4), var(--color-purple-3));
+	--ink-progress-2: light-dark(var(--color-violet-4), var(--color-violet-3));
+
+	/* --- Registers: meanings mapped onto inks (colour-system.md §5) ---
+	   Components consume these, never the inks directly. Archived is the
+	   end-of-life shade shift, one step paperward in either theme; badge
+	   -bg/-text pairs follow the shade-1/shade-6 rule in light and derive
+	   the dark bg as a tint of the darkest hue shade over lamplit ink. --- */
+	--progress-in-progress: var(--ink-progress-1);
+	--progress-in-progress-archived: light-dark(var(--color-purple-3), var(--color-purple-4));
+	--progress-in-progress-bg: light-dark(
+		var(--color-purple-1),
+		color-mix(in oklab, var(--color-purple-6) 35%, #1a1b1e)
+	);
+	--progress-in-progress-text: light-dark(var(--color-purple-6), var(--color-purple-2));
+	--progress-complete: var(--ink-progress-2);
+	--progress-complete-archived: light-dark(var(--color-violet-3), var(--color-violet-4));
+	--progress-complete-bg: light-dark(
+		var(--color-violet-1),
+		color-mix(in oklab, var(--color-violet-6) 35%, #1a1b1e)
+	);
+	--progress-complete-text: light-dark(var(--color-violet-6), var(--color-violet-2));
+	--edge-extraction: var(--ink-oxide);
+	--tech-mark: var(--ink);
+	--tech-mark-historic: light-dark(var(--color-blue-3), var(--color-blue-4));
+
+	/* --- Primary (chrome family, drawn from the ink) --- */
+	--color-primary: var(--ink);
 	--color-primary-light: light-dark(var(--color-blue-2), var(--color-blue-5));
 	--color-primary-bg: light-dark(var(--color-blue-1), #1c2333);
 	--color-primary-text: light-dark(var(--color-blue-6), var(--color-blue-2));
 
 	/* --- Accent (oxide — the colour of survey marks) --- */
-	--color-accent: light-dark(var(--color-cinnamon-4), var(--color-cinnamon-3));
+	--color-accent: var(--ink-oxide);
 	--color-accent-light: light-dark(var(--color-cinnamon-2), var(--color-cinnamon-5));
 	--color-accent-bg: light-dark(var(--color-cinnamon-1), #2a1c10);
 	--color-accent-text: light-dark(var(--color-cinnamon-6), var(--color-cinnamon-2));
@@ -109,9 +144,9 @@
 	--color-edge-theme-terminal-native: light-dark(var(--color-rose-4), var(--color-rose-3));
 	--color-edge-theme-human-centred: light-dark(var(--color-magenta-4), var(--color-magenta-3));
 
-	/* --- Tech lineage edges --- */
-	--color-edge-lineage-leads-to: light-dark(var(--color-lime-4), var(--color-lime-3));
-	--color-edge-lineage-replaced-by: light-dark(var(--color-raspberry-4), var(--color-raspberry-3));
+	/* --- Tech lineage edges (registers over the succession inks) --- */
+	--color-edge-lineage-leads-to: var(--ink-succession-fwd);
+	--color-edge-lineage-replaced-by: var(--ink-succession-back);
 
 	/* --- Surface and foreground: warm paper (light) and lamplit dark ---
 	   Each is an oklab mix of a base tone with same-shade cinnamon at the

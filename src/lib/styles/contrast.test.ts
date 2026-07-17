@@ -246,7 +246,9 @@ const BODY_PAIRS: [string, string, number][] = [
 	['--color-uncategorised-text', '--color-uncategorised-bg', 4.5],
 	['--color-solo-text', '--color-solo-bg', 4.5],
 	['--color-lead-text', '--color-lead-bg', 4.5],
-	['--color-collaborator-text', '--color-collaborator-bg', 4.5]
+	['--color-collaborator-text', '--color-collaborator-bg', 4.5],
+	['--progress-in-progress-text', '--progress-in-progress-bg', 4.5],
+	['--progress-complete-text', '--progress-complete-bg', 4.5]
 ];
 
 describe('Atlas palette contrast', () => {
