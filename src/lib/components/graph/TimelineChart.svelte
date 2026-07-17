@@ -50,7 +50,7 @@
 	// previous 1934px viewBox suffered.
 	const GEO: TimelineGeometry = {
 		width: 760,
-		leftGutter: 80,
+		leftGutter: 64,
 		rightPad: 20,
 		topPad: 32,
 		bottomPad: 40,
@@ -264,9 +264,9 @@
 		<g class="timeline__density" aria-hidden="true">
 			{#each layout.density as band (band.yTop)}
 				<rect
-					x={GEO.leftGutter - 12}
+					x={GEO.leftGutter - 18}
 					y={band.yTop}
-					width={6}
+					width={10}
 					height={Math.max(0, band.yBottom - band.yTop)}
 					fill-opacity={Math.min(0.7, 0.08 * band.count)}
 				/>
@@ -278,8 +278,8 @@
 		     chart's vertical ticks). -->
 		<g class="timeline__graticule" aria-hidden="true">
 			{#each layout.ticks as tick (tick.year)}
-				<line x1={GEO.leftGutter - 8} y1={tick.y} x2={chartWidth - GEO.rightPad} y2={tick.y} />
-				<text class="timeline__tick-label" x={GEO.leftGutter - 14} y={tick.y + 4}>
+				<line x1={GEO.leftGutter - 4} y1={tick.y} x2={chartWidth - GEO.rightPad} y2={tick.y} />
+				<text class="timeline__tick-label" x={GEO.leftGutter - 26} y={tick.y + 4}>
 					{tick.year}
 				</text>
 			{/each}
