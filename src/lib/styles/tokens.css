@@ -5,6 +5,12 @@
  * in component files. Always go through these semantic aliases so the
  * palette can be adjusted in one place.
  *
+ * Every colour token is defined once, with light-dark() carrying both
+ * themes in a single declaration. The theme is driven by color-scheme:
+ * the :root default (`light dark`) lets the OS preference decide, and
+ * the [data-theme] attribute set by ThemeToggle/app.html pins it via
+ * the two wiring rules below. There are no duplicated theme blocks.
+ *
  * Shade reference (Reasonable Colors):
  *   1 = lightest, 6 = darkest
  *   Shade difference → contrast ratio:
@@ -17,135 +23,141 @@
  */
 
 :root {
+	/* Both schemes supported; OS preference resolves light-dark() until a
+	   stored choice pins it through the [data-theme] wiring rules below. */
+	color-scheme: light dark;
+
 	/* --- The one warmth knob: how far each derived neutral leans toward
-	   cinnamon. Same ratio at every shade, so the shade-difference contrast
-	   rule below keeps holding. --- */
+	   cinnamon. Same ratio at every shade and in BOTH themes, so the
+	   shade-difference contrast rule below keeps holding. --- */
 	--warmth: 12%;
 
 	/* --- Primary (ink — the azure → blue shift for Atlas) --- */
-	--color-primary: var(--color-blue-4);
-	--color-primary-light: var(--color-blue-2);
-	--color-primary-bg: var(--color-blue-1);
-	--color-primary-text: var(--color-blue-6);
+	--color-primary: light-dark(var(--color-blue-4), var(--color-blue-3));
+	--color-primary-light: light-dark(var(--color-blue-2), var(--color-blue-5));
+	--color-primary-bg: light-dark(var(--color-blue-1), #1c2333);
+	--color-primary-text: light-dark(var(--color-blue-6), var(--color-blue-2));
 
 	/* --- Accent (oxide — the colour of survey marks) --- */
-	--color-accent: var(--color-cinnamon-4);
-	--color-accent-light: var(--color-cinnamon-2);
-	--color-accent-bg: var(--color-cinnamon-1);
-	--color-accent-text: var(--color-cinnamon-6);
+	--color-accent: light-dark(var(--color-cinnamon-4), var(--color-cinnamon-3));
+	--color-accent-light: light-dark(var(--color-cinnamon-2), var(--color-cinnamon-5));
+	--color-accent-bg: light-dark(var(--color-cinnamon-1), #2a1c10);
+	--color-accent-text: light-dark(var(--color-cinnamon-6), var(--color-cinnamon-2));
 
-	/* --- Status colours --- */
-	--color-live: var(--color-emerald-4);
-	--color-live-bg: var(--color-emerald-1);
-	--color-live-text: var(--color-emerald-6);
+	/* --- Status colours ---
+	   Dark lifts the base dot one shade brighter: the light-tuned -4 shades
+	   read too dark on the dark surface (emerald-4 looked near-black). The
+	   dark -bg values are hand-set near-black tints (RC has nothing that
+	   dark); they get derived properly when the colour-system cull lands. */
+	--color-live: light-dark(var(--color-emerald-4), var(--color-emerald-3));
+	--color-live-bg: light-dark(var(--color-emerald-1), #16281e);
+	--color-live-text: light-dark(var(--color-emerald-6), var(--color-emerald-2));
 
-	--color-wip: var(--color-amber-4);
-	--color-wip-bg: var(--color-amber-1);
-	--color-wip-text: var(--color-amber-6);
+	--color-wip: light-dark(var(--color-amber-4), var(--color-amber-3));
+	--color-wip-bg: light-dark(var(--color-amber-1), #2a2010);
+	--color-wip-text: light-dark(var(--color-amber-6), var(--color-amber-2));
 
-	--color-finished: var(--color-blue-4);
-	--color-finished-bg: var(--color-blue-1);
-	--color-finished-text: var(--color-blue-6);
+	--color-finished: light-dark(var(--color-blue-4), var(--color-blue-3));
+	--color-finished-bg: light-dark(var(--color-blue-1), #151e33);
+	--color-finished-text: light-dark(var(--color-blue-6), var(--color-blue-2));
 
-	--color-archived: var(--color-gray-4);
-	--color-archived-bg: var(--color-gray-1);
-	--color-archived-text: var(--color-gray-6);
+	--color-archived: light-dark(var(--color-gray-4), var(--color-gray-3));
+	--color-archived-bg: light-dark(var(--color-gray-1), #1e1e1e);
+	--color-archived-text: light-dark(var(--color-gray-6), var(--color-gray-3));
 
-	--color-prototype: var(--color-violet-4);
-	--color-prototype-bg: var(--color-violet-1);
-	--color-prototype-text: var(--color-violet-6);
+	--color-prototype: light-dark(var(--color-violet-4), var(--color-violet-3));
+	--color-prototype-bg: light-dark(var(--color-violet-1), #221a33);
+	--color-prototype-text: light-dark(var(--color-violet-6), var(--color-violet-2));
 
 	/* Neutral grey for auto-listed repos not yet editorially reviewed. */
 	--color-uncategorised: var(--color-gray-3);
-	--color-uncategorised-bg: var(--color-gray-1);
-	--color-uncategorised-text: var(--color-gray-5);
+	--color-uncategorised-bg: light-dark(var(--color-gray-1), #1a1a1a);
+	--color-uncategorised-text: light-dark(var(--color-gray-5), var(--color-gray-3));
 
 	/* --- Role colours --- */
 	--color-solo: var(--color-azure-4);
-	--color-solo-bg: var(--color-azure-1);
-	--color-solo-text: var(--color-azure-6);
+	--color-solo-bg: light-dark(var(--color-azure-1), #1c2333);
+	--color-solo-text: light-dark(var(--color-azure-6), var(--color-azure-2));
 
 	--color-lead: var(--color-violet-4);
-	--color-lead-bg: var(--color-violet-1);
-	--color-lead-text: var(--color-violet-6);
+	--color-lead-bg: light-dark(var(--color-violet-1), #221a33);
+	--color-lead-text: light-dark(var(--color-violet-6), var(--color-violet-2));
 
 	--color-collaborator: var(--color-cyan-4);
-	--color-collaborator-bg: var(--color-cyan-1);
-	--color-collaborator-text: var(--color-cyan-6);
+	--color-collaborator-bg: light-dark(var(--color-cyan-1), #142833);
+	--color-collaborator-text: light-dark(var(--color-cyan-6), var(--color-cyan-2));
 
 	/* --- Map edge categories (decorative; distinct hues, kept clear of the
-	   status and role colours so an edge never reads as a status) --- */
-	--color-edge-runtime: var(--color-orange-4);
-	--color-edge-framework: var(--color-purple-4);
-	--color-edge-data: var(--color-teal-4);
-	--color-edge-ai: var(--color-pink-4);
-	--color-edge-concept: var(--color-chartreuse-4);
-	--color-edge-tool: var(--color-sky-4);
+	   status and role colours so an edge never reads as a status). Dark
+	   lifts one shade brighter so thin lines stay legible. --- */
+	--color-edge-runtime: light-dark(var(--color-orange-4), var(--color-orange-3));
+	--color-edge-framework: light-dark(var(--color-purple-4), var(--color-purple-3));
+	--color-edge-data: light-dark(var(--color-teal-4), var(--color-teal-3));
+	--color-edge-ai: light-dark(var(--color-pink-4), var(--color-pink-3));
+	--color-edge-concept: light-dark(var(--color-chartreuse-4), var(--color-chartreuse-3));
+	--color-edge-tool: light-dark(var(--color-sky-4), var(--color-sky-3));
 
 	/* --- Map theme edges (one token per theme; unclaimed palettes only) ---
 	   interactive-fiction was cinnamon, now claimed by --color-accent (the
 	   Atlas survey-mark colour); reassigned to red so no edge shares a hue
 	   with the accent. --- */
-	--color-edge-theme-interactive-fiction: var(--color-red-4);
-	--color-edge-theme-procedural-generation: var(--color-cyan-4);
-	--color-edge-theme-human-history: var(--color-yellow-4);
-	--color-edge-theme-graph-native: var(--color-green-4);
-	--color-edge-theme-ai-language-tooling: var(--color-indigo-4);
-	--color-edge-theme-terminal-native: var(--color-rose-4);
-	--color-edge-theme-human-centred: var(--color-magenta-4);
+	--color-edge-theme-interactive-fiction: light-dark(var(--color-red-4), var(--color-red-3));
+	--color-edge-theme-procedural-generation: light-dark(var(--color-cyan-4), var(--color-cyan-3));
+	--color-edge-theme-human-history: light-dark(var(--color-yellow-4), var(--color-yellow-3));
+	--color-edge-theme-graph-native: light-dark(var(--color-green-4), var(--color-green-3));
+	--color-edge-theme-ai-language-tooling: light-dark(var(--color-indigo-4), var(--color-indigo-3));
+	--color-edge-theme-terminal-native: light-dark(var(--color-rose-4), var(--color-rose-3));
+	--color-edge-theme-human-centred: light-dark(var(--color-magenta-4), var(--color-magenta-3));
 
 	/* --- Tech lineage edges --- */
-	--color-edge-lineage-leads-to: var(--color-lime-4);
-	--color-edge-lineage-replaced-by: var(--color-raspberry-4);
+	--color-edge-lineage-leads-to: light-dark(var(--color-lime-4), var(--color-lime-3));
+	--color-edge-lineage-replaced-by: light-dark(var(--color-raspberry-4), var(--color-raspberry-3));
 
-	/* --- Surface and foreground: warm paper neutrals ---
-	   Each is an oklab mix of its Reasonable Colors grey with the
-	   same-shade cinnamon, at the --warmth ratio above. Because both
-	   inputs share a shade, the mix stays in that shade's lightness band,
-	   so the shade-difference contrast rule keeps holding
-	   (diff 2 ≈ 3:1, diff 3 ≈ 4.5:1, diff 4 ≈ 7:1). --- */
-	--color-surface: color-mix(
-		in oklab,
-		var(--color-gray-1) calc(100% - var(--warmth)),
-		var(--color-cinnamon-1)
+	/* --- Surface and foreground: warm paper (light) and lamplit dark ---
+	   Each is an oklab mix of a base tone with same-shade cinnamon at the
+	   --warmth ratio. Light bases are Reasonable Colors greys; the dark
+	   bases are hand-picked near-black hexes because RC's palette has no
+	   swatch that close to lamplit ink — a deliberate exception to "always
+	   derive from RC", not an oversight. Because both mix inputs share a
+	   shade, the mix stays in that shade's lightness band, so the
+	   shade-difference contrast rule keeps holding. --- */
+	--color-surface: light-dark(
+		color-mix(in oklab, var(--color-gray-1) calc(100% - var(--warmth)), var(--color-cinnamon-1)),
+		color-mix(in oklab, #1a1b1e calc(100% - var(--warmth)), var(--color-cinnamon-6))
 	);
-	--color-surface-raised: color-mix(
-		in oklab,
-		white calc(100% - var(--warmth)),
-		var(--color-cinnamon-1)
+	--color-surface-raised: light-dark(
+		color-mix(in oklab, white calc(100% - var(--warmth)), var(--color-cinnamon-1)),
+		color-mix(in oklab, #232429 calc(100% - var(--warmth)), var(--color-cinnamon-6))
 	);
-	--color-surface-sunken: color-mix(
-		in oklab,
-		var(--color-gray-2) calc(100% - var(--warmth)),
-		var(--color-cinnamon-2)
+	--color-surface-sunken: light-dark(
+		color-mix(in oklab, var(--color-gray-2) calc(100% - var(--warmth)), var(--color-cinnamon-2)),
+		color-mix(in oklab, #141517 calc(100% - var(--warmth)), var(--color-cinnamon-6))
 	);
-	--color-border: color-mix(
-		in oklab,
-		var(--color-gray-3) calc(100% - var(--warmth)),
-		var(--color-cinnamon-3)
+	--color-border: light-dark(
+		color-mix(in oklab, var(--color-gray-3) calc(100% - var(--warmth)), var(--color-cinnamon-3)),
+		color-mix(in oklab, var(--color-gray-5) calc(100% - var(--warmth)), var(--color-cinnamon-5))
 	);
+	/* Identical mix in both themes: gray-4 leaning cinnamon-4. */
 	--color-border-strong: color-mix(
 		in oklab,
 		var(--color-gray-4) calc(100% - var(--warmth)),
 		var(--color-cinnamon-4)
 	);
 	/* One step lighter than border, for the graph graticule. */
-	--color-grid: color-mix(
-		in oklab,
-		var(--color-gray-2) calc(100% - var(--warmth)),
-		var(--color-cinnamon-3)
+	--color-grid: light-dark(
+		color-mix(in oklab, var(--color-gray-2) calc(100% - var(--warmth)), var(--color-cinnamon-3)),
+		color-mix(in oklab, #201f1a calc(100% - var(--warmth)), var(--color-cinnamon-6))
 	);
 
-	--color-text: color-mix(
-		in oklab,
-		var(--color-gray-6) calc(100% - var(--warmth)),
-		var(--color-cinnamon-6)
+	--color-text: light-dark(
+		color-mix(in oklab, var(--color-gray-6) calc(100% - var(--warmth)), var(--color-cinnamon-6)),
+		color-mix(in oklab, var(--color-gray-1) calc(100% - var(--warmth)), var(--color-cinnamon-1))
 	);
-	--color-text-subtle: color-mix(
-		in oklab,
-		var(--color-gray-5) calc(100% - var(--warmth)),
-		var(--color-cinnamon-5)
+	--color-text-subtle: light-dark(
+		color-mix(in oklab, var(--color-gray-5) calc(100% - var(--warmth)), var(--color-cinnamon-5)),
+		color-mix(in oklab, var(--color-gray-3) calc(100% - var(--warmth)), var(--color-cinnamon-3))
 	);
+	/* Identical mix in both themes: gray-4 leaning cinnamon-4. */
 	--color-text-muted: color-mix(
 		in oklab,
 		var(--color-gray-4) calc(100% - var(--warmth)),
@@ -207,10 +219,14 @@
 	--radius-xl: 1rem;
 	--radius-full: 9999px;
 
-	/* --- Shadows --- */
-	--shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-	--shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.07), 0 2px 4px -2px rgb(0 0 0 / 0.07);
-	--shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.07), 0 4px 6px -4px rgb(0 0 0 / 0.07);
+	/* --- Shadows (alpha deepens in the dark theme) --- */
+	--shadow-sm: 0 1px 2px 0 light-dark(rgb(0 0 0 / 0.05), rgb(0 0 0 / 0.3));
+	--shadow-md:
+		0 4px 6px -1px light-dark(rgb(0 0 0 / 0.07), rgb(0 0 0 / 0.4)),
+		0 2px 4px -2px light-dark(rgb(0 0 0 / 0.07), rgb(0 0 0 / 0.3));
+	--shadow-lg:
+		0 10px 15px -3px light-dark(rgb(0 0 0 / 0.07), rgb(0 0 0 / 0.4)),
+		0 4px 6px -4px light-dark(rgb(0 0 0 / 0.07), rgb(0 0 0 / 0.3));
 
 	/* --- Motion ---
 	   One curve, one exit, a four-step scale, a hard rule: motion only for
@@ -244,6 +260,22 @@
 }
 
 /*
+ * Theme wiring: the [data-theme] attribute (written by ThemeToggle and the
+ * no-flash script in app.html) pins color-scheme, which is what light-dark()
+ * actually reads. No attribute means the :root default above lets the OS
+ * preference decide. The Shiki font-channel rules at the bottom of this file
+ * still key off the same attribute, since font-style/weight/decoration are
+ * not colours and cannot ride light-dark().
+ */
+:root[data-theme='light'] {
+	color-scheme: light;
+}
+
+:root[data-theme='dark'] {
+	color-scheme: dark;
+}
+
+/*
  * Reduced motion: a single defined fallback, not just "respect the query".
  * Collapsing --motion-scale to 0 zeroes every duration token at once, so no
  * component has to opt in by hand — anything animating off the duration and
@@ -259,204 +291,6 @@
 }
 
 /*
- * Dark theme — overrides semantic aliases only; never changes RC vars.
- * Two rules for the same token set:
- *   1. :root[data-theme='dark']      — explicit override via ThemeToggle
- *   2. @media prefers dark + :not()  — auto from OS when not overridden to light
- */
-
-:root[data-theme='dark'] {
-	/* --- Surface and foreground: lamplit dark, same warm-mix rule applied
-	   to the existing hand-set dark surfaces. The four base tones below are
-	   hand-picked hex rather than Reasonable Colors variables: RC's palette
-	   has no swatch this close to near-black lamplit ink, so these are a
-	   deliberate exception to "always derive from RC", not an oversight. --- */
-	--color-surface: color-mix(in oklab, #1a1b1e 88%, var(--color-cinnamon-6));
-	--color-surface-raised: color-mix(in oklab, #232429 88%, var(--color-cinnamon-6));
-	--color-surface-sunken: color-mix(in oklab, #141517 88%, var(--color-cinnamon-6));
-	--color-border: color-mix(in oklab, var(--color-gray-5) 88%, var(--color-cinnamon-5));
-	--color-border-strong: color-mix(in oklab, var(--color-gray-4) 88%, var(--color-cinnamon-4));
-	--color-grid: color-mix(in oklab, #201f1a 88%, var(--color-cinnamon-6));
-
-	--color-text: color-mix(in oklab, var(--color-gray-1) 88%, var(--color-cinnamon-1));
-	--color-text-subtle: color-mix(in oklab, var(--color-gray-3) 88%, var(--color-cinnamon-3));
-	--color-text-muted: color-mix(in oklab, var(--color-gray-4) 88%, var(--color-cinnamon-4));
-
-	/* --- Primary (ink) --- */
-	--color-primary: var(--color-blue-3);
-	--color-primary-light: var(--color-blue-5);
-	--color-primary-bg: #1c2333;
-	--color-primary-text: var(--color-blue-2);
-
-	/* --- Accent (oxide) --- */
-	--color-accent: var(--color-cinnamon-3);
-	--color-accent-light: var(--color-cinnamon-5);
-	--color-accent-bg: #2a1c10;
-	--color-accent-text: var(--color-cinnamon-2);
-
-	/* --- Status colours --- */
-	/* Lift the base dot colours one shade brighter: the light-tuned -4 shades
-	   read too dark on the dark surface (emerald-4 looked near-black). */
-	--color-live: var(--color-emerald-3);
-	--color-wip: var(--color-amber-3);
-	--color-finished: var(--color-blue-3);
-	--color-prototype: var(--color-violet-3);
-	--color-archived: var(--color-gray-3);
-
-	--color-live-bg: #16281e;
-	--color-live-text: var(--color-emerald-2);
-
-	--color-wip-bg: #2a2010;
-	--color-wip-text: var(--color-amber-2);
-
-	--color-finished-bg: #151e33;
-	--color-finished-text: var(--color-blue-2);
-
-	--color-prototype-bg: #221a33;
-	--color-prototype-text: var(--color-violet-2);
-
-	--color-archived-bg: #1e1e1e;
-	--color-archived-text: var(--color-gray-3);
-
-	--color-uncategorised: var(--color-gray-3);
-	--color-uncategorised-bg: #1a1a1a;
-	--color-uncategorised-text: var(--color-gray-3);
-
-	/* --- Role colours --- */
-	--color-solo-bg: #1c2333;
-	--color-solo-text: var(--color-azure-2);
-
-	--color-lead-bg: #221a33;
-	--color-lead-text: var(--color-violet-2);
-
-	--color-collaborator-bg: #142833;
-	--color-collaborator-text: var(--color-cyan-2);
-
-	/* --- Map edge categories --- */
-	/* Lift one shade brighter so thin lines stay legible on the dark surface. */
-	--color-edge-runtime: var(--color-orange-3);
-	--color-edge-framework: var(--color-purple-3);
-	--color-edge-data: var(--color-teal-3);
-	--color-edge-ai: var(--color-pink-3);
-	--color-edge-concept: var(--color-chartreuse-3);
-	--color-edge-tool: var(--color-sky-3);
-
-	/* --- Map theme edges --- */
-	--color-edge-theme-interactive-fiction: var(--color-red-3);
-	--color-edge-theme-procedural-generation: var(--color-cyan-3);
-	--color-edge-theme-human-history: var(--color-yellow-3);
-	--color-edge-theme-graph-native: var(--color-green-3);
-	--color-edge-theme-ai-language-tooling: var(--color-indigo-3);
-	--color-edge-theme-terminal-native: var(--color-rose-3);
-	--color-edge-theme-human-centred: var(--color-magenta-3);
-
-	/* --- Tech lineage edges --- */
-	--color-edge-lineage-leads-to: var(--color-lime-3);
-	--color-edge-lineage-replaced-by: var(--color-raspberry-3);
-
-	/* --- Shadows --- */
-	--shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.3);
-	--shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.4), 0 2px 4px -2px rgb(0 0 0 / 0.3);
-	--shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.4), 0 4px 6px -4px rgb(0 0 0 / 0.3);
-}
-
-@media (prefers-color-scheme: dark) {
-	:root:not([data-theme='light']) {
-		/* --- Surface and foreground: lamplit dark, same warm-mix rule
-		   applied to the existing hand-set dark surfaces. The four base tones
-		   below are hand-picked hex rather than Reasonable Colors variables:
-		   RC's palette has no swatch this close to near-black lamplit ink, so
-		   these are a deliberate exception to "always derive from RC", not an
-		   oversight. --- */
-		--color-surface: color-mix(in oklab, #1a1b1e 88%, var(--color-cinnamon-6));
-		--color-surface-raised: color-mix(in oklab, #232429 88%, var(--color-cinnamon-6));
-		--color-surface-sunken: color-mix(in oklab, #141517 88%, var(--color-cinnamon-6));
-		--color-border: color-mix(in oklab, var(--color-gray-5) 88%, var(--color-cinnamon-5));
-		--color-border-strong: color-mix(in oklab, var(--color-gray-4) 88%, var(--color-cinnamon-4));
-		--color-grid: color-mix(in oklab, #201f1a 88%, var(--color-cinnamon-6));
-
-		--color-text: color-mix(in oklab, var(--color-gray-1) 88%, var(--color-cinnamon-1));
-		--color-text-subtle: color-mix(in oklab, var(--color-gray-3) 88%, var(--color-cinnamon-3));
-		--color-text-muted: color-mix(in oklab, var(--color-gray-4) 88%, var(--color-cinnamon-4));
-
-		/* --- Primary (ink) --- */
-		--color-primary: var(--color-blue-3);
-		--color-primary-light: var(--color-blue-5);
-		--color-primary-bg: #1c2333;
-		--color-primary-text: var(--color-blue-2);
-
-		/* --- Accent (oxide) --- */
-		--color-accent: var(--color-cinnamon-3);
-		--color-accent-light: var(--color-cinnamon-5);
-		--color-accent-bg: #2a1c10;
-		--color-accent-text: var(--color-cinnamon-2);
-
-		/* --- Status colours --- */
-		--color-live: var(--color-emerald-3);
-		--color-wip: var(--color-amber-3);
-		--color-finished: var(--color-blue-3);
-		--color-prototype: var(--color-violet-3);
-		--color-archived: var(--color-gray-3);
-
-		--color-live-bg: #16281e;
-		--color-live-text: var(--color-emerald-2);
-
-		--color-wip-bg: #2a2010;
-		--color-wip-text: var(--color-amber-2);
-
-		--color-finished-bg: #151e33;
-		--color-finished-text: var(--color-blue-2);
-
-		--color-prototype-bg: #221a33;
-		--color-prototype-text: var(--color-violet-2);
-
-		--color-archived-bg: #1e1e1e;
-		--color-archived-text: var(--color-gray-3);
-
-		--color-uncategorised: var(--color-gray-3);
-		--color-uncategorised-bg: #1a1a1a;
-		--color-uncategorised-text: var(--color-gray-3);
-
-		/* --- Role colours --- */
-		--color-solo-bg: #1c2333;
-		--color-solo-text: var(--color-azure-2);
-
-		--color-lead-bg: #221a33;
-		--color-lead-text: var(--color-violet-2);
-
-		--color-collaborator-bg: #142833;
-		--color-collaborator-text: var(--color-cyan-2);
-
-		/* --- Map edge categories --- */
-		/* Lift one shade brighter so thin lines stay legible on the dark surface. */
-		--color-edge-runtime: var(--color-orange-3);
-		--color-edge-framework: var(--color-purple-3);
-		--color-edge-data: var(--color-teal-3);
-		--color-edge-ai: var(--color-pink-3);
-		--color-edge-concept: var(--color-chartreuse-3);
-		--color-edge-tool: var(--color-sky-3);
-
-		/* --- Map theme edges --- */
-		--color-edge-theme-interactive-fiction: var(--color-red-3);
-		--color-edge-theme-procedural-generation: var(--color-cyan-3);
-		--color-edge-theme-human-history: var(--color-yellow-3);
-		--color-edge-theme-graph-native: var(--color-green-3);
-		--color-edge-theme-ai-language-tooling: var(--color-indigo-3);
-		--color-edge-theme-terminal-native: var(--color-rose-3);
-		--color-edge-theme-human-centred: var(--color-magenta-3);
-
-		/* --- Tech lineage edges --- */
-		--color-edge-lineage-leads-to: var(--color-lime-3);
-		--color-edge-lineage-replaced-by: var(--color-raspberry-3);
-
-		/* --- Shadows --- */
-		--shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.3);
-		--shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.4), 0 2px 4px -2px rgb(0 0 0 / 0.3);
-		--shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.4), 0 4px 6px -4px rgb(0 0 0 / 0.3);
-	}
-}
-
-/*
  * Shiki dual-theme wiring.
  *
  * Shiki is invoked with defaultColor:false, so each .shiki block and every
@@ -467,32 +301,27 @@
  * Background is deliberately excluded: code blocks use --color-surface-sunken
  * so they match other sunken surfaces on the page rather than Shiki's own bg.
  *
- * The dark selectors mirror the existing theme pattern exactly, so code blocks
- * flip in lockstep with the rest of the page and the no-flash app.html script.
+ * Colour rides light-dark() like every other colour on the page; the three
+ * font channels are not colours, so they keep attribute/media selectors that
+ * mirror the color-scheme wiring above exactly.
  */
-
-/* Default (light): apply the light-theme token colours.
- * Shiki emits --shiki-light / --shiki-dark (keyed by the themes object),
- * NOT bare --shiki. Reading --shiki-light here ensures light mode is coloured. */
 .shiki span {
-	color: var(--shiki-light);
+	color: light-dark(var(--shiki-light), var(--shiki-dark));
 	font-style: var(--shiki-light-font-style);
 	font-weight: var(--shiki-light-font-weight);
 	text-decoration: var(--shiki-light-text-decoration);
 }
 
-/* Dark trigger 1: explicit override via ThemeToggle. */
+/* Dark font channels, trigger 1: explicit override via ThemeToggle. */
 :root[data-theme='dark'] .shiki span {
-	color: var(--shiki-dark);
 	font-style: var(--shiki-dark-font-style);
 	font-weight: var(--shiki-dark-font-weight);
 	text-decoration: var(--shiki-dark-text-decoration);
 }
 
-/* Dark trigger 2: OS preference, unless the user has forced light. */
+/* Dark font channels, trigger 2: OS preference, unless forced light. */
 @media (prefers-color-scheme: dark) {
 	:root:not([data-theme='light']) .shiki span {
-		color: var(--shiki-dark);
 		font-style: var(--shiki-dark-font-style);
 		font-weight: var(--shiki-dark-font-weight);
 		text-decoration: var(--shiki-dark-text-decoration);

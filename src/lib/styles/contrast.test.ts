@@ -1,14 +1,15 @@
 /**
  * WCAG contrast assertions for the Atlas warm-neutral palette.
  *
- * tokens.css derives every neutral surface/border/text alias via
- * `color-mix(in oklab, ...)` over Reasonable Colors variables (see the
- * --warmth knob and its comment there). Because the mix ratio is asserted
- * rather than eyeballed, this test resolves the actual CSS — parsing
- * tokens.css's custom-property declarations and the Reasonable Colors
- * palette, then reproducing the oklab color-mix maths in code — so a future
- * change to --warmth, a shade, or a token wiring is caught here rather than
- * shipped as an invisible contrast regression.
+ * tokens.css defines every colour token once, with light-dark() carrying
+ * both themes, and derives neutrals via `color-mix(in oklab, ...)` over
+ * Reasonable Colors variables (see the --warmth knob and its comment
+ * there). Because the mix ratio is asserted rather than eyeballed, this
+ * test resolves the actual CSS — parsing tokens.css's custom-property
+ * declarations and the Reasonable Colors palette, then reproducing the
+ * light-dark() selection and oklab color-mix maths in code — so a future
+ * change to --warmth, a shade, or a token wiring is caught here rather
+ * than shipped as an invisible contrast regression.
  *
  * Mirrors the pattern in data.test.ts: collect every failing pair into an
  * array and assert its length, so one run reports every offender at once.
@@ -75,24 +76,45 @@ function parseRcPalette(): Map<string, string> {
 	return palette;
 }
 
+type ThemeName = 'light' | 'dark';
+
+/** Splits a function's argument list at its single top-level comma. */
+function splitAtTopLevelComma(inner: string): [string, string] {
+	let depth = 0;
+	for (let i = 0; i < inner.length; i++) {
+		if (inner[i] === '(') depth++;
+		else if (inner[i] === ')') depth--;
+		else if (inner[i] === ',' && depth === 0) {
+			return [inner.slice(0, i).trim(), inner.slice(i + 1).trim()];
+		}
+	}
+	throw new Error(`No top-level comma in: ${inner}`);
+}
+
 /**
- * Resolves a token value to a concrete hex colour, given a lookup scope
- * (declarations from the active theme block, falling back to the RC
- * palette and the light-theme :root block for tokens the dark block
- * doesn't override).
+ * Resolves a token value to a concrete hex colour for one theme, given a
+ * lookup scope (the single :root block's declarations, falling back to the
+ * RC palette). light-dark() picks its first argument for the light theme
+ * and its second for dark; everything else resolves theme-independently.
  */
-function resolveColour(value: string, scopes: Map<string, string>[]): string {
+function resolveColour(value: string, scopes: Map<string, string>[], theme: ThemeName): string {
 	const trimmed = value.trim();
 
 	if (trimmed.startsWith('#')) return trimmed;
 	if (trimmed === 'white') return '#ffffff';
 	if (trimmed === 'black') return '#000000';
 
+	const ldMatch = /^light-dark\(\s*([\s\S]+)\)$/.exec(trimmed);
+	if (ldMatch) {
+		const [lightArg, darkArg] = splitAtTopLevelComma(ldMatch[1]);
+		return resolveColour(theme === 'dark' ? darkArg : lightArg, scopes, theme);
+	}
+
 	const varMatch = /^var\((--[a-zA-Z0-9-]+)\)$/.exec(trimmed);
 	if (varMatch) {
 		const name = varMatch[1];
 		for (const scope of scopes) {
-			if (scope.has(name)) return resolveColour(scope.get(name) as string, scopes);
+			if (scope.has(name)) return resolveColour(scope.get(name) as string, scopes, theme);
 		}
 		throw new Error(`Unresolved token: ${name}`);
 	}
@@ -100,23 +122,12 @@ function resolveColour(value: string, scopes: Map<string, string>[]): string {
 	const mixMatch = /^color-mix\(\s*in oklab\s*,\s*([\s\S]+)\)$/.exec(trimmed);
 	if (mixMatch) {
 		// Split the two "colour [percentage]" arguments on the top-level comma.
-		const inner = mixMatch[1];
-		let depth = 0;
-		let splitAt = -1;
-		for (let i = 0; i < inner.length; i++) {
-			if (inner[i] === '(') depth++;
-			else if (inner[i] === ')') depth--;
-			else if (inner[i] === ',' && depth === 0) {
-				splitAt = i;
-				break;
-			}
-		}
-		if (splitAt === -1) throw new Error(`Malformed color-mix: ${trimmed}`);
-		const [aRaw, aPctRaw] = splitColourAndPercent(inner.slice(0, splitAt).trim());
-		const [bRaw, bPctRaw] = splitColourAndPercent(inner.slice(splitAt + 1).trim());
+		const [aArg, bArg] = splitAtTopLevelComma(mixMatch[1]);
+		const [aRaw, aPctRaw] = splitColourAndPercent(aArg);
+		const [bRaw, bPctRaw] = splitColourAndPercent(bArg);
 
-		const colourA = resolveColour(aRaw, scopes);
-		const colourB = resolveColour(bRaw, scopes);
+		const colourA = resolveColour(aRaw, scopes, theme);
+		const colourB = resolveColour(bRaw, scopes, theme);
 		const pctA = aPctRaw !== null ? resolvePercent(aPctRaw, scopes) : null;
 		const pctB = bPctRaw !== null ? resolvePercent(bPctRaw, scopes) : null;
 		// CSS color-mix: if only one percentage given, the other is its complement.
@@ -194,20 +205,16 @@ beforeAll(() => {
 	const rootBody = extractBlock(css, /:root\s*\{/);
 	const rootDecls = parseDeclarations(rootBody);
 
-	const darkBody = extractBlock(css, /:root\[data-theme=['"]dark['"]\]\s*\{/);
-	const darkDecls = parseDeclarations(darkBody);
-
+	// Both themes read the same single :root block; light-dark() inside each
+	// token value is what differs, selected per theme inside resolveColour.
 	themes = [
 		{
 			label: 'light',
-			resolve: (name: string) => resolveColour(`var(${name})`, [rootDecls, rcPalette])
+			resolve: (name: string) => resolveColour(`var(${name})`, [rootDecls, rcPalette], 'light')
 		},
 		{
 			label: 'dark',
-			// Dark overrides sit in front of the light :root and the RC palette,
-			// matching the cascade: :root[data-theme='dark'] only overrides a
-			// subset of tokens, the rest fall through to :root.
-			resolve: (name: string) => resolveColour(`var(${name})`, [darkDecls, rootDecls, rcPalette])
+			resolve: (name: string) => resolveColour(`var(${name})`, [rootDecls, rcPalette], 'dark')
 		}
 	];
 });
