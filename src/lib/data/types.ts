@@ -13,14 +13,6 @@
 
 export type ProjectRole = 'solo' | 'lead' | 'collaborator';
 
-export type ProjectStatus =
-	| 'live'
-	| 'wip'
-	| 'finished'
-	| 'prototype'
-	| 'archived'
-	| 'uncategorised';
-
 /**
  * The stage decomposition (docs/design/colour-system.md §3). `status`
  * conflated intent, state, deployment and retirement in one field; these
@@ -268,7 +260,6 @@ export interface AuthoredProject {
 	 * authored — the only way to drop an inferred tag. Managed by `drift tag`.
 	 */
 	suppressTags?: string[];
-	status?: ProjectStatus;
 	/** Intent: a spike proving an idea, or a product meant to be used. */
 	track?: ProjectTrack;
 	/** State: still being built, or arrived at its intended shape. */
@@ -306,7 +297,6 @@ export interface Project {
 	kind: ProjectKind;
 	contribution: Contribution;
 	tags: TechTag[];
-	status: ProjectStatus;
 	track: ProjectTrack;
 	/** True when track was authored; heuristic values render dotted-provisional. */
 	trackAuthored: boolean;

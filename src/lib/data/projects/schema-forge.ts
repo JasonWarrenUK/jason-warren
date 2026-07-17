@@ -9,7 +9,6 @@ export const schemaForge: AuthoredProject = {
 		'An XSD-driven schema system for TypeScript that crystallised the validation approach used across the Iris ILR toolkit. It separates the parsing concern, building SchemaRegistry objects with element trees, lookup maps, and full constraint metadata, from the application concerns of validation, CSV mapping, and XML generation. Data is validated against XSD-defined types, patterns, cardinality, ranges, and enumerations; flat CSV columns map to nested XSD paths with optional named transforms; and XML is generated from data objects using the schema structure and namespace information. Over 17 built-in transformation functions cover common type conversion, string formatting, and date handling.',
 	kind: 'library',
 	contribution: { role: 'solo' },
-	status: 'wip',
 	track: 'product',
 	progress: 'in-progress',
 	highlights: [

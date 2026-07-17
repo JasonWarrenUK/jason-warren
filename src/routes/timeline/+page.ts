@@ -52,7 +52,11 @@ export function load() {
 		return {
 			slug: project.slug,
 			name: project.name,
-			status: project.status,
+			track: project.track,
+			progress: project.progress,
+			archived: project.archived,
+			deployed: project.deployed,
+			stageProvisional: !project.trackAuthored || !project.progressAuthored,
 			tagline: project.tagline,
 			role: project.contribution.role,
 			firstCommit,

@@ -15,7 +15,6 @@ export const craftAndGraft: AuthoredProject = {
 		contributionNote:
 			'Led the React storefront on a FAC-30 cohort e-commerce project: session-based auth with bcrypt and connect-pg-simple, product views fetched live from an Express/PostgreSQL API, Netlify CD pipeline and two GitHub Actions bots covering CI ergonomics from the first sprint.'
 	},
-	status: 'finished',
 	track: 'product',
 	progress: 'complete',
 	highlights: [

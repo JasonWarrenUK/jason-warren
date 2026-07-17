@@ -14,7 +14,6 @@ export const beacons: AuthoredProject = {
 		contributionNote:
 			'Owned the Beacons backend end-to-end: a Neo4j grammar engine where statements decompose into subject/verb nodes, a compromise.js NLP pipeline that extracts verbs from the graph for semantic search, passwordless magic-link auth and a Deno Cron job keeping the database warm.'
 	},
-	status: 'archived',
 	track: 'product',
 	progress: 'complete',
 	archived: true,

@@ -13,7 +13,6 @@ export const guardrails: AuthoredProject = {
 		collaboration: { team: 'Yalla Cooperative', employer: 'Yalla Cooperative' },
 		contributionNote: 'PLACEHOLDER'
 	},
-	status: 'wip',
 	track: 'product',
 	progress: 'in-progress',
 	highlights: [

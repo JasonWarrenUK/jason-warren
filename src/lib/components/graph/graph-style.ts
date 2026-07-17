@@ -8,7 +8,6 @@ import type {
 	EdgeCategory,
 	LineageKind,
 	ProjectProgress,
-	ProjectStatus,
 	ProjectTrack,
 	TagKind
 } from '$lib/data/types.js';
@@ -48,39 +47,6 @@ export function progressColour(progress: ProjectProgress, archived = false): str
 	}
 	return archived ? 'var(--progress-complete-archived)' : 'var(--progress-complete)';
 }
-
-/** Status colour token, matching the status badges. */
-export function statusColour(status: ProjectStatus): string {
-	const map: Record<ProjectStatus, string> = {
-		live: 'var(--color-live)',
-		wip: 'var(--color-wip)',
-		finished: 'var(--color-finished)',
-		prototype: 'var(--color-prototype)',
-		archived: 'var(--color-archived)',
-		uncategorised: 'var(--color-uncategorised)'
-	};
-	return map[status];
-}
-
-/** Status labels, identical to the badge vocabulary. */
-export const statusLabel: Record<ProjectStatus, string> = {
-	live: 'Live',
-	wip: 'Active',
-	finished: 'Complete',
-	prototype: 'Prototype',
-	archived: 'Archived',
-	uncategorised: 'Uncategorised'
-};
-
-/** Ordered status list for legends. Uncategorised last — it's a placeholder. */
-export const statusOrder: ProjectStatus[] = [
-	'live',
-	'wip',
-	'finished',
-	'prototype',
-	'archived',
-	'uncategorised'
-];
 
 /** Human-readable label for an edge kind, phrased from source to target. */
 export function edgeLabel(kind: GraphEdge['kind']): string {

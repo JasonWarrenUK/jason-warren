@@ -9,7 +9,6 @@ export const cogni: AuthoredProject = {
 		'Most advice on choosing a methodology ignores how the person actually thinks, so this maps developer cognition first. Seventeen two-axis compasses, organised across three tiers, capture style choices like risk tolerance, collaboration, and abstraction preference, with constraint propagation crosshatching any quadrant that would contradict a position already set. From that profile it evaluates more than ten methodologies (TDD, Scrum, Shape Up, Kanban, XP and others), explaining per-methodology why each one fits or causes friction, and exports the result as portable Markdown for 1:1s, job evaluations and retrospectives.',
 	kind: 'app',
 	contribution: { role: 'solo' },
-	status: 'prototype',
 	track: 'exploration',
 	progress: 'complete',
 	highlights: [

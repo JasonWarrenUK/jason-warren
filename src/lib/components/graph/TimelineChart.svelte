@@ -4,7 +4,13 @@
 	import { page } from '$app/stores';
 	import type { ProjectRole } from '$lib/data/types.js';
 	import { formatMonthYear } from '$lib/format-date.js';
-	import { statusColour, statusLabel, statusOrder, edgeTypeColour } from './graph-style.js';
+	import {
+		progressColour,
+		progressLabel,
+		progressOrder,
+		trackLabel,
+		edgeTypeColour
+	} from './graph-style.js';
 	import { writeParam } from '$lib/url-write.js';
 	import { validatePin, nextPinValue, projectHref } from '$lib/selection.js';
 	import SelectionModal from '$lib/components/ui/SelectionModal.svelte';
@@ -148,8 +154,27 @@
 		return path?.note ?? null;
 	});
 
-	// Present statuses only, in the shared status order.
-	const presentStatuses = $derived(statusOrder.filter((s) => rails.some((r) => r.status === s)));
+	// Present progress values only, in the shared order; plus which of the
+	// auxiliary treatments (spike hollow, deployed ring, archived fade) the
+	// legend actually needs to explain for this dataset.
+	const presentProgresses = $derived(
+		progressOrder.filter((p) => rails.some((r) => r.progress === p))
+	);
+	const hasSpikes = $derived(rails.some((r) => r.track === 'exploration'));
+	const hasDeployed = $derived(rails.some((r) => r.deployed));
+	const hasArchived = $derived(rails.some((r) => r.archived));
+
+	/** Rail ink: progress hue, shade-shifted paperward when archived. */
+	const railColour = (rail: TimelineRail): string => progressColour(rail.progress, rail.archived);
+
+	/** Stage phrase for aria text: `Spike · Complete, archived`. */
+	function stagePhrase(rail: TimelineRail): string {
+		const base =
+			rail.track === 'exploration'
+				? `${trackLabel[rail.track]} · ${progressLabel[rail.progress]}`
+				: progressLabel[rail.progress];
+		return rail.archived ? `${base}, archived` : base;
+	}
 	const hasLineage = $derived(layout.lineagePaths.length > 0);
 	const hasDensity = $derived(layout.density.length > 0);
 
@@ -159,7 +184,7 @@
 				? `${rail.firstCommit} to ${rail.lastCommit}`
 				: rail.firstCommit
 			: 'undated';
-		return `${rail.name}: ${statusLabel[rail.status]}, ${lifespan}`;
+		return `${rail.name}: ${stagePhrase(rail)}, ${lifespan}`;
 	}
 
 	// --- Reveal animation -----------------------------------------------------
@@ -225,8 +250,8 @@
 						x2={rail.x}
 						y2={rail.yTop - GEO.stillLiveFade}
 					>
-						<stop offset="0" stop-color={statusColour(rail.status)} stop-opacity="0.4" />
-						<stop offset="1" stop-color={statusColour(rail.status)} stop-opacity="0" />
+						<stop offset="0" stop-color={railColour(rail)} stop-opacity="0.4" />
+						<stop offset="1" stop-color={railColour(rail)} stop-opacity="0" />
 					</linearGradient>
 				{/if}
 			{/each}
@@ -304,7 +329,7 @@
 					class:timeline__rail-group--dim={effectiveSlug !== null && !neighbourhood.has(rail.slug)}
 					class:timeline__rail-group--pinned={pinnedSlug === rail.slug}
 					class:timeline__rail-group--labelled={rail.labelled}
-					style="--reveal-delay: {Math.min(index * 24, 700)}ms; color: {statusColour(rail.status)}"
+					style="--reveal-delay: {Math.min(index * 24, 700)}ms; color: {railColour(rail)}"
 					role="presentation"
 				>
 					<title>{describe(rail)}</title>
@@ -332,9 +357,10 @@
 					{/if}
 
 					<!-- Terminal node (yTop = lastCommit, most recent activity, nearest
-					     the `now` line). Still-live rails earn the hub ring here — this
-					     is the end a viewer naturally checks for "is this still going". -->
-					{#if rail.stillLive}
+					     the `now` line). Deployed projects earn the outer ring here —
+					     the one meaning the second ring carries anywhere on the site:
+					     this runs somewhere. Liveness reads from the rail fade above. -->
+					{#if rail.deployed}
 						<circle
 							class="timeline__ring timeline__ring--hub"
 							cx={rail.x}
@@ -342,13 +368,25 @@
 							r={GEO.nodeRadius + GEO.hubRingOffset}
 						/>
 					{/if}
-					<circle class="timeline__ring" cx={rail.x} cy={rail.yTop} r={GEO.nodeRadius} />
-					<circle class="timeline__centre" cx={rail.x} cy={rail.yTop} r="2.8" />
+					<circle
+						class="timeline__ring"
+						class:timeline__ring--provisional={rail.stageProvisional}
+						cx={rail.x}
+						cy={rail.yTop}
+						r={GEO.nodeRadius}
+					/>
+					<circle
+						class="timeline__centre"
+						class:timeline__centre--hollow={rail.track === 'exploration'}
+						cx={rail.x}
+						cy={rail.yTop}
+						r="2.8"
+					/>
 					<circle
 						class="timeline__hit"
 						cx={rail.x}
 						cy={rail.yTop}
-						r={rail.stillLive ? GEO.nodeRadius + GEO.hubRingOffset : GEO.nodeRadius}
+						r={rail.deployed ? GEO.nodeRadius + GEO.hubRingOffset : GEO.nodeRadius}
 						role="button"
 						tabindex="0"
 						aria-pressed={pinnedSlug === rail.slug}
@@ -369,9 +407,21 @@
 					/>
 
 					<!-- Inception node (yBottom = firstCommit). Plain survey mark, no
-					     hub ring — liveness reads at the terminal end above, not here. -->
-					<circle class="timeline__ring" cx={rail.x} cy={rail.yBottom} r={GEO.nodeRadius} />
-					<circle class="timeline__centre" cx={rail.x} cy={rail.yBottom} r="2.8" />
+					     outer ring — deployment reads at the terminal end above, not here. -->
+					<circle
+						class="timeline__ring"
+						class:timeline__ring--provisional={rail.stageProvisional}
+						cx={rail.x}
+						cy={rail.yBottom}
+						r={GEO.nodeRadius}
+					/>
+					<circle
+						class="timeline__centre"
+						class:timeline__centre--hollow={rail.track === 'exploration'}
+						cx={rail.x}
+						cy={rail.yBottom}
+						r="2.8"
+					/>
 
 					<!-- Full-disc hit target: an invisible filled circle over the node,
 					     rendered last in this pass so it sits topmost for hit-testing
@@ -417,7 +467,7 @@
 					class:timeline__rail-group--dim={effectiveSlug !== null && !neighbourhood.has(rail.slug)}
 					class:timeline__rail-group--pinned={pinnedSlug === rail.slug}
 					class:timeline__rail-group--labelled={rail.labelled}
-					style="--reveal-delay: {Math.min(index * 24, 700)}ms; color: {statusColour(rail.status)}"
+					style="--reveal-delay: {Math.min(index * 24, 700)}ms; color: {railColour(rail)}"
 				>
 					<text class="timeline__label" x={rail.x + GEO.nodeRadius + 6} y={rail.yBottom + 4}>
 						{rail.name}
@@ -435,7 +485,7 @@
 	</ul>
 
 	<figcaption class="timeline__legend">
-		{#each presentStatuses as status (status)}
+		{#each presentProgresses as progress (progress)}
 			<span class="timeline__legend-item">
 				<svg class="timeline__swatch-mark" viewBox="0 0 14 14" aria-hidden="true">
 					<circle
@@ -443,19 +493,89 @@
 						cx="7"
 						cy="7"
 						r="5"
-						style="color: {statusColour(status)}"
+						style="color: {progressColour(progress)}"
 					/>
 					<circle
 						class="timeline__swatch-centre"
 						cx="7"
 						cy="7"
 						r="1.6"
-						style="color: {statusColour(status)}"
+						style="color: {progressColour(progress)}"
 					/>
 				</svg>
-				{statusLabel[status]}
+				{progressLabel[progress]}
 			</span>
 		{/each}
+		{#if hasSpikes}
+			<span class="timeline__legend-item">
+				<svg class="timeline__swatch-mark" viewBox="0 0 14 14" aria-hidden="true">
+					<circle
+						class="timeline__swatch-ring"
+						cx="7"
+						cy="7"
+						r="5"
+						style="color: var(--color-text-subtle)"
+					/>
+					<circle
+						class="timeline__swatch-hollow"
+						cx="7"
+						cy="7"
+						r="1.6"
+						style="color: var(--color-text-subtle)"
+					/>
+				</svg>
+				Spike (hollow centre)
+			</span>
+		{/if}
+		{#if hasDeployed}
+			<span class="timeline__legend-item">
+				<svg class="timeline__swatch-mark" viewBox="0 0 14 14" aria-hidden="true">
+					<circle
+						class="timeline__swatch-ring"
+						cx="7"
+						cy="7"
+						r="4"
+						style="color: var(--color-text-subtle)"
+					/>
+					<circle
+						class="timeline__swatch-ring timeline__swatch-ring--outer"
+						cx="7"
+						cy="7"
+						r="6.2"
+						style="color: var(--color-text-subtle)"
+					/>
+					<circle
+						class="timeline__swatch-centre"
+						cx="7"
+						cy="7"
+						r="1.4"
+						style="color: var(--color-text-subtle)"
+					/>
+				</svg>
+				Deployed (outer ring)
+			</span>
+		{/if}
+		{#if hasArchived}
+			<span class="timeline__legend-item">
+				<svg class="timeline__swatch-mark" viewBox="0 0 14 14" aria-hidden="true">
+					<circle
+						class="timeline__swatch-ring"
+						cx="7"
+						cy="7"
+						r="5"
+						style="color: {progressColour('complete', true)}"
+					/>
+					<circle
+						class="timeline__swatch-centre"
+						cx="7"
+						cy="7"
+						r="1.6"
+						style="color: {progressColour('complete', true)}"
+					/>
+				</svg>
+				Archived (faded)
+			</span>
+		{/if}
 		{#if hasLineage}
 			<span class="timeline__legend-item">
 				<span class="timeline__legend-edge" style="border-color: {edgeTypeColour('extraction')}"
@@ -573,16 +693,30 @@
 		transform-origin: center;
 	}
 
-	/* Hub ring: a second, quieter outer ring marking a still-live project. */
+	/* Outer ring: a second, quieter ring marking a deployed project — the
+	   one meaning the second ring carries anywhere on the site. */
 	.timeline__ring--hub {
 		stroke-width: 1.25;
 		stroke-opacity: 0.4;
 		pointer-events: none;
 	}
 
+	/* Heuristic stage: the unsurveyed convention, dotted where authored
+	   marks draw solid. */
+	.timeline__ring--provisional {
+		stroke-dasharray: 2 3;
+	}
+
 	.timeline__centre {
 		fill: currentColor;
 		pointer-events: none;
+	}
+
+	/* Exploration track: hollow centre dot where product draws solid. */
+	.timeline__centre--hollow {
+		fill: none;
+		stroke: currentColor;
+		stroke-width: 1.25;
 	}
 
 	/* Rail: this project's lifespan line, coloured by status via currentColor.
@@ -781,6 +915,17 @@
 
 	.timeline__swatch-centre {
 		fill: currentColor;
+	}
+
+	.timeline__swatch-hollow {
+		fill: none;
+		stroke: currentColor;
+		stroke-width: 1;
+	}
+
+	.timeline__swatch-ring--outer {
+		stroke-width: 1;
+		stroke-opacity: 0.4;
 	}
 
 	.timeline__legend-edge {

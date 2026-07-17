@@ -55,7 +55,11 @@ function rail(
 	return {
 		slug,
 		name: overrides.name ?? slug,
-		status: overrides.status ?? 'live',
+		track: overrides.track ?? 'product',
+		progress: overrides.progress ?? 'in-progress',
+		archived: overrides.archived ?? false,
+		deployed: overrides.deployed ?? false,
+		stageProvisional: overrides.stageProvisional ?? false,
 		tagline: overrides.tagline ?? '',
 		role: overrides.role ?? 'solo',
 		firstCommit,
@@ -73,7 +77,10 @@ function realRails(): TimelineRail[] {
 	return getTimelineProjects().map((p) =>
 		rail(p.slug, p.firstCommit ?? null, p.lastCommit ?? null, {
 			name: p.name,
-			status: p.status,
+			track: p.track,
+			progress: p.progress,
+			archived: p.archived,
+			deployed: p.deployed,
 			tagline: p.tagline,
 			role: p.contribution.role
 		})

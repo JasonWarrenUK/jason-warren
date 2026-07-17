@@ -219,11 +219,6 @@ describe('defaultProjectFromManifest', () => {
 		expect(project.kind).toBe('repo');
 	});
 
-	it("sets status to 'uncategorised'", () => {
-		const project = defaultProjectFromManifest('some-repo', {});
-		expect(project.status).toBe('uncategorised');
-	});
-
 	it('defaults track heuristically: long-and-large reads as product', () => {
 		const product = defaultProjectFromManifest('big-old', {
 			firstCommit: '2025-01-01',

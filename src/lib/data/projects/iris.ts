@@ -12,7 +12,6 @@ export const iris: AuthoredProject = {
 		role: 'solo',
 		collaboration: { team: 'Solo (Jason)', employer: 'Founders and Coders' }
 	},
-	status: 'finished',
 	track: 'product',
 	progress: 'complete',
 	highlights: [

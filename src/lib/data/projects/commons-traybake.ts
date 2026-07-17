@@ -14,7 +14,6 @@ export const commonsTraybake: AuthoredProject = {
 		contributionNote:
 			'Co-led a FAC-31 cohort RAG research project into semantic chunking. Implemented the chunking foundation (1024 and 256 token strategies, late-chunking with 70/30 context blending); built the UK Parliament Hansard API integration; established the roadmap and documentation system.'
 	},
-	status: 'wip',
 	track: 'product',
 	progress: 'in-progress',
 	highlights: [

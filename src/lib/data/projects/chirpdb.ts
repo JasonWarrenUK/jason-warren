@@ -14,7 +14,6 @@ export const chirpdb: AuthoredProject = {
 		collaboration: { team: 'Tandem', employer: 'Tandem Creative Dev', client: 'Zig Zag AI' },
 		contributionNote: 'PLACEHOLDER'
 	},
-	status: 'wip',
 	track: 'product',
 	progress: 'in-progress',
 	highlights: [

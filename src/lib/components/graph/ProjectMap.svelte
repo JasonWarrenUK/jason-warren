@@ -9,7 +9,8 @@
 		EDGE_CATEGORIES,
 		type LineageKind,
 		type ProjectKind,
-		type ProjectStatus,
+		type ProjectProgress,
+		type ProjectTrack,
 		type TagKind
 	} from '$lib/data/types.js';
 	import { techRelationships } from '$lib/data/tech-relationships.js';
@@ -39,9 +40,10 @@
 		techViewHref
 	} from '$lib/selection.js';
 	import {
-		statusColour,
-		statusLabel,
-		statusOrder,
+		progressColour,
+		progressLabel,
+		progressOrder,
+		trackLabel,
 		categoryColour,
 		edgeTypeColour,
 		edgeTypeLabel,
@@ -61,7 +63,12 @@
 		slug: string;
 		name: string;
 		tagline: string;
-		status: ProjectStatus;
+		track: ProjectTrack;
+		progress: ProjectProgress;
+		archived: boolean;
+		deployed: boolean;
+		/** True when track or progress is a heuristic guess; draws dotted. */
+		stageProvisional: boolean;
 		kind: ProjectKind;
 		hub: boolean;
 		labelled: boolean;
@@ -685,7 +692,11 @@
 		const r = radiusScale(node);
 		const others = projectNodes.filter((n) => n.slug !== highlight).map((n) => projectPos(n.slug));
 		const routeCount = [...(adjacency.get(highlight) ?? [])].length;
-		const meta = `${statusLabel[node.status]} · ${routeCount} route${routeCount === 1 ? '' : 's'}`;
+		const stage =
+			node.track === 'exploration'
+				? `${trackLabel[node.track]} · ${progressLabel[node.progress]}`
+				: progressLabel[node.progress];
+		const meta = `${stage} · ${routeCount} route${routeCount === 1 ? '' : 's'}`;
 		return buildAnnotation(p, r, node.name.toUpperCase(), node.hub, meta, others);
 	});
 
@@ -1077,7 +1088,9 @@
 					{@const r = radiusScale(node)}
 					{@const p = projectPos(node.slug)}
 					{@const isFocus = effectiveHighlight === node.slug}
-					{@const colour = isFocus ? 'var(--color-accent)' : statusColour(node.status)}
+					{@const colour = isFocus
+						? 'var(--color-accent)'
+						: progressColour(node.progress, node.archived)}
 					<a
 						class="map__node"
 						class:map__node--dim={nodeDimmed(node)}
@@ -1106,12 +1119,16 @@
 						<title>{node.name}: {node.tagline}</title>
 						<circle
 							class="map__ring"
+							class:map__ring--provisional={node.stageProvisional}
 							cx={p.x}
 							cy={p.y}
 							{r}
 							style="stroke: {colour}; opacity: {0.55 + 0.45 * opacityScale(node)}"
 						/>
-						{#if node.hub || isFocus}
+						{#if node.deployed || isFocus}
+							<!-- Outer ring = deployed (the site-wide second-ring meaning);
+							     the focused mark keeps its accent double-ring emphasis.
+							     Hub emphasis retired — node size already carries weight. -->
 							<circle
 								class="map__ring map__ring--hub"
 								cx={p.x}
@@ -1120,7 +1137,15 @@
 								style="stroke: {colour}"
 							/>
 						{/if}
-						<circle class="map__dot" cx={p.x} cy={p.y} r="2.8" style="fill: {colour}" />
+						<circle
+							class="map__dot"
+							cx={p.x}
+							cy={p.y}
+							r="2.8"
+							style={node.track === 'exploration'
+								? `fill: none; stroke: ${colour}; stroke-width: 1.25`
+								: `fill: ${colour}`}
+						/>
 						<circle
 							class="map__hit"
 							cx={p.x}
@@ -1354,16 +1379,34 @@
 			</div>
 		{/if}
 
-		<!-- Status key (project modes only) -->
+		<!-- Stage key (project modes only) -->
 		{#if activeMode !== 'technologies'}
 			<div class="map__legend-group" aria-hidden="true">
-				<span class="map__legend-title">Status</span>
-				{#each statusOrder.filter( (s) => projectNodes.some((n) => n.status === s) ) as status (status)}
+				<span class="map__legend-title">Stage</span>
+				{#each progressOrder.filter( (p) => projectNodes.some((n) => n.progress === p) ) as progress (progress)}
 					<span class="map__legend-item">
-						<span class="map__swatch" style="background: {statusColour(status)}"></span>
-						{statusLabel[status]}
+						<span class="map__swatch" style="background: {progressColour(progress)}"></span>
+						{progressLabel[progress]}
 					</span>
 				{/each}
+				{#if projectNodes.some((n) => n.track === 'exploration')}
+					<span class="map__legend-item">
+						<span class="map__swatch map__swatch--hollow"></span>
+						Spike
+					</span>
+				{/if}
+				{#if projectNodes.some((n) => n.deployed)}
+					<span class="map__legend-item">
+						<span class="map__swatch map__swatch--ringed"></span>
+						Deployed
+					</span>
+				{/if}
+				{#if projectNodes.some((n) => n.archived)}
+					<span class="map__legend-item">
+						<span class="map__swatch" style="background: {progressColour('complete', true)}"></span>
+						Archived
+					</span>
+				{/if}
 			</div>
 		{/if}
 
@@ -1567,6 +1610,11 @@
 			stroke var(--dur-base) var(--ease-standard);
 	}
 
+	/* Heuristic stage: the unsurveyed convention, dotted ring. */
+	.map__ring--provisional {
+		stroke-dasharray: 2 3;
+	}
+
 	.map__ring--hub {
 		stroke-width: 1.25;
 		opacity: 0.6;
@@ -1708,6 +1756,21 @@
 		height: 0.85rem;
 		border-radius: var(--radius-full);
 		flex-shrink: 0;
+	}
+
+	/* Spike: hollow mark, the exploration-track convention in miniature. */
+	.map__swatch--hollow {
+		background: transparent;
+		border: 1.5px solid var(--color-text-subtle);
+	}
+
+	/* Deployed: the outer-ring mark in miniature, drawn with a box-shadow
+	   ring around a solid core. */
+	.map__swatch--ringed {
+		background: var(--color-text-subtle);
+		box-shadow:
+			0 0 0 2px var(--color-surface),
+			0 0 0 3px var(--color-text-subtle);
 	}
 
 	.map__swatch--line {

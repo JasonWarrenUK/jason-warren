@@ -35,7 +35,7 @@
  * output on every call.
  */
 
-import type { ProjectRole, ProjectStatus } from '$lib/data/types.js';
+import type { ProjectProgress, ProjectRole, ProjectTrack } from '$lib/data/types.js';
 
 // ---------------------------------------------------------------------------
 // Date helpers — single-sourced here; +page.ts imports these.
@@ -112,7 +112,12 @@ export interface YearTick {
 export interface TimelineRail {
 	slug: string;
 	name: string;
-	status: ProjectStatus;
+	track: ProjectTrack;
+	progress: ProjectProgress;
+	archived: boolean;
+	deployed: boolean;
+	/** True when track or progress is a heuristic guess; draws dotted-provisional. */
+	stageProvisional: boolean;
 	tagline: string;
 	role: ProjectRole;
 	/** ISO `YYYY-MM-DD`, or null when undated. */

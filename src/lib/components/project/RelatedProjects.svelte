@@ -31,11 +31,11 @@
 		<h2 class="related__heading">Connections</h2>
 
 		<NeighbourhoodGraph
-			centre={{ name: project.name, status: project.status }}
+			centre={{ name: project.name, stage: project }}
 			neighbours={neighbours.map((n) => ({
 				slug: n.project.slug,
 				name: n.project.name,
-				status: n.project.status,
+				stage: n.project,
 				kind: n.kind,
 				direction: n.direction
 			}))}

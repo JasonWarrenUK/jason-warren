@@ -14,7 +14,6 @@ export const sakura: AuthoredProject = {
 		contributionNote:
 			'Led the ASP.NET Core API on a FAC-30 cohort project: a colour-matching engine (hex/RGB/HSL conversion, nearest-colour name resolution), Entity Framework Core data model with a ColourCollection join table, privacy-filtered collections endpoints scoped to the authenticated user and Swagger-documented REST with ASP.NET Identity auth.'
 	},
-	status: 'finished',
 	track: 'product',
 	progress: 'complete',
 	highlights: [

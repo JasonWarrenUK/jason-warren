@@ -9,7 +9,6 @@ export const topGirls: AuthoredProject = {
 		'A self-contained Top Trumps card game: 32 Gilmore Girls characters, each with six stat scores, all held with their game logic in a single-page Svelte SPA. The play loop pits you against a CPU that selects its own highest stat, with the round winner choosing the next stat, and the gallery mode sorts by any stat. Built with idiomatic Svelte 5 runes ($state, $derived) and no redundant lifecycle flags, it integrates the Atropos 3D card-tilt effect down to its four-div DOM structure requirement. Generated SVG avatars (initials, colour and a decorative detail) mean nothing ever 404s, and real art can be dropped in via character slugs.',
 	kind: 'game',
 	contribution: { role: 'solo' },
-	status: 'finished',
 	track: 'product',
 	progress: 'complete',
 	highlights: [
