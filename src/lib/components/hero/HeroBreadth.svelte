@@ -74,7 +74,7 @@
 	.hero-breadth__strapline {
 		font-size: var(--text-lg);
 		color: var(--color-text-subtle);
-		max-width: 52rem;
+		max-width: var(--measure-lead);
 		margin: 0;
 	}
 

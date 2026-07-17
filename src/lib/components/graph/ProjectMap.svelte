@@ -1972,7 +1972,7 @@
 	}
 
 	.map__note {
-		max-width: 64ch;
+		max-width: var(--measure);
 		margin: 0;
 		font-size: var(--text-xs);
 		color: var(--color-text-muted);

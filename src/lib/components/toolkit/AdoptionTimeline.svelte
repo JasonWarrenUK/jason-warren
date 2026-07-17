@@ -871,7 +871,7 @@
 	}
 
 	.adoption__provisional {
-		max-width: 64ch;
+		max-width: var(--measure);
 		text-align: center;
 		font-size: var(--text-xs);
 		color: var(--color-text-muted);

@@ -121,17 +121,14 @@
 		gap: var(--space-3);
 	}
 
-	.page__title {
-		font-size: var(--text-4xl);
-		font-weight: 700;
-		line-height: 1.1;
-	}
+	/* .page__title is the <h1>; size/weight/line-height come from the global
+	   h1 clamp (weight 600 per visual-direction §2, not the local 700). */
 
 	.page__intro {
 		font-size: var(--text-lg);
 		color: var(--color-text-subtle);
-		line-height: 1.6;
-		max-width: 60ch;
+		line-height: 1.7;
+		max-width: var(--measure-lead);
 		margin: 0;
 	}
 
@@ -163,7 +160,7 @@
 		font-size: var(--text-base);
 		line-height: 1.7;
 		color: var(--color-text-subtle);
-		max-width: 64ch;
+		max-width: var(--measure);
 		margin: 0;
 	}
 

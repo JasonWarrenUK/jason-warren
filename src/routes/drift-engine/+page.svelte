@@ -688,17 +688,13 @@
 		gap: var(--space-3);
 	}
 
-	.page__header h1 {
-		font-size: var(--text-4xl);
-		font-weight: 700;
-		line-height: 1.1;
-	}
+	/* h1 size/weight/line-height come from the global h1 clamp. */
 
 	.page__intro {
 		font-size: var(--text-lg);
 		color: var(--color-text-subtle);
 		line-height: 1.7;
-		max-width: 56rem;
+		max-width: var(--measure-lead);
 		margin: 0;
 	}
 
@@ -884,7 +880,7 @@
 		font-size: var(--text-sm);
 		color: var(--color-text-subtle);
 		line-height: 1.6;
-		max-width: 52rem;
+		max-width: var(--measure);
 		margin: 0;
 		grid-column: 1;
 		grid-row: 2;
@@ -947,7 +943,7 @@
 		font-size: var(--text-base);
 		line-height: 1.7;
 		color: var(--color-text-subtle);
-		max-width: 64ch;
+		max-width: var(--measure);
 		margin: 0;
 	}
 
@@ -1152,7 +1148,7 @@
 
 	.drift__title-row h2 {
 		font-size: var(--text-4xl);
-		font-weight: 700;
+		font-weight: 600;
 		color: var(--color-text);
 		line-height: 1.1;
 		margin: 0;
@@ -1176,7 +1172,7 @@
 		font-size: var(--text-xl);
 		line-height: 1.6;
 		color: var(--color-text-subtle);
-		max-width: 60ch;
+		max-width: var(--measure-lead);
 		margin: 0;
 	}
 
@@ -1397,7 +1393,7 @@
 		font-size: var(--text-sm);
 		line-height: 1.6;
 		color: var(--color-text-subtle);
-		max-width: 64ch;
+		max-width: var(--measure);
 	}
 
 	.callout strong {
@@ -1480,7 +1476,7 @@
 		font-size: var(--text-base);
 		line-height: 1.7;
 		color: var(--color-text-subtle);
-		max-width: 64ch;
+		max-width: var(--measure);
 		margin: 0;
 		padding: var(--space-8) 0 var(--space-4);
 		border-top: 1px solid var(--color-border);

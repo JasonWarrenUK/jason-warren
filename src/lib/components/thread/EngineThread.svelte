@@ -92,7 +92,7 @@
 	.threads__strapline {
 		font-size: var(--text-lg);
 		color: var(--color-text-subtle);
-		max-width: 52rem;
+		max-width: var(--measure-lead);
 		margin: 0;
 	}
 
@@ -214,6 +214,6 @@
 		color: var(--color-text-subtle);
 		line-height: 1.6;
 		margin: 0;
-		max-width: 64ch;
+		max-width: var(--measure);
 	}
 </style>

@@ -66,19 +66,14 @@
 		padding-bottom: var(--space-12);
 	}
 
-	.page__name {
-		font-size: clamp(38px, 5.5vw, 58px);
-		font-weight: 600;
-		line-height: 1.05;
-		color: var(--color-text);
-		letter-spacing: -0.015em;
-	}
+	/* .page__name is the <h1>; size/weight/line-height/tracking come from the
+	   global h1 clamp. Only the bio lead keeps a per-block treatment below. */
 
 	.page__bio {
 		font-size: clamp(16px, 2vw, 19px);
 		color: var(--color-text-subtle);
 		line-height: 1.7;
-		max-width: 56rem;
+		max-width: var(--measure-lead);
 		margin: var(--space-2) 0 0;
 	}
 </style>
