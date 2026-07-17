@@ -238,17 +238,23 @@ const BODY_PAIRS: [string, string, number][] = [
 	['--color-text-muted', '--color-surface-raised', 3],
 	['--color-primary-text', '--color-primary-bg', 4.5],
 	['--color-accent-text', '--color-accent-bg', 4.5],
-	['--color-live-text', '--color-live-bg', 4.5],
-	['--color-wip-text', '--color-wip-bg', 4.5],
-	['--color-finished-text', '--color-finished-bg', 4.5],
-	['--color-prototype-text', '--color-prototype-bg', 4.5],
-	['--color-archived-text', '--color-archived-bg', 4.5],
-	['--color-uncategorised-text', '--color-uncategorised-bg', 4.5],
-	['--color-solo-text', '--color-solo-bg', 4.5],
-	['--color-lead-text', '--color-lead-bg', 4.5],
-	['--color-collaborator-text', '--color-collaborator-bg', 4.5],
 	['--progress-in-progress-text', '--progress-in-progress-bg', 4.5],
 	['--progress-complete-text', '--progress-complete-bg', 4.5]
+];
+
+/**
+ * Graphics-contrast floor for the chromatic inks against the survey sheet
+ * they draw on. WCAG 1.4.11 asks 3:1 for meaningful graphics; Reasonable's
+ * shade arithmetic delivers it (shade 4 on shade-2 paper ≈ diff 2), and this
+ * pins that so an ink or surface retune cannot silently sink a mark.
+ */
+const INK_PAIRS: [string, string, number][] = [
+	['--ink', '--color-surface-sunken', 3],
+	['--ink-oxide', '--color-surface-sunken', 3],
+	['--ink-succession-fwd', '--color-surface-sunken', 3],
+	['--ink-succession-back', '--color-surface-sunken', 3],
+	['--ink-progress-1', '--color-surface-sunken', 3],
+	['--ink-progress-2', '--color-surface-sunken', 3]
 ];
 
 describe('Atlas palette contrast', () => {
@@ -275,6 +281,24 @@ describe('Atlas palette contrast', () => {
 				if (ratio < minRatio) {
 					failures.push(
 						`${theme.label}: ${textToken} (${text}) on ${surfaceToken} (${surface}) = ` +
+							`${ratio.toFixed(2)}:1, needs ${minRatio}:1`
+					);
+				}
+			}
+		}
+		expect(failures, failures.join('\n')).toHaveLength(0);
+	});
+
+	it('holds every chromatic ink to the graphics floor on the survey sheet, in both themes', () => {
+		const failures: string[] = [];
+		for (const theme of themes) {
+			for (const [inkToken, surfaceToken, minRatio] of INK_PAIRS) {
+				const ink = theme.resolve(inkToken);
+				const surface = theme.resolve(surfaceToken);
+				const ratio = wcagContrast(ink, surface);
+				if (ratio < minRatio) {
+					failures.push(
+						`${theme.label}: ${inkToken} (${ink}) on ${surfaceToken} (${surface}) = ` +
 							`${ratio.toFixed(2)}:1, needs ${minRatio}:1`
 					);
 				}

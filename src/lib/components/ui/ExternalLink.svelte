@@ -77,14 +77,17 @@
 		background-color: var(--color-primary-bg);
 	}
 
+	/* The live-site link is the deployed register in link form, tinted from
+	   the complete-progress ink: running somewhere is a property of
+	   finished work (colour-system.md §9). */
 	.external-link--live {
-		color: var(--color-live-text);
-		border-color: var(--color-live);
-		background-color: var(--color-live-bg);
+		color: var(--progress-complete-text);
+		border-color: var(--progress-complete);
+		background-color: var(--progress-complete-bg);
 	}
 
 	.external-link--live:hover {
-		background-color: var(--color-live);
+		background-color: var(--progress-complete);
 		color: white;
 	}
 

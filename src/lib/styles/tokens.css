@@ -67,82 +67,25 @@
 	--tech-mark: var(--ink);
 	--tech-mark-historic: light-dark(var(--color-blue-3), var(--color-blue-4));
 
-	/* --- Primary (chrome family, drawn from the ink) --- */
+	/* --- Primary (chrome family, drawn from the ink). Dark bg derives as a
+	   tint of the darkest hue shade over lamplit ink, same rule as the
+	   progress badge backgrounds. --- */
 	--color-primary: var(--ink);
 	--color-primary-light: light-dark(var(--color-blue-2), var(--color-blue-5));
-	--color-primary-bg: light-dark(var(--color-blue-1), #1c2333);
+	--color-primary-bg: light-dark(
+		var(--color-blue-1),
+		color-mix(in oklab, var(--color-blue-6) 35%, #1a1b1e)
+	);
 	--color-primary-text: light-dark(var(--color-blue-6), var(--color-blue-2));
 
 	/* --- Accent (oxide — the colour of survey marks) --- */
 	--color-accent: var(--ink-oxide);
 	--color-accent-light: light-dark(var(--color-cinnamon-2), var(--color-cinnamon-5));
-	--color-accent-bg: light-dark(var(--color-cinnamon-1), #2a1c10);
+	--color-accent-bg: light-dark(
+		var(--color-cinnamon-1),
+		color-mix(in oklab, var(--color-cinnamon-6) 35%, #1a1b1e)
+	);
 	--color-accent-text: light-dark(var(--color-cinnamon-6), var(--color-cinnamon-2));
-
-	/* --- Status colours ---
-	   Dark lifts the base dot one shade brighter: the light-tuned -4 shades
-	   read too dark on the dark surface (emerald-4 looked near-black). The
-	   dark -bg values are hand-set near-black tints (RC has nothing that
-	   dark); they get derived properly when the colour-system cull lands. */
-	--color-live: light-dark(var(--color-emerald-4), var(--color-emerald-3));
-	--color-live-bg: light-dark(var(--color-emerald-1), #16281e);
-	--color-live-text: light-dark(var(--color-emerald-6), var(--color-emerald-2));
-
-	--color-wip: light-dark(var(--color-amber-4), var(--color-amber-3));
-	--color-wip-bg: light-dark(var(--color-amber-1), #2a2010);
-	--color-wip-text: light-dark(var(--color-amber-6), var(--color-amber-2));
-
-	--color-finished: light-dark(var(--color-blue-4), var(--color-blue-3));
-	--color-finished-bg: light-dark(var(--color-blue-1), #151e33);
-	--color-finished-text: light-dark(var(--color-blue-6), var(--color-blue-2));
-
-	--color-archived: light-dark(var(--color-gray-4), var(--color-gray-3));
-	--color-archived-bg: light-dark(var(--color-gray-1), #1e1e1e);
-	--color-archived-text: light-dark(var(--color-gray-6), var(--color-gray-3));
-
-	--color-prototype: light-dark(var(--color-violet-4), var(--color-violet-3));
-	--color-prototype-bg: light-dark(var(--color-violet-1), #221a33);
-	--color-prototype-text: light-dark(var(--color-violet-6), var(--color-violet-2));
-
-	/* Neutral grey for auto-listed repos not yet editorially reviewed. */
-	--color-uncategorised: var(--color-gray-3);
-	--color-uncategorised-bg: light-dark(var(--color-gray-1), #1a1a1a);
-	--color-uncategorised-text: light-dark(var(--color-gray-5), var(--color-gray-3));
-
-	/* --- Role colours --- */
-	--color-solo: var(--color-azure-4);
-	--color-solo-bg: light-dark(var(--color-azure-1), #1c2333);
-	--color-solo-text: light-dark(var(--color-azure-6), var(--color-azure-2));
-
-	--color-lead: var(--color-violet-4);
-	--color-lead-bg: light-dark(var(--color-violet-1), #221a33);
-	--color-lead-text: light-dark(var(--color-violet-6), var(--color-violet-2));
-
-	--color-collaborator: var(--color-cyan-4);
-	--color-collaborator-bg: light-dark(var(--color-cyan-1), #142833);
-	--color-collaborator-text: light-dark(var(--color-cyan-6), var(--color-cyan-2));
-
-	/* --- Map edge categories (decorative; distinct hues, kept clear of the
-	   status and role colours so an edge never reads as a status). Dark
-	   lifts one shade brighter so thin lines stay legible. --- */
-	--color-edge-runtime: light-dark(var(--color-orange-4), var(--color-orange-3));
-	--color-edge-framework: light-dark(var(--color-purple-4), var(--color-purple-3));
-	--color-edge-data: light-dark(var(--color-teal-4), var(--color-teal-3));
-	--color-edge-ai: light-dark(var(--color-pink-4), var(--color-pink-3));
-	--color-edge-concept: light-dark(var(--color-chartreuse-4), var(--color-chartreuse-3));
-	--color-edge-tool: light-dark(var(--color-sky-4), var(--color-sky-3));
-
-	/* --- Map theme edges (one token per theme; unclaimed palettes only) ---
-	   interactive-fiction was cinnamon, now claimed by --color-accent (the
-	   Atlas survey-mark colour); reassigned to red so no edge shares a hue
-	   with the accent. --- */
-	--color-edge-theme-interactive-fiction: light-dark(var(--color-red-4), var(--color-red-3));
-	--color-edge-theme-procedural-generation: light-dark(var(--color-cyan-4), var(--color-cyan-3));
-	--color-edge-theme-human-history: light-dark(var(--color-yellow-4), var(--color-yellow-3));
-	--color-edge-theme-graph-native: light-dark(var(--color-green-4), var(--color-green-3));
-	--color-edge-theme-ai-language-tooling: light-dark(var(--color-indigo-4), var(--color-indigo-3));
-	--color-edge-theme-terminal-native: light-dark(var(--color-rose-4), var(--color-rose-3));
-	--color-edge-theme-human-centred: light-dark(var(--color-magenta-4), var(--color-magenta-3));
 
 	/* --- Tech lineage edges (registers over the succession inks) --- */
 	--color-edge-lineage-leads-to: var(--ink-succession-fwd);
