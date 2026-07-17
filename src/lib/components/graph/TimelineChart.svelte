@@ -4,13 +4,7 @@
 	import { page } from '$app/stores';
 	import type { ProjectRole } from '$lib/data/types.js';
 	import { formatMonthYear } from '$lib/format-date.js';
-	import {
-		progressColour,
-		progressLabel,
-		progressOrder,
-		trackLabel,
-		edgeTypeColour
-	} from './graph-style.js';
+	import { progressColour, progressLabel, progressOrder, trackLabel } from './graph-style.js';
 	import { writeParam } from '$lib/url-write.js';
 	import { validatePin, nextPinValue, projectHref } from '$lib/selection.js';
 	import SelectionModal from '$lib/components/ui/SelectionModal.svelte';
@@ -291,21 +285,21 @@
 			{/each}
 		</g>
 
-		<!-- Lineage connectors: a quadratic bow from each extracted library's
-		     rail back to the app it was extracted from, anchored at the
-		     library's birth (branchY). Rendered before the rails so every
-		     connector sits underneath the rings/labels it joins. Dim-only on
-		     hover/pin, mirroring AdoptionTimeline's connector treatment —
-		     the active edge holds its base opacity, everything else fades. -->
+		<!-- Extraction ribbons: a filled oxide band between each pair's
+		     adjacent rails, spanning from the library's inception to
+		     whichever terminal comes first — the period both projects ran
+		     together after the extraction. Rendered before the rails so
+		     every ribbon sits underneath the rings/labels it joins.
+		     Dim-only on hover/pin: the touching ribbon holds its base
+		     opacity, everything else fades. -->
 		<g class="timeline__lineage" aria-hidden="true">
 			{#each layout.lineagePaths as edge (`${edge.source}-${edge.target}`)}
 				<path
-					class="timeline__connector"
-					class:timeline__connector--dim={effectiveSlug !== null &&
+					class="timeline__ribbon"
+					class:timeline__ribbon--dim={effectiveSlug !== null &&
 						edge.source !== effectiveSlug &&
 						edge.target !== effectiveSlug}
 					d={edge.path}
-					style="stroke: {edgeTypeColour('extraction')}"
 				/>
 			{/each}
 		</g>
@@ -578,9 +572,8 @@
 		{/if}
 		{#if hasLineage}
 			<span class="timeline__legend-item">
-				<span class="timeline__legend-edge" style="border-color: {edgeTypeColour('extraction')}"
-				></span>
-				Extraction lineage
+				<span class="timeline__legend-ribbon" aria-hidden="true"></span>
+				Extraction lineage (shared span)
 			</span>
 		{/if}
 		{#if hasDensity}
@@ -642,23 +635,22 @@
 		pointer-events: none;
 	}
 
-	/* Lineage connectors: quadratic-bow paths from an app rail back to the
-	   library it extracted, at the extraction moment. Held at the rail's
-	   quiet 0.4 so a rail and the branch coming off it read as one line.
-	   Dim-only — mirrors AdoptionTimeline's connector treatment, no hover
-	   brighten. */
-	.timeline__connector {
-		fill: none;
-		stroke-width: 1.5;
-		stroke-opacity: 0.4;
-		transition: stroke-opacity var(--transition-fast);
+	/* Extraction ribbons: translucent oxide bands between adjacent lineage
+	   rails — the sankey read of a library running alongside the app it
+	   came from. Quiet enough that the rails stay the subject. Dim-only,
+	   no hover brighten. */
+	.timeline__ribbon {
+		fill: var(--ink-oxide);
+		fill-opacity: 0.14;
+		stroke: none;
+		pointer-events: none;
+		transition: fill-opacity var(--transition-fast);
 	}
 
-	/* Dimmed when another rail is highlighted and this edge touches neither
-	   endpoint. Mirrors the rail dim maths (0.4 is the connector's base
-	   stroke-opacity). */
-	.timeline__connector--dim {
-		stroke-opacity: calc(0.4 * var(--dim-node));
+	/* Dimmed when another rail is highlighted and this ribbon touches
+	   neither endpoint. Mirrors the edge dim maths. */
+	.timeline__ribbon--dim {
+		fill-opacity: calc(0.14 * var(--dim-node));
 	}
 
 	/* Graticule: horizontal year lines, a light dotted rule the way a plotted
@@ -930,11 +922,13 @@
 		stroke-opacity: 0.4;
 	}
 
-	.timeline__legend-edge {
+	/* Miniature of the extraction ribbon: a small translucent oxide band. */
+	.timeline__legend-ribbon {
 		display: inline-block;
 		width: 1.25rem;
-		height: 0;
-		border-top: 2px solid;
+		height: 0.75rem;
+		background: var(--ink-oxide);
+		opacity: 0.25;
 		flex-shrink: 0;
 	}
 
@@ -1013,7 +1007,7 @@
 		.timeline__label,
 		.timeline__rail,
 		.timeline__rail-fade,
-		.timeline__connector {
+		.timeline__ribbon {
 			transition: none;
 		}
 	}

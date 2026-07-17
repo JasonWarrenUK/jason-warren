@@ -350,6 +350,45 @@ describe('computeTimelineLayout — lineage-adjacent packing', () => {
 	});
 });
 
+describe('computeTimelineLayout — extraction ribbons', () => {
+	it('spans from the library inception to the earlier-ending terminal, one column wide', () => {
+		const rails: TimelineRail[] = [
+			rail('app', '2025-01-01', '2026-05-01'),
+			rail('library', '2025-09-01', '2026-02-01') // born mid-app, ends before it
+		];
+		const lineage: TimelineLineage[] = [{ source: 'library', target: 'app', note: 'why' }];
+		const result = computeTimelineLayout(rails, lineage, NOW, GEO);
+		const byLabel = new Map(result.placed.map((p) => [p.slug, p]));
+		const library = byLabel.get('library')!;
+		const app = byLabel.get('app')!;
+
+		expect(result.lineagePaths).toHaveLength(1);
+		const ribbon = result.lineagePaths[0];
+		// Bottom of the span: the library's inception (its birth).
+		expect(ribbon.yBottom).toBe(library.yBottom);
+		// Top of the span: the earlier-ending terminal — here the library's,
+		// since it stopped before the app did (earlier date = larger y).
+		expect(ribbon.yTop).toBe(Math.max(library.yTop, app.yTop));
+		expect(ribbon.yTop).toBe(library.yTop);
+		// One column wide: the packer put the pair adjacent, so the ribbon's
+		// horizontal extent is exactly the column pitch.
+		expect(Math.abs(library.x - app.x)).toBe(GEO.columnWidth);
+		// The note carries through for the modal.
+		expect(ribbon.note).toBe('why');
+	});
+
+	it('drops a degenerate pair whose shared span is empty', () => {
+		// The app ended before the library was born — nothing ran together.
+		const rails: TimelineRail[] = [
+			rail('app', '2023-01-01', '2023-06-01'),
+			rail('library', '2025-01-01', '2026-01-01')
+		];
+		const lineage: TimelineLineage[] = [{ source: 'library', target: 'app', note: null }];
+		const result = computeTimelineLayout(rails, lineage, NOW, GEO);
+		expect(result.lineagePaths).toHaveLength(0);
+	});
+});
+
 describe('computeTimelineLayout — zero-length rails', () => {
 	it('gets durationDays:0 and a drawn height at least minRailHeight, and still packs without overlap', () => {
 		const rails: TimelineRail[] = [

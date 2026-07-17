@@ -164,10 +164,12 @@ export interface LineagePath {
 	source: string;
 	target: string;
 	note: string | null;
-	/** Complete SVG 'd' attribute; the component renders it verbatim. */
+	/** Complete SVG 'd' attribute for the ribbon; the component renders it verbatim. */
 	path: string;
-	/** y of the extraction moment — the library's yTop. */
-	branchY: number;
+	/** Top of the ribbon span — the earlier-ending terminal of the pair. */
+	yTop: number;
+	/** Bottom of the ribbon span — the library's inception (its birth). */
+	yBottom: number;
 }
 
 export interface DensityBand {
@@ -424,12 +426,15 @@ export function computeDensity(placed: PlacedRail[]): DensityBand[] {
 // ---------------------------------------------------------------------------
 
 /**
- * Builds the extraction-lineage connectors: a quadratic bow from the app
- * rail (still running at the extraction moment) to the library rail's node,
- * anchored at `branchY = yTop(library)` — the library's birth, i.e. the
- * extraction moment. Edges whose source or target isn't among the placed
- * (dated) rails are silently dropped (mirrors `adoption-layout.ts`'s
- * ghost-edge handling).
+ * Builds the extraction-lineage ribbons: a filled band between the pair's
+ * adjacent rails (the packer guarantees adjacency), spanning from the
+ * library's inception (its birth — the extraction moment) up to whichever
+ * of the two terminal nodes comes first in time. The band reads as the
+ * period both projects ran together after the extraction. Edges whose
+ * source or target isn't among the placed (dated) rails are silently
+ * dropped (mirrors `adoption-layout.ts`'s ghost-edge handling), as is a
+ * degenerate pair whose shared span is empty (the app ended before the
+ * library was born — data that shouldn't exist, but must not crash).
  */
 function buildLineagePaths(
 	lineage: TimelineLineage[],
@@ -441,14 +446,29 @@ function buildLineagePaths(
 		const app = placedBySlug.get(edge.target);
 		if (!library || !app || library.undated || app.undated) continue;
 
-		const branchY = library.yTop;
-		// Clamp the departure point into the app rail's own span so the branch
-		// never appears to leave the rail before it existed or after it ended.
-		const departY = Math.min(Math.max(branchY, app.yTop), app.yBottom);
-		const midX = (app.x + library.x) / 2;
-		const path = `M ${app.x} ${departY} Q ${midX} ${branchY} ${library.x} ${branchY}`;
+		// yBottom = the library's inception; yTop = the earlier-ending
+		// terminal (earlier date = larger y, so the LOWER terminal wins...
+		// on this axis "comes first" means max of the two yTops).
+		const spanBottom = library.yBottom;
+		const spanTop = Math.max(library.yTop, app.yTop);
+		if (spanTop >= spanBottom) continue; // no shared span to draw
 
-		paths.push({ source: edge.source, target: edge.target, note: edge.note, path, branchY });
+		const path = [
+			`M ${app.x} ${spanBottom}`,
+			`L ${library.x} ${spanBottom}`,
+			`L ${library.x} ${spanTop}`,
+			`L ${app.x} ${spanTop}`,
+			'Z'
+		].join(' ');
+
+		paths.push({
+			source: edge.source,
+			target: edge.target,
+			note: edge.note,
+			path,
+			yTop: spanTop,
+			yBottom: spanBottom
+		});
 	}
 	return paths;
 }
