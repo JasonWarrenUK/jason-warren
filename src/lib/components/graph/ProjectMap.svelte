@@ -838,8 +838,43 @@
 			livePositions = next;
 		}
 
+		/**
+		 * Rescales the settled `simNodes` in place to fill the canvas with uniform
+		 * scaling, inset by the largest node radius so no rim clips the frame.
+		 *
+		 * The live sim only carries `forceCenter` + a weak axis pull, which recentres
+		 * the mean but does not preserve spread: disconnected components drift and the
+		 * settled cloud can occupy a fraction of the viewBox (e.g. stack mode collapsing
+		 * into the top half). Reframing once on settle restores the build-time framing
+		 * that `normaliseToCanvas` produced, without fighting the physics mid-run.
+		 */
+		function reframe(): void {
+			if (simNodes.length === 0) return;
+			const xs = simNodes.map((n) => n.x ?? 0);
+			const ys = simNodes.map((n) => n.y ?? 0);
+			const minX = Math.min(...xs);
+			const maxX = Math.max(...xs);
+			const minY = Math.min(...ys);
+			const maxY = Math.max(...ys);
+			const spanX = maxX - minX || 1;
+			const spanY = maxY - minY || 1;
+			const maxRadius = Math.max(0, ...simNodes.map((n) => n.radius ?? 0));
+			const pad = size * 0.09 + maxRadius;
+			const usable = size - 2 * pad;
+			if (usable <= 0) return;
+			const scale = Math.min(usable / spanX, usable / spanY);
+			const offsetX = pad + (usable - spanX * scale) / 2;
+			const offsetY = pad + (usable - spanY * scale) / 2;
+			for (const n of simNodes) {
+				n.x = offsetX + ((n.x ?? 0) - minX) * scale;
+				n.y = offsetY + ((n.y ?? 0) - minY) * scale;
+			}
+		}
+
 		function loop(): void {
 			if (sim.alpha() < sim.alphaMin()) {
+				reframe();
+				flush();
 				routesInked = true;
 				return;
 			}
@@ -850,6 +885,7 @@
 
 		if (prefersReducedMotion) {
 			for (let i = 0; i < 320; i++) sim.tick();
+			reframe();
 			flush();
 			routesInked = true;
 		} else {
@@ -880,6 +916,7 @@
 							: buildProjectSimNodes(curMode === 'stack' ? stackNodes : relationshipsNodes);
 					sim = buildSim(curMode, simNodes, curEdges, curShared, curTheme);
 					for (let i = 0; i < 320; i++) sim.tick();
+					reframe();
 					flush();
 					return;
 				}
