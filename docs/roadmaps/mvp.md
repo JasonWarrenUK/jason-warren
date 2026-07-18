@@ -47,7 +47,7 @@ The site is live and substantially built: full routes, the graph/timeline/map/to
 - [ ] **3DE.2** — Responsive audit: map / timeline / grids on small viewports _(blocked — depends on 3DE.3, 3DE.4)_
 - [ ] **3DE.3** — Motion pass: meaningful transitions, respect prefers-reduced-motion _(depends on 3DE.1)_
 - [ ] **3DE.4** — Refine graph aesthetics (edge styling, clustering legibility, constellation view) _(blocked — depends on 3DE.5, 3DE.6)_
-- [ ] **3DE.5** — Consistency sweep of semantic colour aliases vs Reasonable Colors usage _(depends on 3DE.0)_
+- [x] **3DE.5** — Consistency sweep of semantic colour aliases vs Reasonable Colors usage _(depends on 3DE.0)_
 - [ ] **3DE.6** — Drastically improve the /map graph layout for legibility _(depends on 3DE.0)_
 
 ---
@@ -258,7 +258,7 @@ graph LR
 	5DR.10 --> M6
 	5DR.8 --> M6
 	5DR.9 --> M6
-	class 3DE.3,3DE.5,3DE.6,4QU.8,5DR.19,5DR.20,5DR.21,5DR.22 todo
+	class 3DE.3,3DE.6,4QU.8,5DR.19,5DR.20,5DR.21,5DR.22 todo
 	class 3DE.2,3DE.4,4QU.1,4QU.3,4QU.4,4QU.5,4QU.7,5DR.10,5DR.23,5DR.8,5DR.9 blocked
-	class 1CO.1,1CO.10,1CO.2,1CO.3,1CO.4,1CO.5,1CO.6,1CO.7,1CO.8,1CO.9,2FE.1,2FE.2,2FE.3,2FE.4,2FE.5,2FE.6,2FE.7,2FE.8,3DE.0,3DE.1,5DR.0,5DR.1,5DR.11,5DR.12,5DR.13,5DR.14,5DR.15,5DR.16,5DR.17,5DR.18,5DR.2,5DR.3,5DR.4,5DR.5,5DR.6,5DR.7 done
+	class 1CO.1,1CO.10,1CO.2,1CO.3,1CO.4,1CO.5,1CO.6,1CO.7,1CO.8,1CO.9,2FE.1,2FE.2,2FE.3,2FE.4,2FE.5,2FE.6,2FE.7,2FE.8,3DE.0,3DE.1,3DE.5,5DR.0,5DR.1,5DR.11,5DR.12,5DR.13,5DR.14,5DR.15,5DR.16,5DR.17,5DR.18,5DR.2,5DR.3,5DR.4,5DR.5,5DR.6,5DR.7 done
 ```

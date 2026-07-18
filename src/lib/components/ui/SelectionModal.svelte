@@ -143,7 +143,7 @@
 	}
 
 	.modal::backdrop {
-		background: rgb(0 0 0 / 0.45);
+		background: var(--color-scrim);
 	}
 
 	/*
