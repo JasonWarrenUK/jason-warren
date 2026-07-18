@@ -199,6 +199,33 @@ export function getSharedTechEdges(options: SharedTechOptions = {}): SharedTechE
 	return edges;
 }
 
+/**
+ * Assigns each project to its dominant tech category: the `EdgeCategory` in
+ * which it carries the most tags. Ties break by `EDGE_CATEGORIES` order so the
+ * result is deterministic. Projects with no categorised tags are omitted.
+ *
+ * Drives the stack-mode cluster anchors: projects that lean on the same kind of
+ * technology (runtime, framework, data, ...) settle into the same region, the
+ * stack-mode analogue of the relationships-mode theme anchors.
+ */
+export function getStackGroups(): Map<ProjectSlug, EdgeCategory> {
+	const groups = new Map<ProjectSlug, EdgeCategory>();
+	for (const project of projects) {
+		let best: EdgeCategory | null = null;
+		let bestCount = 0;
+		for (const category of EDGE_CATEGORIES) {
+			const count = project.tags.filter((t) => t.kind === category).length;
+			// Strict `>` keeps the first category in EDGE_CATEGORIES order on a tie.
+			if (count > bestCount) {
+				bestCount = count;
+				best = category;
+			}
+		}
+		if (best) groups.set(project.slug, best);
+	}
+	return groups;
+}
+
 // ---------------------------------------------------------------------------
 // Theme/collection edges
 // ---------------------------------------------------------------------------
@@ -533,6 +560,13 @@ export const FORCE_TUNING = {
 	/** Fixed tick count per candidate (build-time and relayout lottery). */
 	ticks: 320
 } as const;
+
+/**
+ * Per-node pull toward its theme-cluster anchor in relationships mode. A gentle
+ * nudge (slightly above the base axis pull) so themed regions separate without
+ * the layout looking pinned to a fixed diagram.
+ */
+export const ANCHOR_STRENGTH = 0.08;
 
 /**
  * Thin export so tests can assert crossing counts without duplicating the
@@ -951,10 +985,22 @@ export function createForceSimulation(
 	visibleSharedEdges: SharedTechEdge[],
 	size = 1000,
 	mode: MapMode = 'relationships',
-	visibleThemeEdges: SharedThemeEdge[] = []
+	visibleThemeEdges: SharedThemeEdge[] = [],
+	anchors?: Map<ProjectSlug, Point>
 ): Simulation<LiveSimNode, never> {
 	const centre = size / 2;
 	const links = buildSimLinks(visibleEdges, visibleSharedEdges, mode, visibleThemeEdges);
+
+	// Gentle cluster anchoring: when a per-node anchor map is supplied (relationships
+	// mode), each node feels a weak pull toward its theme region on top of the base
+	// centre pull. Nodes without an anchor fall back to centre so lone/multi-theme
+	// nodes are not yanked anywhere. Strength is deliberately low so the picture stays
+	// force-directed and organic rather than snapping to a fixed diagram.
+	const anchorX = (node: LiveSimNode): number => anchors?.get(node.slug)?.x ?? centre;
+	const anchorY = (node: LiveSimNode): number => anchors?.get(node.slug)?.y ?? centre;
+	const xStrength = (node: LiveSimNode): number =>
+		anchors?.has(node.slug) ? ANCHOR_STRENGTH : FORCE_TUNING.axisStrength;
+	const yStrength = xStrength;
 
 	return forceSimulation<LiveSimNode>(initialNodes)
 		.force(
@@ -970,8 +1016,8 @@ export function createForceSimulation(
 			forceCollide<LiveSimNode>((node) => node.radius + FORCE_TUNING.collidePadding).strength(1)
 		)
 		.force('centre', forceCenter<LiveSimNode>(centre, centre))
-		.force('x', forceX<LiveSimNode>(centre).strength(FORCE_TUNING.axisStrength))
-		.force('y', forceY<LiveSimNode>(centre).strength(FORCE_TUNING.axisStrength))
+		.force('x', forceX<LiveSimNode>(anchorX).strength(xStrength))
+		.force('y', forceY<LiveSimNode>(anchorY).strength(yStrength))
 		.alphaDecay(0.02);
 }
 

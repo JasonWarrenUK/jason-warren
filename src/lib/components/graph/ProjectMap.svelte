@@ -7,6 +7,7 @@
 	import { page } from '$app/stores';
 	import {
 		EDGE_CATEGORIES,
+		type EdgeCategory,
 		type LineageKind,
 		type ProjectKind,
 		type ProjectProgress,
@@ -95,6 +96,11 @@
 		slugs: string[];
 	}
 
+	interface StackGroup {
+		slug: string;
+		category: EdgeCategory;
+	}
+
 	interface Props {
 		relationshipsNodes: MapNode[];
 		stackNodes: MapNode[];
@@ -104,6 +110,7 @@
 		themeEdges: SharedThemeEdge[];
 		techCoEdges: TechCoEdge[];
 		territories: Territory[];
+		stackGroups: StackGroup[];
 		size: number;
 	}
 
@@ -116,6 +123,7 @@
 		themeEdges,
 		techCoEdges,
 		territories,
+		stackGroups,
 		size
 	}: Props = $props();
 
@@ -318,6 +326,74 @@
 		};
 		return `M${wing(-0.42)} L${tipX} ${tipY} L${wing(0.42)}`;
 	}
+
+	// ---------------------------------------------------------------------------
+	// Theme-cluster anchors: gentle per-node pull toward a themed region so the
+	// relationships graph reads as distinct neighbourhoods rather than one blob.
+	// ---------------------------------------------------------------------------
+
+	// Each theme gets a deterministic anchor on a ring around the centre, in the
+	// authored narrative order (territories preserves themes' order). A project's
+	// anchor is the mean of the anchors of every theme it belongs to; projects in
+	// no theme get no anchor (they fall back to the centre pull inside the sim).
+	const themeAnchors = $derived.by(() => {
+		const centre = size / 2;
+		const ringRadius = size * 0.28;
+		const map = new Map<string, { x: number; y: number }>();
+		const count = territories.length;
+		territories.forEach((territory, index) => {
+			// Start at the top (-90°) and go clockwise through the narrative arc.
+			const angle = (2 * Math.PI * index) / count - Math.PI / 2;
+			map.set(territory.id, {
+				x: centre + ringRadius * Math.cos(angle),
+				y: centre + ringRadius * Math.sin(angle)
+			});
+		});
+		return map;
+	});
+
+	const projectAnchors = $derived.by(() => {
+		const anchors = new Map<string, { x: number; y: number }>();
+		const acc = new Map<string, { x: number; y: number; n: number }>();
+		for (const territory of territories) {
+			const anchor = themeAnchors.get(territory.id);
+			if (!anchor) continue;
+			for (const slug of territory.slugs) {
+				const prev = acc.get(slug) ?? { x: 0, y: 0, n: 0 };
+				acc.set(slug, { x: prev.x + anchor.x, y: prev.y + anchor.y, n: prev.n + 1 });
+			}
+		}
+		for (const [slug, { x, y, n }] of acc) {
+			anchors.set(slug, { x: x / n, y: y / n });
+		}
+		return anchors;
+	});
+
+	// Stack-mode anchors: one ring slot per tech category, each project pulled to
+	// its dominant category's slot. The stack analogue of theme anchoring above.
+	const categoryAnchors = $derived.by(() => {
+		const centre = size / 2;
+		const ringRadius = size * 0.28;
+		const map = new Map<EdgeCategory, { x: number; y: number }>();
+		const count = EDGE_CATEGORIES.length;
+		EDGE_CATEGORIES.forEach((category, index) => {
+			const angle = (2 * Math.PI * index) / count - Math.PI / 2;
+			map.set(category, {
+				x: centre + ringRadius * Math.cos(angle),
+				y: centre + ringRadius * Math.sin(angle)
+			});
+		});
+		return map;
+	});
+
+	const stackAnchors = $derived.by(() => {
+		const anchors = new Map<string, { x: number; y: number }>();
+		for (const { slug, category } of stackGroups) {
+			const anchor = categoryAnchors.get(category);
+			if (anchor) anchors.set(slug, anchor);
+		}
+		return anchors;
+	});
 
 	// ---------------------------------------------------------------------------
 	// Territory hulls: convex hull per theme cluster, relationships mode only.
@@ -814,7 +890,9 @@
 			if (mode === 'technologies') {
 				return createForceSimulationFromLinks(sNodes, techSimLinks, size);
 			}
-			return createForceSimulation(sNodes, curEdges, curShared, size, mode, curTheme);
+			// Relationships anchors by theme, stack anchors by dominant tech category.
+			const anchors = mode === 'stack' ? stackAnchors : projectAnchors;
+			return createForceSimulation(sNodes, curEdges, curShared, size, mode, curTheme, anchors);
 		}
 
 		let simNodes: LiveSimNode[] =

@@ -13,6 +13,7 @@ import {
 	getNeighbours,
 	getTechIndex,
 	getSharedTechEdges,
+	getStackGroups,
 	computeForceLayout,
 	computeRelayoutTargets,
 	countCrossings,
@@ -20,6 +21,7 @@ import {
 	selectLabelledSlugs,
 	MAP_LABEL_COUNT
 } from './graph.js';
+import { EDGE_CATEGORIES } from './types.js';
 import type { LiveSimNode } from './graph.js';
 import type { Project, ProjectSlug } from './types.js';
 
@@ -184,6 +186,44 @@ describe('getSharedTechEdges', () => {
 
 	it('is deterministic', () => {
 		expect(getSharedTechEdges()).toEqual(getSharedTechEdges());
+	});
+});
+
+describe('getStackGroups', () => {
+	const groups = getStackGroups();
+
+	it('assigns every group to a real edge category', () => {
+		for (const category of groups.values()) {
+			expect(EDGE_CATEGORIES).toContain(category);
+		}
+	});
+
+	it('only maps real project slugs', () => {
+		for (const slug of groups.keys()) {
+			expect(slugs.has(slug)).toBe(true);
+		}
+	});
+
+	it('assigns each project its most-tagged category, EDGE_CATEGORIES order breaking ties', () => {
+		for (const project of projects) {
+			const counts = EDGE_CATEGORIES.map((category) => ({
+				category,
+				count: project.tags.filter((t) => t.kind === category).length
+			}));
+			const maxCount = Math.max(...counts.map((c) => c.count));
+			if (maxCount === 0) {
+				// No categorised tags: the project is omitted entirely.
+				expect(groups.has(project.slug)).toBe(false);
+				continue;
+			}
+			// Expected winner is the first category (in EDGE_CATEGORIES order) at the max.
+			const expected = counts.find((c) => c.count === maxCount)?.category;
+			expect(groups.get(project.slug)).toBe(expected);
+		}
+	});
+
+	it('is deterministic', () => {
+		expect(getStackGroups()).toEqual(getStackGroups());
 	});
 });
 

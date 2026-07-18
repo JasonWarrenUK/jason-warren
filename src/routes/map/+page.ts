@@ -5,7 +5,8 @@ import {
 	computeForceLayout,
 	computeStackLayout,
 	selectLabelledSlugs,
-	getHubSlugs
+	getHubSlugs,
+	getStackGroups
 } from '$lib/data/graph.js';
 import { getTechNodes, getTechCoEdges, computeTechLayout } from '$lib/data/tech-graph.js';
 import { themes } from '$lib/data/themes.js';
@@ -73,6 +74,10 @@ export function load() {
 		slugs: theme.slugs
 	}));
 
+	// Stack-mode cluster grouping: each project's dominant tech category, so the
+	// stack graph can anchor by shared technology the way relationships anchors by theme.
+	const stackGroups = Array.from(getStackGroups(), ([slug, category]) => ({ slug, category }));
+
 	return {
 		relationshipsNodes: toNodes(relationshipsLayout),
 		stackNodes: toNodes(stackLayout),
@@ -82,6 +87,7 @@ export function load() {
 		themeEdges,
 		techCoEdges,
 		territories,
+		stackGroups,
 		size: relationshipsLayout.width
 	};
 }
