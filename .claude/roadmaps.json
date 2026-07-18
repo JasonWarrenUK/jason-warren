@@ -162,7 +162,7 @@
 					{
 						"id": "3DE.1",
 						"description": "Typography pass (scale, rhythm, measure) across all routes",
-						"status": "todo",
+						"status": "done",
 						"dependsOn": [
 							"3DE.0"
 						]
@@ -179,7 +179,7 @@
 					{
 						"id": "3DE.3",
 						"description": "Motion pass: meaningful transitions, respect prefers-reduced-motion",
-						"status": "blocked",
+						"status": "todo",
 						"dependsOn": [
 							"3DE.1"
 						]

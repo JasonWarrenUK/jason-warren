@@ -60,17 +60,13 @@
 		gap: var(--space-3);
 	}
 
-	.page__header h1 {
-		font-size: var(--text-4xl);
-		font-weight: 700;
-		line-height: 1.1;
-	}
+	/* h1 size/weight/line-height come from the global h1 clamp. */
 
 	.page__intro {
 		font-size: var(--text-lg);
 		color: var(--color-text-subtle);
 		line-height: 1.7;
-		max-width: 56rem;
+		max-width: var(--measure-lead);
 		margin: 0;
 	}
 
@@ -95,8 +91,8 @@
 	.page__section-header p {
 		font-size: var(--text-base);
 		color: var(--color-text-subtle);
-		line-height: 1.6;
-		max-width: 52rem;
+		line-height: 1.65;
+		max-width: var(--measure);
 		margin: 0;
 	}
 </style>

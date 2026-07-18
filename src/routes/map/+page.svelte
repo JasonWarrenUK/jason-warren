@@ -50,17 +50,13 @@
 		gap: var(--space-3);
 	}
 
-	.page__header h1 {
-		font-size: clamp(30px, 4.5vw, 42px);
-		font-weight: 600;
-		line-height: 1.05;
-	}
+	/* h1 size/weight/line-height come from the global h1 clamp. */
 
 	.page__intro {
 		font-size: var(--text-lg);
 		color: var(--color-text-subtle);
 		line-height: 1.7;
-		max-width: 56rem;
+		max-width: var(--measure-lead);
 		margin: 0;
 	}
 </style>

@@ -184,11 +184,8 @@
 		flex-wrap: wrap;
 	}
 
-	.page__title {
-		font-size: clamp(34px, 4.5vw, 44px);
-		font-weight: 600;
-		line-height: 1.05;
-	}
+	/* .page__title is the <h1>; size/weight/line-height come from the global
+	   h1 clamp. */
 
 	.page__badges {
 		display: flex;
@@ -201,7 +198,7 @@
 		color: var(--color-text-subtle);
 		line-height: 1.5;
 		margin: 0;
-		max-width: 56rem;
+		max-width: var(--measure-lead);
 	}
 
 	.page__links {
@@ -274,6 +271,6 @@
 		font-size: var(--text-base);
 		line-height: 1.7;
 		color: var(--color-text-subtle);
-		max-width: 64ch;
+		max-width: var(--measure);
 	}
 </style>
