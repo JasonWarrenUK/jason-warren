@@ -88,7 +88,7 @@
 
 	.ecard:hover {
 		border-color: var(--color-border-strong);
-		box-shadow: 0 4px 14px -4px rgba(60, 45, 20, 0.14);
+		box-shadow: var(--shadow-warm-sm);
 	}
 
 	/* Collapsed face: the whole tile is one expand control. */

@@ -161,6 +161,16 @@
 		var(--color-cinnamon-4)
 	);
 
+	/* Foreground for text sitting on a --color-primary-text ground (the
+	   skip-link pill). That ground is dark in both themes, so the on-ink
+	   stays plain white rather than flipping with the theme. */
+	--color-on-primary: #fff;
+
+	/* --- Overlays ---
+	   Scrim behind modals: a transparent black wash over arbitrary page
+	   content, so it does not derive from the surface palette. */
+	--color-scrim: rgb(0 0 0 / 0.45);
+
 	/* --- Layout --- */
 	--layout-max-width: 72rem;
 	--layout-padding: clamp(1rem, 5vw, 3rem);
@@ -236,6 +246,9 @@
 	--shadow-lg:
 		0 10px 15px -3px light-dark(rgb(0 0 0 / 0.07), rgb(0 0 0 / 0.4)),
 		0 4px 6px -4px light-dark(rgb(0 0 0 / 0.07), rgb(0 0 0 / 0.3));
+	/* Warm-tinted card-hover lift, distinct from the neutral scale above and
+	   deliberately un-themed (the warmth reads on both grounds). */
+	--shadow-warm-sm: 0 4px 14px -4px rgba(60, 45, 20, 0.14);
 
 	/* --- Motion ---
 	   One curve, one exit, a four-step scale, a hard rule: motion only for

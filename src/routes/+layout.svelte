@@ -155,7 +155,7 @@
 		z-index: 9999;
 		padding: var(--space-2) var(--space-4);
 		background-color: var(--color-primary-text);
-		color: #fff;
+		color: var(--color-on-primary);
 		font-size: var(--text-sm);
 		font-weight: 600;
 		border-radius: var(--radius-md);
