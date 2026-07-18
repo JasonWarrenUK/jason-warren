@@ -196,7 +196,7 @@
 					{
 						"id": "3DE.5",
 						"description": "Consistency sweep of semantic colour aliases vs Reasonable Colors usage",
-						"status": "todo",
+						"status": "done",
 						"dependsOn": [
 							"3DE.0"
 						]
