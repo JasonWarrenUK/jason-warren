@@ -399,7 +399,7 @@
 	// Territory hulls: convex hull per theme cluster, relationships mode only.
 	// ---------------------------------------------------------------------------
 
-	const HULL_PADDING = 32;
+	const HULL_PADDING = 20;
 	const HULL_MIN_MEMBERS = 3;
 
 	/** Expands each hull vertex outward from the centroid by `padding`. */
@@ -637,6 +637,15 @@
 
 	function edgeLifted(type: EdgeType): boolean {
 		return liftedEdgeType === type || isolatedEdgeTypes.has(type);
+	}
+
+	// Territory names are revealed on demand, not painted permanently: a name
+	// centred over its node cluster collides with the node labels. A hull shows
+	// its name when hovered directly or when its theme's legend chip is lifted.
+	let hoveredThemeId = $state<string | null>(null);
+
+	function themeLabelVisible(themeId: string): boolean {
+		return hoveredThemeId === themeId || liftedEdgeType === themeEdgeType(themeId);
 	}
 
 	function edgeHidden(source: string, target: string, type: EdgeType): boolean {
@@ -1092,11 +1101,25 @@
 				<!-- Paper-tint hulls with italic serif names: the label carries the
 				     theme's identity, the way it already does everywhere else. -->
 				{#each territoryHulls as hull (hull.id)}
-					<path class="map__territory-fill" d={hull.path} />
-					<path class="map__territory-boundary" d={hull.path} />
-					<text class="map__territory-label" x={hull.labelX} y={hull.labelY} text-anchor="middle">
-						{hull.name}
-					</text>
+					{@const revealed = themeLabelVisible(hull.id)}
+					<path
+						class="map__territory-fill"
+						class:map__territory-fill--active={revealed}
+						d={hull.path}
+						role="presentation"
+						onpointerenter={() => (hoveredThemeId = hull.id)}
+						onpointerleave={() => (hoveredThemeId = null)}
+					/>
+					<path
+						class="map__territory-boundary"
+						class:map__territory-boundary--active={revealed}
+						d={hull.path}
+					/>
+					{#if revealed}
+						<text class="map__territory-label" x={hull.labelX} y={hull.labelY} text-anchor="middle">
+							{hull.name}
+						</text>
+					{/if}
 				{/each}
 			</g>
 		{/if}
@@ -1720,7 +1743,13 @@
 	   like any political map — the label identifies, never the hue. */
 	.map__territory-fill {
 		fill: var(--color-border-strong);
-		opacity: 0.07;
+		opacity: 0.05;
+		transition: opacity var(--dur-base) var(--ease-standard);
+	}
+
+	.map__territory-fill--active {
+		/* Lift the hovered/lifted region a touch so its name reads against it. */
+		opacity: 0.1;
 	}
 
 	.map__territory-boundary {
@@ -1729,6 +1758,12 @@
 		stroke-width: 1;
 		stroke-dasharray: 3 5;
 		opacity: 0.5;
+		pointer-events: none;
+		transition: opacity var(--dur-base) var(--ease-standard);
+	}
+
+	.map__territory-boundary--active {
+		opacity: 0.8;
 	}
 
 	.map__territory-label {
