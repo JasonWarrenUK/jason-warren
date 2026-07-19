@@ -32,7 +32,7 @@
 		computeRelayoutTargets
 	} from '$lib/data/graph.js';
 	import type { TechCoEdge } from '$lib/data/tech-graph.js';
-	import { techNodeRadius } from '$lib/data/tech-graph.js';
+	import { techNodeRadius, buildLineageLinks } from '$lib/data/tech-graph.js';
 	import {
 		validatePin,
 		nextPinValue,
@@ -974,16 +974,18 @@
 	);
 
 	// Pre-built SimLinks for tech co-occurrence (TechCoEdge has no `category`,
-	// so it can't be passed directly to createForceSimulation).
+	// so it can't be passed directly to createForceSimulation) plus the authored
+	// lineage links, so lineage-related nodes stay adjacent through a reheat.
 	// Formula matches computeTechLayout so the client sim starts from the same physics.
-	const techSimLinks = $derived<SimLink[]>(
-		techCoEdges.map((e) => ({
+	const techSimLinks = $derived<SimLink[]>([
+		...techCoEdges.map((e) => ({
 			source: e.source,
 			target: e.target,
 			distance: 60 + 40 / Math.max(1, e.weight),
 			strength: Math.min(0.5, 0.08 * e.weight)
-		}))
-	);
+		})),
+		...buildLineageLinks(techRelationships, new Set(techNodes.map((n) => n.label)))
+	]);
 
 	onMount(() => {
 		const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;

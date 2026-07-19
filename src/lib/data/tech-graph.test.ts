@@ -6,7 +6,13 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { getTechNodes, getTechCoEdges, computeTechLayout } from './tech-graph.js';
+import {
+	getTechNodes,
+	getTechCoEdges,
+	computeTechLayout,
+	buildLineageLinks
+} from './tech-graph.js';
+import type { TechRelationship } from './types.js';
 
 describe('getTechNodes', () => {
 	const nodes = getTechNodes();
@@ -113,5 +119,38 @@ describe('computeTechLayout', () => {
 
 	it('handles an empty node list without throwing', () => {
 		expect(() => computeTechLayout([], [])).not.toThrow();
+	});
+
+	it('stays deterministic with lineage links included', () => {
+		const rels: TechRelationship[] = [
+			{ kind: 'replaced-by', source: nodes[0].label, target: nodes[1].label }
+		];
+		const a = computeTechLayout(nodes, edges, rels);
+		const b = computeTechLayout(nodes, edges, rels);
+		for (const [label, p] of a.positions) {
+			expect(b.positions.get(label)).toEqual(p);
+		}
+	});
+});
+
+describe('buildLineageLinks', () => {
+	it('keeps only relationships whose endpoints are both present nodes', () => {
+		const rels: TechRelationship[] = [
+			{ kind: 'leads-to', source: 'A', target: 'B' },
+			{ kind: 'replaced-by', source: 'A', target: 'Missing' },
+			{ kind: 'replaced-by', source: 'Missing', target: 'B' }
+		];
+		const links = buildLineageLinks(rels, new Set(['A', 'B']));
+		expect(links).toHaveLength(1);
+		expect(links[0]).toMatchObject({ source: 'A', target: 'B' });
+	});
+
+	it('gives lineage links a short distance and strong pull', () => {
+		const links = buildLineageLinks(
+			[{ kind: 'leads-to', source: 'A', target: 'B' }],
+			new Set(['A', 'B'])
+		);
+		expect(links[0].strength).toBeGreaterThan(0.5);
+		expect(links[0].distance).toBeLessThan(100);
 	});
 });
