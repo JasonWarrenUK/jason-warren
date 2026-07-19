@@ -1253,6 +1253,7 @@
 						role="button"
 						aria-haspopup="dialog"
 						aria-pressed={pinnedSlug === node.slug}
+						aria-label="{node.name}: {node.tagline}"
 						onclick={(e) => {
 							e.preventDefault();
 							openProjectModal(node);
@@ -1268,7 +1269,6 @@
 						onfocus={() => (activeSlug = node.slug)}
 						onblur={() => (activeSlug = null)}
 					>
-						<title>{node.name}: {node.tagline}</title>
 						<circle
 							class="map__ring"
 							class:map__ring--provisional={node.stageProvisional}
@@ -1340,6 +1340,9 @@
 						role="button"
 						aria-haspopup="dialog"
 						aria-pressed={pinnedTechLabel === node.label}
+						aria-label="{node.label} — used in {node.projectCount} project{node.projectCount === 1
+							? ''
+							: 's'}"
 						onclick={(e) => {
 							e.preventDefault();
 							openTechModal(node);
@@ -1355,11 +1358,6 @@
 						onfocus={() => (activeTechLabel = node.label)}
 						onblur={() => (activeTechLabel = null)}
 					>
-						<title
-							>{node.label} — used in {node.projectCount} project{node.projectCount === 1
-								? ''
-								: 's'}</title
-						>
 						<!-- Kind is carried by glyph shape, not hue: every tech mark
 						     draws in the tech ink, historic stack one shade paperward
 						     (colour-system.md §5). -->
