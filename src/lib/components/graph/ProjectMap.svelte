@@ -1041,14 +1041,21 @@
 		}
 
 		/**
-		 * Rescales the settled `simNodes` in place to fill the canvas with uniform
-		 * scaling, inset by the largest node radius so no rim clips the frame.
+		 * Rescales the settled `simNodes` in place to fill the canvas, inset by the
+		 * largest node radius so no rim clips the frame.
 		 *
 		 * The live sim only carries `forceCenter` + a weak axis pull, which recentres
 		 * the mean but does not preserve spread: disconnected components drift and the
 		 * settled cloud can occupy a fraction of the viewBox (e.g. stack mode collapsing
-		 * into the top half). Reframing once on settle restores the build-time framing
-		 * that `normaliseToCanvas` produced, without fighting the physics mid-run.
+		 * into the top half). Reframing once on settle restores a full-canvas framing
+		 * without fighting the physics mid-run.
+		 *
+		 * X and Y are fitted independently rather than by a single uniform scale. A
+		 * portrait cloud (taller than wide) uniformly scaled leaves wide side margins;
+		 * because node glyphs are drawn at a fixed radius regardless of layout position,
+		 * stretching the two axes by different factors spreads the nodes to fill the
+		 * frame without distorting a single circle. The per-axis ratio is capped so the
+		 * relative geometry of the graph is not warped beyond recognition.
 		 */
 		function reframe(): void {
 			if (simNodes.length === 0) return;
@@ -1061,15 +1068,27 @@
 			const spanX = maxX - minX || 1;
 			const spanY = maxY - minY || 1;
 			const maxRadius = Math.max(0, ...simNodes.map((n) => n.radius ?? 0));
-			const pad = size * 0.09 + maxRadius;
+			const pad = size * 0.04 + maxRadius;
 			const usable = size - 2 * pad;
 			if (usable <= 0) return;
-			const scale = Math.min(usable / spanX, usable / spanY);
-			const offsetX = pad + (usable - spanX * scale) / 2;
-			const offsetY = pad + (usable - spanY * scale) / 2;
+
+			let scaleX = usable / spanX;
+			let scaleY = usable / spanY;
+			// Cap the axis ratio so the graph's proportions stay legible: the tighter
+			// axis may not stretch more than REFRAME_MAX_RATIO beyond the looser one.
+			const REFRAME_MAX_RATIO = 1.35;
+			const lo = Math.min(scaleX, scaleY);
+			const hi = Math.max(scaleX, scaleY);
+			if (hi > lo * REFRAME_MAX_RATIO) {
+				const capped = lo * REFRAME_MAX_RATIO;
+				if (scaleX > scaleY) scaleX = capped;
+				else scaleY = capped;
+			}
+			const offsetX = pad + (usable - spanX * scaleX) / 2;
+			const offsetY = pad + (usable - spanY * scaleY) / 2;
 			for (const n of simNodes) {
-				n.x = offsetX + ((n.x ?? 0) - minX) * scale;
-				n.y = offsetY + ((n.y ?? 0) - minY) * scale;
+				n.x = offsetX + ((n.x ?? 0) - minX) * scaleX;
+				n.y = offsetY + ((n.y ?? 0) - minY) * scaleY;
 			}
 		}
 
