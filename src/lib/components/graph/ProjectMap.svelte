@@ -199,6 +199,9 @@
 				if (sharedEdges.some((e) => e.category === category)) present.push(category);
 			}
 		} else {
+			// The grey co-occurrence web comes first so it can be toggled off to
+			// reveal the authored lineage arrows underneath.
+			if (techCoEdges.length > 0) present.push('co-occurrence');
 			for (const kind of ['leads-to', 'replaced-by'] as const) {
 				if (
 					techRelationships.some(
@@ -774,6 +777,10 @@
 	}
 
 	function techEdgeHidden(source: string, target: string): boolean {
+		const typeHidden = isolateMode
+			? isolatedEdgeTypes.size > 0 && !isolatedEdgeTypes.has('co-occurrence')
+			: hiddenEdgeTypes.has('co-occurrence');
+		if (typeHidden) return true;
 		const s = techPositions.get(source);
 		const t = techPositions.get(target);
 		return (!!s && techNodeHidden(s)) || (!!t && techNodeHidden(t));
@@ -1336,6 +1343,7 @@
 					{#if a && b}
 						<path
 							class="map__edge map__edge--co-occurrence"
+							class:map__edge--lifted={edgeLifted('co-occurrence')}
 							class:map__edge--dim={edgeDimmed(edge.source, edge.target)}
 							class:map__edge--hidden={techEdgeHidden(edge.source, edge.target)}
 							fill="none"

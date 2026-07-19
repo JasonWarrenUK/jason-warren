@@ -102,13 +102,22 @@ export const themeIds: string[] = themes.map((t) => t.id);
 // Unified edge type vocabulary
 // ---------------------------------------------------------------------------
 
+/** The technologies-mode co-occurrence web: the one toggleable grey layer there. */
+export type CoOccurrenceEdgeType = 'co-occurrence';
+
 /**
  * The full set of toggleable edge types on the map: the two curated kinds, one
- * per-theme type for relationships mode, and one per shared-tech category for
- * stack mode. Keyed strings so node/edge legends and the hidden-set state can
- * share one vocabulary.
+ * per-theme type for relationships mode, one per shared-tech category for stack
+ * mode, and the co-occurrence web plus lineage kinds for technologies mode.
+ * Keyed strings so node/edge legends and the hidden-set state can share one
+ * vocabulary.
  */
-export type EdgeType = GraphEdge['kind'] | ThemeEdgeType | EdgeCategory | LineageKind;
+export type EdgeType =
+	| GraphEdge['kind']
+	| ThemeEdgeType
+	| EdgeCategory
+	| LineageKind
+	| CoOccurrenceEdgeType;
 
 /**
  * Colour token for a shared-tech category edge. Quiet paper neutral: the
@@ -220,6 +229,7 @@ export function edgeTypeColour(type: EdgeType): string {
 	if (type === 'related') return 'var(--color-text-subtle)';
 	if (type === 'leads-to') return 'var(--color-edge-lineage-leads-to)';
 	if (type === 'replaced-by') return 'var(--color-edge-lineage-replaced-by)';
+	if (type === 'co-occurrence') return categoryColour();
 	if (isThemeEdgeType(type)) return themeColour();
 	return categoryColour();
 }
@@ -240,6 +250,7 @@ export function edgeTypeLabel(type: EdgeType): string {
 	if (type === 'related') return 'Related';
 	if (type === 'leads-to') return 'Leads to';
 	if (type === 'replaced-by') return 'Replaced by';
+	if (type === 'co-occurrence') return 'Co-occurrence';
 	if (isThemeEdgeType(type)) return themeLabel(type.slice('theme:'.length));
 	return categoryLabel[type as EdgeCategory];
 }
