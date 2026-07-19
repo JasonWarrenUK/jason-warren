@@ -399,18 +399,27 @@
 	// Territory hulls: convex hull per theme cluster, relationships mode only.
 	// ---------------------------------------------------------------------------
 
-	const HULL_PADDING = 20;
 	const HULL_MIN_MEMBERS = 3;
+	/** Clearance beyond each node's full visual radius before the hull boundary. */
+	const HULL_NODE_MARGIN = 12;
+	/** Extra radius a deployed/focused node's outer ring adds (matches the r + 7 render). */
+	const NODE_OUTER_RING = 7;
+	/** Points sampled around each node when expanding it to a bounding circle. */
+	const HULL_CIRCLE_SAMPLES = 10;
 
-	/** Expands each hull vertex outward from the centroid by `padding`. */
-	function padHull(hull: [number, number][], padding: number): [number, number][] {
-		const [ccx, ccy] = polygonCentroid(hull);
-		return hull.map(([x, y]) => {
-			const dx = x - ccx;
-			const dy = y - ccy;
-			const len = Math.hypot(dx, dy) || 1;
-			return [x + (dx / len) * padding, y + (dy / len) * padding] as [number, number];
-		});
+	/**
+	 * Samples `HULL_CIRCLE_SAMPLES` points around a node's full visual extent so
+	 * the convex hull wraps the whole circle (ring included) rather than clipping
+	 * through it. Padding the bare centre points by a flat amount fails for large
+	 * hub nodes, whose rings then poke outside the territory.
+	 */
+	function nodeCirclePoints(cx: number, cy: number, radius: number): [number, number][] {
+		const points: [number, number][] = [];
+		for (let i = 0; i < HULL_CIRCLE_SAMPLES; i++) {
+			const angle = (2 * Math.PI * i) / HULL_CIRCLE_SAMPLES;
+			points.push([cx + radius * Math.cos(angle), cy + radius * Math.sin(angle)]);
+		}
+		return points;
 	}
 
 	/** Rounded-corner closed path through `points`, via quadratic curves through edge midpoints. */
@@ -444,23 +453,30 @@
 		if (activeMode !== 'relationships') return [];
 		const hulls: TerritoryHull[] = [];
 		for (const territory of territories) {
-			const points: [number, number][] = territory.slugs
-				.filter((slug) => !nodeHidden(projectPositions.get(slug) as MapNode))
-				.map((slug) => projectPos(slug))
-				.filter((p): p is { x: number; y: number } => !!p)
-				.map((p) => [p.x, p.y]);
+			const members = territory.slugs
+				.map((slug) => projectPositions.get(slug))
+				.filter((node): node is MapNode => !!node && !nodeHidden(node));
+			if (members.length < HULL_MIN_MEMBERS) continue;
+			// Expand each member into a ring at its full visual radius (mark + outer
+			// ring + margin) so the hull encloses whole circles, never clipping a rim.
+			const points: [number, number][] = [];
+			for (const node of members) {
+				const p = projectPos(node.slug);
+				if (!p) continue;
+				const radius = radiusScale(node) + NODE_OUTER_RING + HULL_NODE_MARGIN;
+				points.push(...nodeCirclePoints(p.x, p.y, radius));
+			}
 			if (points.length < HULL_MIN_MEMBERS) continue;
 			const hull = polygonHull(points);
 			if (!hull) continue;
-			const padded = padHull(hull, HULL_PADDING);
-			const [, topY] = padded.reduce((top, pt) => (pt[1] < top[1] ? pt : top));
-			const [cx] = polygonCentroid(padded);
+			const [, topY] = hull.reduce((top, pt) => (pt[1] < top[1] ? pt : top));
+			const [cx] = polygonCentroid(hull);
 			hulls.push({
 				id: territory.id,
 				name: territory.name,
-				path: roundedHullPath(padded),
+				path: roundedHullPath(hull),
 				labelX: cx,
-				labelY: topY + 22
+				labelY: topY - 4
 			});
 		}
 		return hulls;
