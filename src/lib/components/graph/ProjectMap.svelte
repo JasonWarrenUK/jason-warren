@@ -279,6 +279,15 @@
 	// ---------------------------------------------------------------------------
 	// Survey-route geometry: every edge is drawn as a bowed quadratic path,
 	// never a straight line — "plotted", not merely connected.
+	//
+	// Two refinements keep dense areas legible:
+	//   1. Fan-out — the bow's size and side derive deterministically from the
+	//      edge's endpoint pair, so several edges sharing a node splay into
+	//      distinct arcs instead of stacking on one line.
+	//   2. Node avoidance — a candidate curve that would sweep through an
+	//      unrelated node's circle is bowed harder (and flipped if needed) until
+	//      it clears, so a route never looks like it terminates at a node it only
+	//      passes over.
 	// ---------------------------------------------------------------------------
 
 	interface Point {
@@ -286,26 +295,116 @@
 		y: number;
 	}
 
-	/** Control point for a route's quadratic bow: offset perpendicular from the midpoint by 0.14x the edge length. */
-	function routeControlPoint(a: Point, b: Point): Point {
+	interface Obstacle {
+		x: number;
+		y: number;
+		r: number;
+	}
+
+	/** Node circles the routes should avoid sweeping through, for the active mode. */
+	const edgeObstacles = $derived.by((): Map<string, Obstacle> => {
+		const map = new Map<string, Obstacle>();
+		if (activeMode === 'technologies') {
+			for (const node of techNodes) {
+				const p = techPos(node.label);
+				if (p) map.set(node.label, { x: p.x, y: p.y, r: techRadiusScale(node) });
+			}
+		} else {
+			for (const node of projectNodes) {
+				const p = projectPos(node.slug);
+				if (p) map.set(node.slug, { x: p.x, y: p.y, r: radiusScale(node) });
+			}
+		}
+		return map;
+	});
+
+	/** Small deterministic hash of an edge key → a stable value in [0, 1). */
+	function edgeHash(key: string): number {
+		let h = 2166136261;
+		for (let i = 0; i < key.length; i++) {
+			h ^= key.charCodeAt(i);
+			h = Math.imul(h, 16777619);
+		}
+		// >>> 0 forces unsigned; divide by 2^32 for a fraction.
+		return (h >>> 0) / 4294967296;
+	}
+
+	const BOW_MIN = 0.1;
+	const BOW_MAX = 0.24;
+	/** Clearance a curve must keep from an unrelated node's rim. */
+	const ROUTE_NODE_CLEARANCE = 8;
+
+	/**
+	 * Control point for a route's quadratic bow. Perpendicular offset from the
+	 * midpoint; magnitude and side seeded from `key` so parallel edges fan out.
+	 * When the resulting curve would pass through an unrelated node circle, the
+	 * bow is grown (and flipped once) until the apex clears every obstacle.
+	 */
+	function routeControlPoint(a: Point, b: Point, key = ''): Point {
 		const mx = (a.x + b.x) / 2;
 		const my = (a.y + b.y) / 2;
 		const dx = b.x - a.x;
 		const dy = b.y - a.y;
 		const len = Math.hypot(dx, dy) || 1;
-		const bow = 0.14 * len;
-		return { x: mx - (dy / len) * bow, y: my + (dx / len) * bow };
+		const nx = -dy / len;
+		const ny = dx / len;
+
+		// Deterministic fan-out: hash picks the bow factor and side.
+		const hash = edgeHash(key);
+		const baseFactor = BOW_MIN + (BOW_MAX - BOW_MIN) * hash;
+		let side: 1 | -1 = hash < 0.5 ? -1 : 1;
+
+		// keyEndpoints lets the obstacle loop skip this edge's own endpoints.
+		const keyEndpoints = splitEdgeKey(key);
+
+		const apexClears = (factor: number, s: number): boolean => {
+			// Quadratic apex (t = 0.5) sits halfway to the control point.
+			const cx = mx + nx * len * factor * s;
+			const cy = my + ny * len * factor * s;
+			const apexX = 0.5 * mx + 0.5 * cx;
+			const apexY = 0.5 * my + 0.5 * cy;
+			for (const [obKey, ob] of edgeObstacles) {
+				if (obKey === keyEndpoints.a || obKey === keyEndpoints.b) continue;
+				const clearance = ob.r + ROUTE_NODE_CLEARANCE;
+				if (Math.hypot(apexX - ob.x, apexY - ob.y) < clearance) return false;
+			}
+			return true;
+		};
+
+		// Grow the bow (and flip side once) until the apex clears, capped so arcs
+		// never balloon out of frame.
+		let factor = baseFactor;
+		for (let attempt = 0; attempt < 8; attempt++) {
+			if (apexClears(factor, side)) break;
+			factor += 0.06;
+			if (factor > 0.6) {
+				// Give the other side a chance before settling for a wide bow.
+				side = -side as 1 | -1;
+				factor = baseFactor;
+				if (apexClears(factor, side)) break;
+				factor = 0.6;
+				break;
+			}
+		}
+
+		return { x: mx + nx * len * factor * side, y: my + ny * len * factor * side };
+	}
+
+	/** Splits an edge key `"source|target"` into its endpoint ids for obstacle skipping. */
+	function splitEdgeKey(key: string): { a: string; b: string } {
+		const i = key.indexOf('|');
+		return i === -1 ? { a: '', b: '' } : { a: key.slice(0, i), b: key.slice(i + 1) };
 	}
 
 	/** SVG path `d` for a bowed route from `a` to `b`. */
-	function routePath(a: Point, b: Point): string {
-		const c = routeControlPoint(a, b);
+	function routePath(a: Point, b: Point, key = ''): string {
+		const c = routeControlPoint(a, b, key);
 		return `M${a.x} ${a.y} Q${c.x} ${c.y} ${b.x} ${b.y}`;
 	}
 
 	/** Point on the route's quadratic curve at parameter `t` (0 = start, 1 = end). */
-	function routePointAt(a: Point, b: Point, t: number): Point {
-		const c = routeControlPoint(a, b);
+	function routePointAt(a: Point, b: Point, t: number, key = ''): Point {
+		const c = routeControlPoint(a, b, key);
 		const mt = 1 - t;
 		return {
 			x: mt * mt * a.x + 2 * mt * t * c.x + t * t * b.x,
@@ -314,8 +413,8 @@
 	}
 
 	/** Two-stroke arrowhead `d`, wings of length 9 at ±0.42 rad, tipped `r` short of `b` along the route's local tangent. */
-	function routeArrowhead(a: Point, b: Point, r: number): string {
-		const near = routePointAt(a, b, 0.92);
+	function routeArrowhead(a: Point, b: Point, r: number, key = ''): string {
+		const near = routePointAt(a, b, 0.92, key);
 		const ang = Math.atan2(b.y - near.y, b.x - near.x);
 		const tipX = b.x - Math.cos(ang) * r;
 		const tipY = b.y - Math.sin(ang) * r;
@@ -1158,7 +1257,7 @@
 								themeEdgeType(edge.theme)
 							)}
 							fill="none"
-							d={routePath(a, b)}
+							d={routePath(a, b, `${edge.source}|${edge.target}`)}
 						/>
 					{/if}
 				{/each}
@@ -1177,7 +1276,7 @@
 							class:map__edge--inked={edge.kind === 'extraction' && routesInked}
 							pathLength={edge.kind === 'extraction' ? 1 : undefined}
 							fill="none"
-							d={routePath(a, b)}
+							d={routePath(a, b, `${edge.source}|${edge.target}`)}
 						/>
 						{#if edge.kind === 'extraction' && tNode}
 							<path
@@ -1185,7 +1284,7 @@
 								class:map__edge--dim={edgeDimmed(edge.source, edge.target)}
 								class:map__edge--hidden={edgeHidden(edge.source, edge.target, edge.kind)}
 								fill="none"
-								d={routeArrowhead(a, b, radiusScale(tNode) + 4)}
+								d={routeArrowhead(a, b, radiusScale(tNode) + 4, `${edge.source}|${edge.target}`)}
 							/>
 						{/if}
 					{/if}
@@ -1204,7 +1303,7 @@
 							class:map__edge--dim={edgeDimmed(edge.source, edge.target)}
 							class:map__edge--hidden={edgeHidden(edge.source, edge.target, edge.category)}
 							fill="none"
-							d={routePath(a, b)}
+							d={routePath(a, b, `${edge.source}|${edge.target}`)}
 						/>
 					{/if}
 				{/each}
@@ -1221,7 +1320,7 @@
 							class:map__edge--dim={edgeDimmed(edge.source, edge.target)}
 							class:map__edge--hidden={techEdgeHidden(edge.source, edge.target)}
 							fill="none"
-							d={routePath(a, b)}
+							d={routePath(a, b, `${edge.source}|${edge.target}`)}
 						/>
 					{/if}
 				{/each}
@@ -1242,7 +1341,7 @@
 							style="stroke: {edgeTypeColour(edge.kind)}"
 							fill="none"
 							marker-end="url(#lineage-arrow-{edge.kind})"
-							d={routePath(a, end)}
+							d={routePath(a, end, `${edge.source}|${edge.target}`)}
 						/>
 					{/if}
 				{/each}
