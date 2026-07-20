@@ -69,6 +69,17 @@
 </dialog>
 
 <style>
+	/*
+	 * Modal open — a --dur-plate moment (docs/design/visual-direction.md §4):
+	 * the inner panel eases up and in, the backdrop fades in behind it.
+	 * allow-discrete lets display/overlay (both by default snap-on-open)
+	 * participate in the transition instead of jumping straight to their
+	 * end state; @starting-style supplies the "before first frame" values
+	 * showModal() would otherwise skip straight past. No exit animation:
+	 * native <dialog> closes synchronously, and animating that would need
+	 * deferring close() until a transitionend — more machinery than the
+	 * spec's "modal open" moment calls for.
+	 */
 	.modal {
 		/* Reset browser dialog defaults */
 		margin: auto;
@@ -80,6 +91,36 @@
 
 		/* Sit above everything including the 9999 skip link */
 		z-index: 10000;
+
+		opacity: 1;
+		transform: translateY(0) scale(1);
+		transition:
+			opacity var(--dur-plate) var(--ease-standard),
+			transform var(--dur-plate) var(--ease-standard),
+			display var(--dur-plate) allow-discrete,
+			overlay var(--dur-plate) allow-discrete;
+	}
+
+	@starting-style {
+		.modal[open] {
+			opacity: 0;
+			transform: translateY(0.5rem) scale(0.98);
+		}
+	}
+
+	.modal::backdrop {
+		background: var(--color-scrim);
+		opacity: 1;
+		transition:
+			opacity var(--dur-base) var(--ease-standard),
+			display var(--dur-base) allow-discrete,
+			overlay var(--dur-base) allow-discrete;
+	}
+
+	@starting-style {
+		.modal[open]::backdrop {
+			opacity: 0;
+		}
 	}
 
 	.modal__inner {
@@ -142,10 +183,6 @@
 		gap: var(--space-3);
 	}
 
-	.modal::backdrop {
-		background: var(--color-scrim);
-	}
-
 	/*
 	 * Modal action buttons. Every connection view (ProjectMap, TimelineChart,
 	 * ThemeTerritories, AdoptionTimeline) renders its "Pin" / "Go to project" /
@@ -195,12 +232,13 @@
 		color: var(--color-text);
 	}
 
-	@media (prefers-reduced-motion: reduce) {
-		.modal,
-		.modal__inner,
-		.modal__close,
-		:global(.modal-action) {
-			transition: none;
-		}
-	}
+	/*
+	 * The open/backdrop entry transition and .modal__close/.modal-action
+	 * hover transitions all drive off --dur-plate/--dur-base/--dur-micro,
+	 * which --motion-scale collapses to 0s under reduced motion
+	 * (tokens.css) — no component opt-in needed. .modal and .modal::backdrop
+	 * deliberately keep their transition declared (not `none`) even under
+	 * reduced motion: allow-discrete needs a transition present to leave
+	 * @starting-style correctly, and a 0s duration already makes it instant.
+	 */
 </style>
