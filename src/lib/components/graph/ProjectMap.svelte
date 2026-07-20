@@ -7,6 +7,7 @@
 	import { page } from '$app/stores';
 	import {
 		EDGE_CATEGORIES,
+		type EdgeCategory,
 		type LineageKind,
 		type ProjectKind,
 		type ProjectProgress,
@@ -31,7 +32,7 @@
 		computeRelayoutTargets
 	} from '$lib/data/graph.js';
 	import type { TechCoEdge } from '$lib/data/tech-graph.js';
-	import { techNodeRadius } from '$lib/data/tech-graph.js';
+	import { techNodeRadius, buildLineageLinks } from '$lib/data/tech-graph.js';
 	import {
 		validatePin,
 		nextPinValue,
@@ -95,6 +96,11 @@
 		slugs: string[];
 	}
 
+	interface StackGroup {
+		slug: string;
+		category: EdgeCategory;
+	}
+
 	interface Props {
 		relationshipsNodes: MapNode[];
 		stackNodes: MapNode[];
@@ -104,6 +110,7 @@
 		themeEdges: SharedThemeEdge[];
 		techCoEdges: TechCoEdge[];
 		territories: Territory[];
+		stackGroups: StackGroup[];
 		size: number;
 	}
 
@@ -116,6 +123,7 @@
 		themeEdges,
 		techCoEdges,
 		territories,
+		stackGroups,
 		size
 	}: Props = $props();
 
@@ -191,6 +199,9 @@
 				if (sharedEdges.some((e) => e.category === category)) present.push(category);
 			}
 		} else {
+			// The grey co-occurrence web comes first so it can be toggled off to
+			// reveal the authored lineage arrows underneath.
+			if (techCoEdges.length > 0) present.push('co-occurrence');
 			for (const kind of ['leads-to', 'replaced-by'] as const) {
 				if (
 					techRelationships.some(
@@ -271,6 +282,15 @@
 	// ---------------------------------------------------------------------------
 	// Survey-route geometry: every edge is drawn as a bowed quadratic path,
 	// never a straight line — "plotted", not merely connected.
+	//
+	// Two refinements keep dense areas legible:
+	//   1. Fan-out — the bow's size and side derive deterministically from the
+	//      edge's endpoint pair, so several edges sharing a node splay into
+	//      distinct arcs instead of stacking on one line.
+	//   2. Node avoidance — a candidate curve that would sweep through an
+	//      unrelated node's circle is bowed harder (and flipped if needed) until
+	//      it clears, so a route never looks like it terminates at a node it only
+	//      passes over.
 	// ---------------------------------------------------------------------------
 
 	interface Point {
@@ -278,26 +298,116 @@
 		y: number;
 	}
 
-	/** Control point for a route's quadratic bow: offset perpendicular from the midpoint by 0.14x the edge length. */
-	function routeControlPoint(a: Point, b: Point): Point {
+	interface Obstacle {
+		x: number;
+		y: number;
+		r: number;
+	}
+
+	/** Node circles the routes should avoid sweeping through, for the active mode. */
+	const edgeObstacles = $derived.by((): Map<string, Obstacle> => {
+		const map = new Map<string, Obstacle>();
+		if (activeMode === 'technologies') {
+			for (const node of techNodes) {
+				const p = techPos(node.label);
+				if (p) map.set(node.label, { x: p.x, y: p.y, r: techRadiusScale(node) });
+			}
+		} else {
+			for (const node of projectNodes) {
+				const p = projectPos(node.slug);
+				if (p) map.set(node.slug, { x: p.x, y: p.y, r: radiusScale(node) });
+			}
+		}
+		return map;
+	});
+
+	/** Small deterministic hash of an edge key → a stable value in [0, 1). */
+	function edgeHash(key: string): number {
+		let h = 2166136261;
+		for (let i = 0; i < key.length; i++) {
+			h ^= key.charCodeAt(i);
+			h = Math.imul(h, 16777619);
+		}
+		// >>> 0 forces unsigned; divide by 2^32 for a fraction.
+		return (h >>> 0) / 4294967296;
+	}
+
+	const BOW_MIN = 0.1;
+	const BOW_MAX = 0.24;
+	/** Clearance a curve must keep from an unrelated node's rim. */
+	const ROUTE_NODE_CLEARANCE = 8;
+
+	/**
+	 * Control point for a route's quadratic bow. Perpendicular offset from the
+	 * midpoint; magnitude and side seeded from `key` so parallel edges fan out.
+	 * When the resulting curve would pass through an unrelated node circle, the
+	 * bow is grown (and flipped once) until the apex clears every obstacle.
+	 */
+	function routeControlPoint(a: Point, b: Point, key = ''): Point {
 		const mx = (a.x + b.x) / 2;
 		const my = (a.y + b.y) / 2;
 		const dx = b.x - a.x;
 		const dy = b.y - a.y;
 		const len = Math.hypot(dx, dy) || 1;
-		const bow = 0.14 * len;
-		return { x: mx - (dy / len) * bow, y: my + (dx / len) * bow };
+		const nx = -dy / len;
+		const ny = dx / len;
+
+		// Deterministic fan-out: hash picks the bow factor and side.
+		const hash = edgeHash(key);
+		const baseFactor = BOW_MIN + (BOW_MAX - BOW_MIN) * hash;
+		let side: 1 | -1 = hash < 0.5 ? -1 : 1;
+
+		// keyEndpoints lets the obstacle loop skip this edge's own endpoints.
+		const keyEndpoints = splitEdgeKey(key);
+
+		const apexClears = (factor: number, s: number): boolean => {
+			// Quadratic apex (t = 0.5) sits halfway to the control point.
+			const cx = mx + nx * len * factor * s;
+			const cy = my + ny * len * factor * s;
+			const apexX = 0.5 * mx + 0.5 * cx;
+			const apexY = 0.5 * my + 0.5 * cy;
+			for (const [obKey, ob] of edgeObstacles) {
+				if (obKey === keyEndpoints.a || obKey === keyEndpoints.b) continue;
+				const clearance = ob.r + ROUTE_NODE_CLEARANCE;
+				if (Math.hypot(apexX - ob.x, apexY - ob.y) < clearance) return false;
+			}
+			return true;
+		};
+
+		// Grow the bow (and flip side once) until the apex clears, capped so arcs
+		// never balloon out of frame.
+		let factor = baseFactor;
+		for (let attempt = 0; attempt < 8; attempt++) {
+			if (apexClears(factor, side)) break;
+			factor += 0.06;
+			if (factor > 0.6) {
+				// Give the other side a chance before settling for a wide bow.
+				side = -side as 1 | -1;
+				factor = baseFactor;
+				if (apexClears(factor, side)) break;
+				factor = 0.6;
+				break;
+			}
+		}
+
+		return { x: mx + nx * len * factor * side, y: my + ny * len * factor * side };
+	}
+
+	/** Splits an edge key `"source|target"` into its endpoint ids for obstacle skipping. */
+	function splitEdgeKey(key: string): { a: string; b: string } {
+		const i = key.indexOf('|');
+		return i === -1 ? { a: '', b: '' } : { a: key.slice(0, i), b: key.slice(i + 1) };
 	}
 
 	/** SVG path `d` for a bowed route from `a` to `b`. */
-	function routePath(a: Point, b: Point): string {
-		const c = routeControlPoint(a, b);
+	function routePath(a: Point, b: Point, key = ''): string {
+		const c = routeControlPoint(a, b, key);
 		return `M${a.x} ${a.y} Q${c.x} ${c.y} ${b.x} ${b.y}`;
 	}
 
 	/** Point on the route's quadratic curve at parameter `t` (0 = start, 1 = end). */
-	function routePointAt(a: Point, b: Point, t: number): Point {
-		const c = routeControlPoint(a, b);
+	function routePointAt(a: Point, b: Point, t: number, key = ''): Point {
+		const c = routeControlPoint(a, b, key);
 		const mt = 1 - t;
 		return {
 			x: mt * mt * a.x + 2 * mt * t * c.x + t * t * b.x,
@@ -306,8 +416,8 @@
 	}
 
 	/** Two-stroke arrowhead `d`, wings of length 9 at ±0.42 rad, tipped `r` short of `b` along the route's local tangent. */
-	function routeArrowhead(a: Point, b: Point, r: number): string {
-		const near = routePointAt(a, b, 0.92);
+	function routeArrowhead(a: Point, b: Point, r: number, key = ''): string {
+		const near = routePointAt(a, b, 0.92, key);
 		const ang = Math.atan2(b.y - near.y, b.x - near.x);
 		const tipX = b.x - Math.cos(ang) * r;
 		const tipY = b.y - Math.sin(ang) * r;
@@ -320,21 +430,98 @@
 	}
 
 	// ---------------------------------------------------------------------------
+	// Theme-cluster anchors: gentle per-node pull toward a themed region so the
+	// relationships graph reads as distinct neighbourhoods rather than one blob.
+	// ---------------------------------------------------------------------------
+
+	// Each theme gets a deterministic anchor on a ring around the centre, in the
+	// authored narrative order (territories preserves themes' order). A project's
+	// anchor is the mean of the anchors of every theme it belongs to; projects in
+	// no theme get no anchor (they fall back to the centre pull inside the sim).
+	const themeAnchors = $derived.by(() => {
+		const centre = size / 2;
+		const ringRadius = size * 0.28;
+		const map = new Map<string, { x: number; y: number }>();
+		const count = territories.length;
+		territories.forEach((territory, index) => {
+			// Start at the top (-90°) and go clockwise through the narrative arc.
+			const angle = (2 * Math.PI * index) / count - Math.PI / 2;
+			map.set(territory.id, {
+				x: centre + ringRadius * Math.cos(angle),
+				y: centre + ringRadius * Math.sin(angle)
+			});
+		});
+		return map;
+	});
+
+	const projectAnchors = $derived.by(() => {
+		const anchors = new Map<string, { x: number; y: number }>();
+		const acc = new Map<string, { x: number; y: number; n: number }>();
+		for (const territory of territories) {
+			const anchor = themeAnchors.get(territory.id);
+			if (!anchor) continue;
+			for (const slug of territory.slugs) {
+				const prev = acc.get(slug) ?? { x: 0, y: 0, n: 0 };
+				acc.set(slug, { x: prev.x + anchor.x, y: prev.y + anchor.y, n: prev.n + 1 });
+			}
+		}
+		for (const [slug, { x, y, n }] of acc) {
+			anchors.set(slug, { x: x / n, y: y / n });
+		}
+		return anchors;
+	});
+
+	// Stack-mode anchors: one ring slot per tech category, each project pulled to
+	// its dominant category's slot. The stack analogue of theme anchoring above.
+	const categoryAnchors = $derived.by(() => {
+		const centre = size / 2;
+		const ringRadius = size * 0.28;
+		const map = new Map<EdgeCategory, { x: number; y: number }>();
+		const count = EDGE_CATEGORIES.length;
+		EDGE_CATEGORIES.forEach((category, index) => {
+			const angle = (2 * Math.PI * index) / count - Math.PI / 2;
+			map.set(category, {
+				x: centre + ringRadius * Math.cos(angle),
+				y: centre + ringRadius * Math.sin(angle)
+			});
+		});
+		return map;
+	});
+
+	const stackAnchors = $derived.by(() => {
+		const anchors = new Map<string, { x: number; y: number }>();
+		for (const { slug, category } of stackGroups) {
+			const anchor = categoryAnchors.get(category);
+			if (anchor) anchors.set(slug, anchor);
+		}
+		return anchors;
+	});
+
+	// ---------------------------------------------------------------------------
 	// Territory hulls: convex hull per theme cluster, relationships mode only.
 	// ---------------------------------------------------------------------------
 
-	const HULL_PADDING = 32;
 	const HULL_MIN_MEMBERS = 3;
+	/** Clearance beyond each node's full visual radius before the hull boundary. */
+	const HULL_NODE_MARGIN = 12;
+	/** Extra radius a deployed/focused node's outer ring adds (matches the r + 7 render). */
+	const NODE_OUTER_RING = 7;
+	/** Points sampled around each node when expanding it to a bounding circle. */
+	const HULL_CIRCLE_SAMPLES = 10;
 
-	/** Expands each hull vertex outward from the centroid by `padding`. */
-	function padHull(hull: [number, number][], padding: number): [number, number][] {
-		const [ccx, ccy] = polygonCentroid(hull);
-		return hull.map(([x, y]) => {
-			const dx = x - ccx;
-			const dy = y - ccy;
-			const len = Math.hypot(dx, dy) || 1;
-			return [x + (dx / len) * padding, y + (dy / len) * padding] as [number, number];
-		});
+	/**
+	 * Samples `HULL_CIRCLE_SAMPLES` points around a node's full visual extent so
+	 * the convex hull wraps the whole circle (ring included) rather than clipping
+	 * through it. Padding the bare centre points by a flat amount fails for large
+	 * hub nodes, whose rings then poke outside the territory.
+	 */
+	function nodeCirclePoints(cx: number, cy: number, radius: number): [number, number][] {
+		const points: [number, number][] = [];
+		for (let i = 0; i < HULL_CIRCLE_SAMPLES; i++) {
+			const angle = (2 * Math.PI * i) / HULL_CIRCLE_SAMPLES;
+			points.push([cx + radius * Math.cos(angle), cy + radius * Math.sin(angle)]);
+		}
+		return points;
 	}
 
 	/** Rounded-corner closed path through `points`, via quadratic curves through edge midpoints. */
@@ -368,23 +555,30 @@
 		if (activeMode !== 'relationships') return [];
 		const hulls: TerritoryHull[] = [];
 		for (const territory of territories) {
-			const points: [number, number][] = territory.slugs
-				.filter((slug) => !nodeHidden(projectPositions.get(slug) as MapNode))
-				.map((slug) => projectPos(slug))
-				.filter((p): p is { x: number; y: number } => !!p)
-				.map((p) => [p.x, p.y]);
+			const members = territory.slugs
+				.map((slug) => projectPositions.get(slug))
+				.filter((node): node is MapNode => !!node && !nodeHidden(node));
+			if (members.length < HULL_MIN_MEMBERS) continue;
+			// Expand each member into a ring at its full visual radius (mark + outer
+			// ring + margin) so the hull encloses whole circles, never clipping a rim.
+			const points: [number, number][] = [];
+			for (const node of members) {
+				const p = projectPos(node.slug);
+				if (!p) continue;
+				const radius = radiusScale(node) + NODE_OUTER_RING + HULL_NODE_MARGIN;
+				points.push(...nodeCirclePoints(p.x, p.y, radius));
+			}
 			if (points.length < HULL_MIN_MEMBERS) continue;
 			const hull = polygonHull(points);
 			if (!hull) continue;
-			const padded = padHull(hull, HULL_PADDING);
-			const [, topY] = padded.reduce((top, pt) => (pt[1] < top[1] ? pt : top));
-			const [cx] = polygonCentroid(padded);
+			const [, topY] = hull.reduce((top, pt) => (pt[1] < top[1] ? pt : top));
+			const [cx] = polygonCentroid(hull);
 			hulls.push({
 				id: territory.id,
 				name: territory.name,
-				path: roundedHullPath(padded),
+				path: roundedHullPath(hull),
 				labelX: cx,
-				labelY: topY + 22
+				labelY: topY - 4
 			});
 		}
 		return hulls;
@@ -563,6 +757,15 @@
 		return liftedEdgeType === type || isolatedEdgeTypes.has(type);
 	}
 
+	// Territory names are revealed on demand, not painted permanently: a name
+	// centred over its node cluster collides with the node labels. A hull shows
+	// its name when hovered directly or when its theme's legend chip is lifted.
+	let hoveredThemeId = $state<string | null>(null);
+
+	function themeLabelVisible(themeId: string): boolean {
+		return hoveredThemeId === themeId || liftedEdgeType === themeEdgeType(themeId);
+	}
+
 	function edgeHidden(source: string, target: string, type: EdgeType): boolean {
 		const typeHidden = isolateMode
 			? isolatedEdgeTypes.size > 0 && !isolatedEdgeTypes.has(type)
@@ -574,6 +777,10 @@
 	}
 
 	function techEdgeHidden(source: string, target: string): boolean {
+		const typeHidden = isolateMode
+			? isolatedEdgeTypes.size > 0 && !isolatedEdgeTypes.has('co-occurrence')
+			: hiddenEdgeTypes.has('co-occurrence');
+		if (typeHidden) return true;
 		const s = techPositions.get(source);
 		const t = techPositions.get(target);
 		return (!!s && techNodeHidden(s)) || (!!t && techNodeHidden(t));
@@ -767,16 +974,18 @@
 	);
 
 	// Pre-built SimLinks for tech co-occurrence (TechCoEdge has no `category`,
-	// so it can't be passed directly to createForceSimulation).
+	// so it can't be passed directly to createForceSimulation) plus the authored
+	// lineage links, so lineage-related nodes stay adjacent through a reheat.
 	// Formula matches computeTechLayout so the client sim starts from the same physics.
-	const techSimLinks = $derived<SimLink[]>(
-		techCoEdges.map((e) => ({
+	const techSimLinks = $derived<SimLink[]>([
+		...techCoEdges.map((e) => ({
 			source: e.source,
 			target: e.target,
 			distance: 60 + 40 / Math.max(1, e.weight),
 			strength: Math.min(0.5, 0.08 * e.weight)
-		}))
-	);
+		})),
+		...buildLineageLinks(techRelationships, new Set(techNodes.map((n) => n.label)))
+	]);
 
 	onMount(() => {
 		const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -814,7 +1023,9 @@
 			if (mode === 'technologies') {
 				return createForceSimulationFromLinks(sNodes, techSimLinks, size);
 			}
-			return createForceSimulation(sNodes, curEdges, curShared, size, mode, curTheme);
+			// Relationships anchors by theme, stack anchors by dominant tech category.
+			const anchors = mode === 'stack' ? stackAnchors : projectAnchors;
+			return createForceSimulation(sNodes, curEdges, curShared, size, mode, curTheme, anchors);
 		}
 
 		let simNodes: LiveSimNode[] =
@@ -838,8 +1049,62 @@
 			livePositions = next;
 		}
 
+		/**
+		 * Rescales the settled `simNodes` in place to fill the canvas, inset by the
+		 * largest node radius so no rim clips the frame.
+		 *
+		 * The live sim only carries `forceCenter` + a weak axis pull, which recentres
+		 * the mean but does not preserve spread: disconnected components drift and the
+		 * settled cloud can occupy a fraction of the viewBox (e.g. stack mode collapsing
+		 * into the top half). Reframing once on settle restores a full-canvas framing
+		 * without fighting the physics mid-run.
+		 *
+		 * X and Y are fitted independently rather than by a single uniform scale. A
+		 * portrait cloud (taller than wide) uniformly scaled leaves wide side margins;
+		 * because node glyphs are drawn at a fixed radius regardless of layout position,
+		 * stretching the two axes by different factors spreads the nodes to fill the
+		 * frame without distorting a single circle. The per-axis ratio is capped so the
+		 * relative geometry of the graph is not warped beyond recognition.
+		 */
+		function reframe(): void {
+			if (simNodes.length === 0) return;
+			const xs = simNodes.map((n) => n.x ?? 0);
+			const ys = simNodes.map((n) => n.y ?? 0);
+			const minX = Math.min(...xs);
+			const maxX = Math.max(...xs);
+			const minY = Math.min(...ys);
+			const maxY = Math.max(...ys);
+			const spanX = maxX - minX || 1;
+			const spanY = maxY - minY || 1;
+			const maxRadius = Math.max(0, ...simNodes.map((n) => n.radius ?? 0));
+			const pad = size * 0.04 + maxRadius;
+			const usable = size - 2 * pad;
+			if (usable <= 0) return;
+
+			let scaleX = usable / spanX;
+			let scaleY = usable / spanY;
+			// Cap the axis ratio so the graph's proportions stay legible: the tighter
+			// axis may not stretch more than REFRAME_MAX_RATIO beyond the looser one.
+			const REFRAME_MAX_RATIO = 1.35;
+			const lo = Math.min(scaleX, scaleY);
+			const hi = Math.max(scaleX, scaleY);
+			if (hi > lo * REFRAME_MAX_RATIO) {
+				const capped = lo * REFRAME_MAX_RATIO;
+				if (scaleX > scaleY) scaleX = capped;
+				else scaleY = capped;
+			}
+			const offsetX = pad + (usable - spanX * scaleX) / 2;
+			const offsetY = pad + (usable - spanY * scaleY) / 2;
+			for (const n of simNodes) {
+				n.x = offsetX + ((n.x ?? 0) - minX) * scaleX;
+				n.y = offsetY + ((n.y ?? 0) - minY) * scaleY;
+			}
+		}
+
 		function loop(): void {
 			if (sim.alpha() < sim.alphaMin()) {
+				reframe();
+				flush();
 				routesInked = true;
 				return;
 			}
@@ -850,6 +1115,7 @@
 
 		if (prefersReducedMotion) {
 			for (let i = 0; i < 320; i++) sim.tick();
+			reframe();
 			flush();
 			routesInked = true;
 		} else {
@@ -880,6 +1146,7 @@
 							: buildProjectSimNodes(curMode === 'stack' ? stackNodes : relationshipsNodes);
 					sim = buildSim(curMode, simNodes, curEdges, curShared, curTheme);
 					for (let i = 0; i < 320; i++) sim.tick();
+					reframe();
 					flush();
 					return;
 				}
@@ -977,11 +1244,25 @@
 				<!-- Paper-tint hulls with italic serif names: the label carries the
 				     theme's identity, the way it already does everywhere else. -->
 				{#each territoryHulls as hull (hull.id)}
-					<path class="map__territory-fill" d={hull.path} />
-					<path class="map__territory-boundary" d={hull.path} />
-					<text class="map__territory-label" x={hull.labelX} y={hull.labelY} text-anchor="middle">
-						{hull.name}
-					</text>
+					{@const revealed = themeLabelVisible(hull.id)}
+					<path
+						class="map__territory-fill"
+						class:map__territory-fill--active={revealed}
+						d={hull.path}
+						role="presentation"
+						onpointerenter={() => (hoveredThemeId = hull.id)}
+						onpointerleave={() => (hoveredThemeId = null)}
+					/>
+					<path
+						class="map__territory-boundary"
+						class:map__territory-boundary--active={revealed}
+						d={hull.path}
+					/>
+					{#if revealed}
+						<text class="map__territory-label" x={hull.labelX} y={hull.labelY} text-anchor="middle">
+							{hull.name}
+						</text>
+					{/if}
 				{/each}
 			</g>
 		{/if}
@@ -1004,7 +1285,7 @@
 								themeEdgeType(edge.theme)
 							)}
 							fill="none"
-							d={routePath(a, b)}
+							d={routePath(a, b, `${edge.source}|${edge.target}`)}
 						/>
 					{/if}
 				{/each}
@@ -1023,7 +1304,7 @@
 							class:map__edge--inked={edge.kind === 'extraction' && routesInked}
 							pathLength={edge.kind === 'extraction' ? 1 : undefined}
 							fill="none"
-							d={routePath(a, b)}
+							d={routePath(a, b, `${edge.source}|${edge.target}`)}
 						/>
 						{#if edge.kind === 'extraction' && tNode}
 							<path
@@ -1031,7 +1312,7 @@
 								class:map__edge--dim={edgeDimmed(edge.source, edge.target)}
 								class:map__edge--hidden={edgeHidden(edge.source, edge.target, edge.kind)}
 								fill="none"
-								d={routeArrowhead(a, b, radiusScale(tNode) + 4)}
+								d={routeArrowhead(a, b, radiusScale(tNode) + 4, `${edge.source}|${edge.target}`)}
 							/>
 						{/if}
 					{/if}
@@ -1050,7 +1331,7 @@
 							class:map__edge--dim={edgeDimmed(edge.source, edge.target)}
 							class:map__edge--hidden={edgeHidden(edge.source, edge.target, edge.category)}
 							fill="none"
-							d={routePath(a, b)}
+							d={routePath(a, b, `${edge.source}|${edge.target}`)}
 						/>
 					{/if}
 				{/each}
@@ -1064,10 +1345,11 @@
 					{#if a && b}
 						<path
 							class="map__edge map__edge--co-occurrence"
+							class:map__edge--lifted={edgeLifted('co-occurrence')}
 							class:map__edge--dim={edgeDimmed(edge.source, edge.target)}
 							class:map__edge--hidden={techEdgeHidden(edge.source, edge.target)}
 							fill="none"
-							d={routePath(a, b)}
+							d={routePath(a, b, `${edge.source}|${edge.target}`)}
 						/>
 					{/if}
 				{/each}
@@ -1088,7 +1370,7 @@
 							style="stroke: {edgeTypeColour(edge.kind)}"
 							fill="none"
 							marker-end="url(#lineage-arrow-{edge.kind})"
-							d={routePath(a, end)}
+							d={routePath(a, end, `${edge.source}|${edge.target}`)}
 						/>
 					{/if}
 				{/each}
@@ -1115,6 +1397,7 @@
 						role="button"
 						aria-haspopup="dialog"
 						aria-pressed={pinnedSlug === node.slug}
+						aria-label="{node.name}: {node.tagline}"
 						onclick={(e) => {
 							e.preventDefault();
 							openProjectModal(node);
@@ -1130,7 +1413,6 @@
 						onfocus={() => (activeSlug = node.slug)}
 						onblur={() => (activeSlug = null)}
 					>
-						<title>{node.name}: {node.tagline}</title>
 						<circle
 							class="map__ring"
 							class:map__ring--provisional={node.stageProvisional}
@@ -1202,6 +1484,9 @@
 						role="button"
 						aria-haspopup="dialog"
 						aria-pressed={pinnedTechLabel === node.label}
+						aria-label="{node.label} — used in {node.projectCount} project{node.projectCount === 1
+							? ''
+							: 's'}"
 						onclick={(e) => {
 							e.preventDefault();
 							openTechModal(node);
@@ -1217,11 +1502,6 @@
 						onfocus={() => (activeTechLabel = node.label)}
 						onblur={() => (activeTechLabel = null)}
 					>
-						<title
-							>{node.label} — used in {node.projectCount} project{node.projectCount === 1
-								? ''
-								: 's'}</title
-						>
 						<!-- Kind is carried by glyph shape, not hue: every tech mark
 						     draws in the tech ink, historic stack one shade paperward
 						     (colour-system.md §5). -->
@@ -1605,7 +1885,13 @@
 	   like any political map — the label identifies, never the hue. */
 	.map__territory-fill {
 		fill: var(--color-border-strong);
-		opacity: 0.07;
+		opacity: 0.05;
+		transition: opacity var(--dur-base) var(--ease-standard);
+	}
+
+	.map__territory-fill--active {
+		/* Lift the hovered/lifted region a touch so its name reads against it. */
+		opacity: 0.1;
 	}
 
 	.map__territory-boundary {
@@ -1614,6 +1900,12 @@
 		stroke-width: 1;
 		stroke-dasharray: 3 5;
 		opacity: 0.5;
+		pointer-events: none;
+		transition: opacity var(--dur-base) var(--ease-standard);
+	}
+
+	.map__territory-boundary--active {
+		opacity: 0.8;
 	}
 
 	.map__territory-label {

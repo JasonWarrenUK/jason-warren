@@ -19,7 +19,35 @@ import { projects } from './index.js';
 import { hiddenTechLabels } from './tech-overlays.js';
 import { getTechIndex, layoutSimNodes, normaliseToCanvas, LAYOUT_CANDIDATES } from './graph.js';
 import type { SimNode, SimLink, LayoutResult, Point } from './graph.js';
-import type { TagKind } from './types.js';
+import type { TagKind, TechRelationship } from './types.js';
+
+/**
+ * Lineage relationships (leads-to / replaced-by) are authored, meaningful links,
+ * so they should shape placement more firmly than incidental co-occurrence: a
+ * short, strong link keeps a lineage pair (e.g. Svelte 5 → SvelteKit) adjacent
+ * instead of scattered across the canvas. Shared by the build-time layout and the
+ * live client sim so both stay in lockstep.
+ */
+export const LINEAGE_LINK = { distance: 70, strength: 0.7 } as const;
+
+/**
+ * Builds SimLinks for the lineage relationships whose endpoints both exist in the
+ * given node-label set (some lineage endpoints, e.g. Express/Oak, are not tech
+ * nodes and are skipped so forceLink never references a missing node).
+ */
+export function buildLineageLinks(
+	relationships: TechRelationship[],
+	nodeLabels: Set<string>
+): SimLink[] {
+	return relationships
+		.filter((r) => nodeLabels.has(r.source) && nodeLabels.has(r.target))
+		.map((r) => ({
+			source: r.source,
+			target: r.target,
+			distance: LINEAGE_LINK.distance,
+			strength: LINEAGE_LINK.strength
+		}));
+}
 
 // ---------------------------------------------------------------------------
 // Node shape
@@ -203,6 +231,7 @@ export function getTechCoEdges(options: TechCoEdgeOptions = {}): TechCoEdge[] {
 export function computeTechLayout(
 	techNodes: TechNode[],
 	coEdges: TechCoEdge[],
+	lineage: TechRelationship[] = [],
 	size = 1000
 ): LayoutResult {
 	if (techNodes.length === 0) {
@@ -210,14 +239,19 @@ export function computeTechLayout(
 	}
 
 	const maxCount = Math.max(1, ...techNodes.map((n) => n.projectCount));
+	const nodeLabels = new Set(techNodes.map((n) => n.label));
 
-	// SimLink for the co-occurrence edges.
-	const links: SimLink[] = coEdges.map((e) => ({
-		source: e.source,
-		target: e.target,
-		distance: 60 + 40 / Math.max(1, e.weight), // heavier edges pull tighter
-		strength: Math.min(0.5, 0.08 * e.weight)
-	}));
+	// Co-occurrence edges plus the stronger authored lineage links, so
+	// lineage-related nodes settle adjacent rather than scattered.
+	const links: SimLink[] = [
+		...coEdges.map((e) => ({
+			source: e.source,
+			target: e.target,
+			distance: 60 + 40 / Math.max(1, e.weight), // heavier edges pull tighter
+			strength: Math.min(0.5, 0.08 * e.weight)
+		})),
+		...buildLineageLinks(lineage, nodeLabels)
+	];
 
 	// Build SimNodes: radius from projectCount. Formula matches the render-side
 	// `techRadiusScale` in ProjectMap.svelte so layout collision == rendered size.

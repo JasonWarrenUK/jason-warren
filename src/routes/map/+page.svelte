@@ -30,6 +30,7 @@
 		themeEdges={data.themeEdges}
 		techCoEdges={data.techCoEdges}
 		territories={data.territories}
+		stackGroups={data.stackGroups}
 		size={data.size}
 	/>
 </div>
