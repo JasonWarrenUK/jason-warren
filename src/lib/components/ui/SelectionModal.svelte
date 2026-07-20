@@ -122,8 +122,8 @@
 		color: var(--color-text-muted);
 		cursor: pointer;
 		transition:
-			color var(--transition-fast),
-			border-color var(--transition-fast);
+			color var(--dur-micro) var(--ease-standard),
+			border-color var(--dur-micro) var(--ease-standard);
 	}
 
 	.modal__close:hover {
@@ -163,9 +163,9 @@
 		text-decoration: none;
 		cursor: pointer;
 		transition:
-			background-color var(--transition-fast),
-			border-color var(--transition-fast),
-			color var(--transition-fast);
+			background-color var(--dur-micro) var(--ease-standard),
+			border-color var(--dur-micro) var(--ease-standard),
+			color var(--dur-micro) var(--ease-standard);
 	}
 
 	:global(.modal-action:focus-visible) {

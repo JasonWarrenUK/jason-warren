@@ -176,7 +176,7 @@
 		color: var(--color-primary-text);
 		text-decoration: underline;
 		text-underline-offset: 3px;
-		transition: color var(--transition-fast);
+		transition: color var(--dur-micro) var(--ease-standard);
 	}
 
 	.link:hover {

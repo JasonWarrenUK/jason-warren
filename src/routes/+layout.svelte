@@ -160,7 +160,7 @@
 		font-weight: 600;
 		border-radius: var(--radius-md);
 		text-decoration: none;
-		transition: top var(--transition-fast);
+		transition: top var(--dur-micro) var(--ease-standard);
 	}
 
 	.skip-link:focus {
@@ -236,8 +236,8 @@
 		text-decoration: none;
 		border-radius: var(--radius-md);
 		transition:
-			color var(--transition-fast),
-			background-color var(--transition-fast);
+			color var(--dur-micro) var(--ease-standard),
+			background-color var(--dur-micro) var(--ease-standard);
 	}
 
 	.site-nav__link:hover {
@@ -283,9 +283,9 @@
 		color: var(--color-text-subtle);
 		cursor: pointer;
 		transition:
-			color var(--transition-fast),
-			border-color var(--transition-fast),
-			background-color var(--transition-fast);
+			color var(--dur-micro) var(--ease-standard),
+			border-color var(--dur-micro) var(--ease-standard),
+			background-color var(--dur-micro) var(--ease-standard);
 	}
 
 	.site-nav__toggle::-webkit-details-marker {
@@ -353,8 +353,8 @@
 		border-radius: var(--radius-md);
 		border-bottom: 1px solid var(--color-border);
 		transition:
-			color var(--transition-fast),
-			background-color var(--transition-fast);
+			color var(--dur-micro) var(--ease-standard),
+			background-color var(--dur-micro) var(--ease-standard);
 	}
 
 	.site-nav__panel-links li:last-child .site-nav__panel-link {
@@ -430,7 +430,7 @@
 		color: var(--color-primary-text);
 		text-decoration: underline;
 		text-underline-offset: 3px;
-		transition: color var(--transition-fast);
+		transition: color var(--dur-micro) var(--ease-standard);
 	}
 
 	.site-footer__link:hover {

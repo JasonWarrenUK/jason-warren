@@ -160,7 +160,7 @@
 		.scrolly--live .scrolly__panel {
 			grid-area: 1 / 1; /* all panels overlap in the same cell */
 			opacity: 0;
-			transition: opacity var(--transition-base);
+			transition: opacity var(--dur-base) var(--ease-standard);
 			padding: var(--space-6);
 			background-color: var(--color-surface-raised);
 			border: 1px solid var(--color-border);

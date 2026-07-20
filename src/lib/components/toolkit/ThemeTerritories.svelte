@@ -211,10 +211,10 @@
 		border-radius: var(--radius-full);
 		text-decoration: none;
 		transition:
-			color var(--transition-fast),
-			background-color var(--transition-fast),
-			border-color var(--transition-fast),
-			opacity var(--transition-fast);
+			color var(--dur-micro) var(--ease-standard),
+			background-color var(--dur-micro) var(--ease-standard),
+			border-color var(--dur-micro) var(--ease-standard),
+			opacity var(--dur-micro) var(--ease-standard);
 	}
 
 	.themes__chip:hover,
@@ -328,7 +328,7 @@
 		font-weight: 600;
 		color: var(--color-primary-text);
 		text-decoration: none;
-		transition: color var(--transition-fast);
+		transition: color var(--dur-micro) var(--ease-standard);
 		align-self: flex-start;
 	}
 

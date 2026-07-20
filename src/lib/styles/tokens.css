@@ -262,14 +262,6 @@
 	--dur-deliberate: calc(400ms * var(--motion-scale)); /* theme flip, dim-others */
 	--dur-plate: calc(600ms * var(--motion-scale)); /* graph relayout, modal */
 
-	/* --- Transitions (legacy names, aliased to the motion scale above) ---
-	   Existing components still reference these three; new work should use
-	   the duration and easing tokens above directly. Kept as aliases
-	   rather than migrating ~70 call sites in one pass. */
-	--transition-fast: var(--dur-micro) var(--ease-standard);
-	--transition-base: var(--dur-base) var(--ease-standard);
-	--transition-slow: var(--dur-deliberate) var(--ease-standard);
-
 	/*
 	 * --- Dim-others opacity, shared across the connection views ---
 	 * (ProjectMap, TimelineChart, ThemeTerritories, AdoptionTimeline). Nodes and

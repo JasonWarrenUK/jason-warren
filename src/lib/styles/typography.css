@@ -45,7 +45,7 @@ p {
 a:not([class]) {
 	color: var(--color-primary);
 	text-underline-offset: 3px;
-	transition: color var(--transition-fast);
+	transition: color var(--dur-micro) var(--ease-standard);
 }
 
 a:not([class]):hover {

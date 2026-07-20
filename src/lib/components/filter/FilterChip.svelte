@@ -32,9 +32,9 @@
 		cursor: pointer;
 		white-space: nowrap;
 		transition:
-			color var(--transition-fast),
-			border-color var(--transition-fast),
-			background-color var(--transition-fast);
+			color var(--dur-micro) var(--ease-standard),
+			border-color var(--dur-micro) var(--ease-standard),
+			background-color var(--dur-micro) var(--ease-standard);
 	}
 
 	.filter-chip:hover {

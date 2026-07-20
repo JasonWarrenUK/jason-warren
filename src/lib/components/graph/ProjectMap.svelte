@@ -2241,10 +2241,10 @@
 		cursor: pointer;
 		text-transform: capitalize;
 		transition:
-			border-color var(--transition-fast),
-			background-color var(--transition-fast),
-			color var(--transition-fast),
-			opacity var(--transition-fast);
+			border-color var(--dur-micro) var(--ease-standard),
+			background-color var(--dur-micro) var(--ease-standard),
+			color var(--dur-micro) var(--ease-standard),
+			opacity var(--dur-micro) var(--ease-standard);
 	}
 
 	.map__toggle:hover {

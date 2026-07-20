@@ -231,8 +231,8 @@
 		border-radius: var(--radius-md);
 		background-color: var(--color-surface-raised);
 		transition:
-			color var(--transition-fast),
-			background-color var(--transition-fast);
+			color var(--dur-micro) var(--ease-standard),
+			background-color var(--dur-micro) var(--ease-standard);
 		user-select: none;
 	}
 
@@ -259,7 +259,7 @@
 		border-right: 2px solid currentColor;
 		border-bottom: 2px solid currentColor;
 		transform: rotate(45deg);
-		transition: transform var(--transition-fast);
+		transition: transform var(--dur-micro) var(--ease-standard);
 		flex-shrink: 0;
 	}
 
@@ -301,8 +301,8 @@
 		list-style: none;
 		border-radius: var(--radius-md);
 		transition:
-			color var(--transition-fast),
-			background-color var(--transition-fast);
+			color var(--dur-micro) var(--ease-standard),
+			background-color var(--dur-micro) var(--ease-standard);
 		user-select: none;
 	}
 
@@ -330,7 +330,7 @@
 		border-right: 2px solid currentColor;
 		border-bottom: 2px solid currentColor;
 		transform: rotate(45deg);
-		transition: transform var(--transition-fast);
+		transition: transform var(--dur-micro) var(--ease-standard);
 		flex-shrink: 0;
 	}
 

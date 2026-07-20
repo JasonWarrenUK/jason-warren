@@ -66,9 +66,9 @@
 		border: 1px solid var(--color-border);
 		background-color: var(--color-surface);
 		transition:
-			color var(--transition-fast),
-			border-color var(--transition-fast),
-			background-color var(--transition-fast);
+			color var(--dur-micro) var(--ease-standard),
+			border-color var(--dur-micro) var(--ease-standard),
+			background-color var(--dur-micro) var(--ease-standard);
 	}
 
 	.external-link:hover {

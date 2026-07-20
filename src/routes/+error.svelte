@@ -83,8 +83,8 @@
 		color: var(--color-text);
 		text-decoration: none;
 		transition:
-			border-color var(--transition-fast),
-			background-color var(--transition-fast);
+			border-color var(--dur-micro) var(--ease-standard),
+			background-color var(--dur-micro) var(--ease-standard);
 	}
 
 	.error__link:hover {

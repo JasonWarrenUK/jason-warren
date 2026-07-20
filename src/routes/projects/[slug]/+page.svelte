@@ -146,7 +146,7 @@
 		display: inline-flex;
 		align-items: center;
 		gap: var(--space-1);
-		transition: color var(--transition-fast);
+		transition: color var(--dur-micro) var(--ease-standard);
 	}
 
 	.page__breadcrumb a:hover {
@@ -222,8 +222,8 @@
 		border: 1px solid var(--color-border);
 		border-radius: var(--radius-full);
 		transition:
-			color var(--transition-fast),
-			border-color var(--transition-fast);
+			color var(--dur-micro) var(--ease-standard),
+			border-color var(--dur-micro) var(--ease-standard);
 	}
 
 	.page__view-link:hover {

@@ -900,7 +900,7 @@
 		width: 1.5rem;
 		height: 1.5rem;
 		color: var(--color-text-muted);
-		transition: transform var(--transition-base);
+		transition: transform var(--dur-base) var(--ease-standard);
 		flex-shrink: 0;
 	}
 
@@ -912,7 +912,7 @@
 		border-right: 2px solid currentColor;
 		border-bottom: 2px solid currentColor;
 		transform: rotate(45deg) translate(-1px, -1px);
-		transition: transform var(--transition-base);
+		transition: transform var(--dur-base) var(--ease-standard);
 	}
 
 	details[open] .page__chevron::before {
@@ -1118,7 +1118,7 @@
 		color: var(--color-primary-text);
 		text-decoration: underline;
 		text-underline-offset: 3px;
-		transition: color var(--transition-fast);
+		transition: color var(--dur-micro) var(--ease-standard);
 	}
 
 	.link:hover {

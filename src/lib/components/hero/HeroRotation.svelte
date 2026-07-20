@@ -159,7 +159,7 @@
 		cursor: pointer;
 		text-decoration: underline;
 		text-underline-offset: 3px;
-		transition: opacity var(--transition-fast);
+		transition: opacity var(--dur-micro) var(--ease-standard);
 	}
 
 	.hero-rotation__deal:hover {
@@ -218,7 +218,7 @@
 		font-weight: 600;
 		color: var(--color-text);
 		line-height: 1.2;
-		transition: color var(--transition-fast);
+		transition: color var(--dur-micro) var(--ease-standard);
 	}
 
 	.hero-rotation__body:hover .hero-rotation__card-name {
