@@ -392,16 +392,6 @@
 		}
 	}
 
-	/* ── Reduced motion ── */
-
-	@media (prefers-reduced-motion: reduce) {
-		.site-nav__toggle,
-		.site-nav__panel-link,
-		.site-nav__link {
-			transition: none;
-		}
-	}
-
 	.site-nav__home:focus-visible {
 		outline: 2px solid var(--color-primary-text);
 		outline-offset: 2px;

@@ -90,10 +90,4 @@
 		outline: 2px solid var(--color-primary);
 		outline-offset: 2px;
 	}
-
-	@media (prefers-reduced-motion: reduce) {
-		.theme-toggle {
-			transition: none;
-		}
-	}
 </style>

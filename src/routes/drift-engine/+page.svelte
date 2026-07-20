@@ -919,13 +919,6 @@
 		transform: rotate(-135deg) translate(-1px, -1px);
 	}
 
-	@media (prefers-reduced-motion: reduce) {
-		.page__chevron,
-		.page__chevron::before {
-			transition: none;
-		}
-	}
-
 	.page__summary:hover h3 {
 		color: var(--color-primary-text);
 	}

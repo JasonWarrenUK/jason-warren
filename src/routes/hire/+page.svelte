@@ -155,10 +155,4 @@
 	.link:hover {
 		color: var(--color-primary);
 	}
-
-	@media (prefers-reduced-motion: reduce) {
-		.link {
-			transition: none;
-		}
-	}
 </style>

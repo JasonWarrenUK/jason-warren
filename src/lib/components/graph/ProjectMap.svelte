@@ -2277,14 +2277,4 @@
 		margin: 0;
 		line-height: 1.5;
 	}
-
-	@media (prefers-reduced-motion: reduce) {
-		.map__edge,
-		.map__edge-arrowhead,
-		.map__node,
-		.map__ring,
-		.map__label {
-			transition: none;
-		}
-	}
 </style>

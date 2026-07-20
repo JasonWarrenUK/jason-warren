@@ -267,12 +267,6 @@
 		transform: rotate(-135deg);
 	}
 
-	@media (prefers-reduced-motion: reduce) {
-		.filter-bar__summary::after {
-			transition: none;
-		}
-	}
-
 	.filter-bar {
 		display: flex;
 		flex-direction: column;
@@ -336,12 +330,6 @@
 
 	.filter-group[open] .filter-group__summary::after {
 		transform: rotate(-135deg);
-	}
-
-	@media (prefers-reduced-motion: reduce) {
-		.filter-group__summary::after {
-			transition: none;
-		}
 	}
 
 	.filter-group__chips {

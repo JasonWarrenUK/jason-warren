@@ -138,12 +138,6 @@
 		transform: rotate(-135deg);
 	}
 
-	@media (prefers-reduced-motion: reduce) {
-		.hero-breadth__summary::after {
-			transition: none;
-		}
-	}
-
 	.hero-breadth__stack {
 		display: grid;
 		grid-template-columns: repeat(auto-fill, minmax(min(100%, 20rem), 1fr));

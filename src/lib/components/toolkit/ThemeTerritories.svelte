@@ -335,11 +335,4 @@
 	.themes-teaser__cta:hover {
 		color: var(--color-primary);
 	}
-
-	@media (prefers-reduced-motion: reduce) {
-		.themes__chip,
-		.themes-teaser__cta {
-			transition: none;
-		}
-	}
 </style>

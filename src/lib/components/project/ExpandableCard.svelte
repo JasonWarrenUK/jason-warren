@@ -17,11 +17,16 @@
 
 	let open = $state(false);
 
-	// Slide is the only motion; honour reduced-motion by collapsing the duration.
-	// Transitions never run on the initial (collapsed) SSR render, only on toggle.
+	// Slide is the only motion. svelte/transition needs a numeric ms duration,
+	// so read --dur-base off the resolved CSS rather than hand-picking a
+	// value that could drift from the token scale — --motion-scale already
+	// collapses it to 0 under reduced motion, so no separate matchMedia
+	// check is needed here. Transitions never run on the initial (collapsed)
+	// SSR render, only on toggle.
 	function slideDuration(): number {
 		if (typeof window === 'undefined') return 0;
-		return window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 220;
+		const raw = getComputedStyle(document.documentElement).getPropertyValue('--dur-base');
+		return parseFloat(raw) || 0;
 	}
 </script>
 
