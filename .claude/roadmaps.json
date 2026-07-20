@@ -187,7 +187,7 @@
 					{
 						"id": "3DE.4",
 						"description": "Refine graph aesthetics (edge styling, clustering legibility, constellation view)",
-						"status": "blocked",
+						"status": "done",
 						"dependsOn": [
 							"3DE.5",
 							"3DE.6"
@@ -204,7 +204,7 @@
 					{
 						"id": "3DE.6",
 						"description": "Drastically improve the /map graph layout for legibility",
-						"status": "todo",
+						"status": "done",
 						"dependsOn": [
 							"3DE.0"
 						]
@@ -399,7 +399,7 @@
 					{
 						"id": "5DR.19",
 						"description": "drift link verb: write a TechRelationship into tech-relationships.ts",
-						"status": "todo",
+						"status": "done",
 						"dependsOn": [
 							"5DR.6"
 						]

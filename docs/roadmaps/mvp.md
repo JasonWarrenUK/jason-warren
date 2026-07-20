@@ -46,7 +46,7 @@ The site is live and substantially built: full routes, the graph/timeline/map/to
 - [x] **3DE.1** — Typography pass (scale, rhythm, measure) across all routes _(depends on 3DE.0)_
 - [ ] **3DE.2** — Responsive audit: map / timeline / grids on small viewports _(blocked — depends on 3DE.3, 3DE.4)_
 - [ ] **3DE.3** — Motion pass: meaningful transitions, respect prefers-reduced-motion _(depends on 3DE.1)_
-- [ ] **3DE.4** — Refine graph aesthetics (edge styling, clustering legibility, constellation view) _(depends on 3DE.5, 3DE.6)_
+- [x] **3DE.4** — Refine graph aesthetics (edge styling, clustering legibility, constellation view) _(depends on 3DE.5, 3DE.6)_
 - [x] **3DE.5** — Consistency sweep of semantic colour aliases vs Reasonable Colors usage _(depends on 3DE.0)_
 - [x] **3DE.6** — Drastically improve the /map graph layout for legibility _(depends on 3DE.0)_
 
@@ -85,7 +85,7 @@ The site is live and substantially built: full routes, the graph/timeline/map/to
 - [x] **5DR.16** — drift pin verb: set pin in a project overlay _(depends on 5DR.6)_
 - [x] **5DR.17** — drift flag verb: the pin and hide overlay flags under one verb _(depends on 5DR.16)_
 - [x] **5DR.18** — drift relate verb: write a ProjectRelationship into a project overlay
-- [ ] **5DR.19** — drift link verb: write a TechRelationship into tech-relationships.ts _(depends on 5DR.6)_
+- [x] **5DR.19** — drift link verb: write a TechRelationship into tech-relationships.ts _(depends on 5DR.6)_
 - [ ] **5DR.20** — Intra-span dormancy signal: sample commit dates so activity gaps become detectable _(depends on 5DR.7)_
 - [ ] **5DR.21** — Improve role detection: richer signals than commit share for the solo/lead/collaborator inference _(depends on 5DR.6)_
 - [ ] **5DR.22** — drift enrich verb: opt-in gh-backed enrichment writing archived and homepageUrl into a schema-extended sources.json section, while drift sync stays offline _(depends on 5DR.5, 5DR.6)_
@@ -115,21 +115,14 @@ graph LR
 	classDef outOfScope fill:#f6f6f6,stroke:#e2e2e2,color:#e2e2e2,stroke-dasharray:2 2
 	classDef mile fill:#e3f7ff,stroke:#007590,color:#007590,font-weight:bold
 	classDef external fill:#fff9e5,stroke:#7d6f00,color:#7d6f00,stroke-dasharray:4 3,font-style:italic
-	M1["M1: Content Depth & Polish"]:::mile
-	M2["M2: Exploration & New Features"]:::mile
-	M3["M3: Design & Interaction Polish"]:::mile
-	M4["M4: Quality & Reach"]:::mile
-	M5["M5: Drift Decoupling: Engine & Verbs"]:::mile
-	M6["M6: Drift: Tests & Docs"]:::mile
 	1CO.1["1CO.1: Audit every project entry for depth; out…"]
 	1CO.2["1CO.2: Bring every project entry to flagship-re…"]
 	1CO.3["1CO.3: Strengthen contributionNote copy across…"]
 	1CO.4["1CO.4: Rewrite About page narrative (positionin…"]
-	1CO.5["1CO.5: Expand the Colophon into the drift-engin…"]
 	1CO.6["1CO.6: Review theme groupings and theme copy fo…"]
 	1CO.7["1CO.7: Review engine-extraction thread narrativ…"]
-	1CO.8["1CO.8: Pass all copy through the writing-style…"]
 	1CO.9["1CO.9: CV / hire-me positioning copy on a new /…"]
+	1CO.8["1CO.8: Pass all copy through the writing-style…"]
 	1CO.10["1CO.10: Surfaced-project rotation: fully derive…"]
 	2FE.1["2FE.1: Client-side search across projects (titl…"]
 	2FE.2["2FE.2: Deep-link map / timeline / toolkit selec…"]
@@ -139,31 +132,34 @@ graph LR
 	2FE.6["2FE.6: Tech-stack constellation visualisation (…"]
 	2FE.7["2FE.7: Technology lineage edges (leads-to / rep…"]
 	2FE.8["2FE.8: Robust filter-toggle relayout: determini…"]
+	M2["M2: Exploration & New Features"]:::mile
 	3DE.0["3DE.0: Define visual direction / signature: moo…"]
 	3DE.1["3DE.1: Typography pass (scale, rhythm, measure)…"]
-	3DE.2["3DE.2: Responsive audit: map / timeline / grids…"]
 	3DE.3["3DE.3: Motion pass: meaningful transitions, res…"]
-	3DE.4["3DE.4: Refine graph aesthetics (edge styling, c…"]
 	3DE.5["3DE.5: Consistency sweep of semantic colour ali…"]
 	3DE.6["3DE.6: Drastically improve the /map graph layou…"]
-	4QU.1["4QU.1: Accessibility audit: keyboard nav, ARIA,…"]
-	4QU.3["4QU.3: SEO pass: structured data, meta complete…"]
+	3DE.4["3DE.4: Refine graph aesthetics (edge styling, c…"]
+	3DE.2["3DE.2: Responsive audit: map / timeline / grids…"]
+	M3["M3: Design & Interaction Polish"]:::mile
 	4QU.4["4QU.4: Confirm OG image coverage for every rout…"]
 	4QU.5["4QU.5: Component / interaction test coverage fo…"]
+	4QU.1["4QU.1: Accessibility audit: keyboard nav, ARIA,…"]
+	4QU.3["4QU.3: SEO pass: structured data, meta complete…"]
 	4QU.7["4QU.7: a11y regression pass on the tech-stack c…"]
 	4QU.8["4QU.8: Analyse and reconcile where the map's Te…"]
+	M4["M4: Quality & Reach"]:::mile
 	5DR.0["5DR.0: Drift CLI foundation: dispatcher, finger…"]
 	5DR.1["5DR.1: Boundary doc: the core-engine vs Svelte-…"]
+	5DR.5["5DR.5: Define the engine's public data schema (…"]
+	5DR.12["5DR.12: Migrate the repo package manager from n…"]
 	5DR.2["5DR.2: Coupling inventory: annotate the six cou…"]
 	5DR.3["5DR.3: Config layer: paths, author pattern, sca…"]
 	5DR.4["5DR.4: Relocate the tag taxonomy to the engine…"]
-	5DR.5["5DR.5: Define the engine's public data schema (…"]
+	5DR.14["5DR.14: Rename Drift verbs for clearer intent (…"]
 	5DR.6["5DR.6: Split the core engine from the Svelte in…"]
 	5DR.7["5DR.7: Branch awareness plus the in-progress.js…"]
 	5DR.11["5DR.11: drift audit verb: mechanical-proxy tier…"]
-	5DR.12["5DR.12: Migrate the repo package manager from n…"]
 	5DR.13["5DR.13: drift init scaffold verb"]
-	5DR.14["5DR.14: Rename Drift verbs for clearer intent (…"]
 	5DR.15["5DR.15: drift author verb: scaffold and open a…"]
 	5DR.16["5DR.16: drift pin verb: set pin in a project ov…"]
 	5DR.17["5DR.17: drift flag verb: the pin and hide overl…"]
@@ -173,92 +169,96 @@ graph LR
 	5DR.21["5DR.21: Improve role detection: richer signals…"]
 	5DR.22["5DR.22: drift enrich verb: opt-in gh-backed enr…"]
 	5DR.23["5DR.23: Derive the site's archived and deployed…"]
+	M5["M5: Drift Decoupling: Engine & Verbs"]:::mile
+	1CO.5["1CO.5: Expand the Colophon into the drift-engin…"]
+	M1["M1: Content Depth & Polish"]:::mile
 	5DR.8["5DR.8: Engine test suite: config resolution, fi…"]
 	5DR.9["5DR.9: Drift docs: config reference, data model…"]
 	5DR.10["5DR.10: Authoring guide: which fields Drift pop…"]
+	M6["M6: Drift: Tests & Docs"]:::mile
 	1CO.1 --> 1CO.2
-	M5 --> 1CO.5
 	1CO.1 --> 1CO.6
-	1CO.4 --> 1CO.7
 	1CO.2 --> 1CO.8
+	1CO.2 --> 1CO.10
 	1CO.3 --> 1CO.8
+	1CO.4 --> 1CO.7
+	1CO.4 --> 1CO.9
+	1CO.6 --> M1
 	1CO.7 --> 1CO.8
 	1CO.9 --> 1CO.8
-	1CO.4 --> 1CO.9
-	1CO.2 --> 1CO.10
-	2FE.2 --> 2FE.5
-	M2 --> 3DE.0
-	3DE.0 --> 3DE.1
-	3DE.3 --> 3DE.2
-	3DE.4 --> 3DE.2
-	3DE.1 --> 3DE.3
-	3DE.5 --> 3DE.4
-	3DE.6 --> 3DE.4
-	3DE.0 --> 3DE.5
-	3DE.0 --> 3DE.6
-	4QU.5 --> 4QU.1
-	4QU.1 --> 4QU.3
-	M3 --> 4QU.4
-	M3 --> 4QU.5
-	4QU.1 --> 4QU.7
-	5DR.0 --> 5DR.1
-	5DR.12 --> 5DR.2
-	5DR.1 --> 5DR.3
-	5DR.2 --> 5DR.3
-	5DR.3 --> 5DR.4
-	5DR.1 --> 5DR.5
-	5DR.4 --> 5DR.6
-	5DR.14 --> 5DR.6
-	5DR.6 --> 5DR.7
-	5DR.5 --> 5DR.11
-	5DR.6 --> 5DR.11
-	5DR.7 --> 5DR.13
-	5DR.0 --> 5DR.14
-	5DR.6 --> 5DR.15
-	5DR.6 --> 5DR.16
-	5DR.16 --> 5DR.17
-	5DR.6 --> 5DR.18
-	5DR.6 --> 5DR.19
-	5DR.7 --> 5DR.20
-	5DR.6 --> 5DR.21
-	5DR.5 --> 5DR.22
-	5DR.6 --> 5DR.22
-	5DR.22 --> 5DR.23
-	M3 --> 5DR.8
-	M5 --> 5DR.8
-	M3 --> 5DR.9
-	M5 --> 5DR.9
-	M3 --> 5DR.10
-	M5 --> 5DR.10
-	1CO.10 --> M1
-	1CO.5 --> M1
-	1CO.6 --> M1
 	1CO.8 --> M1
+	1CO.10 --> M1
 	2FE.1 --> M2
+	2FE.2 --> 2FE.5
 	2FE.3 --> M2
 	2FE.4 --> M2
 	2FE.5 --> M2
 	2FE.6 --> M2
 	2FE.7 --> M2
 	2FE.8 --> M2
+	M2 --> 3DE.0
+	3DE.0 --> 3DE.1
+	3DE.0 --> 3DE.5
+	3DE.0 --> 3DE.6
+	3DE.1 --> 3DE.3
+	3DE.3 --> 3DE.2
+	3DE.5 --> 3DE.4
+	3DE.6 --> 3DE.4
+	3DE.4 --> 3DE.2
 	3DE.2 --> M3
-	4QU.3 --> M4
+	M3 --> 4QU.4
+	M3 --> 4QU.5
+	M3 --> 5DR.8
+	M3 --> 5DR.9
+	M3 --> 5DR.10
 	4QU.4 --> M4
+	4QU.5 --> 4QU.1
+	4QU.1 --> 4QU.3
+	4QU.1 --> 4QU.7
+	4QU.3 --> M4
 	4QU.7 --> M4
 	4QU.8 --> M4
+	5DR.0 --> 5DR.1
+	5DR.0 --> 5DR.14
+	5DR.1 --> 5DR.5
+	5DR.1 --> 5DR.3
+	5DR.5 --> 5DR.11
+	5DR.5 --> 5DR.22
+	5DR.12 --> 5DR.2
+	5DR.2 --> 5DR.3
+	5DR.3 --> 5DR.4
+	5DR.4 --> 5DR.6
+	5DR.14 --> 5DR.6
+	5DR.6 --> 5DR.7
+	5DR.6 --> 5DR.11
+	5DR.6 --> 5DR.15
+	5DR.6 --> 5DR.16
+	5DR.6 --> 5DR.18
+	5DR.6 --> 5DR.19
+	5DR.6 --> 5DR.21
+	5DR.6 --> 5DR.22
+	5DR.7 --> 5DR.13
+	5DR.7 --> 5DR.20
 	5DR.11 --> M5
 	5DR.13 --> M5
 	5DR.15 --> M5
+	5DR.16 --> 5DR.17
 	5DR.17 --> M5
 	5DR.18 --> M5
 	5DR.19 --> M5
 	5DR.20 --> M5
 	5DR.21 --> M5
+	5DR.22 --> 5DR.23
 	5DR.23 --> M5
-	5DR.10 --> M6
+	M5 --> 1CO.5
+	M5 --> 5DR.8
+	M5 --> 5DR.9
+	M5 --> 5DR.10
+	1CO.5 --> M1
 	5DR.8 --> M6
 	5DR.9 --> M6
-	class 3DE.3,3DE.4,4QU.8,5DR.19,5DR.20,5DR.21,5DR.22 todo
+	5DR.10 --> M6
+	class 3DE.3,4QU.8,5DR.20,5DR.21,5DR.22 todo
 	class 3DE.2,4QU.1,4QU.3,4QU.4,4QU.5,4QU.7,5DR.10,5DR.23,5DR.8,5DR.9 blocked
-	class 1CO.1,1CO.10,1CO.2,1CO.3,1CO.4,1CO.5,1CO.6,1CO.7,1CO.8,1CO.9,2FE.1,2FE.2,2FE.3,2FE.4,2FE.5,2FE.6,2FE.7,2FE.8,3DE.0,3DE.1,3DE.5,3DE.6,5DR.0,5DR.1,5DR.11,5DR.12,5DR.13,5DR.14,5DR.15,5DR.16,5DR.17,5DR.18,5DR.2,5DR.3,5DR.4,5DR.5,5DR.6,5DR.7 done
+	class 1CO.1,1CO.10,1CO.2,1CO.3,1CO.4,1CO.5,1CO.6,1CO.7,1CO.8,1CO.9,2FE.1,2FE.2,2FE.3,2FE.4,2FE.5,2FE.6,2FE.7,2FE.8,3DE.0,3DE.1,3DE.4,3DE.5,3DE.6,5DR.0,5DR.1,5DR.11,5DR.12,5DR.13,5DR.14,5DR.15,5DR.16,5DR.17,5DR.18,5DR.19,5DR.2,5DR.3,5DR.4,5DR.5,5DR.6,5DR.7 done
 ```
