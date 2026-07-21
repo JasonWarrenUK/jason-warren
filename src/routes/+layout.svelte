@@ -371,9 +371,10 @@
 		outline-offset: 2px;
 	}
 
-	/* ── Breakpoint: collapse nav to hamburger below 48rem ── */
+	/* ── Breakpoint: collapse nav to hamburger below 48rem (--bp-md) ── */
 
 	@media (max-width: 48rem) {
+		/* --bp-md */
 		.site-nav {
 			gap: var(--space-2);
 			padding: 0 var(--space-4);

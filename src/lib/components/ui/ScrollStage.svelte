@@ -128,6 +128,7 @@
 	/* ── JS-live, wide viewports: two-column sticky layout ──────────────── */
 
 	@media (min-width: 60rem) {
+		/* --bp-lg */
 		.scrolly--live {
 			grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
 			gap: var(--space-12);

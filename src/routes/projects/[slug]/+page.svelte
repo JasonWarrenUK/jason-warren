@@ -237,7 +237,8 @@
 		gap: var(--space-10);
 	}
 
-	@media (min-width: 56rem) {
+	@media (min-width: 60rem) {
+		/* --bp-lg (folded from a standalone 56rem: not a distinct device class) */
 		.page__body {
 			grid-template-columns: 1fr 20rem;
 			align-items: start;
