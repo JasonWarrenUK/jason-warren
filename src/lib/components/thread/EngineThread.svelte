@@ -138,6 +138,7 @@
 	}
 
 	@media (max-width: 48rem) {
+		/* --bp-md */
 		.threads__pair {
 			grid-template-columns: 1fr;
 		}

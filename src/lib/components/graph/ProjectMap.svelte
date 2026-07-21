@@ -2121,16 +2121,6 @@
 		fill: var(--color-text-muted);
 	}
 
-	@media (max-width: 40rem) {
-		.map__label {
-			font-size: 22px;
-		}
-
-		.map__node--tech .map__label {
-			font-size: 18px;
-		}
-	}
-
 	/* Legend: a centred column of titled rows, sharing one visual language
 	   with the timeline and toolkit keys — mono small-caps titles leading
 	   centred entry rows. */
@@ -2276,5 +2266,50 @@
 		color: var(--color-text-subtle);
 		margin: 0;
 		line-height: 1.5;
+	}
+
+	/* Below --bp-sm, stop scaling the square viewBox down to illegibility:
+	   hold it at a width that keeps nodes and labels readable, and let the
+	   SVG itself scroll horizontally (it establishes its own viewport, so
+	   overflow-x here doesn't need a separate wrapper) rather than shrink. */
+	@media (max-width: 40rem) {
+		/* --bp-sm */
+		.map__svg {
+			width: auto;
+			min-width: 30rem;
+			max-height: none;
+			overflow-x: auto;
+			overflow-y: hidden;
+			-webkit-overflow-scrolling: touch;
+			scrollbar-width: thin;
+			overscroll-behavior-x: contain;
+		}
+
+		.map__label {
+			font-size: 22px;
+		}
+
+		.map__node--tech .map__label {
+			font-size: 18px;
+		}
+	}
+
+	@media (pointer: coarse) {
+		/* No radius override here: the inline r={Math.max(r + 10, 22)} on
+		   .map__hit already guarantees the ~44px touch-target floor (WCAG
+		   2.5.8) for every node, including hubs sized well past 22px. A
+		   flat `r: 22px` here would win the cascade over that presentation
+		   attribute (CSS always beats SVG presentation attributes) and
+		   clamp larger hit-discs back down to 22px instead of only
+		   flooring the small ones.
+
+		   Labels are opacity: 0 unless --labelled/--pinned (rule above).
+		   Fine for a mouse, which reveals a name on hover, but touch has no
+		   hover state, so give a dim name at rest instead. This must stay
+		   below the base rule in source order: both share the same
+		   specificity, and the later declaration wins the cascade. */
+		.map__node:not(.map__node--labelled):not(.map__node--pinned) .map__label {
+			opacity: 0.55;
+		}
 	}
 </style>

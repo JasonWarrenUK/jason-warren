@@ -979,6 +979,7 @@
 	}
 
 	@media (min-width: 40rem) {
+		/* --bp-sm */
 		.spec__row {
 			grid-template-columns: 10rem 1fr;
 			gap: var(--space-5);

@@ -170,7 +170,7 @@
 					{
 						"id": "3DE.2",
 						"description": "Responsive audit: map / timeline / grids on small viewports",
-						"status": "blocked",
+						"status": "done",
 						"dependsOn": [
 							"3DE.3",
 							"3DE.4"
@@ -179,7 +179,7 @@
 					{
 						"id": "3DE.3",
 						"description": "Motion pass: meaningful transitions, respect prefers-reduced-motion",
-						"status": "todo",
+						"status": "done",
 						"dependsOn": [
 							"3DE.1"
 						]
