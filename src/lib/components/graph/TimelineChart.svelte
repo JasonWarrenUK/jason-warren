@@ -660,7 +660,7 @@
 		fill-opacity: 0.14;
 		stroke: none;
 		pointer-events: none;
-		transition: fill-opacity var(--transition-fast);
+		transition: fill-opacity var(--dur-micro) var(--ease-standard);
 	}
 
 	/* Dimmed when another rail is highlighted and this ribbon touches
@@ -737,8 +737,8 @@
 		stroke-opacity: 0.4;
 		pointer-events: none;
 		transition:
-			stroke-opacity var(--transition-fast),
-			stroke-width var(--transition-fast);
+			stroke-opacity var(--dur-micro) var(--ease-standard),
+			stroke-width var(--dur-micro) var(--ease-standard);
 	}
 
 	/* Open-ended fade past the terminal node, still-live rails only. Same
@@ -750,7 +750,7 @@
 	.timeline__rail-fade {
 		stroke-width: 2;
 		pointer-events: none;
-		transition: stroke-width var(--transition-fast);
+		transition: stroke-width var(--dur-micro) var(--ease-standard);
 	}
 
 	/* Labels: JetBrains Mono micro-caps, the atlas apparatus convention. */
@@ -888,8 +888,8 @@
 		opacity: 1;
 		transform: none;
 		transition:
-			opacity var(--transition-slow) var(--reveal-delay),
-			transform var(--transition-slow) var(--reveal-delay);
+			opacity var(--dur-deliberate) var(--ease-standard) var(--reveal-delay),
+			transform var(--dur-deliberate) var(--ease-standard) var(--reveal-delay);
 	}
 
 	/* Legend: a centred column of titled rows, one per channel, sharing one

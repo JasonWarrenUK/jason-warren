@@ -3,11 +3,11 @@
  * Applied globally via app.css.
  */
 
+/* color/background-color live on the body rule in reset.css, paired with
+   the theme-flip transition — not repeated here. */
 body {
 	font-family: var(--font-sans);
 	font-size: var(--text-base);
-	color: var(--color-text);
-	background-color: var(--color-surface);
 }
 
 h1,
@@ -45,7 +45,7 @@ p {
 a:not([class]) {
 	color: var(--color-primary);
 	text-underline-offset: 3px;
-	transition: color var(--transition-fast);
+	transition: color var(--dur-micro) var(--ease-standard);
 }
 
 a:not([class]):hover {

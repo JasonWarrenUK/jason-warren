@@ -13,11 +13,26 @@ html {
 	text-size-adjust: 100%;
 }
 
+/*
+ * The canvas fill. Explicit rather than left to color-scheme alone, so the
+ * theme flip (data-theme toggled by ThemeToggle) has something to animate:
+ * color-scheme changes which branch of every light-dark() token resolves,
+ * and a declared transition on the properties consuming those tokens
+ * animates the recalculation. Duration matches the "theme flip" moment in
+ * the motion spec (docs/design/visual-direction.md §4) — the no-flash
+ * script in app.html sets data-theme before first paint, so this never
+ * fires on initial load, only on an actual runtime toggle.
+ */
 body {
 	margin: 0;
 	min-height: 100dvh;
 	line-height: 1.5;
 	-webkit-font-smoothing: antialiased;
+	background-color: var(--color-surface);
+	color: var(--color-text);
+	transition:
+		background-color var(--dur-deliberate) var(--ease-standard),
+		color var(--dur-deliberate) var(--ease-standard);
 }
 
 img,

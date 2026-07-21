@@ -75,9 +75,9 @@
 		color: var(--color-text-subtle);
 		cursor: pointer;
 		transition:
-			color var(--transition-fast),
-			border-color var(--transition-fast),
-			background-color var(--transition-fast);
+			color var(--dur-micro) var(--ease-standard),
+			border-color var(--dur-micro) var(--ease-standard),
+			background-color var(--dur-micro) var(--ease-standard);
 	}
 
 	.theme-toggle:hover {
@@ -89,11 +89,5 @@
 	.theme-toggle:focus-visible {
 		outline: 2px solid var(--color-primary);
 		outline-offset: 2px;
-	}
-
-	@media (prefers-reduced-motion: reduce) {
-		.theme-toggle {
-			transition: none;
-		}
 	}
 </style>

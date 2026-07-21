@@ -77,7 +77,7 @@
 		font-weight: 600;
 		color: var(--color-text);
 		line-height: 1.3;
-		transition: color var(--transition-fast);
+		transition: color var(--dur-micro) var(--ease-standard);
 	}
 
 	.project-card__badges {

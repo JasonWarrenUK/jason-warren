@@ -231,8 +231,8 @@
 		border-radius: var(--radius-md);
 		background-color: var(--color-surface-raised);
 		transition:
-			color var(--transition-fast),
-			background-color var(--transition-fast);
+			color var(--dur-micro) var(--ease-standard),
+			background-color var(--dur-micro) var(--ease-standard);
 		user-select: none;
 	}
 
@@ -259,18 +259,12 @@
 		border-right: 2px solid currentColor;
 		border-bottom: 2px solid currentColor;
 		transform: rotate(45deg);
-		transition: transform var(--transition-fast);
+		transition: transform var(--dur-micro) var(--ease-standard);
 		flex-shrink: 0;
 	}
 
 	.filter-bar__all[open] .filter-bar__summary::after {
 		transform: rotate(-135deg);
-	}
-
-	@media (prefers-reduced-motion: reduce) {
-		.filter-bar__summary::after {
-			transition: none;
-		}
 	}
 
 	.filter-bar {
@@ -301,8 +295,8 @@
 		list-style: none;
 		border-radius: var(--radius-md);
 		transition:
-			color var(--transition-fast),
-			background-color var(--transition-fast);
+			color var(--dur-micro) var(--ease-standard),
+			background-color var(--dur-micro) var(--ease-standard);
 		user-select: none;
 	}
 
@@ -330,18 +324,12 @@
 		border-right: 2px solid currentColor;
 		border-bottom: 2px solid currentColor;
 		transform: rotate(45deg);
-		transition: transform var(--transition-fast);
+		transition: transform var(--dur-micro) var(--ease-standard);
 		flex-shrink: 0;
 	}
 
 	.filter-group[open] .filter-group__summary::after {
 		transform: rotate(-135deg);
-	}
-
-	@media (prefers-reduced-motion: reduce) {
-		.filter-group__summary::after {
-			transition: none;
-		}
 	}
 
 	.filter-group__chips {

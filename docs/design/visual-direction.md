@@ -94,9 +94,9 @@ One curve, one exit, a four-step scale, a hard rule.
 --dur-plate: calc(600ms * var(--motion-scale)); /* graph relayout, modal */
 ```
 
-**Earns motion:** state changes needing continuity — graph relayout, theme flip, hover/dim, modal open, the graph settling on first load. Plus one Atlas-specific licence: a plotted edge may draw in along its path, once, on first reveal (that's how a route is inked).
+**Earns motion:** state changes needing continuity — graph relayout, theme flip, hover/dim, modal open, the graph settling on first load. Plus one Atlas-specific licence, the **survey-drawing exception**: a plotted mark may draw in once, on first reveal, if that's how the instrument records it — a route inked along its path, a rail or tech mark plotted into its final position on a timeline. The tell: it fires once per element, per mount, never loops or repeats, always deals in already-final SSR content (nothing is gated behind the animation — no-JS and reduced-motion see the complete plotted state immediately), and is staggered/sequenced to read as the instrument _taking_ the reading, not as page furniture arriving late. Applies to `TimelineChart`/`AdoptionTimeline`'s IntersectionObserver-gated rail and mark reveal as much as to route-inking.
 
-**Stays static:** scroll-triggered reveals, decorative loops, text fades, parallax. A map does not fidget. If motion isn't carrying information, it's cut.
+**Stays static:** scroll reveals that repeat, or that decorate rather than plot (fading in headings, cards, prose blocks as they scroll by), decorative loops, parallax. A map does not fidget. If motion isn't carrying information — and a one-shot survey plot is information, a looping shimmer is not — it's cut.
 
 **Reduced motion (defined fallback, not just "respect the query"):** a single `@media (prefers-reduced-motion: reduce)` rule sets `--motion-scale: 0`, collapsing every duration; transforms become instant opacity swaps; the force simulation ticks synchronously to steady state (already implemented); routes render fully inked. No component opts in by hand. Replaces the ad-hoc `--transition-fast/base/slow` tokens.
 

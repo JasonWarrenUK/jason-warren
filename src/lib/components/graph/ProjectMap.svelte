@@ -2241,10 +2241,10 @@
 		cursor: pointer;
 		text-transform: capitalize;
 		transition:
-			border-color var(--transition-fast),
-			background-color var(--transition-fast),
-			color var(--transition-fast),
-			opacity var(--transition-fast);
+			border-color var(--dur-micro) var(--ease-standard),
+			background-color var(--dur-micro) var(--ease-standard),
+			color var(--dur-micro) var(--ease-standard),
+			opacity var(--dur-micro) var(--ease-standard);
 	}
 
 	.map__toggle:hover {
@@ -2276,15 +2276,5 @@
 		color: var(--color-text-subtle);
 		margin: 0;
 		line-height: 1.5;
-	}
-
-	@media (prefers-reduced-motion: reduce) {
-		.map__edge,
-		.map__edge-arrowhead,
-		.map__node,
-		.map__ring,
-		.map__label {
-			transition: none;
-		}
 	}
 </style>

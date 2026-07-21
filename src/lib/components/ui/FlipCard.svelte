@@ -73,7 +73,7 @@
 	.flip__inner {
 		position: relative;
 		transform-style: preserve-3d;
-		transition: transform var(--transition-slow);
+		transition: transform var(--dur-deliberate) var(--ease-standard);
 		min-height: 14rem;
 	}
 
@@ -124,9 +124,9 @@
 		letter-spacing: 0.04em;
 		cursor: pointer;
 		transition:
-			background-color var(--transition-fast),
-			border-color var(--transition-fast),
-			color var(--transition-fast);
+			background-color var(--dur-micro) var(--ease-standard),
+			border-color var(--dur-micro) var(--ease-standard),
+			color var(--dur-micro) var(--ease-standard);
 	}
 
 	.flip__toggle:hover {
@@ -153,7 +153,7 @@
 		.flip__face {
 			backface-visibility: visible;
 			-webkit-backface-visibility: visible;
-			transition: opacity var(--transition-base);
+			transition: opacity var(--dur-base) var(--ease-standard);
 		}
 
 		/* Back sits absolutely over front regardless of scene rotation. */

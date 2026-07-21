@@ -644,8 +644,8 @@
 		   hover — only the .adoption__hit disc does. */
 		pointer-events: none;
 		transition:
-			stroke-opacity var(--transition-fast),
-			stroke-width var(--transition-fast);
+			stroke-opacity var(--dur-micro) var(--ease-standard),
+			stroke-width var(--dur-micro) var(--ease-standard);
 	}
 
 	/* Connectors: branch and merge elbows between rails. Held at the rail's quiet
@@ -654,7 +654,7 @@
 		fill: none;
 		stroke-width: 1.5;
 		stroke-opacity: 0.4;
-		transition: stroke-opacity var(--transition-fast);
+		transition: stroke-opacity var(--dur-micro) var(--ease-standard);
 	}
 
 	/* Dimmed when another tech is highlighted and this edge does not touch it.
@@ -761,8 +761,8 @@
 		opacity: 1;
 		transform: none;
 		transition:
-			opacity var(--transition-slow) var(--reveal-delay),
-			transform var(--transition-slow) var(--reveal-delay);
+			opacity var(--dur-deliberate) var(--ease-standard) var(--reveal-delay),
+			transform var(--dur-deliberate) var(--ease-standard) var(--reveal-delay);
 	}
 
 	.adoption__svg--animate .adoption__lineage {
@@ -771,7 +771,7 @@
 
 	.adoption__svg--animate.adoption__svg--revealed .adoption__lineage {
 		opacity: 1;
-		transition: opacity var(--transition-slow);
+		transition: opacity var(--dur-deliberate) var(--ease-standard);
 	}
 
 	/* Legend: a centred column of titled rows, one per channel, sharing one
