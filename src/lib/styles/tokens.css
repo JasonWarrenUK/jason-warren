@@ -206,6 +206,14 @@
 	--layout-padding: clamp(1rem, 5vw, 3rem);
 	--layout-gap: 1.5rem;
 
+	/* Breakpoints. CSS custom properties can't be used inside @media
+	   conditions, so these are a naming/convention layer, not enforcement:
+	   each @media elsewhere in the codebase is annotated with a matching
+	   comment (e.g. "--bp-sm") so the coupling stays greppable. */
+	--bp-sm: 40rem; /* 640px — large phone / landscape; graph mobile cutover */
+	--bp-md: 48rem; /* 768px — tablet portrait; nav hamburger threshold */
+	--bp-lg: 60rem; /* 960px — tablet landscape; multi-column stage */
+
 	/* --- Typography scale --- */
 	--font-display: 'Source Serif 4 Variable', 'Source Serif 4', serif;
 	--font-sans: 'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
