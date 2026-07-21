@@ -1046,4 +1046,44 @@
 			transition: none;
 		}
 	}
+
+	/* Below --bp-sm, stop scaling the SVG down to illegibility: hold it at a
+	   width that keeps the column pitch and labels readable, and let the
+	   user pan horizontally instead. The layout itself is unchanged, only
+	   how it's framed on a narrow viewport. */
+	@media (max-width: 40rem) {
+		/* --bp-sm */
+		.timeline {
+			overflow-x: auto;
+			overflow-y: hidden;
+			-webkit-overflow-scrolling: touch;
+			scrollbar-width: thin;
+			overscroll-behavior-x: contain;
+		}
+
+		.timeline__svg {
+			width: auto;
+			min-width: 44rem;
+			height: auto;
+		}
+	}
+
+	@media (pointer: coarse) {
+		/* Match the ~44px touch-target floor (WCAG 2.5.8): the inline
+		   nodeRadius is 8, far below that once hit-tested by touch. */
+		.timeline__hit {
+			r: 22px;
+		}
+
+		/* Labels are opacity: 0 unless --labelled/--pinned/--active (see the
+		   rule above). That's fine for a mouse, which reveals a name on
+		   hover, but touch has no hover state, so most rails would stay
+		   anonymous until tapped. Show a dim name at rest instead. */
+		.timeline__rail-group:not(.timeline__rail-group--labelled):not(
+				.timeline__rail-group--pinned
+			):not(.timeline__rail-group--active)
+			.timeline__label {
+			opacity: 0.55;
+		}
+	}
 </style>
