@@ -23,10 +23,25 @@
 	// collapses it to 0 under reduced motion, so no separate matchMedia
 	// check is needed here. Transitions never run on the initial (collapsed)
 	// SSR render, only on toggle.
+	//
+	// --dur-base is a calc() expression (tokens.css), and getComputedStyle
+	// only resolves calc() into a real value if the property is registered
+	// with @property. Unregistered, it would return the literal, unparsed
+	// text "calc(240ms * 1)" and parseFloat would silently give NaN → 0,
+	// so the slide would never animate. tokens.css registers the duration
+	// scale for exactly this reason.
+	//
+	// Registered <time> custom properties always serialise in seconds
+	// ("0.24s"), regardless of the unit used when the value was written,
+	// same as getComputedStyle(el).transitionDuration. parseFloat alone
+	// would read that as 0.24ms, so the "s" suffix is converted explicitly;
+	// the `|| 0` fallback stays as a guard against a value failing to
+	// resolve at all, not as the expected path.
 	function slideDuration(): number {
 		if (typeof window === 'undefined') return 0;
-		const raw = getComputedStyle(document.documentElement).getPropertyValue('--dur-base');
-		return parseFloat(raw) || 0;
+		const raw = getComputedStyle(document.documentElement).getPropertyValue('--dur-base').trim();
+		const value = parseFloat(raw) || 0;
+		return raw.endsWith('ms') ? value : value * 1000;
 	}
 </script>
 

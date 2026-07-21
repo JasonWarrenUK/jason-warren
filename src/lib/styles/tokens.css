@@ -22,6 +22,36 @@
  * third-party convention from the Reasonable Colors package.
  */
 
+/*
+ * Registering the duration scale as typed custom properties makes calc()
+ * resolve at computed-value time instead of staying literal, unevaluated
+ * text. Without this, getComputedStyle().getPropertyValue('--dur-base')
+ * returns the string "calc(240ms * 1)" rather than a usable time value,
+ * which is exactly what ExpandableCard's slideDuration() needs to parse a
+ * real number out of. @property must be declared at the top level, not
+ * inside :root, and before the values are assigned below.
+ */
+@property --dur-micro {
+	syntax: '<time>';
+	inherits: true;
+	initial-value: 160ms;
+}
+@property --dur-base {
+	syntax: '<time>';
+	inherits: true;
+	initial-value: 240ms;
+}
+@property --dur-deliberate {
+	syntax: '<time>';
+	inherits: true;
+	initial-value: 400ms;
+}
+@property --dur-plate {
+	syntax: '<time>';
+	inherits: true;
+	initial-value: 600ms;
+}
+
 :root {
 	/* Both schemes supported; OS preference resolves light-dark() until a
 	   stored choice pins it through the [data-theme] wiring rules below. */
@@ -293,10 +323,11 @@
  * Reduced motion: a single defined fallback, not just "respect the query".
  * Collapsing --motion-scale to 0 zeroes every duration token at once, so no
  * component has to opt in by hand — anything animating off the duration and
- * easing tokens above (including JS reading the custom property, e.g. the
- * graph's first-reveal route inking) goes instant. reset.css also
- * hard-zeroes CSS transition/animation durations as a blunt backstop for
- * anything not yet on this token system.
+ * easing tokens above goes instant, including JS reading the custom property
+ * (e.g. ExpandableCard's slideDuration(), which relies on the @property
+ * registration above to get a resolved time rather than literal calc()
+ * text). reset.css also hard-zeroes CSS transition/animation durations as a
+ * blunt backstop for anything not yet on this token system.
  */
 @media (prefers-reduced-motion: reduce) {
 	:root {
