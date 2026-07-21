@@ -167,6 +167,15 @@
 		top: var(--space-4);
 	}
 
+	/* Containment guard, not a width constraint: each route's own .page owns
+	   its max-width, and graph/hero routes deliberately break out full-bleed.
+	   `clip` (not `hidden`) so this can't turn main into a scroll container
+	   or interfere with sticky descendants; it only stops a stray child from
+	   pushing a page-level horizontal scrollbar. */
+	main#main-content {
+		overflow-x: clip;
+	}
+
 	.site-header {
 		border-bottom: 1px solid var(--color-border);
 		background-color: color-mix(in srgb, var(--color-surface-raised) 88%, transparent);
