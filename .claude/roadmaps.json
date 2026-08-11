@@ -235,7 +235,7 @@
 					{
 						"id": "4QU.4",
 						"description": "Confirm OG image coverage for every route and project",
-						"status": "blocked",
+						"status": "todo",
 						"dependsOn": [
 							"M3"
 						]
@@ -243,7 +243,7 @@
 					{
 						"id": "4QU.5",
 						"description": "Component / interaction test coverage for the connection views",
-						"status": "blocked",
+						"status": "todo",
 						"dependsOn": [
 							"M3"
 						]
@@ -259,7 +259,7 @@
 					{
 						"id": "4QU.8",
 						"description": "Analyse and reconcile where the map's Technologies mode and the Toolkit get their data: overlapping tech vocabularies from different sources should agree",
-						"status": "todo",
+						"status": "done",
 						"dependsOn": []
 					}
 				]
@@ -407,7 +407,7 @@
 					{
 						"id": "5DR.20",
 						"description": "Intra-span dormancy signal: sample commit dates so activity gaps become detectable",
-						"status": "todo",
+						"status": "done",
 						"dependsOn": [
 							"5DR.7"
 						]
@@ -415,7 +415,7 @@
 					{
 						"id": "5DR.21",
 						"description": "Improve role detection: richer signals than commit share for the solo/lead/collaborator inference",
-						"status": "todo",
+						"status": "done",
 						"dependsOn": [
 							"5DR.6"
 						]

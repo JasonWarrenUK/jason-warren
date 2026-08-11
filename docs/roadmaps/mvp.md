@@ -61,7 +61,7 @@ The site is live and substantially built: full routes, the graph/timeline/map/to
 - [ ] **4QU.4** — Confirm OG image coverage for every route and project _(blocked — depends on M3)_
 - [ ] **4QU.5** — Component / interaction test coverage for the connection views _(blocked — depends on M3)_
 - [ ] **4QU.7** — a11y regression pass on the tech-stack constellation _(blocked — depends on 4QU.1)_
-- [ ] **4QU.8** — Analyse and reconcile where the map's Technologies mode and the Toolkit get their data: overlapping tech vocabularies from different sources should agree
+- [x] **4QU.8** — Analyse and reconcile where the map's Technologies mode and the Toolkit get their data: overlapping tech vocabularies from different sources should agree
 
 ---
 
@@ -86,8 +86,8 @@ The site is live and substantially built: full routes, the graph/timeline/map/to
 - [x] **5DR.17** — drift flag verb: the pin and hide overlay flags under one verb _(depends on 5DR.16)_
 - [x] **5DR.18** — drift relate verb: write a ProjectRelationship into a project overlay
 - [x] **5DR.19** — drift link verb: write a TechRelationship into tech-relationships.ts _(depends on 5DR.6)_
-- [ ] **5DR.20** — Intra-span dormancy signal: sample commit dates so activity gaps become detectable _(depends on 5DR.7)_
-- [ ] **5DR.21** — Improve role detection: richer signals than commit share for the solo/lead/collaborator inference _(depends on 5DR.6)_
+- [x] **5DR.20** — Intra-span dormancy signal: sample commit dates so activity gaps become detectable _(depends on 5DR.7)_
+- [x] **5DR.21** — Improve role detection: richer signals than commit share for the solo/lead/collaborator inference _(depends on 5DR.6)_
 - [ ] **5DR.22** — drift enrich verb: opt-in gh-backed enrichment writing archived and homepageUrl into a schema-extended sources.json section, while drift sync stays offline _(depends on 5DR.5, 5DR.6)_
 - [ ] **5DR.23** — Derive the site's archived and deployed axes from enriched manifest data, replacing the authored placeholders _(blocked — depends on 5DR.22)_
 
