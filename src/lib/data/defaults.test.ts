@@ -193,6 +193,91 @@ describe('inferContribution', () => {
 			expect(result.contributionNote).toBeUndefined();
 		}
 	});
+
+	// -- 5DR.21 richer signals ------------------------------------------------
+
+	it('returns solo when there is exactly one human author, whatever the share', () => {
+		// The rescue case: AUTHOR_PATTERN missed one of Jason's git identities, so
+		// commitsMine reads 0 on a repo he wrote alone (nib, riffle). The headcount
+		// settles it independently of the share.
+		const manifest: SyncedSource = { commits: 1, commitsMine: 0, distinctAuthorsHuman: 1 };
+		expect(inferContribution(manifest)).toEqual({
+			role: 'solo',
+			collaboration: { team: 'Solo (Jason)' }
+		});
+	});
+
+	it('excludes non-human authors from the denominator', () => {
+		// 13 of 30 commits are Jason's, but the other 17 are an AI agent's, so he is
+		// the only human author of the work (flyt).
+		const manifest: SyncedSource = {
+			commits: 30,
+			commitsMine: 13,
+			commitsHuman: 13,
+			distinctAuthorsHuman: 2
+		};
+		// commitsMine >= commitsHuman -> solo, without relying on the headcount.
+		expect(inferContribution(manifest).role).toBe('solo');
+	});
+
+	it('divides by commitsHuman, not commits, when both are present', () => {
+		// 40/60 human commits is a majority (lead); 40/100 raw would be a minority.
+		const manifest: SyncedSource = {
+			commits: 100,
+			commitsMine: 40,
+			commitsHuman: 60,
+			distinctAuthorsHuman: 3
+		};
+		expect(inferContribution(manifest).role).toBe('lead');
+	});
+
+	it('breaks a near-tie commit share on churn share', () => {
+		// 48.9% of commits but 65.5% of lines added: many small commits from others
+		// should not outweigh substantially larger authorship (chirpdb).
+		const manifest: SyncedSource = {
+			commits: 1195,
+			commitsMine: 584,
+			commitsHuman: 1195,
+			distinctAuthorsHuman: 8,
+			linesAdded: 130538,
+			linesAddedAll: 199294
+		};
+		expect(inferContribution(manifest).role).toBe('lead');
+	});
+
+	it('does not let churn override a decisive commit majority', () => {
+		// 80% of commits is outside the tiebreak band, so a minority churn share
+		// must not flip the role.
+		const manifest: SyncedSource = {
+			commits: 100,
+			commitsMine: 80,
+			commitsHuman: 100,
+			distinctAuthorsHuman: 3,
+			linesAdded: 10,
+			linesAddedAll: 1000
+		};
+		expect(inferContribution(manifest).role).toBe('lead');
+	});
+
+	it('falls back to root-commit authorship when churn is exactly balanced', () => {
+		const manifest: SyncedSource = {
+			commits: 100,
+			commitsMine: 50,
+			commitsHuman: 100,
+			distinctAuthorsHuman: 2,
+			linesAdded: 500,
+			linesAddedAll: 1000,
+			rootCommitMine: true
+		};
+		expect(inferContribution(manifest).role).toBe('lead');
+	});
+
+	it('preserves legacy behaviour when the 5DR.21 fields are absent', () => {
+		// A manifest synced before these fields existed must infer exactly as before.
+		expect(inferContribution({ commits: 100, commitsMine: 80 }).role).toBe('lead');
+		expect(inferContribution({ commits: 100, commitsMine: 30 }).role).toBe('collaborator');
+		expect(inferContribution({ commits: 100, commitsMine: 50 }).role).toBe('collaborator');
+	});
 });
 
 // ---------------------------------------------------------------------------
@@ -244,6 +329,28 @@ describe('defaultProjectFromManifest', () => {
 		expect(shortSpan.track).toBe('exploration');
 		expect(small.track).toBe('exploration');
 		expect(undated.track).toBe('exploration');
+	});
+
+	it('measures the track span in one scope, preferring lastCommitMine', () => {
+		// firstCommit is author-scoped, so pairing it with the all-authors
+		// lastCommit measured a period belonging to neither: on a team repo Jason
+		// touched briefly, the cohort's later commits inflated his span (5DR.20).
+		const brief = defaultProjectFromManifest('joined-briefly', {
+			firstCommit: '2026-02-11',
+			lastCommitMine: '2026-02-17',
+			lastCommit: '2026-12-01',
+			linesOfCode: 20_000
+		});
+		expect(brief.track).toBe('exploration');
+	});
+
+	it('falls back to lastCommit when lastCommitMine is absent', () => {
+		const legacy = defaultProjectFromManifest('pre-5dr20', {
+			firstCommit: '2025-01-01',
+			lastCommit: '2025-12-01',
+			linesOfCode: 20_000
+		});
+		expect(legacy.track).toBe('product');
 	});
 
 	it('defaults progress heuristically from recent commits', () => {

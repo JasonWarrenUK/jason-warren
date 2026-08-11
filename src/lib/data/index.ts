@@ -54,9 +54,31 @@ export interface SyncedSource {
 	commitsRecentAll?: number;
 	commitsMine?: number;
 	commitsRecent?: number;
+	// All-authors count with non-human authors (CI bots, AI agents) removed.
+	// The denominator inferContribution divides by: `commits` counts bot commits
+	// as co-authorship, which reads solo work as a team project.
+	commitsHuman?: number;
+	// Distinct commit authors by identity. `distinctAuthorsHuman` collapses all of
+	// Jason's git identities to one, so a value of 1 proves solo work outright,
+	// whatever the commit share says.
+	distinctAuthors?: number;
+	distinctAuthorsHuman?: number;
+	// Whether Jason authored the root commit: originated the project vs joined it.
+	rootCommitMine?: boolean;
 	// Dates
 	lastCommit?: string;
+	// Jason's most recent commit. Pairs with firstCommit (also author-scoped) for
+	// a span measured in one consistent scope; `lastCommit` stays all-authors.
+	lastCommitMine?: string;
 	firstCommit?: string;
+	// Intra-span activity shape, author-scoped like firstCommit. firstCommit and
+	// lastCommit describe only endpoints, so a repo touched once at each end is
+	// indistinguishable from one worked continuously; these make the difference
+	// detectable. activeMonths/spanMonths is the sustained-vs-bursty ratio,
+	// maxGapDays the longest silence inside the span.
+	activeMonths?: number;
+	spanMonths?: number;
+	maxGapDays?: number;
 	// Languages (advisory; not overlaid onto tags but now also fed to inferTags)
 	languages?: string[];
 	// Codebase size
