@@ -376,16 +376,40 @@ describe('defaultProjectFromManifest', () => {
 
 	it('defaults progress heuristically from recent commits', () => {
 		const active = defaultProjectFromManifest('busy', { commitsRecent: 3 });
-		const dormant = defaultProjectFromManifest('quiet', { commitsRecent: 0 });
+		const quiet = defaultProjectFromManifest('quiet', { commitsRecent: 0 });
 		expect(active.progress).toBe('in-progress');
-		expect(dormant.progress).toBe('complete');
-		expect(active.progressAuthored).toBe(false);
+		expect(quiet.progress).toBe('dormant');
 	});
 
-	it('defaults deployed and archived to false', () => {
+	it("reads activity from Jason's own commits, not the team's", () => {
+		// A cohort repo that keeps moving after Jason left is dormant *for him*,
+		// which is what the portfolio is describing. commitsRecentAll would call
+		// it active and credit him with work he did not do.
+		const teamStillBusy = defaultProjectFromManifest('handed-over', {
+			commitsRecent: 0,
+			commitsRecentAll: 40
+		});
+		expect(teamStillBusy.progress).toBe('dormant');
+	});
+
+	it('never infers complete: finished is a judgement, not an observation', () => {
+		// Silence cannot distinguish shipped-and-stopped from simply-stopped.
+		// redot (302 idle days, six merged PRs, released) and cogni (147 idle
+		// days, just stopped) have identical histories on this question, so
+		// inferring 'complete' asserted something the data never supported.
+		const longDead = defaultProjectFromManifest('ancient', {
+			commitsRecent: 0,
+			firstCommit: '2023-01-01',
+			lastCommitMine: '2023-02-01',
+			linesOfCode: 50_000
+		});
+		expect(longDead.progress).toBe('dormant');
+	});
+
+	it('defaults deployed and retired to false', () => {
 		const project = defaultProjectFromManifest('some-repo', {});
 		expect(project.deployed).toBe(false);
-		expect(project.archived).toBe(false);
+		expect(project.retired).toBe(false);
 	});
 
 	it('infers solo contribution from sole-author manifest', () => {
@@ -437,23 +461,23 @@ describe('defaultProjectFromManifest', () => {
 describe('mergeAuthored', () => {
 	const base = defaultProjectFromManifest('test-slug', { languages: ['TypeScript'] });
 
-	it('authored track and progress win and flip the provenance flags', () => {
-		const merged = mergeAuthored(base, {
-			slug: 'test-slug',
-			track: 'product',
-			progress: 'complete'
-		});
+	it('authored track wins and flips the provenance flag', () => {
+		const merged = mergeAuthored(base, { slug: 'test-slug', track: 'product' });
 		expect(merged.track).toBe('product');
 		expect(merged.trackAuthored).toBe(true);
-		expect(merged.progress).toBe('complete');
-		expect(merged.progressAuthored).toBe(true);
 	});
 
-	it('keeps heuristic track/progress with false provenance when unauthored', () => {
+	it('progress is never authored: an overlay cannot override the observation', () => {
+		const merged = mergeAuthored(base, { slug: 'test-slug', released: true });
+		expect(merged.progress).toBe(base.progress);
+		expect(merged.released).toBe(true);
+	});
+
+	it('keeps heuristic track with false provenance when unauthored', () => {
 		const merged = mergeAuthored(base, { slug: 'test-slug', name: 'Renamed' });
 		expect(merged.track).toBe(base.track);
 		expect(merged.trackAuthored).toBe(false);
-		expect(merged.progressAuthored).toBe(false);
+		expect(merged.released).toBe(false);
 	});
 
 	it('derives deployed from the merged liveUrl', () => {
@@ -463,9 +487,9 @@ describe('mergeAuthored', () => {
 		expect(not.deployed).toBe(false);
 	});
 
-	it('merges an authored archived flag', () => {
-		const merged = mergeAuthored(base, { slug: 'test-slug', archived: true });
-		expect(merged.archived).toBe(true);
+	it('merges an authored retired flag', () => {
+		const merged = mergeAuthored(base, { slug: 'test-slug', retired: true });
+		expect(merged.retired).toBe(true);
 	});
 
 	it('preserves an authored role when commit-share inference disagrees', () => {

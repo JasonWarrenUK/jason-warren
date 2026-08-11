@@ -824,7 +824,7 @@ describe('authored overlays earn their keep', () => {
 	 * value identical to the inferred one records nothing: it pins no judgement,
 	 * and deleting it would change no rendered output.
 	 *
-	 * It is not merely inert, either. `trackAuthored` / `progressAuthored` drive
+	 * It is not merely inert, either. `trackAuthored` drives
 	 * the dotted-provisional convention (colour-system.md: "the reader can always
 	 * tell surveyed ground from conjecture"), so a redundant authored value
 	 * silently upgrades a heuristic guess into a confident claim. Blanket
@@ -834,7 +834,7 @@ describe('authored overlays earn their keep', () => {
 	 * Authoring a value that *disagrees* with the inference is exactly the point,
 	 * and always allowed.
 	 */
-	it('no overlay restates a track or progress the manifest already infers', () => {
+	it('no overlay restates a track the manifest already infers', () => {
 		const offenders: string[] = [];
 
 		for (const authored of authoredProjects) {
@@ -844,9 +844,6 @@ describe('authored overlays earn their keep', () => {
 
 			if (authored.track !== undefined && authored.track === inferred.track) {
 				offenders.push(`${authored.slug}.track = '${authored.track}' (same as inferred)`);
-			}
-			if (authored.progress !== undefined && authored.progress === inferred.progress) {
-				offenders.push(`${authored.slug}.progress = '${authored.progress}' (same as inferred)`);
 			}
 		}
 

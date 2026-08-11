@@ -34,7 +34,7 @@ function makeProject(
 		trackAuthored?: boolean;
 		progress?: ProjectProgress;
 		deployed?: boolean;
-		archived?: boolean;
+		retired?: boolean;
 		commits?: number;
 		lastCommit?: string;
 		pin?: boolean;
@@ -43,6 +43,7 @@ function makeProject(
 		tagline?: string;
 		blurb?: string;
 		description?: string;
+		released?: boolean;
 		tags?: TechTag[];
 	} = {}
 ): Project {
@@ -58,9 +59,9 @@ function makeProject(
 		track: overrides.track ?? 'product',
 		trackAuthored: overrides.trackAuthored ?? true,
 		progress: overrides.progress ?? 'in-progress',
-		progressAuthored: true,
+		released: overrides.released ?? false,
 		deployed: overrides.deployed ?? false,
-		archived: overrides.archived ?? false,
+		retired: overrides.retired ?? false,
 		repoUrl: `https://github.com/JasonWarrenUK/${slug}`,
 		highlights: [],
 		relationships: [],
@@ -76,14 +77,27 @@ function makeProject(
 // ---------------------------------------------------------------------------
 
 describe('getHeroPool — eligible filter', () => {
-	it('excludes archived projects', () => {
+	it('keeps retired projects: `retired` is presentational, not a visibility control', () => {
+		// `hide` is the one visibility control. The two flags used to share this
+		// exclusion, which left neither owning it; the score already sinks ended
+		// work without a categorical ban.
 		const projects = [
 			makeProject('active', { commits: 200, lastCommit: '2026-06-18' }),
-			makeProject('dead', { archived: true, commits: 500, lastCommit: '2026-06-17' })
+			makeProject('ended', { retired: true, commits: 500, lastCommit: '2026-06-17' })
 		];
 		const pool = getHeroPool(BASE_NOW, projects);
-		expect(pool.map((p) => p.slug)).not.toContain('dead');
+		expect(pool.map((p) => p.slug)).toContain('ended');
 		expect(pool.map((p) => p.slug)).toContain('active');
+	});
+
+	it('excludes hidden projects', () => {
+		const projects = [
+			makeProject('shown', { commits: 200 }),
+			makeProject('hidden', { hide: true, commits: 500 })
+		];
+		const pool = getHeroPool(BASE_NOW, projects);
+		expect(pool.map((p) => p.slug)).not.toContain('hidden');
+		expect(pool.map((p) => p.slug)).toContain('shown');
 	});
 
 	it('excludes untriaged projects (heuristic-only track)', () => {
@@ -225,9 +239,9 @@ describe('filterProjects — single dimension', () => {
 	});
 
 	it('filters by a stage flag', () => {
-		const result = filterProjects({ flags: new Set<ProjectFlag>(['archived']) });
+		const result = filterProjects({ flags: new Set<ProjectFlag>(['retired']) });
 		expect(result.length).toBeGreaterThan(0);
-		expect(result.every((p) => p.archived)).toBe(true);
+		expect(result.every((p) => p.retired)).toBe(true);
 	});
 
 	it('filters by a single role', () => {
@@ -244,9 +258,9 @@ describe('filterProjects — multi-value within a dimension (OR)', () => {
 	});
 
 	it('matches projects satisfying either flag (OR within dimension)', () => {
-		const result = filterProjects({ flags: new Set<ProjectFlag>(['deployed', 'archived']) });
+		const result = filterProjects({ flags: new Set<ProjectFlag>(['deployed', 'retired']) });
 		expect(result.length).toBeGreaterThan(0);
-		expect(result.every((p) => p.deployed || p.archived)).toBe(true);
+		expect(result.every((p) => p.deployed || p.retired)).toBe(true);
 	});
 });
 
@@ -254,9 +268,9 @@ describe('filterProjects — cross-dimension (AND)', () => {
 	it('requires both kind and progress to match (AND across dimensions)', () => {
 		const result = filterProjects({
 			kinds: new Set<ProjectKind>(['app']),
-			progresses: new Set<ProjectProgress>(['complete'])
+			progresses: new Set<ProjectProgress>(['dormant'])
 		});
-		expect(result.every((p) => p.kind === 'app' && p.progress === 'complete')).toBe(true);
+		expect(result.every((p) => p.kind === 'app' && p.progress === 'dormant')).toBe(true);
 	});
 });
 
@@ -295,22 +309,22 @@ function searchHaystack(p: Project): string {
 }
 
 // ---------------------------------------------------------------------------
-// getTimelineProjects — hide-only filter, archived/uncategorised kept
+// getTimelineProjects — hide-only filter, retired/uncategorised kept
 // ---------------------------------------------------------------------------
 
 describe('getTimelineProjects — hide filter', () => {
-	it('excludes hidden projects but keeps archived and untriaged', () => {
+	it('excludes hidden projects but keeps retired and untriaged', () => {
 		const projects = [
 			makeProject('visible', { commits: 200, lastCommit: '2026-06-18' }),
 			makeProject('hidden', { commits: 500, hide: true, lastCommit: '2026-06-17' }),
-			makeProject('archived-kept', { archived: true, lastCommit: '2025-01-01' }),
+			makeProject('retired-kept', { retired: true, lastCommit: '2025-01-01' }),
 			makeProject('untriaged-kept', { trackAuthored: false, lastCommit: '2025-06-01' })
 		];
 		const timeline = getTimelineProjects(projects);
 		const slugs = timeline.map((p) => p.slug);
 		expect(slugs).not.toContain('hidden');
 		expect(slugs).toContain('visible');
-		expect(slugs).toContain('archived-kept');
+		expect(slugs).toContain('retired-kept');
 		expect(slugs).toContain('untriaged-kept');
 	});
 });

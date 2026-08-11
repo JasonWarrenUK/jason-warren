@@ -300,10 +300,23 @@ function inferTrack(manifest: SyncedSource): Project['track'] {
 		: 'exploration';
 }
 
-/** Progress heuristic: commits in the trailing four weeks mean it's being
- *  built; silence means it has arrived at whatever shape it will keep. */
+/**
+ * Progress heuristic: commits in the trailing four weeks mean it is being
+ * built; silence means the work has stopped.
+ *
+ * Stopped is `dormant`, never `complete`. The heuristic can see that work
+ * stopped; it cannot see whether that is because the project was finished or
+ * because it was set down. Those look identical in git — redot shipped (six
+ * merged PRs, released as a licensed action) and cogni simply stopped, yet
+ * after 302 and 147 idle days the histories say the same thing. Inferring
+ * `complete` from silence therefore asserted something the data never
+ * supported, on every quiet repo.
+ *
+ * `complete` is authored-only: a human declaring the work finished. That makes
+ * it a real claim, and it never renders dotted-provisional.
+ */
 function inferProgress(manifest: SyncedSource): Project['progress'] {
-	return (manifest.commitsRecent ?? 0) > 0 ? 'in-progress' : 'complete';
+	return (manifest.commitsRecent ?? 0) > 0 ? 'in-progress' : 'dormant';
 }
 
 /**
@@ -327,9 +340,9 @@ export function defaultProjectFromManifest(slug: string, manifest: SyncedSource)
 		track: inferTrack(manifest),
 		trackAuthored: false,
 		progress: inferProgress(manifest),
-		progressAuthored: false,
 		deployed: false, // recomputed from liveUrl in mergeAuthored; no manifest source
-		archived: false,
+		released: false,
+		retired: false,
 		repoUrl: manifest.remote ?? `https://github.com/JasonWarrenUK/${slug}`,
 		companionRepoUrls: manifest.companionRemotes ?? [],
 		highlights: [],
@@ -434,10 +447,11 @@ export function mergeAuthored(base: Project, authored: AuthoredProject | undefin
 		tags: mergedTags,
 		track: authored.track !== undefined ? authored.track : base.track,
 		trackAuthored: authored.track !== undefined,
-		progress: authored.progress !== undefined ? authored.progress : base.progress,
-		progressAuthored: authored.progress !== undefined,
+		// progress is never authored: it is a pure observation of commit activity.
+		progress: base.progress,
 		deployed: mergedLiveUrl !== undefined,
-		archived: authored.archived !== undefined ? authored.archived : base.archived,
+		released: authored.released !== undefined ? authored.released : base.released,
+		retired: authored.retired !== undefined ? authored.retired : base.retired,
 		repoUrl: base.repoUrl,
 		companionRepoUrls: base.companionRepoUrls,
 		liveUrl: mergedLiveUrl,

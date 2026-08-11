@@ -68,7 +68,7 @@
 		tagline: string;
 		track: ProjectTrack;
 		progress: ProjectProgress;
-		archived: boolean;
+		retired: boolean;
 		deployed: boolean;
 		/** True when track or progress is a heuristic guess; draws dotted. */
 		stageProvisional: boolean;
@@ -178,7 +178,7 @@
 
 	// Historic stack: any tech that is the source of a `replaced-by` edge has
 	// been superseded, and its mark fades one shade paperward (the same
-	// end-of-life convention archived projects use).
+	// end-of-life convention retired projects use).
 	const historicTechLabels = new Set(
 		techRelationships.filter((r) => r.kind === 'replaced-by').map((r) => r.source)
 	);
@@ -1386,7 +1386,7 @@
 					{@const isFocus = effectiveHighlight === node.slug}
 					{@const colour = isFocus
 						? 'var(--color-accent)'
-						: progressColour(node.progress, node.archived)}
+						: progressColour(node.progress, node.retired)}
 					<a
 						class="map__node"
 						class:map__node--dim={nodeDimmed(node)}
@@ -1756,7 +1756,7 @@
 					</span>
 				</div>
 			{/if}
-			{#if projectNodes.some((n) => n.deployed || n.archived)}
+			{#if projectNodes.some((n) => n.deployed || n.retired)}
 				<div class="map__legend-group" aria-hidden="true">
 					<span class="map__legend-title">Flags</span>
 					{#if projectNodes.some((n) => n.deployed)}
@@ -1769,7 +1769,7 @@
 							Deployed (outer ring)
 						</span>
 					{/if}
-					{#if projectNodes.some((n) => n.archived)}
+					{#if projectNodes.some((n) => n.retired)}
 						<span class="map__legend-item">
 							<svg class="map__legend-mark" viewBox="0 0 16 16">
 								<circle
@@ -1777,17 +1777,17 @@
 									cx="8"
 									cy="8"
 									r="5"
-									style="stroke: {progressColour('complete', true)}"
+									style="stroke: {progressColour('dormant', true)}"
 								/>
 								<circle
 									class="map__legend-dot"
 									cx="8"
 									cy="8"
 									r="1.8"
-									style="fill: {progressColour('complete', true)}"
+									style="fill: {progressColour('dormant', true)}"
 								/>
 							</svg>
-							Archived (faded)
+							Retired (faded)
 						</span>
 					{/if}
 				</div>

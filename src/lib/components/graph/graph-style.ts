@@ -30,22 +30,39 @@ export const trackLabel: Record<ProjectTrack, string> = {
 
 export const progressLabel: Record<ProjectProgress, string> = {
 	'in-progress': 'Building',
-	complete: 'Complete'
+	// "Dormant" states the observation (no recent commits) without implying
+	// either an intention to return or a decision to stop.
+	dormant: 'Dormant'
 };
+
+/**
+ * The badge's stage phrase, combining the two orthogonal facts: whether the
+ * work reached the world (`released`, authored) and whether it is still moving
+ * (`progress`, observed).
+ *
+ * Released work reads by its maintenance state, which is what a reader wants to
+ * know about something they could actually use. Unreleased work reads by
+ * activity alone, since "released" is the claim it has not earned.
+ */
+export function stagePhrase(progress: ProjectProgress, released: boolean): string {
+	if (!released) return progressLabel[progress];
+	return progress === 'in-progress' ? 'Released · Maintained' : 'Released · Settled';
+}
 
 export const trackOrder: ProjectTrack[] = ['product', 'exploration'];
 
-export const progressOrder: ProjectProgress[] = ['in-progress', 'complete'];
+export const progressOrder: ProjectProgress[] = ['in-progress', 'dormant'];
 
 /**
- * Progress ink for a project's marks, rails and rings. Archived applies the
+ * Progress ink for a project's marks, rails and rings. Retired applies the
  * end-of-life convention: the same hue, one shade nearer the paper.
  */
-export function progressColour(progress: ProjectProgress, archived = false): string {
-	if (progress === 'in-progress') {
-		return archived ? 'var(--progress-in-progress-archived)' : 'var(--progress-in-progress)';
-	}
-	return archived ? 'var(--progress-complete-archived)' : 'var(--progress-complete)';
+export function progressColour(progress: ProjectProgress, retired = false): string {
+	// Exhaustive over the ordinal ramp rather than an in-progress/else split, so
+	// adding a value cannot silently inherit the complete colour.
+	const ink =
+		progress === 'in-progress' ? 'in-progress' : progress === 'dormant' ? 'dormant' : 'complete';
+	return retired ? `var(--progress-${ink}-retired)` : `var(--progress-${ink})`;
 }
 
 /** Human-readable label for an edge kind, phrased from source to target. */

@@ -149,25 +149,25 @@
 	});
 
 	// Present progress values only, in the shared order; plus which of the
-	// auxiliary treatments (spike hollow, deployed ring, archived fade) the
+	// auxiliary treatments (spike hollow, deployed ring, retired fade) the
 	// legend actually needs to explain for this dataset.
 	const presentProgresses = $derived(
 		progressOrder.filter((p) => rails.some((r) => r.progress === p))
 	);
 	const hasSpikes = $derived(rails.some((r) => r.track === 'exploration'));
 	const hasDeployed = $derived(rails.some((r) => r.deployed));
-	const hasArchived = $derived(rails.some((r) => r.archived));
+	const hasRetired = $derived(rails.some((r) => r.retired));
 
-	/** Rail ink: progress hue, shade-shifted paperward when archived. */
-	const railColour = (rail: TimelineRail): string => progressColour(rail.progress, rail.archived);
+	/** Rail ink: progress hue, shade-shifted paperward when retired. */
+	const railColour = (rail: TimelineRail): string => progressColour(rail.progress, rail.retired);
 
-	/** Stage phrase for aria text: `Spike · Complete, archived`. */
+	/** Stage phrase for aria text: `Spike · Complete, retired`. */
 	function stagePhrase(rail: TimelineRail): string {
 		const base =
 			rail.track === 'exploration'
 				? `${trackLabel[rail.track]} · ${progressLabel[rail.progress]}`
 				: progressLabel[rail.progress];
-		return rail.archived ? `${base}, archived` : base;
+		return rail.retired ? `${base}, retired` : base;
 	}
 	const hasLineage = $derived(layout.lineagePaths.length > 0);
 	const hasDensity = $derived(layout.density.length > 0);
@@ -506,7 +506,7 @@
 				</span>
 			{/each}
 		</div>
-		{#if hasSpikes || hasDeployed || hasArchived}
+		{#if hasSpikes || hasDeployed || hasRetired}
 			<div class="timeline__legend-row">
 				<span class="timeline__legend-title">Marks</span>
 				{#if hasSpikes}
@@ -558,7 +558,7 @@
 						Deployed (outer ring)
 					</span>
 				{/if}
-				{#if hasArchived}
+				{#if hasRetired}
 					<span class="timeline__legend-item">
 						<svg class="timeline__swatch-mark" viewBox="0 0 14 14" aria-hidden="true">
 							<circle
@@ -566,17 +566,17 @@
 								cx="7"
 								cy="7"
 								r="5"
-								style="color: {progressColour('complete', true)}"
+								style="color: {progressColour('dormant', true)}"
 							/>
 							<circle
 								class="timeline__swatch-centre"
 								cx="7"
 								cy="7"
 								r="1.6"
-								style="color: {progressColour('complete', true)}"
+								style="color: {progressColour('dormant', true)}"
 							/>
 						</svg>
-						Archived (faded)
+						Retired (faded)
 					</span>
 				{/if}
 			</div>
