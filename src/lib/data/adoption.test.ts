@@ -10,6 +10,7 @@ import { describe, it, expect } from 'vitest';
 import { getTechAdoption, CURATED_FIRST_USED } from './adoption.js';
 import { projects } from './index.js';
 import { techRelationships } from './tech-relationships.js';
+import { SURFACE_KINDS } from './tech-overlays.js';
 
 describe('getTechAdoption', () => {
 	const adoption = getTechAdoption();
@@ -151,7 +152,9 @@ describe('getTechAdoption', () => {
 	});
 
 	it('projectCount matches the number of projects using the tag (within scope)', () => {
-		const kinds = new Set(['language', 'framework', 'runtime']);
+		// Read the surface policy rather than restating it: a hardcoded copy here
+		// silently disagreed with the toolkit's real scope once data was admitted.
+		const kinds = new Set<string>(SURFACE_KINDS.toolkit);
 		for (const item of adoption) {
 			const count = projects.filter((p) =>
 				p.tags.some((t) => t.label === item.label && kinds.has(t.kind))

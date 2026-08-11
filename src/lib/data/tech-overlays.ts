@@ -35,13 +35,71 @@ export const techOverlays: TechOverlay[] = [
 	{ label: 'Svelte 4', firstUsed: '2024-11-01' },
 	{ label: 'Tailwind CSS', hiddenFrom: ['toolkit', 'map', 'stack', 'relate'] },
 	{ label: '.NET', hiddenFrom: ['toolkit', 'map', 'stack', 'relate'] },
-	{ label: 'C', hiddenFrom: ['toolkit', 'map', 'stack', 'relate'] }
+	{ label: 'C', hiddenFrom: ['toolkit', 'map', 'stack', 'relate'] },
+	// Dual-kind labels pinned to one kind (4QU.8). Both carried two kinds across
+	// the registry, and every surface resolved them by first-occurrence in
+	// registry order: a silent dependency on authoring order that could flip a
+	// label's glyph on the map, or drop it from a surface entirely, purely from
+	// an unrelated edit elsewhere. Pinning makes the choice explicit and stable.
+	//
+	// Vite is a build tool that projects reach for as part of a framework setup;
+	// top-girls authors it as 'tool' while the dependency parser infers
+	// 'framework'. Framework is the honest reading and the one already shown.
+	{ label: 'Vite', kind: 'framework' },
+	// Go is detected both as a language (file extensions) and a runtime (the
+	// toolchain). Language is the reading that matters for a breadth claim, and
+	// keeps it beside Rust and C# on the timeline.
+	{ label: 'Go', kind: 'language' },
+	// Data-shape descriptors, not adopted technologies. They are legitimate
+	// `data` tags (the map reads them as real architectural choices) but an
+	// adoption timeline is a claim about tools picked up on a date, and
+	// "no persistence" was never adopted. stack.ts excludes the same three via
+	// its DATA_TECH allowlist.
+	{ label: 'Document / JSON', hiddenFrom: ['toolkit'] },
+	{ label: 'Ephemeral / in-memory', hiddenFrom: ['toolkit'] },
+	{ label: 'No persistence', hiddenFrom: ['toolkit'] }
 	// Bun, SvelteKit, Svelte 5: no curated floor. Per-tech dating (techFirstSeen)
 	// derives these honestly from when they actually entered the-work's history;
 	// a curated floor earlier than the true date would silently override the
 	// honest derived date and reintroduce the back-dating bug techFirstSeen
 	// exists to fix.
 ];
+
+/**
+ * Which tag kinds each aggregate surface admits (4QU.8).
+ *
+ * Both surfaces derive from the same registry tags and the same canonical
+ * labels, so the vocabularies never disagreed on spelling. What they disagreed
+ * on was scope, and the two rules lived 200 lines apart in different modules:
+ * the map excluded languages inside getTechNodes, the toolkit listed its kinds
+ * in a private DEFAULT_KINDS. The result was 66 labels on one surface and 32 on
+ * the other with only 22 in common, and no single place stating why.
+ *
+ * Stated together, each exclusion has to earn itself:
+ *
+ * - `map` excludes languages deliberately. TypeScript sits on 27 of 33
+ *   projects; as a node it is a hub wired to nearly everything, which buries
+ *   the co-occurrence clusters the constellation exists to show.
+ * - `toolkit` excludes `tool`, `ai` and `concept`. An adoption timeline is a
+ *   claim about tools picked up and kept; "Accessibility" and "PWA" are
+ *   properties of work, not things adopted on a date.
+ * - `toolkit` admits `data`. Databases are adopted exactly like frameworks
+ *   are, and excluding them left the page silently claiming no database
+ *   experience at all.
+ * - `stack` and `relate` keep their own narrower policies, applied by their
+ *   own modules (stack.ts allowlists, tech-relationships.ts authorship).
+ */
+export const SURFACE_KINDS: Record<TechSurface, readonly TagKind[]> = {
+	toolkit: ['language', 'framework', 'runtime', 'data'],
+	map: ['framework', 'runtime', 'data', 'tool', 'ai', 'concept'],
+	stack: ['language', 'framework', 'runtime', 'data', 'tool'],
+	relate: ['language', 'framework', 'runtime', 'data', 'tool', 'ai', 'concept']
+};
+
+/** Whether a tag kind is admitted by the given aggregate surface. */
+export function surfaceAdmitsKind(surface: TechSurface, kind: TagKind): boolean {
+	return SURFACE_KINDS[surface].includes(kind);
+}
 
 /** Labels hidden from the given aggregate surface. */
 export function hiddenTechLabels(surface: TechSurface): Set<string> {

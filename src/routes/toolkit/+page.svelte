@@ -25,8 +25,8 @@
 		<header class="page__section-header">
 			<h2 id="adoption-heading">When each tool arrived</h2>
 			<p>
-				Every language, framework and runtime, placed at the moment it first appeared in a project.
-				Earliest on the left.
+				Every language, framework, runtime and database, placed at the moment it first appeared in a
+				project. Earliest on the left.
 			</p>
 		</header>
 		<AdoptionTimeline items={data.adoption} provisional={data.provisional} />
