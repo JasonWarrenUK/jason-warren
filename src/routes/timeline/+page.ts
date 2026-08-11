@@ -54,6 +54,7 @@ export function load() {
 			name: project.name,
 			track: project.track,
 			progress: project.progress,
+			released: project.released,
 			retired: project.retired,
 			deployed: project.deployed,
 			stageProvisional: !project.trackAuthored,

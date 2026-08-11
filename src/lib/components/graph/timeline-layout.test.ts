@@ -58,6 +58,7 @@ function rail(
 		name: overrides.name ?? slug,
 		track: overrides.track ?? 'product',
 		progress: overrides.progress ?? 'in-progress',
+		released: overrides.released ?? false,
 		retired: overrides.retired ?? false,
 		deployed: overrides.deployed ?? false,
 		stageProvisional: overrides.stageProvisional ?? false,

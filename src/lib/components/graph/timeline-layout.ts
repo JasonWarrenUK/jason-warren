@@ -118,6 +118,8 @@ export interface TimelineRail {
 	name: string;
 	track: ProjectTrack;
 	progress: ProjectProgress;
+	/** Authored: the work reached the world. Draws on the ramp's settled ink. */
+	released: boolean;
 	retired: boolean;
 	deployed: boolean;
 	/** True when track or progress is a heuristic guess; draws dotted-provisional. */

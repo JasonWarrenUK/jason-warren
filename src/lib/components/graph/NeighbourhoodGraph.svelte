@@ -74,7 +74,9 @@
 	const gridLinesY = [height / 3, (height * 2) / 3];
 	const gridLinesX = [width / 3, (width * 2) / 3];
 
-	const centreColour = $derived(progressColour(centre.stage.progress, centre.stage.retired));
+	const centreColour = $derived(
+		progressColour(centre.stage.progress, centre.stage.retired, centre.stage.released)
+	);
 </script>
 
 <svg
@@ -105,7 +107,11 @@
 
 	<g class="neighbourhood__nodes">
 		{#each placed as neighbour (neighbour.slug)}
-			{@const colour = progressColour(neighbour.stage.progress, neighbour.stage.retired)}
+			{@const colour = progressColour(
+				neighbour.stage.progress,
+				neighbour.stage.retired,
+				neighbour.stage.released
+			)}
 			<g>
 				<circle
 					class="neighbourhood__ring"

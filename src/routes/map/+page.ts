@@ -40,6 +40,7 @@ export function load() {
 				tagline: node.project.tagline,
 				track: node.project.track,
 				progress: node.project.progress,
+				released: node.project.released,
 				retired: node.project.retired,
 				deployed: node.project.deployed,
 				stageProvisional: !node.project.trackAuthored,
