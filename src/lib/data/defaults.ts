@@ -267,18 +267,35 @@ const TRACK_HEURISTIC_MIN_SPAN_DAYS = 90;
 const TRACK_HEURISTIC_MIN_LINES = 5000;
 
 /**
+ * Size at which a codebase reads as a product on its own, regardless of how
+ * long its author was on it. Sustained time is one route to a product, not the
+ * only one: a team repo Jason joined for an intense burst can be enormous and
+ * still fail a span test. fac-cra is 213,140 lines across a 44-day
+ * involvement, chirpdb 48,255 across 64 days, redot 35,624 across 7. Scoring
+ * those as exploration mistook the shape of the engagement for the shape of
+ * the work.
+ */
+const TRACK_HEURISTIC_SUBSTANTIAL_LINES = 20_000;
+
+/**
  * Span is measured in one consistent scope (5DR.20): firstCommit is
  * author-scoped, so pairing it with the all-authors lastCommit measured a
  * period belonging to neither. On fac-cra that ran from Jason's first commit to
  * the cohort's last, reporting a 51-day span for a 2-day engagement. Falls back
  * to lastCommit for manifests synced before lastCommitMine existed.
+ *
+ * Two routes to `product`: substantial size alone, or real time plus real size.
  */
 function inferTrack(manifest: SyncedSource): Project['track'] {
 	const { firstCommit, lastCommitMine, lastCommit, linesOfCode } = manifest;
+	const lines = linesOfCode ?? 0;
+
+	if (lines > TRACK_HEURISTIC_SUBSTANTIAL_LINES) return 'product';
+
 	const spanEnd = lastCommitMine ?? lastCommit;
 	if (!firstCommit || !spanEnd) return 'exploration';
 	const spanDays = (Date.parse(spanEnd) - Date.parse(firstCommit)) / 86_400_000;
-	return spanDays > TRACK_HEURISTIC_MIN_SPAN_DAYS && (linesOfCode ?? 0) > TRACK_HEURISTIC_MIN_LINES
+	return spanDays > TRACK_HEURISTIC_MIN_SPAN_DAYS && lines > TRACK_HEURISTIC_MIN_LINES
 		? 'product'
 		: 'exploration';
 }

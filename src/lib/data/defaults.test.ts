@@ -344,6 +344,27 @@ describe('defaultProjectFromManifest', () => {
 		expect(brief.track).toBe('exploration');
 	});
 
+	it('reads a substantial codebase as product however brief the involvement', () => {
+		// A team repo joined for an intense burst can be enormous and still fail a
+		// span test: fac-cra is 213,140 lines across a 44-day involvement. Size is
+		// a route to product on its own.
+		const burst = defaultProjectFromManifest('big-and-brief', {
+			firstCommit: '2026-02-11',
+			lastCommitMine: '2026-03-26',
+			linesOfCode: 213_140
+		});
+		expect(burst.track).toBe('product');
+	});
+
+	it('still reads a small short-lived repo as exploration', () => {
+		const small = defaultProjectFromManifest('small-and-brief', {
+			firstCommit: '2026-03-14',
+			lastCommitMine: '2026-03-14',
+			linesOfCode: 2165
+		});
+		expect(small.track).toBe('exploration');
+	});
+
 	it('falls back to lastCommit when lastCommitMine is absent', () => {
 		const legacy = defaultProjectFromManifest('pre-5dr20', {
 			firstCommit: '2025-01-01',
