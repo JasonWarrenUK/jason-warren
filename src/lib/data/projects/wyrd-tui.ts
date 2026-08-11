@@ -9,9 +9,6 @@ export const wyrdTui: AuthoredProject = {
 	description:
 		'Everything lives in flat JSONC files under git, where tasks, notes, and commitments are nodes in a property graph with typed edges and the terminal UI is built for keyboard-first navigation. Two pieces carry the design: a custom read-only Cypher subset (parser, evaluator, MATCH/WHERE/RETURN/ORDER BY, aggregations, bidirectional and variable-length traversals, date variables with offset arithmetic) that compiles queries to in-memory traversals, and a three-way JSONC git merge driver shipped as its own binary that resolves property-level conflicts non-destructively, taking last-write-wins by timestamp on scalars and unioning arrays. Accessibility runs through it too: colour-blind-safe themes pair glyph and colour signals to WCAG AA via Reasonable Colors. The schedule view uses time displacement: tasks scheduled later compress visually as overruns eat into the remaining time, so the cost of delay is always in frame.',
 	kind: 'tui',
-	contribution: { role: 'solo' },
-	track: 'product',
-	progress: 'in-progress',
 	highlights: [
 		'Custom read-only Cypher subset: parser, evaluator, MATCH/WHERE/RETURN/ORDER BY, aggregations, bidirectional and variable-length traversals, date variables with offset arithmetic.',
 		'Three-way JSONC git merge driver (its own binary): non-conflicting changes merge cleanly; scalars resolve last-write-wins by timestamp; arrays union.',

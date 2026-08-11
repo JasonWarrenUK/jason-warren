@@ -8,7 +8,6 @@ export const lyraRose: AuthoredProject = {
 	description:
 		"Lyra Rose (working title: The World I'd Build You) is a personal artwork. The site is a single URL with no about page, no captions, no persistence, and no analytics: a drifting field of shards, each a piece of a world a parent would build for their daughter. The visitor's own someone is the implicit second register; the site never names this. The engineering is deliberately substantial: a pluggable surface and interior renderer architecture, a day-cycle sky synced to the visitor's real local time, parallel pointer and touch grammars, and proximity-summoned audio via the Web Audio API. An unhurried personal work.",
 	kind: 'toy',
-	contribution: { role: 'solo' },
 	track: 'product',
 	progress: 'in-progress',
 	highlights: [

@@ -14,7 +14,6 @@ export const facCra: AuthoredProject = {
 		contributionNote:
 			'Lead Pool candidate segmentation (6 axes, composable signal groups, hydration orchestrator); learner dashboard restructure (collapsible tiles, health metrics, Article Stats tab); the first automated browser tests on the project via a full Playwright E2E suite; distribution pipeline extensions; security and a11y audit pass stripping dead code and unused dependencies.'
 	},
-	track: 'product',
 	progress: 'in-progress',
 	highlights: [
 		'Lead Pool multi-axis candidate segmentation: 6 segmentation axes, composable signal groups, hydration orchestrator, pattern-based strength classification.',

@@ -12,7 +12,6 @@ export const iris: AuthoredProject = {
 		role: 'solo',
 		collaboration: { team: 'Solo (Jason)', employer: 'Founders and Coders' }
 	},
-	track: 'product',
 	progress: 'complete',
 	highlights: [
 		'Single TypeScript core drives three interfaces: OpenTUI terminal UI, direct CLI commands, and a Tauri 2 (Rust) native desktop app.',

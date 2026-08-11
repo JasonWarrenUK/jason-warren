@@ -15,7 +15,6 @@ export const thingsWeDo: AuthoredProject = {
 			'Built the next-actions feature end-to-end on a FAC-30 cohort mental-health tracker; designed the insights charts including the 3D Plotly wellbeing visualisation; implemented ephemeral categories with modal confirmations; initialised the RxDB offline-first storage layer.'
 	},
 	track: 'product',
-	progress: 'complete',
 	highlights: [
 		'Next-actions feature end-to-end: creation, immediate selection, view, and deletion.',
 		'3D mood visualisation via Plotly.js: interactive, animated wellbeing data.',
