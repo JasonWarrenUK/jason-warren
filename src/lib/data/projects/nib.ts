@@ -8,9 +8,8 @@ export const nib: AuthoredProject = {
 	description:
 		'Integrating Ink directly into a SvelteKit project scatters BindExternalFunction calls, game-data registration, and story mechanics through the load/continue/choose plumbing; nothing is reusable and the reactive boundary is hard to reason about. Nib was extracted from The Work once the generic runtime proved separable. The fix is a single injection seam: loadStory() handles BOM stripping, the error handler, and an optional storylet stub, then calls onInit(ink) after story creation but before playback. All game-specific binding lives there and nowhere else. The reactivity problem is handled by a tick counter incremented at the end of every continue(); because the UI reads tick inside a $derived, any getVariable() call re-evaluates whenever the story advances. inkjs is a plain mutable object with no Svelte awareness; the tick counter is the minimal bridge. The full runtime is two files. Drop the directory into any SvelteKit project, write an onInit, and own the code.',
 	kind: 'library',
-	contribution: { role: 'solo' },
 	track: 'product',
-	progress: 'complete',
+	progress: 'in-progress',
 	highlights: [
 		'Single onInit injection seam: game-specific BindExternalFunction calls and data registration in one callback, nowhere else.',
 		'tick counter bridges non-reactive inkjs to Svelte 5 runes: UI reads tick inside $derived, so getVariable() re-evaluates on every continue().',
