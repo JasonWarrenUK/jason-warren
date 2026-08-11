@@ -58,7 +58,9 @@ Unstaged projects (neither axis authored, heuristic unavailable) render pale neu
 
 ### Model B: track × progress (chosen)
 
-Two axes. **Track**: exploration or product; a statement of intent, authored. **Progress**: in-progress, dormant or complete; a statement of state. The ramp carries progress with three inks. Track is carried by mark treatment: exploration projects draw with a hollow centre dot where product projects draw solid, and their badges read `spike · complete`, an honest label for a finished experiment.
+Two axes. **Track**: exploration or product; a statement of intent, authored. **Progress**: in-progress or complete; a statement of state. Track is carried by mark treatment: exploration projects draw with a hollow centre dot where product projects draw solid, and their badges announce the track, an honest label for a finished experiment.
+
+The progress axis was superseded in August 2026; see below. The ramp now carries three inks (`in-progress → dormant → released`) and the badge phrase reads `Spike · Released · Settled` where this originally read `spike · complete`.
 
 This answers the conflation honestly: a complete prototype stops being "early" and becomes what it is, a finished piece of exploration.
 
