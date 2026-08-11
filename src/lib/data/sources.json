@@ -32,26 +32,34 @@
 				"@sveltejs/kit": "2026-03-14",
 				"svelte-5": "2026-03-14",
 				"vite": "2026-03-14"
-			}
+			},
+			"commitsHuman": 5,
+			"distinctAuthors": 1,
+			"distinctAuthorsHuman": 1,
+			"rootCommitMine": true,
+			"lastCommitMine": "2026-03-14",
+			"activeMonths": 1,
+			"spanMonths": 1,
+			"maxGapDays": 0
 		},
 		"chirpdb": {
-			"head": "a95b344",
-			"commits": 1185,
-			"commitsRecentAll": 607,
-			"commitsMine": 574,
-			"commitsRecent": 318,
+			"head": "a78a0c9",
+			"commits": 1195,
+			"commitsRecentAll": 617,
+			"commitsMine": 584,
+			"commitsRecent": 328,
 			"lastCommit": "2026-08-11",
 			"firstCommit": "2026-06-08",
 			"languages": ["Python", "SQL", "Shell", "JavaScript"],
-			"linesOfCode": 47176,
-			"linesAdded": 129598,
-			"linesRemoved": 82337,
-			"linesAddedAll": 198354,
-			"linesRemovedAll": 107663,
-			"linesAddedRecent": 54935,
-			"linesRemovedRecent": 30973,
-			"linesAddedRecentAll": 83231,
-			"linesRemovedRecentAll": 37766,
+			"linesOfCode": 47962,
+			"linesAdded": 130538,
+			"linesRemoved": 82410,
+			"linesAddedAll": 199294,
+			"linesRemovedAll": 107736,
+			"linesAddedRecent": 55875,
+			"linesRemovedRecent": 31046,
+			"linesAddedRecentAll": 84171,
+			"linesRemovedRecentAll": 37839,
 			"remote": "https://github.com/ZigZag-Technology/CHIRPdb",
 			"runtime": ["python"],
 			"framework": ["fastapi"],
@@ -60,7 +68,15 @@
 			"techFirstSeen": {
 				"python": "2026-02-23",
 				"fastapi": "2026-02-23"
-			}
+			},
+			"commitsHuman": 1195,
+			"distinctAuthors": 8,
+			"distinctAuthorsHuman": 8,
+			"rootCommitMine": false,
+			"lastCommitMine": "2026-08-11",
+			"activeMonths": 3,
+			"spanMonths": 3,
+			"maxGapDays": 4
 		},
 		"code-arcana": {
 			"head": "a1ae651",
@@ -83,7 +99,15 @@
 			"remote": "https://github.com/JasonWarrenUK/code-arcana",
 			"runtime": ["deno"],
 			"framework": ["@sveltejs/kit", "svelte-4", "vite"],
-			"measuredRef": "main"
+			"measuredRef": "main",
+			"commitsHuman": 1,
+			"distinctAuthors": 1,
+			"distinctAuthorsHuman": 1,
+			"rootCommitMine": true,
+			"lastCommitMine": "2026-06-11",
+			"activeMonths": 1,
+			"spanMonths": 1,
+			"maxGapDays": 0
 		},
 		"cogni": {
 			"head": "22d51f4",
@@ -112,7 +136,15 @@
 				"@sveltejs/kit": "2026-03-14",
 				"svelte-5": "2026-03-14",
 				"vite": "2026-03-14"
-			}
+			},
+			"commitsHuman": 23,
+			"distinctAuthors": 1,
+			"distinctAuthorsHuman": 1,
+			"rootCommitMine": true,
+			"lastCommitMine": "2026-03-17",
+			"activeMonths": 1,
+			"spanMonths": 1,
+			"maxGapDays": 3
 		},
 		"commons-traybake": {
 			"head": "a0b3c6b",
@@ -141,7 +173,15 @@
 				"@sveltejs/kit": "2025-11-07",
 				"svelte-5": "2025-11-07",
 				"express": "2025-11-03"
-			}
+			},
+			"commitsHuman": 69,
+			"distinctAuthors": 9,
+			"distinctAuthorsHuman": 8,
+			"rootCommitMine": true,
+			"lastCommitMine": "2025-11-06",
+			"activeMonths": 2,
+			"spanMonths": 2,
+			"maxGapDays": 8
 		},
 		"epoch": {
 			"head": "519f074",
@@ -170,7 +210,15 @@
 				"svelte-5": "2026-03-04",
 				"vite": "2026-03-04",
 				"tailwindcss-4": "2026-03-05"
-			}
+			},
+			"commitsHuman": 27,
+			"distinctAuthors": 2,
+			"distinctAuthorsHuman": 1,
+			"rootCommitMine": true,
+			"lastCommitMine": "2026-07-02",
+			"activeMonths": 4,
+			"spanMonths": 27,
+			"maxGapDays": 655
 		},
 		"fac-cra": {
 			"head": "649507fa",
@@ -199,7 +247,15 @@
 				"express": "2026-02-05",
 				"react": "2023-09-11",
 				"vite": "2026-02-07"
-			}
+			},
+			"commitsHuman": 3558,
+			"distinctAuthors": 16,
+			"distinctAuthorsHuman": 14,
+			"rootCommitMine": false,
+			"lastCommitMine": "2026-03-27",
+			"activeMonths": 2,
+			"spanMonths": 2,
+			"maxGapDays": 6
 		},
 		"flyt": {
 			"head": "b85f752",
@@ -227,7 +283,15 @@
 				"@sveltejs/kit": "2026-03-08",
 				"svelte-5": "2026-03-08",
 				"vite": "2026-03-08"
-			}
+			},
+			"commitsHuman": 13,
+			"distinctAuthors": 2,
+			"distinctAuthorsHuman": 1,
+			"rootCommitMine": true,
+			"lastCommitMine": "2026-03-11",
+			"activeMonths": 3,
+			"spanMonths": 37,
+			"maxGapDays": 822
 		},
 		"grumble": {
 			"head": "51ea652",
@@ -256,7 +320,15 @@
 				"@sveltejs/kit": "2026-06-14",
 				"svelte-5": "2026-06-14",
 				"vite": "2026-06-14"
-			}
+			},
+			"commitsHuman": 5,
+			"distinctAuthors": 1,
+			"distinctAuthorsHuman": 1,
+			"rootCommitMine": true,
+			"lastCommitMine": "2026-06-14",
+			"activeMonths": 1,
+			"spanMonths": 1,
+			"maxGapDays": 0
 		},
 		"guardrails": {
 			"head": "2a4881a",
@@ -288,7 +360,15 @@
 				"express": "2025-12-17",
 				"python": "2025-12-15",
 				"fastapi": "2025-12-15"
-			}
+			},
+			"commitsHuman": 200,
+			"distinctAuthors": 6,
+			"distinctAuthorsHuman": 6,
+			"rootCommitMine": false,
+			"lastCommitMine": "2026-06-30",
+			"activeMonths": 2,
+			"spanMonths": 3,
+			"maxGapDays": 50
 		},
 		"historia": {
 			"head": "01f7b8b",
@@ -318,7 +398,15 @@
 				"svelte-5": "2026-03-14",
 				"vite": "2026-03-14",
 				"tailwindcss-4": "2026-03-14"
-			}
+			},
+			"commitsHuman": 8,
+			"distinctAuthors": 1,
+			"distinctAuthorsHuman": 1,
+			"rootCommitMine": true,
+			"lastCommitMine": "2026-03-14",
+			"activeMonths": 1,
+			"spanMonths": 1,
+			"maxGapDays": 0
 		},
 		"iris": {
 			"head": "314e977",
@@ -349,7 +437,15 @@
 				"vite": "2026-01-09",
 				"@opentui/core": "2026-02-06",
 				"tauri": "2026-01-09"
-			}
+			},
+			"commitsHuman": 834,
+			"distinctAuthors": 3,
+			"distinctAuthorsHuman": 1,
+			"rootCommitMine": true,
+			"lastCommitMine": "2026-08-11",
+			"activeMonths": 6,
+			"spanMonths": 8,
+			"maxGapDays": 95
 		},
 		"kamino": {
 			"head": "671ae41",
@@ -370,7 +466,15 @@
 			"linesAddedRecentAll": 0,
 			"linesRemovedRecentAll": 0,
 			"remote": "https://github.com/JasonWarrenUK/kamino",
-			"measuredRef": "main"
+			"measuredRef": "main",
+			"commitsHuman": 1,
+			"distinctAuthors": 1,
+			"distinctAuthorsHuman": 1,
+			"rootCommitMine": true,
+			"lastCommitMine": "2026-01-09",
+			"activeMonths": 1,
+			"spanMonths": 1,
+			"maxGapDays": 0
 		},
 		"kitchen-gremlin": {
 			"head": "a04d922",
@@ -400,7 +504,15 @@
 				"@sveltejs/kit": "2026-04-26",
 				"svelte-5": "2026-04-26",
 				"vite": "2026-04-26"
-			}
+			},
+			"commitsHuman": 5,
+			"distinctAuthors": 2,
+			"distinctAuthorsHuman": 1,
+			"rootCommitMine": false,
+			"lastCommitMine": "2026-04-26",
+			"activeMonths": 1,
+			"spanMonths": 1,
+			"maxGapDays": 0
 		},
 		"lyra-rose": {
 			"head": "6c1d73d",
@@ -430,19 +542,27 @@
 				"@sveltejs/kit": "2026-04-27",
 				"svelte-5": "2026-04-27",
 				"vite": "2026-04-27"
-			}
+			},
+			"commitsHuman": 43,
+			"distinctAuthors": 2,
+			"distinctAuthorsHuman": 1,
+			"rootCommitMine": true,
+			"lastCommitMine": "2026-06-21",
+			"activeMonths": 3,
+			"spanMonths": 3,
+			"maxGapDays": 29
 		},
 		"nib": {
 			"head": "d19cc8a",
 			"commits": 1,
 			"commitsRecentAll": 0,
-			"commitsMine": 0,
+			"commitsMine": 1,
 			"commitsRecent": 0,
 			"lastCommit": "2026-03-11",
 			"firstCommit": "2026-03-11",
 			"languages": ["TypeScript"],
 			"linesOfCode": 254,
-			"linesAdded": 0,
+			"linesAdded": 343,
 			"linesRemoved": 0,
 			"linesAddedAll": 343,
 			"linesRemovedAll": 0,
@@ -453,7 +573,15 @@
 			"remote": "https://github.com/JasonWarrenUK/nib",
 			"measuredRef": "main",
 			"framework": ["svelte-5"],
-			"runtime": ["inkjs"]
+			"runtime": ["inkjs"],
+			"commitsHuman": 1,
+			"distinctAuthors": 1,
+			"distinctAuthorsHuman": 1,
+			"rootCommitMine": true,
+			"lastCommitMine": "2026-03-11",
+			"activeMonths": 1,
+			"spanMonths": 1,
+			"maxGapDays": 0
 		},
 		"psyche": {
 			"head": "d8aa8d7",
@@ -478,7 +606,15 @@
 			"runtime": ["dotnet-9"],
 			"techFirstSeen": {
 				"dotnet-9": "2025-11-17"
-			}
+			},
+			"commitsHuman": 81,
+			"distinctAuthors": 4,
+			"distinctAuthorsHuman": 3,
+			"rootCommitMine": true,
+			"lastCommitMine": "2025-11-27",
+			"activeMonths": 1,
+			"spanMonths": 1,
+			"maxGapDays": 3
 		},
 		"redot": {
 			"head": "8a11543",
@@ -500,7 +636,15 @@
 			"linesRemovedRecentAll": 0,
 			"remote": "https://github.com/fac-31/ReDoT",
 			"runtime": ["node", "bun"],
-			"measuredRef": "main"
+			"measuredRef": "main",
+			"commitsHuman": 77,
+			"distinctAuthors": 5,
+			"distinctAuthorsHuman": 4,
+			"rootCommitMine": false,
+			"lastCommitMine": "2025-10-13",
+			"activeMonths": 1,
+			"spanMonths": 1,
+			"maxGapDays": 6
 		},
 		"rhea": {
 			"head": "eb42a9d",
@@ -529,19 +673,27 @@
 				"svelte-5": "2025-10-20",
 				"vite": "2025-09-12",
 				"deno": "2026-03-25"
-			}
+			},
+			"commitsHuman": 356,
+			"distinctAuthors": 1,
+			"distinctAuthorsHuman": 1,
+			"rootCommitMine": true,
+			"lastCommitMine": "2026-03-25",
+			"activeMonths": 4,
+			"spanMonths": 7,
+			"maxGapDays": 99
 		},
 		"riffle": {
 			"head": "07aba44",
 			"commits": 2,
 			"commitsRecentAll": 0,
-			"commitsMine": 1,
+			"commitsMine": 2,
 			"commitsRecent": 0,
 			"lastCommit": "2026-03-12",
-			"firstCommit": "2026-03-12",
+			"firstCommit": "2026-03-11",
 			"languages": ["TypeScript"],
 			"linesOfCode": 1179,
-			"linesAdded": 87,
+			"linesAdded": 1269,
 			"linesRemoved": 1,
 			"linesAddedAll": 1269,
 			"linesRemovedAll": 1,
@@ -551,20 +703,28 @@
 			"linesRemovedRecentAll": 0,
 			"remote": "https://github.com/JasonWarrenUK/riffle",
 			"measuredRef": "main",
-			"framework": ["svelte-5"]
+			"framework": ["svelte-5"],
+			"commitsHuman": 2,
+			"distinctAuthors": 1,
+			"distinctAuthorsHuman": 1,
+			"rootCommitMine": true,
+			"lastCommitMine": "2026-03-12",
+			"activeMonths": 1,
+			"spanMonths": 1,
+			"maxGapDays": 1
 		},
 		"schema-forge": {
 			"head": "ecc88a5",
 			"commits": 38,
 			"commitsRecentAll": 33,
-			"commitsMine": 35,
+			"commitsMine": 37,
 			"commitsRecent": 33,
 			"lastCommit": "2026-08-11",
 			"firstCommit": "2026-03-12",
 			"languages": ["TypeScript"],
 			"linesOfCode": 5931,
-			"linesAdded": 6256,
-			"linesRemoved": 214,
+			"linesAdded": 8299,
+			"linesRemoved": 216,
 			"linesAddedAll": 8407,
 			"linesRemovedAll": 217,
 			"linesAddedRecent": 6255,
@@ -576,7 +736,15 @@
 			"runtime": ["bun"],
 			"techFirstSeen": {
 				"bun": "2026-08-08"
-			}
+			},
+			"commitsHuman": 37,
+			"distinctAuthors": 2,
+			"distinctAuthorsHuman": 1,
+			"rootCommitMine": true,
+			"lastCommitMine": "2026-08-11",
+			"activeMonths": 3,
+			"spanMonths": 6,
+			"maxGapDays": 113
 		},
 		"sparker": {
 			"head": "d288c8d",
@@ -605,7 +773,15 @@
 				"@sveltejs/kit": "2026-03-04",
 				"svelte-5": "2026-03-04",
 				"vite": "2026-03-04"
-			}
+			},
+			"commitsHuman": 9,
+			"distinctAuthors": 2,
+			"distinctAuthorsHuman": 1,
+			"rootCommitMine": true,
+			"lastCommitMine": "2026-03-05",
+			"activeMonths": 2,
+			"spanMonths": 23,
+			"maxGapDays": 655
 		},
 		"the-tongue": {
 			"head": "ffb9690",
@@ -635,7 +811,15 @@
 				"svelte-5": "2026-06-14",
 				"vite": "2026-06-14",
 				"tailwindcss-4": "2026-06-14"
-			}
+			},
+			"commitsHuman": 159,
+			"distinctAuthors": 1,
+			"distinctAuthorsHuman": 1,
+			"rootCommitMine": true,
+			"lastCommitMine": "2026-08-07",
+			"activeMonths": 3,
+			"spanMonths": 3,
+			"maxGapDays": 27
 		},
 		"the-work": {
 			"head": "165a081",
@@ -665,7 +849,15 @@
 				"svelte-5": "2026-03-05",
 				"vite": "2026-03-05",
 				"inkjs": "2026-03-05"
-			}
+			},
+			"commitsHuman": 71,
+			"distinctAuthors": 2,
+			"distinctAuthorsHuman": 1,
+			"rootCommitMine": true,
+			"lastCommitMine": "2026-07-04",
+			"activeMonths": 7,
+			"spanMonths": 41,
+			"maxGapDays": 789
 		},
 		"things-we-do": {
 			"head": "4e47c16",
@@ -694,26 +886,34 @@
 				"next": "2024-11-25",
 				"react": "2024-11-25",
 				"tailwindcss-3": "2024-11-25"
-			}
+			},
+			"commitsHuman": 990,
+			"distinctAuthors": 7,
+			"distinctAuthorsHuman": 7,
+			"rootCommitMine": true,
+			"lastCommitMine": "2024-12-19",
+			"activeMonths": 2,
+			"spanMonths": 2,
+			"maxGapDays": 4
 		},
 		"those-who-came-before": {
-			"head": "0c19739",
-			"commits": 382,
-			"commitsRecentAll": 200,
-			"commitsMine": 382,
-			"commitsRecent": 200,
+			"head": "206403d",
+			"commits": 388,
+			"commitsRecentAll": 206,
+			"commitsMine": 388,
+			"commitsRecent": 206,
 			"lastCommit": "2026-08-11",
 			"firstCommit": "2023-09-09",
 			"languages": ["TypeScript", "Svelte", "HTML", "CSS", "JavaScript"],
-			"linesOfCode": 27602,
-			"linesAdded": 79718,
-			"linesRemoved": 30392,
-			"linesAddedAll": 79718,
-			"linesRemovedAll": 30392,
-			"linesAddedRecent": 42343,
-			"linesRemovedRecent": 15284,
-			"linesAddedRecentAll": 42343,
-			"linesRemovedRecentAll": 15284,
+			"linesOfCode": 27793,
+			"linesAdded": 80193,
+			"linesRemoved": 30472,
+			"linesAddedAll": 80193,
+			"linesRemovedAll": 30472,
+			"linesAddedRecent": 42818,
+			"linesRemovedRecent": 15364,
+			"linesAddedRecentAll": 42818,
+			"linesRemovedRecentAll": 15364,
 			"remote": "https://github.com/JasonWarrenUK/those-who-came-before",
 			"measuredRef": "main",
 			"runtime": ["deno"],
@@ -724,7 +924,15 @@
 				"svelte-5": "2026-02-16",
 				"vite": "2026-02-16",
 				"tailwindcss-4": "2026-02-16"
-			}
+			},
+			"commitsHuman": 388,
+			"distinctAuthors": 1,
+			"distinctAuthorsHuman": 1,
+			"rootCommitMine": true,
+			"lastCommitMine": "2026-08-11",
+			"activeMonths": 15,
+			"spanMonths": 36,
+			"maxGapDays": 350
 		},
 		"top-girls": {
 			"head": "9a9accf",
@@ -753,7 +961,15 @@
 				"svelte": "2026-06-14",
 				"svelte-5": "2026-06-14",
 				"vite": "2026-06-14"
-			}
+			},
+			"commitsHuman": 33,
+			"distinctAuthors": 1,
+			"distinctAuthorsHuman": 1,
+			"rootCommitMine": true,
+			"lastCommitMine": "2026-06-16",
+			"activeMonths": 1,
+			"spanMonths": 1,
+			"maxGapDays": 1
 		},
 		"workwise": {
 			"head": "ec6516d",
@@ -783,7 +999,15 @@
 				"svelte-5": "2025-05-28",
 				"vite": "2025-05-28",
 				"tailwindcss-4": "2025-05-28"
-			}
+			},
+			"commitsHuman": 566,
+			"distinctAuthors": 6,
+			"distinctAuthorsHuman": 6,
+			"rootCommitMine": false,
+			"lastCommitMine": "2025-09-22",
+			"activeMonths": 3,
+			"spanMonths": 4,
+			"maxGapDays": 61
 		},
 		"wyrd-tui": {
 			"head": "6bb8f36",
@@ -810,7 +1034,15 @@
 			"techFirstSeen": {
 				"go": "2026-03-19",
 				"bubble-tea": "2026-03-23"
-			}
+			},
+			"commitsHuman": 410,
+			"distinctAuthors": 1,
+			"distinctAuthorsHuman": 1,
+			"rootCommitMine": true,
+			"lastCommitMine": "2026-08-11",
+			"activeMonths": 6,
+			"spanMonths": 6,
+			"maxGapDays": 25
 		},
 		"beacons": {
 			"head": "0102f4a",
@@ -839,7 +1071,15 @@
 			"techFirstSeen": {
 				"deno": "2025-01-14",
 				"oak": "2025-03-07"
-			}
+			},
+			"commitsHuman": 175,
+			"distinctAuthors": 3,
+			"distinctAuthorsHuman": 3,
+			"rootCommitMine": true,
+			"lastCommitMine": "2025-11-06",
+			"activeMonths": 5,
+			"spanMonths": 11,
+			"maxGapDays": 218
 		},
 		"craft-and-graft": {
 			"head": "6c50037",
@@ -869,7 +1109,15 @@
 				"react": "2024-10-15",
 				"vite": "2024-10-15",
 				"tailwindcss-3": "2024-10-16"
-			}
+			},
+			"commitsHuman": 92,
+			"distinctAuthors": 4,
+			"distinctAuthorsHuman": 4,
+			"rootCommitMine": true,
+			"lastCommitMine": "2024-10-31",
+			"activeMonths": 1,
+			"spanMonths": 1,
+			"maxGapDays": 4
 		},
 		"sakura": {
 			"head": "41e03f7",
@@ -898,7 +1146,15 @@
 			"techFirstSeen": {
 				"dotnet-8": "2024-11-12",
 				"aspnet-core": "2024-11-12"
-			}
+			},
+			"commitsHuman": 159,
+			"distinctAuthors": 5,
+			"distinctAuthorsHuman": 5,
+			"rootCommitMine": false,
+			"lastCommitMine": "2024-11-21",
+			"activeMonths": 1,
+			"spanMonths": 1,
+			"maxGapDays": 4
 		},
 		"rimewarden": {
 			"head": "7f4aa57",
@@ -928,7 +1184,15 @@
 				"svelte-5": "2026-01-24",
 				"vite": "2026-01-24",
 				"tailwindcss-4": "2026-01-24"
-			}
+			},
+			"commitsHuman": 2,
+			"distinctAuthors": 1,
+			"distinctAuthorsHuman": 1,
+			"rootCommitMine": true,
+			"lastCommitMine": "2026-01-24",
+			"activeMonths": 1,
+			"spanMonths": 1,
+			"maxGapDays": 0
 		}
 	}
 }
