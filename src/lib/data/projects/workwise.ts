@@ -15,7 +15,6 @@ export const workwise: AuthoredProject = {
 		contributionNote:
 			'Drove the response-state architecture (creation-date versioning, answers versioned not overwritten), the tile-based dashboard layout and database-driven status indicators on a SvelteKit 2 workforce platform built for LIFT. Local dev loop runs on Supabase-in-Docker with RLS-enforced data isolation.'
 	},
-	progress: 'in-progress',
 	highlights: [
 		'Tile-based dashboard layout with responsive grid and collapsible sections.',
 		'State-based response handling with creation-date versioning: answers are versioned, not overwritten.',

@@ -18,7 +18,7 @@ A printed atlas works the other way round. It owns a small, fixed set of inks. A
 
 Two conventions apply across every register:
 
-- **End-of-life is a fade within the same hue.** An archived project keeps its progress ink, its chroma drained by a fixed-ratio mix toward the mid neutral. A superseded technology keeps its mark ink the same way. Old features on survey sheets fade in place.
+- **End-of-life is a fade within the same hue.** A retired project keeps its progress ink, its chroma drained by a fixed-ratio mix toward the mid neutral. A superseded technology keeps its mark ink the same way. Old features on survey sheets fade in place.
 - **Provisional data is drawn provisionally.** Any value produced by heuristic rather than authorship renders with the cartographic unsurveyed convention: dotted stroke where the authored equivalent is solid. The reader can always tell surveyed ground from conjecture.
 
 ## 2. The ink census
@@ -32,7 +32,8 @@ Six chromatic inks. Plus the warm paper neutrals, which stay as they are (derive
 | **succession: leads-to**    | lime-4 `#677600`      | lime-3 `#819300`      | tech succession, forward                                                | solid routes with arrowheads              |
 | **succession: replaced-by** | raspberry-4 `#de0051` | raspberry-3 `#ff426c` | tech succession, backward                                               | solid routes with arrowheads              |
 | **progress: in-progress**   | purple-4 `#b01fe3`    | purple-3 `#d150ff`    | project progress                                                        | rails, rings, badges                      |
-| **progress: complete**      | violet-4 `#794aff`    | violet-3 `#9b70ff`    | project progress                                                        | rails, rings, badges                      |
+| **progress: dormant**       | violet-4 `#794aff`    | violet-3 `#9b70ff`    | project progress                                                        | rails, rings, badges                      |
+| **released**                | indigo-4 `#0061fc`    | indigo-3 `#3d81ff`    | released work (settled or maintained)                                   | rails, rings, badges                      |
 
 Blue serves both chrome and tech marks. That is mark-class scoping working as intended: chrome is never a data mark, and the sheets that draw tech marks (map technologies mode, adoption timeline) colour no other data in blue. The four-way booking dies because finished rails move to the progress ramp and extraction moves to oxide.
 
@@ -42,13 +43,14 @@ Everything else the old system coloured chromatically goes neutral, glyph-coded 
 
 The old `status` field conflates at least three axes. Decomposed, with provenance per axis (from the drift-engine audit, July 2026):
 
-| Axis       | Values                  | Provenance today                                                  | Encoding                       |
-| ---------- | ----------------------- | ----------------------------------------------------------------- | ------------------------------ |
-| `track`    | exploration \| product  | authored; heuristic default for unauthored projects, drawn dotted | mark treatment (hollow centre) |
-| `progress` | in-progress \| complete | authored; heuristic default for unauthored projects, drawn dotted | hue ramp                       |
-| `deployed` | boolean                 | authored (`liveUrl` presence); `drift enrich` derives it later    | outer ring mark                |
-| `activity` | continuous recency      | derived now (`lastCommit`, `commitsRecent`)                       | opacity, floor 0.55            |
-| `archived` | boolean                 | authored; `drift enrich` derives it later                         | fixed-ratio chroma drain       |
+| Axis       | Values                 | Provenance today                                                  | Encoding                          |
+| ---------- | ---------------------- | ----------------------------------------------------------------- | --------------------------------- |
+| `track`    | exploration \| product | authored; heuristic default for unauthored projects, drawn dotted | mark treatment (hollow centre)    |
+| `progress` | in-progress \| dormant | observed only, never authored (Jason-scoped commit recency)       | hue ramp                          |
+| `released` | boolean                | authored only; reach is invisible to git                          | ramp's settled ink + badge phrase |
+| `deployed` | boolean                | authored (`liveUrl` presence); `drift enrich` derives it later    | outer ring mark                   |
+| `activity` | continuous recency     | derived now (`lastCommit`, `commitsRecent`)                       | opacity, floor 0.55               |
+| `retired`  | boolean                | authored; presentation only, never a visibility control           | fixed-ratio chroma drain          |
 
 Unstaged projects (neither axis authored, heuristic unavailable) render pale neutral, as `uncategorised` does today. Archived projects are exempt from the activity fade; the shade shift is their recession, and stacking both would sink them below findability.
 
@@ -56,17 +58,30 @@ Unstaged projects (neither axis authored, heuristic unavailable) render pale neu
 
 ### Model B: track × progress (chosen)
 
-Two axes. **Track**: exploration or product; a statement of intent, authored. **Progress**: in-progress or complete; a statement of state. The ramp carries progress with two inks. Track is carried by mark treatment: exploration projects draw with a hollow centre dot where product projects draw solid, and their badges read `spike · complete`, an honest label for a finished experiment.
+Two axes. **Track**: exploration or product; a statement of intent, authored. **Progress**: in-progress, dormant or complete; a statement of state. The ramp carries progress with three inks. Track is carried by mark treatment: exploration projects draw with a hollow centre dot where product projects draw solid, and their badges read `spike · complete`, an honest label for a finished experiment.
 
-This answers the conflation honestly: a complete prototype stops being "early" and becomes what it is, a finished piece of exploration. It also holds the census at six chromatic inks.
+This answers the conflation honestly: a complete prototype stops being "early" and becomes what it is, a finished piece of exploration.
 
-Old-to-new mapping under Model B: `wip → product, in-progress` · `finished → product, complete` · `prototype → exploration` (progress judged per project) · `live → product, complete, deployed` · `archived → archived: true` plus track and progress.
+#### Progress, release and retirement (August 2026)
 
-A third model (three authored axes: intent, maturity, upkeep) was considered and rejected; the data cannot support it and the badges become sentences.
+`progress` was originally binary (`in-progress | complete`), and the heuristic read silence as completion: no commits in the trailing window meant `complete`. That asserted something the data never supported. Git can see that work stopped; it cannot see whether it stopped because the project was finished or because it was set down.
 
-### The heuristic default
+The two are indistinguishable in the history. ReDoT shipped (six merged PRs, released as a licensed GitHub Action) and has been quiet for 302 days. Cogni simply stopped, and has been quiet for 147. Any threshold that calls one complete calls the other complete, and an idle-time rule ranks them the wrong way round.
 
-Per axis, for unauthored projects. Track: `product` if the repo spans more than 90 days and 5,000 lines, otherwise `exploration`. Progress: `in-progress` if `commitsRecent > 0`, otherwise `complete`. Thresholds are tunable and both will sometimes be wrong, visibly, which is the point: heuristic values render dotted until authored.
+The axes were therefore separated, so each field asserts one thing and no field restates another:
+
+| Field      | Asserts                             | Provenance                           |
+| ---------- | ----------------------------------- | ------------------------------------ |
+| `track`    | intent: what it was meant to be     | authored; heuristic fallback, dotted |
+| `progress` | activity: are commits still landing | observed only, never authored        |
+| `released` | reach: did it get to anyone else    | authored only                        |
+| `retired`  | presentation: show it as ended      | authored only                        |
+
+`progress` is now `in-progress | dormant` and always inferred, from Jason's own commits rather than all authors: a cohort repo that keeps moving after he left is dormant _for him_, which is what the portfolio describes.
+
+`released` carries what `complete` was reaching for. It is authored-only, because reach is not visible in a commit log, and orthogonal to activity, so the badge can say `Released · Maintained` and `Released · Settled` as well as plain `Building` or `Dormant`. Of 32 projects, 5 claim it.
+
+`retired` (formerly `archived`) is presentation only: the drained-chroma treatment, the pill and the filter facet. It no longer excludes from the hero pool. That exclusion belonged to `hide`, and while both flags carried it neither owned it; the hero score already sinks ended work without a categorical ban. `hide` is the single visibility control.
 
 ## 4. The ramp
 
@@ -81,15 +96,15 @@ Inherits violet-means-prototype in reverse: violet becomes the _complete_ end. C
 
 The rejected candidate was the green family (chartreuse-4 `#497c00` → green-4 `#008217` under Model B), carrying the site's green-means-healthy association from `live = emerald` (emerald-4 `#008147`) and the vegetation-tint register of survey sheets. It lost on separation: the violet family sits further from oxide, from succession lime and from the amber-adjacent warmth of the paper itself.
 
-**The end-of-life fade: a chroma drain, not a lightness shift** (amended three times at review; the history is the lesson). The one-step Reasonable shade shift was indistinguishable from active; the two-step shift was invisible on light paper; mixing toward the paper put distinctness and legibility on one knob, where raising either lowered the other. What "faded" actually needs is both at once, and they live on different axes: an archived or superseded mark's ink is `color-mix(in oklab, <active ink> 40%, var(--color-text-muted))` — the mix toward the mid neutral drains the COLOURFULNESS while holding the LIGHTNESS, so the mark stays fully readable and reads as unmistakably duller than its active ink. Both themes follow from one rule because both mix inputs are theme-resolved. The corridor is pinned by tests in both themes: faded ink ≥2.2:1 against the sheet (findable) and faded chroma ≤55% of the active ink's oklch chroma (distinct — a luminance pin cannot measure this, which is how an indistinct fade slipped through review). The same rule colours historic technologies (§5, tech-kind).
+**The end-of-life fade: a chroma drain, not a lightness shift** (amended three times at review; the history is the lesson). The one-step Reasonable shade shift was indistinguishable from active; the two-step shift was invisible on light paper; mixing toward the paper put distinctness and legibility on one knob, where raising either lowered the other. What "faded" actually needs is both at once, and they live on different axes: a retired or superseded mark's ink is `color-mix(in oklab, <active ink> 40%, var(--color-text-muted))` — the mix toward the mid neutral drains the COLOURFULNESS while holding the LIGHTNESS, so the mark stays fully readable and reads as unmistakably duller than its active ink. Both themes follow from one rule because both mix inputs are theme-resolved. The corridor is pinned by tests in both themes: faded ink ≥2.2:1 against the sheet (findable) and faded chroma ≤55% of the active ink's oklch chroma (distinct — a luminance pin cannot measure this, which is how an indistinct fade slipped through review). The same rule colours historic technologies (§5, tech-kind).
 
 ## 5. The registers
 
-**Track and progress**: progress picks the ramp ink on rails, rings and badges; exploration draws the centre dot hollow where product draws it solid. Deployed adds the outer ring; activity sets opacity; archived shifts the shade.
+**Track and progress**: progress picks the ramp ink on rails, rings and badges; exploration draws the centre dot hollow where product draws it solid. Deployed adds the outer ring; activity sets opacity; retired shifts the shade.
 
 **Deployed**: a second concentric ring at `r + 7`, the mark the timeline already uses for still-live rails, promoted to mean exactly one thing everywhere: this project is running somewhere. The map's current second-ring-for-hubs retires; node size already carries weight.
 
-**Tech-kind**: glyph-coded survey marks, all in ink (blue; confirmed at review). A real sheet treats kind as a feature class, and feature classes get symbols. Current stack draws at full shade; historic stack (any tech that is the source of a `replaced-by` edge) draws two shades paperward, same rule as archived projects. The vocabulary (chosen at review, the abstraction-gradient variant), drawn at the 8–14px radii the charts actually use:
+**Tech-kind**: glyph-coded survey marks, all in ink (blue; confirmed at review). A real sheet treats kind as a feature class, and feature classes get symbols. Current stack draws at full shade; historic stack (any tech that is the source of a `replaced-by` edge) draws two shades paperward, same rule as retired projects. The vocabulary (chosen at review, the abstraction-gradient variant), drawn at the 8–14px radii the charts actually use:
 
 | Kind      | Glyph             | Mnemonic                                                                          |
 | --------- | ----------------- | --------------------------------------------------------------------------------- |
@@ -133,7 +148,7 @@ The contrast test extends to cover the ramp inks against both surfaces, resolves
 
 ## 8. Accessibility
 
-Every same-shade Reasonable hue pair sits in one lightness band, so a categorical system built on hue alone fails colour-blind readers precisely where it has the most values. This redesign reduces exposure structurally: tech-kind moves to glyphs, which survive any colour vision; deployed is a ring, archived is a shade, activity is opacity, provisional is a dot pattern. The progress ramp is ordinal, where adjacent-hue confusion costs a step rather than a category, and every track and progress value also appears as badge text. The succession pair (lime and raspberry) is the one remaining hue-only distinction between exactly two values; their arrowheads and positions carry direction redundantly.
+Every same-shade Reasonable hue pair sits in one lightness band, so a categorical system built on hue alone fails colour-blind readers precisely where it has the most values. This redesign reduces exposure structurally: tech-kind moves to glyphs, which survive any colour vision; deployed is a ring, retired is a shade, activity is opacity, provisional is a dot pattern. The progress ramp is ordinal, where adjacent-hue confusion costs a step rather than a category, and every track and progress value also appears as badge text. The succession pair (lime and raspberry) is the one remaining hue-only distinction between exactly two values; their arrowheads and positions carry direction redundantly.
 
 ## 9. Migration
 

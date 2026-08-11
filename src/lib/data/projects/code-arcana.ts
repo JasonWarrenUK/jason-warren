@@ -9,7 +9,6 @@ export const codeArcana: AuthoredProject = {
 		'A programming philosophy read through tarot archetypes rather than Taoist ones: dry, plainspoken prose and a framing that treats expertise as permission to question received wisdom rather than as a credential to defer to. All 78 cards are written and integrated: 22 Major Arcana and 56 Minor Arcana across the four suits of Cups, Wands, Swords and Pentacles. Each card carries a full essay, keywords, a one-line coding insight and links to related cards, and the 328-edge connection graph between them is rendered as a navigable diagram. It is built with SvelteKit on Deno and deployed via Deno Deploy.',
 	kind: 'website',
 	track: 'product',
-	progress: 'in-progress',
 	highlights: [
 		'All 78 cards written: 22 Major Arcana and 56 Minor Arcana across four suits (Cups/Wands/Swords/Pentacles).',
 		'Every card has a full essay, keywords, a one-line coding insight, and connections to related cards.',

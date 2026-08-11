@@ -118,7 +118,7 @@ export interface TimelineRail {
 	name: string;
 	track: ProjectTrack;
 	progress: ProjectProgress;
-	archived: boolean;
+	retired: boolean;
 	deployed: boolean;
 	/** True when track or progress is a heuristic guess; draws dotted-provisional. */
 	stageProvisional: boolean;

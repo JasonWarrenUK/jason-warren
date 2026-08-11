@@ -12,7 +12,7 @@ export function load() {
 		// Flag chips only render when the registry has something to show for them.
 		presentFlags: {
 			deployed: anyProjectHasFlag('deployed'),
-			archived: anyProjectHasFlag('archived')
+			retired: anyProjectHasFlag('retired')
 		},
 		tagsByKind: getTagsByKind()
 	};

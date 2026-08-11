@@ -58,7 +58,7 @@ function rail(
 		name: overrides.name ?? slug,
 		track: overrides.track ?? 'product',
 		progress: overrides.progress ?? 'in-progress',
-		archived: overrides.archived ?? false,
+		retired: overrides.retired ?? false,
 		deployed: overrides.deployed ?? false,
 		stageProvisional: overrides.stageProvisional ?? false,
 		tagline: overrides.tagline ?? '',
@@ -80,7 +80,7 @@ function realRails(): TimelineRail[] {
 			name: p.name,
 			track: p.track,
 			progress: p.progress,
-			archived: p.archived,
+			retired: p.retired,
 			deployed: p.deployed,
 			tagline: p.tagline,
 			role: p.contribution.role

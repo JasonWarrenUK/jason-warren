@@ -5,7 +5,7 @@
 	/** The stage fields a survey mark needs to draw itself. */
 	type StageMark = Pick<
 		Project,
-		'track' | 'trackAuthored' | 'progress' | 'progressAuthored' | 'archived' | 'deployed'
+		'track' | 'trackAuthored' | 'progress' | 'released' | 'retired' | 'deployed'
 	>;
 
 	interface NeighbourPoint {
@@ -22,8 +22,7 @@
 	}
 
 	/** Heuristic stage draws dotted: the unsurveyed convention. */
-	const provisional = (stage: StageMark): boolean =>
-		!stage.trackAuthored || !stage.progressAuthored;
+	const provisional = (stage: StageMark): boolean => !stage.trackAuthored;
 
 	/** Centre dot style: exploration draws hollow where product draws solid. */
 	const dotStyle = (stage: StageMark, colour: string): string =>
@@ -75,7 +74,7 @@
 	const gridLinesY = [height / 3, (height * 2) / 3];
 	const gridLinesX = [width / 3, (width * 2) / 3];
 
-	const centreColour = $derived(progressColour(centre.stage.progress, centre.stage.archived));
+	const centreColour = $derived(progressColour(centre.stage.progress, centre.stage.retired));
 </script>
 
 <svg
@@ -106,7 +105,7 @@
 
 	<g class="neighbourhood__nodes">
 		{#each placed as neighbour (neighbour.slug)}
-			{@const colour = progressColour(neighbour.stage.progress, neighbour.stage.archived)}
+			{@const colour = progressColour(neighbour.stage.progress, neighbour.stage.retired)}
 			<g>
 				<circle
 					class="neighbourhood__ring"

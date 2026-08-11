@@ -28,7 +28,13 @@ export function getBySlug(slug: ProjectSlug): Project | undefined {
  * Returns the full eligible pool sorted by active-substance score (descending),
  * ready for the home-page hero to slice and rotate.
  *
- * Eligible = not archived, editorially triaged (authored track), not hidden.
+ * Eligible = editorially triaged (authored track) and not hidden.
+ *
+ * `hide` is the one visibility control: `retired` is presentational only
+ * (pill, drained colour, filter facet) and deliberately does NOT exclude here.
+ * The two used to share this exclusion, which left neither owning it. Retired
+ * work that is genuinely strong can front the site; the score already sinks
+ * ended work without a categorical ban.
  * Sort: pinned projects float to the top (above score), then by heroScore desc,
  * then by slug ascending as a stable tiebreaker (deterministic prerender).
  *
@@ -40,7 +46,7 @@ export function getBySlug(slug: ProjectSlug): Project | undefined {
 export function getHeroPool(now: number, projectList: Project[] = projects): Project[] {
 	// An authored track is the triage signal: manifest-only projects carry
 	// only heuristic stage guesses and have no business fronting the hero.
-	const eligible = projectList.filter((p) => !p.archived && p.trackAuthored && !p.hide);
+	const eligible = projectList.filter((p) => p.trackAuthored && !p.hide);
 
 	return [...eligible].sort((a, b) => {
 		// Pinned projects always float first.
@@ -80,9 +86,9 @@ export function getAllProjectsByInception(): Project[] {
 /**
  * Projects eligible for the /timeline view: manually-hidden projects only are
  * excluded. Deliberately DIVERGES from `getHeroPool`, which also drops
- * archived and uncategorised projects — a timeline is a historical record,
- * and a finished/archived project is exactly what a lifespan chart wants to
- * show, so archived/uncategorised are kept here.
+ * uncategorised projects — a timeline is a historical record, and a retired
+ * project is exactly what a lifespan chart wants to show, so retired and
+ * uncategorised projects are kept here.
  *
  * Sort: inception (firstCommit, falling back to lastCommit, then empty)
  * descending — newest-started first — with slug ascending as a stable
@@ -103,7 +109,7 @@ export function getTimelineProjects(list: Project[] = projects): Project[] {
 // ---------------------------------------------------------------------------
 
 /** Boolean stage facets: a project matches when the named flag is true. */
-export type ProjectFlag = 'deployed' | 'archived';
+export type ProjectFlag = 'deployed' | 'retired';
 
 export interface ProjectFilters {
 	roles?: Set<ProjectRole>;
@@ -136,7 +142,7 @@ export function filterProjects(filters: ProjectFilters): Project[] {
 			if (!filters.progresses.has(p.progress)) return false;
 		}
 		if (filters.flags?.size) {
-			const holds = (flag: ProjectFlag): boolean => (flag === 'deployed' ? p.deployed : p.archived);
+			const holds = (flag: ProjectFlag): boolean => (flag === 'deployed' ? p.deployed : p.retired);
 			if (![...filters.flags].some(holds)) return false;
 		}
 		if (filters.kinds?.size) {
@@ -222,5 +228,5 @@ export function getAllRoles(): ProjectRole[] {
 
 /** True when any registry project carries the given stage flag. */
 export function anyProjectHasFlag(flag: ProjectFlag): boolean {
-	return projects.some((p) => (flag === 'deployed' ? p.deployed : p.archived));
+	return projects.some((p) => (flag === 'deployed' ? p.deployed : p.retired));
 }

@@ -8,11 +8,11 @@ export const iris: AuthoredProject = {
 	description:
 		'Apprenticeship funding submissions demand a strict XML format, and learner data rarely arrives in it. A single TypeScript core handles the conversion and drives three interfaces from one codebase: an OpenTUI terminal UI, direct CLI commands, and a Tauri 2 native desktop app written in Rust. Validation goes beyond structural XML checks by parsing the real ESFA XSD into a registry that resolves types and enforces cardinality and constraints, while header-tolerant CSV parsing and cross-submission consistency checks guard against column reordering and data drift. Close to 1:1 source-to-test mapping with full round-trip coverage of the CSV-to-XML cycle. Built during my time as a staff developer at Founders and Coders, where it processed real apprenticeship data in production.',
 	kind: 'tui',
+	released: true,
 	contribution: {
 		role: 'solo',
 		collaboration: { team: 'Solo (Jason)', employer: 'Founders and Coders' }
 	},
-	progress: 'complete',
 	highlights: [
 		'Single TypeScript core drives three interfaces: OpenTUI terminal UI, direct CLI commands, and a Tauri 2 (Rust) native desktop app.',
 		'Schema-driven validation: parses the real ESFA XSD to build a validation registry with type resolution, cardinality and constraint checking. Semantic validation beyond structural XML.',

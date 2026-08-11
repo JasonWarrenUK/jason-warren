@@ -191,7 +191,7 @@
 	const presentKinds = $derived(kindLegend.filter((k) => items.some((i) => i.kind === k.kind)));
 
 	// Historic stack: sources of `replaced-by` edges fade one shade paperward,
-	// the same end-of-life convention archived projects use. Kind itself is
+	// the same end-of-life convention retired projects use. Kind itself is
 	// carried by glyph shape, not hue (colour-system.md §5).
 	const historicLabels = new Set(
 		techRelationships.filter((r) => r.kind === 'replaced-by').map((r) => r.source)
