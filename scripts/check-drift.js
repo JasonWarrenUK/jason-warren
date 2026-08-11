@@ -215,6 +215,14 @@ const AUTHOR_PATTERN = config.author.pattern;
 // Configure via drift.config.ts → author.recentWindow.
 const RECENT_WINDOW = config.author.recentWindow;
 
+// COUPLING [5DR.21]: non-human commit authors (CI bots, GitHub Actions, AI agents
+// committing under their own identity). Excluded from the all-authors commit count
+// so co-authorship means a human collaborator: without this, a solo repo where an
+// agent authored most commits infers as a team project. Excluded from the
+// denominator only — churn and lines-of-code still count every commit, because the
+// code is in the tree either way. Configure via drift.config.ts → author.botPattern.
+const BOT_PATTERN = config.author.botPattern;
+
 // Ordered list of every field getFingerprint returns. Derived from the engine's
 // public output schema (scripts/sources.schema.json) so the schema is the single
 // source of truth. Property order in the schema matches the desired field-drift
@@ -447,16 +455,30 @@ async function countLinesOfCode(repoPath, listing, ref = 'HEAD') {
 /**
  * Commit count for a repo, parameterised by author scope and time window.
  *
+ * `mine` and `humans` are mutually exclusive: Jason is already a human, so
+ * combining them would be a redundant (and more expensive) query.
+ *
  * @param {string} repoPath
- * @param {{ mine?: boolean; recent?: boolean }} opts
+ * @param {{ mine?: boolean; humans?: boolean; recent?: boolean }} opts
  *   mine   — restrict to Jason's commits via AUTHOR_PATTERN (default: all authors)
+ *   humans — exclude non-human authors via BOT_PATTERN (default: all authors)
  *   recent — restrict to the trailing RECENT_WINDOW (default: all of history)
  * @returns {number | null}
  */
-async function countCommits(repoPath, { mine = false, recent = false, ref = 'HEAD' } = {}) {
+async function countCommits(
+	repoPath,
+	{ mine = false, humans = false, recent = false, ref = 'HEAD' } = {}
+) {
 	const flags = ['rev-list', '--count'];
 	if (recent) flags.push(`--since=${RECENT_WINDOW}`);
-	if (mine) flags.push('--extended-regexp', `--author=${AUTHOR_PATTERN}`);
+	if (mine) {
+		flags.push('--extended-regexp', `--author=${AUTHOR_PATTERN}`);
+	} else if (humans) {
+		// A negative lookahead is the only way to express "author does NOT match"
+		// in a single git query: --invert-grep inverts the commit-message grep,
+		// not --author. Requires a PCRE-enabled git (--perl-regexp).
+		flags.push('--perl-regexp', `--author=^(?!.*(${BOT_PATTERN})).*$`);
+	}
 	flags.push(ref);
 	const r = await git(flags, repoPath);
 	return r.ok ? Number(r.out) : null;
@@ -523,6 +545,151 @@ async function defaultBranch(repoPath) {
 
 	// 3. Last resort: measure whatever is checked out.
 	return { ref: 'HEAD', fellBack: true };
+}
+
+/**
+ * Intra-span activity shape for Jason's commits: how much of his own span he
+ * was actually active in, and the longest silence inside it.
+ *
+ * firstCommit and lastCommit describe only the endpoints of a project's life,
+ * so a repo touched once in month 1 and once in month 30 is indistinguishable
+ * from one worked continuously for 30 months. Sampling the commit dates makes
+ * the gap between those two cases detectable.
+ *
+ * Author-scoped, matching getFirstCommit: the honest question for a portfolio
+ * is whether *Jason* was sustained or bursty here, not whether the repo had a
+ * pulse. On a team repo the two diverge sharply — on fac-cra the cohort was
+ * active across 30 months while Jason's own work was a 2-month burst.
+ *
+ * Returns:
+ *   activeMonths — distinct YYYY-MM buckets containing at least one commit
+ *   spanMonths   — calendar months from first to last commit, inclusive
+ *   maxGapDays   — longest run of consecutive days with no commit
+ *
+ * All three are null when Jason has no commits on the ref, so a team repo he
+ * has not touched never reports a fabricated zero.
+ *
+ * @param {string} repoPath
+ * @param {string} ref
+ * @returns {Promise<{ activeMonths: number | null; spanMonths: number | null; maxGapDays: number | null }>}
+ */
+async function sampleActivity(repoPath, ref = 'HEAD') {
+	const empty = { activeMonths: null, spanMonths: null, maxGapDays: null };
+	const r = await git(
+		['log', '--extended-regexp', `--author=${AUTHOR_PATTERN}`, '--format=%cs', ref],
+		repoPath
+	);
+	if (!r.ok || !r.out) return empty;
+
+	const dates = r.out
+		.split('\n')
+		.map((date) => date.trim())
+		.filter(Boolean)
+		.sort();
+	if (dates.length === 0) return empty;
+
+	const first = Date.parse(dates[0]);
+	const last = Date.parse(dates[dates.length - 1]);
+	if (Number.isNaN(first) || Number.isNaN(last)) return empty;
+
+	const activeMonths = new Set(dates.map((date) => date.slice(0, 7))).size;
+
+	// Inclusive calendar-month count: a project living entirely inside one month
+	// spans 1, not 0, so activeMonths/spanMonths is always a usable ratio.
+	const firstDate = new Date(first);
+	const lastDate = new Date(last);
+	const spanMonths =
+		(lastDate.getUTCFullYear() - firstDate.getUTCFullYear()) * 12 +
+		(lastDate.getUTCMonth() - firstDate.getUTCMonth()) +
+		1;
+
+	let maxGapDays = 0;
+	for (let i = 1; i < dates.length; i += 1) {
+		const gap = Math.round((Date.parse(dates[i]) - Date.parse(dates[i - 1])) / 86_400_000);
+		if (gap > maxGapDays) maxGapDays = gap;
+	}
+
+	return { activeMonths, spanMonths, maxGapDays };
+}
+
+/**
+ * Whether Jason authored the repository's root commit: "I started this" as
+ * distinct from "I joined this".
+ *
+ * Commit share alone cannot tell those apart — a late joiner who out-commits
+ * everyone and a founder who handed the project on look identical in the
+ * ratio. Role inference (5DR.21) uses this to separate the two.
+ *
+ * Returns null (not false) when the question is unanswerable — an empty or
+ * unreadable repo — so a transient git failure never asserts "did not
+ * originate" and mergeFingerprint's null-preservation keeps the saved value.
+ *
+ * @param {string} repoPath
+ * @param {string} ref
+ * @returns {Promise<boolean | null>}
+ */
+async function rootCommitIsMine(repoPath, ref = 'HEAD') {
+	const roots = await git(['log', '--max-parents=0', '--format=%H', ref], repoPath);
+	if (!roots.ok || !roots.out) return null;
+	const mineRoots = await git(
+		[
+			'log',
+			'--max-parents=0',
+			'--extended-regexp',
+			`--author=${AUTHOR_PATTERN}`,
+			'--format=%H',
+			ref
+		],
+		repoPath
+	);
+	if (!mineRoots.ok) return null;
+	return mineRoots.out !== '';
+}
+
+/**
+ * Number of distinct commit authors on the ref, counted by email.
+ *
+ * `humans` excludes non-human authors via BOT_PATTERN. The human count is the
+ * one role inference wants: a repo with exactly one human author is solo work
+ * regardless of how the commit share falls, which is what makes a
+ * bot-dominated solo repo (see BOT_PATTERN) legible as solo rather than team.
+ *
+ * Counts *people*, not addresses. Jason commits under several identities (a
+ * personal address, a work address, a GitHub noreply alias) and 17 of the
+ * tracked repos contain more than one of them, so a naive email count would
+ * report two humans on a repo he wrote alone and defeat the "one human means
+ * solo" rule this field exists to support. Every address matching
+ * AUTHOR_PATTERN therefore collapses to a single identity. Other authors are
+ * still counted per address: over-counting a genuine collaborator who changed
+ * email is a far smaller error than mislabelling solo work as a team project.
+ *
+ * Emails are lowercased before deduplication so the same address committing
+ * under differing case counts once. Returns null on git failure.
+ *
+ * @param {string} repoPath
+ * @param {{ humans?: boolean; ref?: string }} opts
+ * @returns {Promise<number | null>}
+ */
+async function countDistinctAuthors(repoPath, { humans = false, ref = 'HEAD' } = {}) {
+	const flags = ['log', '--format=%an <%ae>'];
+	if (humans) {
+		flags.push('--perl-regexp', `--author=^(?!.*(${BOT_PATTERN})).*$`);
+	}
+	flags.push(ref);
+	const r = await git(flags, repoPath);
+	if (!r.ok) return null;
+	if (!r.out) return 0;
+
+	// Matched against "Name <email>", the same subject git --author matches, so
+	// an identity is collapsed on either its name or its address.
+	const mine = new RegExp(AUTHOR_PATTERN);
+	const identities = new Set();
+	for (const line of r.out.split('\n')) {
+		const author = line.trim();
+		if (!author) continue;
+		identities.add(mine.test(author) ? '__me__' : author.toLowerCase());
+	}
+	return identities.size;
 }
 
 /**
@@ -1132,7 +1299,13 @@ async function getFingerprint(repoPath, resolvedRef, slug) {
 		churnAllRecent,
 		remoteR,
 		firstCommit,
-		listing
+		listing,
+		commitsHuman,
+		distinctAuthors,
+		distinctAuthorsHuman,
+		rootCommitMine,
+		activity,
+		lastCommitMineR
 	] = await Promise.all([
 		git(['log', '-1', '--format=%cs', ref], repoPath), // lastCommit
 		countCommits(repoPath, { ref }), // all, lifetime
@@ -1145,7 +1318,22 @@ async function getFingerprint(repoPath, resolvedRef, slug) {
 		countChurn(repoPath, { recent: true, ref }), // all, recent
 		git(['remote', 'get-url', 'origin'], repoPath), // remote URL (ref-independent)
 		getFirstCommit(repoPath, ref), // earliest commit date on default branch
-		listFiles(repoPath, ref) // ref-aware file listing (git ls-tree)
+		listFiles(repoPath, ref), // ref-aware file listing (git ls-tree)
+		// 5DR.21 role signals: a human-only denominator, the author headcount, and
+		// whether Jason originated the repo.
+		countCommits(repoPath, { humans: true, ref }), // humans only, lifetime
+		countDistinctAuthors(repoPath, { ref }), // every author, bots included
+		countDistinctAuthors(repoPath, { humans: true, ref }), // human authors only
+		rootCommitIsMine(repoPath, ref),
+		// 5DR.20 dormancy signal: intra-span activity shape, author-scoped.
+		sampleActivity(repoPath, ref),
+		// Mine-scoped last commit, so a span can be measured in one consistent
+		// scope. firstCommit is already mine-scoped; pairing it with the
+		// all-authors lastCommit measured a span that belonged to neither.
+		git(
+			['log', '-1', '--extended-regexp', `--author=${AUTHOR_PATTERN}`, '--format=%cs', ref],
+			repoPath
+		)
 	]);
 
 	const lastCommit = lcR.ok ? lcR.out : null;
@@ -1188,8 +1376,37 @@ async function getFingerprint(repoPath, resolvedRef, slug) {
 		commitsRecentAll,
 		commitsMine,
 		commitsRecent,
+		// All-authors count with non-human authors removed (5DR.21). The
+		// denominator role inference divides by: `commits` counts bot and agent
+		// commits as co-authorship, which reads solo work as a team project.
+		...(commitsHuman !== null && { commitsHuman }),
+		// Author headcount (5DR.21). distinctAuthorsHuman === 1 proves solo work
+		// outright, whatever the commit share says.
+		...(distinctAuthors !== null && { distinctAuthors }),
+		...(distinctAuthorsHuman !== null && { distinctAuthorsHuman }),
+		// Whether Jason authored the root commit (5DR.21): originated vs joined.
+		// Null-guarded rather than passed through: these fields are new, so on a
+		// repo where the probe fails there is no saved value for
+		// mergeFingerprint's null-preservation to fall back to, and a written
+		// null fails schema validation (fail-closed, blocking the whole sync).
+		// Omitting the key instead leaves the field simply absent, which the
+		// schema permits and the consumers already treat as "unknown".
+		...(rootCommitMine !== null && { rootCommitMine }),
 		lastCommit,
+		// Jason's most recent commit. Pairs with firstCommit (also mine-scoped)
+		// for a single-scope span; `lastCommit` stays all-authors so the report
+		// can still show when the repo itself last moved.
+		...(lastCommitMineR.ok && lastCommitMineR.out && { lastCommitMine: lastCommitMineR.out }),
 		firstCommit,
+		// Intra-span activity shape (5DR.20), author-scoped like firstCommit.
+		// Guarded together: they are one measurement, so a repo Jason has never
+		// committed to reports no activity shape at all rather than a
+		// fabricated zero.
+		...(activity.activeMonths !== null && {
+			activeMonths: activity.activeMonths,
+			spanMonths: activity.spanMonths,
+			maxGapDays: activity.maxGapDays
+		}),
 		languages,
 		linesOfCode,
 		// mine, lifetime

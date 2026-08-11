@@ -60,15 +60,54 @@
 					"minimum": 0,
 					"description": "Jason-authored commit count, trailing 4 weeks."
 				},
+				"commitsHuman": {
+					"type": "integer",
+					"minimum": 0,
+					"description": "Commit count excluding non-human authors (CI bots, AI agents), lifetime. The denominator role inference divides by: `commits` counts bot commits as co-authorship, which reads solo work as a team project."
+				},
+				"distinctAuthors": {
+					"type": "integer",
+					"minimum": 0,
+					"description": "Distinct commit authors by email, all authors including bots."
+				},
+				"distinctAuthorsHuman": {
+					"type": "integer",
+					"minimum": 0,
+					"description": "Distinct human commit authors by email. A value of 1 proves solo work regardless of commit share."
+				},
+				"rootCommitMine": {
+					"type": "boolean",
+					"description": "Whether Jason authored the repository's root commit: originated the project rather than joined it."
+				},
 				"lastCommit": {
 					"type": "string",
 					"format": "date",
 					"description": "ISO date of the most recent commit."
 				},
+				"lastCommitMine": {
+					"type": "string",
+					"format": "date",
+					"description": "ISO date of Jason's most recent commit. Pairs with firstCommit (also author-scoped) for a single-scope span."
+				},
 				"firstCommit": {
 					"type": "string",
 					"format": "date",
-					"description": "ISO date of the root commit (project inception)."
+					"description": "ISO date of Jason's earliest commit (his inception on the project), falling back to the repo root commit when he authored none."
+				},
+				"activeMonths": {
+					"type": "integer",
+					"minimum": 0,
+					"description": "Distinct calendar months containing at least one Jason-authored commit. With spanMonths, distinguishes sustained work from a burst followed by dormancy."
+				},
+				"spanMonths": {
+					"type": "integer",
+					"minimum": 0,
+					"description": "Calendar months from Jason's first to last commit, inclusive."
+				},
+				"maxGapDays": {
+					"type": "integer",
+					"minimum": 0,
+					"description": "Longest run of consecutive days with no Jason-authored commit, inside his own span. Makes intra-span dormancy detectable where the first/last endpoints alone cannot."
 				},
 				"languages": {
 					"type": "array",
