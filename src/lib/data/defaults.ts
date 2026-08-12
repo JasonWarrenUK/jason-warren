@@ -163,16 +163,31 @@ export function inferTechFirstSeen(manifest: SyncedSource): Record<string, strin
 // ---------------------------------------------------------------------------
 
 /**
- * Produces a provisional Contribution fallback from commit share for projects
- * without an authored editorial role. Commit arithmetic cannot establish
- * professional responsibility; mergeAuthored replaces this fallback whenever
- * a curated role is present.
+ * Produces a provisional Contribution fallback for projects without an authored
+ * editorial role. Commit arithmetic cannot establish professional
+ * responsibility; mergeAuthored replaces this fallback whenever a curated role
+ * is present.
  *
- * Rules (per D3):
- *   - commitsMine === commits (or commitsMine absent/undefined): sole author -> solo
- *   - commits === 0: guard divide-by-zero -> solo
- *   - commitsMine / commits > 0.5: majority author -> lead (no contributionNote)
- *   - commitsMine / commits <= 0.5: minority author -> collaborator (no contributionNote)
+ * Bare commit share was the sole signal until 5DR.21, and it mislabelled 14 of
+ * 33 projects. Two failure modes drove nearly all of it:
+ *
+ *   - Non-human authors counted as collaborators. Where an AI agent or CI bot
+ *     authored most commits, solo work inferred as a team project (flyt is 63%
+ *     agent-authored, kitchen-gremlin 64%). `commitsHuman` is the corrected
+ *     denominator.
+ *   - A missing git identity deflated `commitsMine` to zero, so a repo with
+ *     exactly one author (Jason) inferred as `collaborator` on his own work.
+ *     `distinctAuthorsHuman` catches this independently of the share.
+ *
+ * Signals, in precedence order:
+ *   1. distinctAuthorsHuman === 1 — one human wrote it; solo, whatever the share.
+ *   2. commitsMine === human total, or no collaborator data — solo.
+ *   3. Otherwise share = commitsMine / commitsHuman decides lead vs collaborator,
+ *      with churn share breaking the near-tie band and rootCommitMine breaking
+ *      an exact tie.
+ *
+ * Every signal is optional: a manifest predating 5DR.21 falls back to the
+ * original commits/commitsMine behaviour rather than throwing or guessing.
  *
  * `collaboration.team` is always set to a neutral default: "Solo (Jason)" for
  * solo projects, "Collaborators" for inferred team projects. Both are honest
@@ -182,19 +197,62 @@ export function inferTechFirstSeen(manifest: SyncedSource): Record<string, strin
  * fabricated prose appears on the public site. The note is added once editorially
  * authored.
  */
+
+/**
+ * Commit-share band around 0.5 within which churn share, not commit count,
+ * decides lead vs collaborator. Many tiny commits should not outrank
+ * substantially larger authorship, and vice versa; outside the band the commit
+ * majority is decisive on its own.
+ */
+const ROLE_TIEBREAK_BAND = 0.1;
+
 export function inferContribution(manifest: SyncedSource): Contribution {
-	const { commits = 0, commitsMine } = manifest;
+	const {
+		commits = 0,
+		commitsMine,
+		commitsHuman,
+		distinctAuthorsHuman,
+		rootCommitMine,
+		linesAdded,
+		linesAddedAll
+	} = manifest;
 
-	// No collaborator data or truly sole author
-	if (commitsMine === undefined || commits === 0 || commitsMine === commits) {
-		return { role: 'solo', collaboration: { team: 'Solo (Jason)' } };
+	const solo = (): Contribution => ({ role: 'solo', collaboration: { team: 'Solo (Jason)' } });
+	const team = (role: 'lead' | 'collaborator'): Contribution => ({
+		role,
+		collaboration: { team: 'Collaborators' }
+	});
+
+	// One human author means solo work, however the commits divide. This is the
+	// signal that rescues a repo where AUTHOR_PATTERN missed one of Jason's git
+	// identities: the share can read 0, but the headcount cannot lie.
+	if (distinctAuthorsHuman === 1) return solo();
+
+	// Prefer the human-only denominator; fall back to the raw count for manifests
+	// synced before commitsHuman existed.
+	const total = commitsHuman ?? commits;
+
+	// No collaborator data, no commits to divide, or truly sole author.
+	if (commitsMine === undefined || total === 0 || commitsMine >= total) return solo();
+
+	const share = commitsMine / total;
+
+	// Outside the tiebreak band the commit majority decides on its own.
+	if (share > 0.5 + ROLE_TIEBREAK_BAND) return team('lead');
+	if (share < 0.5 - ROLE_TIEBREAK_BAND) return team('collaborator');
+
+	// Inside the band, weigh churn: authorship measured in lines rather than
+	// commit count, which is insensitive to commit-granularity habits.
+	if (linesAdded !== undefined && linesAddedAll !== undefined && linesAddedAll > 0) {
+		const churnShare = linesAdded / linesAddedAll;
+		if (churnShare !== 0.5) return team(churnShare > 0.5 ? 'lead' : 'collaborator');
 	}
 
-	const share = commitsMine / commits;
-	if (share > 0.5) {
-		return { role: 'lead', collaboration: { team: 'Collaborators' } };
-	}
-	return { role: 'collaborator', collaboration: { team: 'Collaborators' } };
+	// Churn absent or exactly balanced: originating the repo is the last
+	// signal that distinguishes leading from joining.
+	if (rootCommitMine === true) return team('lead');
+
+	return team(share > 0.5 ? 'lead' : 'collaborator');
 }
 
 // ---------------------------------------------------------------------------
@@ -208,19 +266,59 @@ export function inferContribution(manifest: SyncedSource): Contribution {
 const TRACK_HEURISTIC_MIN_SPAN_DAYS = 90;
 const TRACK_HEURISTIC_MIN_LINES = 5000;
 
+/**
+ * Size at which a codebase reads as a product on its own, regardless of how
+ * long its author was on it. Sustained time is one route to a product, not the
+ * only one: a team repo Jason joined for an intense burst can be enormous and
+ * still fail a span test. fac-cra is 213,140 lines across a 44-day
+ * involvement, chirpdb 48,255 across 64 days, redot 35,624 across 7. Scoring
+ * those as exploration mistook the shape of the engagement for the shape of
+ * the work.
+ */
+const TRACK_HEURISTIC_SUBSTANTIAL_LINES = 20_000;
+
+/**
+ * Span is measured in one consistent scope (5DR.20): firstCommit is
+ * author-scoped, so pairing it with the all-authors lastCommit measured a
+ * period belonging to neither. On fac-cra that ran from Jason's first commit to
+ * the cohort's last, reporting a 51-day span for a 2-day engagement. Falls back
+ * to lastCommit for manifests synced before lastCommitMine existed.
+ *
+ * Two routes to `product`: substantial size alone, or real time plus real size.
+ */
 function inferTrack(manifest: SyncedSource): Project['track'] {
-	const { firstCommit, lastCommit, linesOfCode } = manifest;
-	if (!firstCommit || !lastCommit) return 'exploration';
-	const spanDays = (Date.parse(lastCommit) - Date.parse(firstCommit)) / 86_400_000;
-	return spanDays > TRACK_HEURISTIC_MIN_SPAN_DAYS && (linesOfCode ?? 0) > TRACK_HEURISTIC_MIN_LINES
+	const { firstCommit, lastCommitMine, lastCommit, linesOfCode } = manifest;
+	const lines = linesOfCode ?? 0;
+
+	if (lines > TRACK_HEURISTIC_SUBSTANTIAL_LINES) return 'product';
+
+	const spanEnd = lastCommitMine ?? lastCommit;
+	if (!firstCommit || !spanEnd) return 'exploration';
+	const spanDays = (Date.parse(spanEnd) - Date.parse(firstCommit)) / 86_400_000;
+	return spanDays > TRACK_HEURISTIC_MIN_SPAN_DAYS && lines > TRACK_HEURISTIC_MIN_LINES
 		? 'product'
 		: 'exploration';
 }
 
-/** Progress heuristic: commits in the trailing four weeks mean it's being
- *  built; silence means it has arrived at whatever shape it will keep. */
+/**
+ * Progress heuristic: commits in the trailing four weeks mean it is being
+ * built; silence means the work has stopped.
+ *
+ * Stopped is `dormant`, never `complete`. The heuristic can see that work
+ * stopped; it cannot see whether that is because the project was finished or
+ * because it was set down. Those look identical in git — redot shipped (six
+ * merged PRs, released as a licensed action) and cogni simply stopped, yet
+ * after 302 and 147 idle days the histories say the same thing. Inferring
+ * `complete` from silence therefore asserted something the data never
+ * supported, on every quiet repo.
+ *
+ * What `complete` was reaching for now lives in `released`, which is authored
+ * only: a human recording that the work reached someone else. That makes it a
+ * real claim rather than an inference from silence, and it is orthogonal to
+ * this field, so released work can be either in-progress or dormant.
+ */
 function inferProgress(manifest: SyncedSource): Project['progress'] {
-	return (manifest.commitsRecent ?? 0) > 0 ? 'in-progress' : 'complete';
+	return (manifest.commitsRecent ?? 0) > 0 ? 'in-progress' : 'dormant';
 }
 
 /**
@@ -244,9 +342,9 @@ export function defaultProjectFromManifest(slug: string, manifest: SyncedSource)
 		track: inferTrack(manifest),
 		trackAuthored: false,
 		progress: inferProgress(manifest),
-		progressAuthored: false,
 		deployed: false, // recomputed from liveUrl in mergeAuthored; no manifest source
-		archived: false,
+		released: false,
+		retired: false,
 		repoUrl: manifest.remote ?? `https://github.com/JasonWarrenUK/${slug}`,
 		companionRepoUrls: manifest.companionRemotes ?? [],
 		highlights: [],
@@ -351,10 +449,11 @@ export function mergeAuthored(base: Project, authored: AuthoredProject | undefin
 		tags: mergedTags,
 		track: authored.track !== undefined ? authored.track : base.track,
 		trackAuthored: authored.track !== undefined,
-		progress: authored.progress !== undefined ? authored.progress : base.progress,
-		progressAuthored: authored.progress !== undefined,
+		// progress is never authored: it is a pure observation of commit activity.
+		progress: base.progress,
 		deployed: mergedLiveUrl !== undefined,
-		archived: authored.archived !== undefined ? authored.archived : base.archived,
+		released: authored.released !== undefined ? authored.released : base.released,
+		retired: authored.retired !== undefined ? authored.retired : base.retired,
 		repoUrl: base.repoUrl,
 		companionRepoUrls: base.companionRepoUrls,
 		liveUrl: mergedLiveUrl,

@@ -13,8 +13,6 @@ export const guardrails: AuthoredProject = {
 		collaboration: { team: 'Yalla Cooperative', employer: 'Yalla Cooperative' },
 		contributionNote: 'PLACEHOLDER'
 	},
-	track: 'product',
-	progress: 'in-progress',
 	highlights: [
 		'Smarter PII detection: UK postcode pattern matching and name-initial detection.',
 		'Added Google Gemini as a third AI provider, extending the architecture beyond Claude and OpenAI.',

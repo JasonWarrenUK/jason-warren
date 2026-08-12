@@ -26,15 +26,31 @@
  * signature (RPC timeout + a clean "Tests N passed (N)" summary) and still
  * fails on any real test failure. Don't fold this back into a plain
  * `vitest run` without keeping both the isolation and the wrapper.
+ *
+ * Timeout: every test here waits on a spawnSync that is itself budgeted at
+ * 15s or 30s, so vitest's 5s default cut in below the subprocess it was
+ * waiting for. Locally the promote subprocesses finish in well under a
+ * second and the default never bit; CI runs this file roughly twice as
+ * slowly (77s wall vs ~40s here), which pushed the first promote over 5s
+ * and failed it as a test timeout rather than anything to do with promote.
+ * The file-level budget sits above the largest subprocess timeout so a
+ * genuinely stuck subprocess is killed by spawnSync and reported as a
+ * failed assertion on its exit status, instead of surfacing as an opaque
+ * "Test timed out" with no stderr.
  */
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, cpSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { rmSync } from 'node:fs';
+
+// Above the 30s ceiling on this file's longest spawnSync, so the subprocess
+// timeout always fires first and reports a real exit status. See the timeout
+// note in the file header.
+vi.setConfig({ testTimeout: 45_000 });
 
 const scriptDir = fileURLToPath(new URL('.', import.meta.url));
 const repoRoot = join(scriptDir, '..');
@@ -860,20 +876,27 @@ describe('drift author field edit', () => {
 	});
 
 	it('replaces an existing value and is idempotent on a repeat', () => {
-		runVerbInSandbox(configPath, ['author', 'my-proj', 'status', 'live']);
-		runVerbInSandbox(configPath, ['author', 'my-proj', 'status', 'archived']);
+		runVerbInSandbox(configPath, ['author', 'my-proj', 'kind', 'app']);
+		runVerbInSandbox(configPath, ['author', 'my-proj', 'kind', 'tool']);
 		const source = readFileSync(join(dir, 'projects', 'my-proj.ts'), 'utf8');
-		expect(source).toMatch(/status: ["']archived["']/);
-		expect(source).not.toMatch(/status: ["']live["']/);
+		expect(source).toMatch(/kind: ["']tool["']/);
+		expect(source).not.toMatch(/kind: ["']app["']/);
 
-		const repeat = runVerbInSandbox(configPath, ['author', 'my-proj', 'status', 'archived']);
+		const repeat = runVerbInSandbox(configPath, ['author', 'my-proj', 'kind', 'tool']);
 		expect(repeat.stdout).toMatch(/already holds/i);
 	});
 
+	// `status` is not among them: the field was decomposed into track × progress
+	// plus released/retired/deployed and dropped from AuthoredProject, so the CLI
+	// no longer offers it. Scaffolding one wrote a key that fails `bun run check`.
 	it('validates enum fields and rejects unknown or flag fields', () => {
-		const badStatus = runVerbInSandbox(configPath, ['author', 'my-proj', 'status', 'zombie']);
-		expect(badStatus.status).toBe(1);
-		expect(badStatus.stderr).toMatch(/invalid status 'zombie'/i);
+		const badKind = runVerbInSandbox(configPath, ['author', 'my-proj', 'kind', 'zombie']);
+		expect(badKind.status).toBe(1);
+		expect(badKind.stderr).toMatch(/invalid kind 'zombie'/i);
+
+		const retiredField = runVerbInSandbox(configPath, ['author', 'my-proj', 'status', 'archived']);
+		expect(retiredField.status).toBe(1);
+		expect(retiredField.stderr).toMatch(/unknown or non-scalar field/i);
 
 		const unknown = runVerbInSandbox(configPath, ['author', 'my-proj', 'sparkles', 'yes']);
 		expect(unknown.status).toBe(1);
@@ -895,6 +918,69 @@ describe('drift author field edit', () => {
 		const source = readFileSync(join(dir, 'projects', 'template-check.ts'), 'utf8');
 		expect(source).toContain('liveUrl');
 		expect(source).not.toContain('repoUrl');
+	});
+
+	/**
+	 * Every key the scaffold emits must exist on AuthoredProject. The template
+	 * once wrote `status: 'wip'`, a survivor of the pre-decomposition model that
+	 * was deleted from the type, so `drift author <new-slug>` produced a file
+	 * failing `bun run check` the moment it was created.
+	 *
+	 * Read against the real type rather than a hardcoded list: a list is exactly
+	 * what let `status` through, since nobody revisits it when a field is
+	 * removed. The old test asserted `liveUrl` was present and `repoUrl` absent,
+	 * both true throughout, so it never saw the broken field.
+	 */
+	it('scaffolds no key that AuthoredProject does not declare', () => {
+		runVerbInSandbox(configPath, ['author', 'template-check']);
+		const source = readFileSync(join(dir, 'projects', 'template-check.ts'), 'utf8');
+
+		// Top-level keys of the emitted object literal, ignoring commented lines.
+		// Indentation-agnostic: the scaffold is prettier-formatted on write, so
+		// it may arrive tab- or space-indented depending on the sandbox config.
+		const scaffolded = source
+			.split('\n')
+			.filter((line) => /^\s+[a-zA-Z]+:/.test(line) && !line.trim().startsWith('//'))
+			.map((line) => line.trim().split(':')[0]);
+		expect(scaffolded.length).toBeGreaterThan(0);
+
+		const types = readFileSync(
+			join(import.meta.dirname, '..', 'src', 'lib', 'data', 'types.ts'),
+			'utf8'
+		);
+		const block = types.slice(types.indexOf('export interface AuthoredProject'));
+		const declared = new Set(
+			[...block.slice(0, block.indexOf('\n}')).matchAll(/^\t(\w+)\??:/gm)].map((m) => m[1])
+		);
+		expect(declared.size).toBeGreaterThan(0);
+
+		const undeclared = scaffolded.filter((key) => !declared.has(key));
+		expect(
+			undeclared,
+			`scaffolded keys absent from AuthoredProject: ${undeclared.join(', ')}`
+		).toEqual([]);
+	});
+
+	/**
+	 * The scaffold must not pre-author stage or contribution values. Authoring a
+	 * value that restates the inference pins no judgement and silently upgrades
+	 * a heuristic guess to a confident claim; two tests in data.test.ts fail on
+	 * exactly that. A template that scaffolds `contribution: { role: 'solo' }`
+	 * into every new overlay manufactures those offenders by default.
+	 */
+	it('scaffolds no pre-authored stage or contribution value', () => {
+		runVerbInSandbox(configPath, ['author', 'template-check']);
+		const source = readFileSync(join(dir, 'projects', 'template-check.ts'), 'utf8');
+		const uncommented = source
+			.split('\n')
+			.filter((line) => !line.trim().startsWith('//'))
+			.join('\n');
+
+		for (const field of ['track', 'progress', 'released', 'retired', 'contribution']) {
+			expect(uncommented, `template pre-authors ${field}`).not.toMatch(
+				new RegExp(`^\\s+${field}:`, 'm')
+			);
+		}
 	});
 });
 

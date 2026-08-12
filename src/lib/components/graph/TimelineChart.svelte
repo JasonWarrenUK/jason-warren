@@ -4,7 +4,15 @@
 	import { page } from '$app/stores';
 	import type { ProjectRole } from '$lib/data/types.js';
 	import { formatMonthYear } from '$lib/format-date.js';
-	import { progressColour, progressLabel, progressOrder, trackLabel } from './graph-style.js';
+	import {
+		progressColour,
+		stageInk,
+		stageInkColour,
+		stageInkLabel,
+		stageInkOrder,
+		stagePhrase,
+		trackLabel
+	} from './graph-style.js';
 	import { writeParam } from '$lib/url-write.js';
 	import { validatePin, nextPinValue, projectHref } from '$lib/selection.js';
 	import SelectionModal from '$lib/components/ui/SelectionModal.svelte';
@@ -149,25 +157,26 @@
 	});
 
 	// Present progress values only, in the shared order; plus which of the
-	// auxiliary treatments (spike hollow, deployed ring, archived fade) the
+	// auxiliary treatments (spike hollow, deployed ring, retired fade) the
 	// legend actually needs to explain for this dataset.
-	const presentProgresses = $derived(
-		progressOrder.filter((p) => rails.some((r) => r.progress === p))
+	// Ramp rungs actually present, released included: the legend explains the
+	// inks the chart draws, and released rails draw on the settled ink.
+	const presentInks = $derived(
+		stageInkOrder.filter((ink) => rails.some((r) => stageInk(r.progress, r.released) === ink))
 	);
 	const hasSpikes = $derived(rails.some((r) => r.track === 'exploration'));
 	const hasDeployed = $derived(rails.some((r) => r.deployed));
-	const hasArchived = $derived(rails.some((r) => r.archived));
+	const hasRetired = $derived(rails.some((r) => r.retired));
 
-	/** Rail ink: progress hue, shade-shifted paperward when archived. */
-	const railColour = (rail: TimelineRail): string => progressColour(rail.progress, rail.archived);
+	/** Rail ink: stage hue, shade-shifted paperward when retired. */
+	const railColour = (rail: TimelineRail): string =>
+		progressColour(rail.progress, rail.retired, rail.released);
 
-	/** Stage phrase for aria text: `Spike · Complete, archived`. */
-	function stagePhrase(rail: TimelineRail): string {
-		const base =
-			rail.track === 'exploration'
-				? `${trackLabel[rail.track]} · ${progressLabel[rail.progress]}`
-				: progressLabel[rail.progress];
-		return rail.archived ? `${base}, archived` : base;
+	/** Stage phrase for aria text: `Spike · Released · Settled, retired`. */
+	function stagePhraseFor(rail: TimelineRail): string {
+		const stage = stagePhrase(rail.progress, rail.released);
+		const base = rail.track === 'exploration' ? `${trackLabel[rail.track]} · ${stage}` : stage;
+		return rail.retired ? `${base}, retired` : base;
 	}
 	const hasLineage = $derived(layout.lineagePaths.length > 0);
 	const hasDensity = $derived(layout.density.length > 0);
@@ -178,7 +187,7 @@
 				? `${rail.firstCommit} to ${rail.lastCommit}`
 				: rail.firstCommit
 			: 'undated';
-		return `${rail.name}: ${stagePhrase(rail)}, ${lifespan}`;
+		return `${rail.name}: ${stagePhraseFor(rail)}, ${lifespan}`;
 	}
 
 	// --- Reveal animation -----------------------------------------------------
@@ -484,29 +493,18 @@
 	<figcaption class="timeline__legend">
 		<div class="timeline__legend-row">
 			<span class="timeline__legend-title">Progress</span>
-			{#each presentProgresses as progress (progress)}
+			{#each presentInks as ink (ink)}
+				{@const swatch = stageInkColour(ink)}
 				<span class="timeline__legend-item">
 					<svg class="timeline__swatch-mark" viewBox="0 0 14 14" aria-hidden="true">
-						<circle
-							class="timeline__swatch-ring"
-							cx="7"
-							cy="7"
-							r="5"
-							style="color: {progressColour(progress)}"
-						/>
-						<circle
-							class="timeline__swatch-centre"
-							cx="7"
-							cy="7"
-							r="1.6"
-							style="color: {progressColour(progress)}"
-						/>
+						<circle class="timeline__swatch-ring" cx="7" cy="7" r="5" style="color: {swatch}" />
+						<circle class="timeline__swatch-centre" cx="7" cy="7" r="1.6" style="color: {swatch}" />
 					</svg>
-					{progressLabel[progress]}
+					{stageInkLabel[ink]}
 				</span>
 			{/each}
 		</div>
-		{#if hasSpikes || hasDeployed || hasArchived}
+		{#if hasSpikes || hasDeployed || hasRetired}
 			<div class="timeline__legend-row">
 				<span class="timeline__legend-title">Marks</span>
 				{#if hasSpikes}
@@ -558,7 +556,7 @@
 						Deployed (outer ring)
 					</span>
 				{/if}
-				{#if hasArchived}
+				{#if hasRetired}
 					<span class="timeline__legend-item">
 						<svg class="timeline__swatch-mark" viewBox="0 0 14 14" aria-hidden="true">
 							<circle
@@ -566,17 +564,17 @@
 								cx="7"
 								cy="7"
 								r="5"
-								style="color: {progressColour('complete', true)}"
+								style="color: {stageInkColour('dormant', true)}"
 							/>
 							<circle
 								class="timeline__swatch-centre"
 								cx="7"
 								cy="7"
 								r="1.6"
-								style="color: {progressColour('complete', true)}"
+								style="color: {stageInkColour('dormant', true)}"
 							/>
 						</svg>
-						Archived (faded)
+						Retired (faded)
 					</span>
 				{/if}
 			</div>

@@ -93,10 +93,10 @@
 	/** Flag chip labels; the flags themselves come from queries.ProjectFlag. */
 	const flagLabels: Record<ProjectFlag, string> = {
 		deployed: 'Deployed',
-		archived: 'Archived'
+		retired: 'Retired'
 	};
 
-	const flagOrder: ProjectFlag[] = ['deployed', 'archived'];
+	const flagOrder: ProjectFlag[] = ['deployed', 'retired'];
 
 	const tagKindLabels: Record<TagKind, string> = {
 		language: 'Language',

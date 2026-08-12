@@ -55,7 +55,16 @@ export default {
 		 * Trailing window for "recent" metrics. Accepts git --since values.
 		 * Appears in report output. Default: '4 weeks ago'
 		 */
-		recentWindow: '4 weeks ago'
+		recentWindow: '4 weeks ago',
+
+		/**
+		 * Extended-regexp alternation matching non-human commit authors: CI bots,
+		 * GitHub Actions, and AI agents committing under their own identity. These
+		 * are excluded from the all-authors commit count so co-authorship means a
+		 * human collaborator, not a bot.
+		 * Default: '\\[bot\\]|github-actions|noreply@anthropic\\.com'
+		 */
+		botPattern: '\\[bot\\]|github-actions|noreply@anthropic\\.com'
 	},
 
 	/**

@@ -8,9 +8,7 @@ export const theTongue: AuthoredProject = {
 	description:
 		'Pick a numeric seed and the game procedurally generates a proto-language: a phoneme inventory, syllable templates, a 32-word core lexicon, and a 4x3 terrain map. From there you steer its evolution, applying sound changes and holding off weighted autonomous drift in which cross-linguistically common rules are weighted higher. As geography divides the territory, communities split by impassable terrain diverge into independent daughter languages, and a mutual intelligibility matrix tracks how far apart the family has grown using normalised edit distance across the shared concept list. Deployed live at the-tongue.vercel.app.',
 	kind: 'game',
-	contribution: { role: 'solo' },
 	track: 'product',
-	progress: 'complete',
 	liveUrl: 'https://the-tongue.vercel.app',
 	highlights: [
 		'Procedural language generation from a numeric seed: phoneme inventory, syllable templates, 32-word core lexicon, 4x3 terrain map.',

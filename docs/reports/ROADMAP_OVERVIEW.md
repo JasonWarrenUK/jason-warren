@@ -1,6 +1,6 @@
 # Portfolio MVP: Roadmap Overview
 
-**55 tasks across 6 milestones.** Files: `.claude/roadmaps.json` (machine-readable), `docs/roadmaps/mvp.md` (full task list with Mermaid dependency diagram).
+**65 tasks across 8 milestones.** Files: `.claude/roadmaps.json` (machine-readable), `docs/roadmaps/mvp.md` (full task list with Mermaid dependency diagram).
 
 > Migrated from the old single-file roadmap format on 17 July 2026. The narrative sections below are synthesised from the milestone goals in the source; they are stubs for fleshing out, not authored rationale.
 
@@ -16,10 +16,12 @@ _Stub — synthesised from the milestone goals._
 
 - **M1 Content Depth & Polish** (done): make the written substance match the engineering; every entry flagship-ready, connective copy carrying voice and intent.
 - **M2 Exploration & New Features** (done): more ways into the work — search, deep-linkable selections, multi-select filters, polished interactions, the tech-stack constellation.
-- **M3 Design & Interaction Polish**: a distinct visual identity, with the direction decision (3DE.0) gating every other polish task.
-- **M4 Quality & Reach**: accessibility, discoverability, test coverage; gated on M3 so audits run against the settled design.
-- **M5 Drift Decoupling: Engine & Verbs** (three verbs remaining): the config-driven engine/integration split; the unbuilt verb backlog lands inside the decoupled design.
-- **M6 Drift: Tests & Docs**: lock the stable engine down; gated on M3 and M5.
+- **M3 Design & Interaction Polish** (done): a distinct visual identity, with the direction decision (3DE.0) gating every other polish task.
+- **M4 Quality & Reach**: accessibility, discoverability, test coverage. Was gated on M3 so audits run against the settled design; now that M3 has landed, 4QU.5 is the one task gating the rest.
+- **M5 Drift Decoupling: Engine & Verbs** (two verbs remaining): the config-driven engine/integration split; the unbuilt verb backlog lands inside the decoupled design.
+- **M6 Drift: Tests & Docs**: lock the stable engine down; gated on M3 and M5, so with M3 done it now waits on M5's enrichment verbs alone.
+- **M7 Drift: Total Data Control**: make the whole data state visible and editable from the CLI menu. The menu already reaches all 17 verbs, but it is verb-first (pick an action, then a target) with five aggregate reports and no per-entity view. This inverts that: browse a project, tech or theme, see every field with its provenance, and act on what you are looking at. Gated on M5 alongside M6, so the two run in parallel.
+- **M8 Aesthetics: Ongoing**: the standing home for aesthetic work now that M3 has settled the visual direction. Where M3 was a one-off push to establish an identity, M8 collects refinements arriving after it. Its tasks gate on M4 and M5, the incomplete milestones that change what the site renders and the data model it renders from; M6 (docs) and M7 (CLI) do not affect rendered output, so aesthetic work does not wait on them. First entry is a spike into the procedural OG card generation, which supersedes the parked "Generative OG variants per theme" idea.
 
 ## Decisions that shaped the structure
 
@@ -40,7 +42,6 @@ Ideas parked until the milestones above settle (carried over from the old roadma
 - RSS / now-page / writing surface on the site
 - Interactive playground embeds for the toy/game projects
 - Internationalised copy
-- Generative OG variants per theme
 
 ## Links
 

@@ -8,6 +8,7 @@ export const thingsWeDo: AuthoredProject = {
 	description:
 		'An installable, offline-first PWA for managing tasks and emotional wellbeing through mood tracking and personalised coping-strategy toolkits, built by the FAC-30 cohort. Offline support comes from a Serwist service worker over RxDB local storage, which I initialised including the schema design. I built the next-actions feature end-to-end (creation, immediate selection, view, and deletion), designed the insights charts including a 3D mood visualisation in Plotly.js, and implemented ephemeral categories with modal confirmations.',
 	kind: 'app',
+	released: true,
 	contribution: {
 		role: 'collaborator',
 		collaboration: { team: 'FAC-30 cohort', employer: 'Founders and Coders' },
@@ -15,7 +16,6 @@ export const thingsWeDo: AuthoredProject = {
 			'Built the next-actions feature end-to-end on a FAC-30 cohort mental-health tracker; designed the insights charts including the 3D Plotly wellbeing visualisation; implemented ephemeral categories with modal confirmations; initialised the RxDB offline-first storage layer.'
 	},
 	track: 'product',
-	progress: 'complete',
 	highlights: [
 		'Next-actions feature end-to-end: creation, immediate selection, view, and deletion.',
 		'3D mood visualisation via Plotly.js: interactive, animated wellbeing data.',

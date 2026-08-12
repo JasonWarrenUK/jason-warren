@@ -811,3 +811,74 @@ describe('provisional (in-progress.json) precedence', () => {
 		}
 	});
 });
+
+// ---------------------------------------------------------------------------
+// Overlay redundancy
+// ---------------------------------------------------------------------------
+
+const allSources = sourcesManifest.sources as Record<string, Record<string, unknown>>;
+
+describe('authored overlays earn their keep', () => {
+	/**
+	 * An overlay exists to record a human decision the manifest cannot reach. A
+	 * value identical to the inferred one records nothing: it pins no judgement,
+	 * and deleting it would change no rendered output.
+	 *
+	 * It is not merely inert, either. `trackAuthored` drives
+	 * the dotted-provisional convention (colour-system.md: "the reader can always
+	 * tell surveyed ground from conjecture"), so a redundant authored value
+	 * silently upgrades a heuristic guess into a confident claim. Blanket
+	 * authoring had left 0 of 32 projects rendering as provisional, retiring the
+	 * convention in practice while the code for it remained.
+	 *
+	 * Authoring a value that *disagrees* with the inference is exactly the point,
+	 * and always allowed.
+	 */
+	it('no overlay restates a track the manifest already infers', () => {
+		const offenders: string[] = [];
+
+		for (const authored of authoredProjects) {
+			const manifest = allSources[authored.slug];
+			if (!manifest) continue;
+			const inferred = defaultProjectFromManifest(authored.slug as ProjectSlug, manifest);
+
+			if (authored.track !== undefined && authored.track === inferred.track) {
+				offenders.push(`${authored.slug}.track = '${authored.track}' (same as inferred)`);
+			}
+		}
+
+		expect(
+			offenders,
+			`These authored values duplicate the inference and should be deleted, so the ` +
+				`heuristic renders as provisional rather than as an authored claim:\n${offenders.join('\n')}`
+		).toEqual([]);
+	});
+
+	/**
+	 * A `contribution` block that carries only a role matching the inference is
+	 * the same dead weight. One carrying a `collaboration` team or a
+	 * `contributionNote` is doing real work regardless of whether its role agrees,
+	 * so only the bare-role case is flagged.
+	 */
+	it('no overlay restates a role the manifest already infers, with nothing else to say', () => {
+		const offenders: string[] = [];
+
+		for (const authored of authoredProjects) {
+			const manifest = allSources[authored.slug];
+			if (!manifest) continue;
+			const contribution = authored.contribution;
+			if (!contribution) continue;
+			if (contribution.collaboration || 'contributionNote' in contribution) continue;
+
+			const inferred = defaultProjectFromManifest(authored.slug as ProjectSlug, manifest);
+			if (contribution.role === inferred.contribution.role) {
+				offenders.push(`${authored.slug}.contribution.role = '${contribution.role}'`);
+			}
+		}
+
+		expect(
+			offenders,
+			`These authored roles duplicate the inference and carry no team or note:\n${offenders.join('\n')}`
+		).toEqual([]);
+	});
+});

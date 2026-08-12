@@ -62,10 +62,24 @@ const DEFAULTS = {
 		 * count only the portfolio owner's work. A miss degrades to 0, never an error.
 		 */
 		pattern:
-			'Jason Warren|jasonwarren|contact\\.jwarren@gmail\\.com|jason@yallacooperative\\.com|jason@foundersandcoders\\.com',
+			'Jason Warren|jasonwarren|JasonWarrenUK|contact\\.jwarren@gmail\\.com|jason@yallacooperative\\.com|jason@foundersandcoders\\.com',
 
 		/** Trailing window for "recent" metrics. Appears in report output. */
-		recentWindow: '4 weeks ago'
+		recentWindow: '4 weeks ago',
+
+		/**
+		 * Extended-regexp alternation matching non-human commit authors: CI bots,
+		 * GitHub Actions, and AI agents committing under their own identity.
+		 *
+		 * These are excluded from the all-authors commit count so "co-authorship"
+		 * means a human collaborator. Without this a repo where an AI agent
+		 * authored most commits reads as a team project (see 5DR.21): flyt is 63%
+		 * agent-authored, kitchen-gremlin 64%, and both are solo work.
+		 *
+		 * Bots are excluded from the denominator only. Lines-of-code and churn
+		 * totals still count every commit, because the code exists either way.
+		 */
+		botPattern: '\\[bot\\]|github-actions|noreply@anthropic\\.com'
 	},
 
 	/**
@@ -225,6 +239,8 @@ export async function loadConfig() {
  * @typedef {Object} DriftAuthorConfig
  * @property {string} [pattern] - Extended-regexp alternation for git --author.
  * @property {string} [recentWindow] - Value for git --since ("N weeks ago" etc.).
+ * @property {string} [botPattern] - Extended-regexp alternation matching non-human
+ *   authors (CI bots, AI agents), excluded from the all-authors commit count.
  */
 
 /**

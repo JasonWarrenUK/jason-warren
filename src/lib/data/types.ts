@@ -17,11 +17,27 @@ export type ProjectRole = 'solo' | 'lead' | 'collaborator';
  * The stage decomposition (docs/design/colour-system.md §3). `status`
  * conflated intent, state, deployment and retirement in one field; these
  * two authored axes carry the first pair, with `deployed` derived from
- * liveUrl and `archived` an authored end-state flag on Project.
+ * liveUrl and `retired` an authored end-state flag on Project.
  */
 export type ProjectTrack = 'exploration' | 'product';
 
-export type ProjectProgress = 'in-progress' | 'complete';
+/**
+ * Whether work is happening, and nothing else. Purely observable, so it is
+ * always inferred and never authored: recent commits mean `in-progress`,
+ * silence means `dormant`.
+ *
+ * This deliberately says nothing about whether a project is finished. A
+ * previous `complete` value tried to, and could not: git sees that work
+ * stopped, never why. ReDoT shipped as a released GitHub Action and went quiet
+ * for 302 days; Cogni simply stopped and went quiet for 147. The histories are
+ * identical on that question, so any rule inferring "finished" from silence was
+ * asserting something unobservable, on every quiet repo.
+ *
+ * Whether a project reached the world is carried separately by `released`,
+ * which is orthogonal: a released project can still be maintained, and
+ * unreleased work can be highly active.
+ */
+export type ProjectProgress = 'in-progress' | 'dormant';
 
 export type ProjectKind = 'app' | 'game' | 'website' | 'toy' | 'library' | 'tool' | 'tui' | 'repo';
 
@@ -262,10 +278,19 @@ export interface AuthoredProject {
 	suppressTags?: string[];
 	/** Intent: a spike proving an idea, or a product meant to be used. */
 	track?: ProjectTrack;
-	/** State: still being built, or arrived at its intended shape. */
-	progress?: ProjectProgress;
+	/**
+	 * Whether the work reached the world: publicly usable by someone else (a
+	 * live URL, a published package or action), delivered to a client or cohort,
+	 * or arrived at its own finished state and in service.
+	 *
+	 * Authored-only, and orthogonal to `progress`. Git can see whether commits
+	 * are still landing; it cannot see whether anyone received the result. The
+	 * two combine on the badge, so a released project that is still being worked
+	 * on reads differently from one that has settled.
+	 */
+	released?: boolean;
 	/** End-state flag: the work is shelved. Renders as a shade shift, never a new hue. */
-	archived?: boolean;
+	retired?: boolean;
 	liveUrl?: string;
 	highlights?: string[];
 	relationships?: ProjectRelationship[];
@@ -301,12 +326,12 @@ export interface Project {
 	/** True when track was authored; heuristic values render dotted-provisional. */
 	trackAuthored: boolean;
 	progress: ProjectProgress;
-	/** True when progress was authored; heuristic values render dotted-provisional. */
-	progressAuthored: boolean;
 	/** Derived: the project runs somewhere (liveUrl is present). */
 	deployed: boolean;
+	/** Authored: the work reached the world. Orthogonal to `progress`. */
+	released: boolean;
 	/** Authored end-state flag; encoded as a shade shift of the progress ink. */
-	archived: boolean;
+	retired: boolean;
 	repoUrl: string;
 	/** URLs of companion repos, preserving Drift's tracked topology order. */
 	companionRepoUrls: string[];

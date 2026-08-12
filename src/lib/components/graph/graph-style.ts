@@ -30,22 +30,86 @@ export const trackLabel: Record<ProjectTrack, string> = {
 
 export const progressLabel: Record<ProjectProgress, string> = {
 	'in-progress': 'Building',
-	complete: 'Complete'
+	// "Dormant" states the observation (no recent commits) without implying
+	// either an intention to return or a decision to stop.
+	dormant: 'Dormant'
 };
+
+/**
+ * The badge's stage phrase, combining the two orthogonal facts: whether the
+ * work reached the world (`released`, authored) and whether it is still moving
+ * (`progress`, observed).
+ *
+ * Released work reads by its maintenance state, which is what a reader wants to
+ * know about something they could actually use. Unreleased work reads by
+ * activity alone, since "released" is the claim it has not earned.
+ */
+export function stagePhrase(progress: ProjectProgress, released: boolean): string {
+	if (!released) return progressLabel[progress];
+	return progress === 'in-progress' ? 'Released · Maintained' : 'Released · Settled';
+}
 
 export const trackOrder: ProjectTrack[] = ['product', 'exploration'];
 
-export const progressOrder: ProjectProgress[] = ['in-progress', 'complete'];
+export const progressOrder: ProjectProgress[] = ['in-progress', 'dormant'];
 
 /**
- * Progress ink for a project's marks, rails and rings. Archived applies the
- * end-of-life convention: the same hue, one shade nearer the paper.
+ * The three rungs of the ordinal progress ramp, in order. `released` is the
+ * settled end: authored, and orthogonal to activity, so it sits beyond dormant
+ * rather than replacing either observed value.
  */
-export function progressColour(progress: ProjectProgress, archived = false): string {
-	if (progress === 'in-progress') {
-		return archived ? 'var(--progress-in-progress-archived)' : 'var(--progress-in-progress)';
-	}
-	return archived ? 'var(--progress-complete-archived)' : 'var(--progress-complete)';
+export type StageInk = 'in-progress' | 'dormant' | 'released';
+
+/**
+ * Legend order for the ramp. Distinct from `progressOrder`, which enumerates
+ * only the two observed `progress` values a filter can select on.
+ */
+export const stageInkOrder: StageInk[] = ['in-progress', 'dormant', 'released'];
+
+/** Ramp labels, matching the badge phrasing so legend and badge agree. */
+export const stageInkLabel: Record<StageInk, string> = {
+	'in-progress': 'Building',
+	dormant: 'Dormant',
+	released: 'Released'
+};
+
+/**
+ * Which rung of the ramp a project draws on. Released work reads on the settled
+ * ink whether or not it is still being maintained, the same rule `stagePhrase`
+ * applies to the words: reach outranks activity once it has been earned.
+ */
+export function stageInk(progress: ProjectProgress, released = false): StageInk {
+	if (released) return 'released';
+	// Exhaustive over ProjectProgress: `satisfies` fails at compile time if a
+	// value is added, rather than letting it inherit a colour silently.
+	return progress === 'in-progress' ? 'in-progress' : (progress satisfies 'dormant');
+}
+
+/**
+ * Ink for a project's marks, rails and rings. Retired applies the end-of-life
+ * convention: the same hue, one shade nearer the paper.
+ *
+ * `released` maps onto the ramp's third ink (colour-system.md §2), so the five
+ * released projects read as settled on the map and timeline and not merely on
+ * their badge.
+ */
+export function progressColour(
+	progress: ProjectProgress,
+	retired = false,
+	released = false
+): string {
+	return stageInkColour(stageInk(progress, released), retired);
+}
+
+/**
+ * Ink for a ramp rung directly, for legends that enumerate the ramp rather than
+ * colouring a specific project.
+ *
+ * Every rung name matches its token suffix in tokens.css, so this interpolates
+ * straight through with no translation step.
+ */
+export function stageInkColour(ink: StageInk, retired = false): string {
+	return retired ? `var(--progress-${ink}-retired)` : `var(--progress-${ink})`;
 }
 
 /** Human-readable label for an edge kind, phrased from source to target. */

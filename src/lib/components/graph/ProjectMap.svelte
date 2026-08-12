@@ -42,8 +42,11 @@
 	} from '$lib/selection.js';
 	import {
 		progressColour,
-		progressLabel,
-		progressOrder,
+		stageInk,
+		stageInkColour,
+		stageInkLabel,
+		stageInkOrder,
+		stagePhrase,
 		trackLabel,
 		categoryColour,
 		edgeTypeColour,
@@ -68,7 +71,9 @@
 		tagline: string;
 		track: ProjectTrack;
 		progress: ProjectProgress;
-		archived: boolean;
+		/** Authored: the work reached the world. Draws on the ramp's settled ink. */
+		released: boolean;
+		retired: boolean;
 		deployed: boolean;
 		/** True when track or progress is a heuristic guess; draws dotted. */
 		stageProvisional: boolean;
@@ -178,7 +183,7 @@
 
 	// Historic stack: any tech that is the source of a `replaced-by` edge has
 	// been superseded, and its mark fades one shade paperward (the same
-	// end-of-life convention archived projects use).
+	// end-of-life convention retired projects use).
 	const historicTechLabels = new Set(
 		techRelationships.filter((r) => r.kind === 'replaced-by').map((r) => r.source)
 	);
@@ -916,10 +921,8 @@
 		const r = radiusScale(node);
 		const others = projectNodes.filter((n) => n.slug !== highlight).map((n) => projectPos(n.slug));
 		const routeCount = [...(adjacency.get(highlight) ?? [])].length;
-		const stage =
-			node.track === 'exploration'
-				? `${trackLabel[node.track]} · ${progressLabel[node.progress]}`
-				: progressLabel[node.progress];
+		const phrase = stagePhrase(node.progress, node.released);
+		const stage = node.track === 'exploration' ? `${trackLabel[node.track]} · ${phrase}` : phrase;
 		const meta = `${stage} · ${routeCount} route${routeCount === 1 ? '' : 's'}`;
 		return buildAnnotation(p, r, node.name.toUpperCase(), node.hub, meta, others);
 	});
@@ -1386,7 +1389,7 @@
 					{@const isFocus = effectiveHighlight === node.slug}
 					{@const colour = isFocus
 						? 'var(--color-accent)'
-						: progressColour(node.progress, node.archived)}
+						: progressColour(node.progress, node.retired, node.released)}
 					<a
 						class="map__node"
 						class:map__node--dim={nodeDimmed(node)}
@@ -1722,25 +1725,14 @@
 		{#if activeMode !== 'technologies'}
 			<div class="map__legend-group" aria-hidden="true">
 				<span class="map__legend-title">Progress</span>
-				{#each progressOrder.filter( (p) => projectNodes.some((n) => n.progress === p) ) as progress (progress)}
+				{#each stageInkOrder.filter( (ink) => projectNodes.some((n) => stageInk(n.progress, n.released) === ink) ) as ink (ink)}
+					{@const swatch = stageInkColour(ink)}
 					<span class="map__legend-item">
 						<svg class="map__legend-mark" viewBox="0 0 16 16">
-							<circle
-								class="map__legend-ring"
-								cx="8"
-								cy="8"
-								r="5"
-								style="stroke: {progressColour(progress)}"
-							/>
-							<circle
-								class="map__legend-dot"
-								cx="8"
-								cy="8"
-								r="1.8"
-								style="fill: {progressColour(progress)}"
-							/>
+							<circle class="map__legend-ring" cx="8" cy="8" r="5" style="stroke: {swatch}" />
+							<circle class="map__legend-dot" cx="8" cy="8" r="1.8" style="fill: {swatch}" />
 						</svg>
-						{progressLabel[progress]}
+						{stageInkLabel[ink]}
 					</span>
 				{/each}
 			</div>
@@ -1756,7 +1748,7 @@
 					</span>
 				</div>
 			{/if}
-			{#if projectNodes.some((n) => n.deployed || n.archived)}
+			{#if projectNodes.some((n) => n.deployed || n.retired)}
 				<div class="map__legend-group" aria-hidden="true">
 					<span class="map__legend-title">Flags</span>
 					{#if projectNodes.some((n) => n.deployed)}
@@ -1769,7 +1761,7 @@
 							Deployed (outer ring)
 						</span>
 					{/if}
-					{#if projectNodes.some((n) => n.archived)}
+					{#if projectNodes.some((n) => n.retired)}
 						<span class="map__legend-item">
 							<svg class="map__legend-mark" viewBox="0 0 16 16">
 								<circle
@@ -1777,17 +1769,17 @@
 									cx="8"
 									cy="8"
 									r="5"
-									style="stroke: {progressColour('complete', true)}"
+									style="stroke: {stageInkColour('dormant', true)}"
 								/>
 								<circle
 									class="map__legend-dot"
 									cx="8"
 									cy="8"
 									r="1.8"
-									style="fill: {progressColour('complete', true)}"
+									style="fill: {stageInkColour('dormant', true)}"
 								/>
 							</svg>
-							Archived (faded)
+							Retired (faded)
 						</span>
 					{/if}
 				</div>

@@ -243,7 +243,7 @@ describe('selectLabelledSlugs', () => {
 			contribution: { role: 'solo' },
 			tags: [],
 			track: 'product',
-			progress: 'complete',
+			progress: 'dormant',
 			repoUrl: '',
 			highlights: [],
 			relationships: [],

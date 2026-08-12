@@ -193,6 +193,91 @@ describe('inferContribution', () => {
 			expect(result.contributionNote).toBeUndefined();
 		}
 	});
+
+	// -- 5DR.21 richer signals ------------------------------------------------
+
+	it('returns solo when there is exactly one human author, whatever the share', () => {
+		// The rescue case: AUTHOR_PATTERN missed one of Jason's git identities, so
+		// commitsMine reads 0 on a repo he wrote alone (nib, riffle). The headcount
+		// settles it independently of the share.
+		const manifest: SyncedSource = { commits: 1, commitsMine: 0, distinctAuthorsHuman: 1 };
+		expect(inferContribution(manifest)).toEqual({
+			role: 'solo',
+			collaboration: { team: 'Solo (Jason)' }
+		});
+	});
+
+	it('excludes non-human authors from the denominator', () => {
+		// 13 of 30 commits are Jason's, but the other 17 are an AI agent's, so he is
+		// the only human author of the work (flyt).
+		const manifest: SyncedSource = {
+			commits: 30,
+			commitsMine: 13,
+			commitsHuman: 13,
+			distinctAuthorsHuman: 2
+		};
+		// commitsMine >= commitsHuman -> solo, without relying on the headcount.
+		expect(inferContribution(manifest).role).toBe('solo');
+	});
+
+	it('divides by commitsHuman, not commits, when both are present', () => {
+		// 40/60 human commits is a majority (lead); 40/100 raw would be a minority.
+		const manifest: SyncedSource = {
+			commits: 100,
+			commitsMine: 40,
+			commitsHuman: 60,
+			distinctAuthorsHuman: 3
+		};
+		expect(inferContribution(manifest).role).toBe('lead');
+	});
+
+	it('breaks a near-tie commit share on churn share', () => {
+		// 48.9% of commits but 65.5% of lines added: many small commits from others
+		// should not outweigh substantially larger authorship (chirpdb).
+		const manifest: SyncedSource = {
+			commits: 1195,
+			commitsMine: 584,
+			commitsHuman: 1195,
+			distinctAuthorsHuman: 8,
+			linesAdded: 130538,
+			linesAddedAll: 199294
+		};
+		expect(inferContribution(manifest).role).toBe('lead');
+	});
+
+	it('does not let churn override a decisive commit majority', () => {
+		// 80% of commits is outside the tiebreak band, so a minority churn share
+		// must not flip the role.
+		const manifest: SyncedSource = {
+			commits: 100,
+			commitsMine: 80,
+			commitsHuman: 100,
+			distinctAuthorsHuman: 3,
+			linesAdded: 10,
+			linesAddedAll: 1000
+		};
+		expect(inferContribution(manifest).role).toBe('lead');
+	});
+
+	it('falls back to root-commit authorship when churn is exactly balanced', () => {
+		const manifest: SyncedSource = {
+			commits: 100,
+			commitsMine: 50,
+			commitsHuman: 100,
+			distinctAuthorsHuman: 2,
+			linesAdded: 500,
+			linesAddedAll: 1000,
+			rootCommitMine: true
+		};
+		expect(inferContribution(manifest).role).toBe('lead');
+	});
+
+	it('preserves legacy behaviour when the 5DR.21 fields are absent', () => {
+		// A manifest synced before these fields existed must infer exactly as before.
+		expect(inferContribution({ commits: 100, commitsMine: 80 }).role).toBe('lead');
+		expect(inferContribution({ commits: 100, commitsMine: 30 }).role).toBe('collaborator');
+		expect(inferContribution({ commits: 100, commitsMine: 50 }).role).toBe('collaborator');
+	});
 });
 
 // ---------------------------------------------------------------------------
@@ -246,18 +331,85 @@ describe('defaultProjectFromManifest', () => {
 		expect(undated.track).toBe('exploration');
 	});
 
-	it('defaults progress heuristically from recent commits', () => {
-		const active = defaultProjectFromManifest('busy', { commitsRecent: 3 });
-		const dormant = defaultProjectFromManifest('quiet', { commitsRecent: 0 });
-		expect(active.progress).toBe('in-progress');
-		expect(dormant.progress).toBe('complete');
-		expect(active.progressAuthored).toBe(false);
+	it('measures the track span in one scope, preferring lastCommitMine', () => {
+		// firstCommit is author-scoped, so pairing it with the all-authors
+		// lastCommit measured a period belonging to neither: on a team repo Jason
+		// touched briefly, the cohort's later commits inflated his span (5DR.20).
+		const brief = defaultProjectFromManifest('joined-briefly', {
+			firstCommit: '2026-02-11',
+			lastCommitMine: '2026-02-17',
+			lastCommit: '2026-12-01',
+			linesOfCode: 20_000
+		});
+		expect(brief.track).toBe('exploration');
 	});
 
-	it('defaults deployed and archived to false', () => {
+	it('reads a substantial codebase as product however brief the involvement', () => {
+		// A team repo joined for an intense burst can be enormous and still fail a
+		// span test: fac-cra is 213,140 lines across a 44-day involvement. Size is
+		// a route to product on its own.
+		const burst = defaultProjectFromManifest('big-and-brief', {
+			firstCommit: '2026-02-11',
+			lastCommitMine: '2026-03-26',
+			linesOfCode: 213_140
+		});
+		expect(burst.track).toBe('product');
+	});
+
+	it('still reads a small short-lived repo as exploration', () => {
+		const small = defaultProjectFromManifest('small-and-brief', {
+			firstCommit: '2026-03-14',
+			lastCommitMine: '2026-03-14',
+			linesOfCode: 2165
+		});
+		expect(small.track).toBe('exploration');
+	});
+
+	it('falls back to lastCommit when lastCommitMine is absent', () => {
+		const legacy = defaultProjectFromManifest('pre-5dr20', {
+			firstCommit: '2025-01-01',
+			lastCommit: '2025-12-01',
+			linesOfCode: 20_000
+		});
+		expect(legacy.track).toBe('product');
+	});
+
+	it('defaults progress heuristically from recent commits', () => {
+		const active = defaultProjectFromManifest('busy', { commitsRecent: 3 });
+		const quiet = defaultProjectFromManifest('quiet', { commitsRecent: 0 });
+		expect(active.progress).toBe('in-progress');
+		expect(quiet.progress).toBe('dormant');
+	});
+
+	it("reads activity from Jason's own commits, not the team's", () => {
+		// A cohort repo that keeps moving after Jason left is dormant *for him*,
+		// which is what the portfolio is describing. commitsRecentAll would call
+		// it active and credit him with work he did not do.
+		const teamStillBusy = defaultProjectFromManifest('handed-over', {
+			commitsRecent: 0,
+			commitsRecentAll: 40
+		});
+		expect(teamStillBusy.progress).toBe('dormant');
+	});
+
+	it('never infers complete: finished is a judgement, not an observation', () => {
+		// Silence cannot distinguish shipped-and-stopped from simply-stopped.
+		// redot (302 idle days, six merged PRs, released) and cogni (147 idle
+		// days, just stopped) have identical histories on this question, so
+		// inferring 'complete' asserted something the data never supported.
+		const longDead = defaultProjectFromManifest('ancient', {
+			commitsRecent: 0,
+			firstCommit: '2023-01-01',
+			lastCommitMine: '2023-02-01',
+			linesOfCode: 50_000
+		});
+		expect(longDead.progress).toBe('dormant');
+	});
+
+	it('defaults deployed and retired to false', () => {
 		const project = defaultProjectFromManifest('some-repo', {});
 		expect(project.deployed).toBe(false);
-		expect(project.archived).toBe(false);
+		expect(project.retired).toBe(false);
 	});
 
 	it('infers solo contribution from sole-author manifest', () => {
@@ -309,23 +461,23 @@ describe('defaultProjectFromManifest', () => {
 describe('mergeAuthored', () => {
 	const base = defaultProjectFromManifest('test-slug', { languages: ['TypeScript'] });
 
-	it('authored track and progress win and flip the provenance flags', () => {
-		const merged = mergeAuthored(base, {
-			slug: 'test-slug',
-			track: 'product',
-			progress: 'complete'
-		});
+	it('authored track wins and flips the provenance flag', () => {
+		const merged = mergeAuthored(base, { slug: 'test-slug', track: 'product' });
 		expect(merged.track).toBe('product');
 		expect(merged.trackAuthored).toBe(true);
-		expect(merged.progress).toBe('complete');
-		expect(merged.progressAuthored).toBe(true);
 	});
 
-	it('keeps heuristic track/progress with false provenance when unauthored', () => {
+	it('progress is never authored: an overlay cannot override the observation', () => {
+		const merged = mergeAuthored(base, { slug: 'test-slug', released: true });
+		expect(merged.progress).toBe(base.progress);
+		expect(merged.released).toBe(true);
+	});
+
+	it('keeps heuristic track with false provenance when unauthored', () => {
 		const merged = mergeAuthored(base, { slug: 'test-slug', name: 'Renamed' });
 		expect(merged.track).toBe(base.track);
 		expect(merged.trackAuthored).toBe(false);
-		expect(merged.progressAuthored).toBe(false);
+		expect(merged.released).toBe(false);
 	});
 
 	it('derives deployed from the merged liveUrl', () => {
@@ -335,9 +487,9 @@ describe('mergeAuthored', () => {
 		expect(not.deployed).toBe(false);
 	});
 
-	it('merges an authored archived flag', () => {
-		const merged = mergeAuthored(base, { slug: 'test-slug', archived: true });
-		expect(merged.archived).toBe(true);
+	it('merges an authored retired flag', () => {
+		const merged = mergeAuthored(base, { slug: 'test-slug', retired: true });
+		expect(merged.retired).toBe(true);
 	});
 
 	it('preserves an authored role when commit-share inference disagrees', () => {

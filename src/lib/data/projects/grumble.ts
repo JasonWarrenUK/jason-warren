@@ -8,9 +8,8 @@ export const grumble: AuthoredProject = {
 	description:
 		'A Gin Rummy scorer split cleanly between a pure scoring library and the SvelteKit presentation layer. The scoring code in src/lib/scoring/ has zero Svelte dependencies and is covered by unit tests via bun:test. Threading the full ruleset as a Rules parameter rather than a constant was the key architectural choice: it meant runtime rule customisation (Standard to 100, Quick to 50, fully Custom per-rule) came almost for free from the same pure functions, with tests proving both defaults and overrides. The undercut case required care: when the knocking player\'s deadwood meets or exceeds the opponent\'s, the box flips to the opponent along with an undercut bonus, tracked via a separate boxWinner field so "who scored points" and "who won the line" are always distinct. The full ruleset covers gin, big gin, undercut (including the equal-deadwood edge case), line and game bonuses and multi-game match history persisted to localStorage.',
 	kind: 'tool',
-	contribution: { role: 'solo' },
+	released: true,
 	track: 'product',
-	progress: 'complete',
 	highlights: [
 		'Pure, framework-free scoring library in src/lib/scoring/ with comprehensive unit tests via bun:test.',
 		'Full Gin Rummy ruleset: deadwood calculation, gin/big-gin/undercut bonuses, line bonuses, game bonuses, multi-game match history.',

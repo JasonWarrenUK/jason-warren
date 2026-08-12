@@ -247,7 +247,8 @@ const BODY_PAIRS: [string, string, number][] = [
 	['--color-primary-text', '--color-primary-bg', 4.5],
 	['--color-accent-text', '--color-accent-bg', 4.5],
 	['--progress-in-progress-text', '--progress-in-progress-bg', 4.5],
-	['--progress-complete-text', '--progress-complete-bg', 4.5]
+	['--progress-dormant-text', '--progress-dormant-bg', 4.5],
+	['--progress-released-text', '--progress-released-bg', 4.5]
 ];
 
 /**
@@ -262,17 +263,19 @@ const INK_PAIRS: [string, string, number][] = [
 	['--ink-succession-fwd', '--color-surface-sunken', 3],
 	['--ink-succession-back', '--color-surface-sunken', 3],
 	['--ink-progress-1', '--color-surface-sunken', 3],
-	['--ink-progress-2', '--color-surface-sunken', 3]
+	['--ink-progress-2', '--color-surface-sunken', 3],
+	['--ink-progress-3', '--color-surface-sunken', 3]
 ];
 
 /**
  * The end-of-life fade must stay inside a corridor: findable against the
- * sheet (one review round made archived marks literally invisible in light
+ * sheet (one review round made retired marks literally invisible in light
  * mode). Each row is [token, reference, minRatio].
  */
 const FADE_PAIRS: [string, string, number][] = [
-	['--progress-in-progress-archived', '--color-surface-sunken', 2.2],
-	['--progress-complete-archived', '--color-surface-sunken', 2.2],
+	['--progress-in-progress-retired', '--color-surface-sunken', 2.2],
+	['--progress-dormant-retired', '--color-surface-sunken', 2.2],
+	['--progress-released-retired', '--color-surface-sunken', 2.2],
 	['--tech-mark-historic', '--color-surface-sunken', 2.2]
 ];
 
@@ -285,8 +288,9 @@ const FADE_PAIRS: [string, string, number][] = [
  * oklch chroma must not exceed that share of the active ink's.
  */
 const FADE_CHROMA_PAIRS: [string, string, number][] = [
-	['--progress-in-progress', '--progress-in-progress-archived', 0.55],
-	['--progress-complete', '--progress-complete-archived', 0.55],
+	['--progress-in-progress', '--progress-in-progress-retired', 0.55],
+	['--progress-dormant', '--progress-dormant-retired', 0.55],
+	['--progress-released', '--progress-released-retired', 0.55],
 	['--tech-mark', '--tech-mark-historic', 0.55]
 ];
 
