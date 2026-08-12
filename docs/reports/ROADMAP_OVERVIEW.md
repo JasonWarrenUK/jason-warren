@@ -1,6 +1,6 @@
 # Portfolio MVP: Roadmap Overview
 
-**55 tasks across 6 milestones.** Files: `.claude/roadmaps.json` (machine-readable), `docs/roadmaps/mvp.md` (full task list with Mermaid dependency diagram).
+**64 tasks across 7 milestones.** Files: `.claude/roadmaps.json` (machine-readable), `docs/roadmaps/mvp.md` (full task list with Mermaid dependency diagram).
 
 > Migrated from the old single-file roadmap format on 17 July 2026. The narrative sections below are synthesised from the milestone goals in the source; they are stubs for fleshing out, not authored rationale.
 
@@ -20,6 +20,7 @@ _Stub — synthesised from the milestone goals._
 - **M4 Quality & Reach**: accessibility, discoverability, test coverage. Was gated on M3 so audits run against the settled design; now that M3 has landed, 4QU.5 is the one task gating the rest.
 - **M5 Drift Decoupling: Engine & Verbs** (two verbs remaining): the config-driven engine/integration split; the unbuilt verb backlog lands inside the decoupled design.
 - **M6 Drift: Tests & Docs**: lock the stable engine down; gated on M3 and M5, so with M3 done it now waits on M5's enrichment verbs alone.
+- **M7 Drift: Total Data Control**: make the whole data state visible and editable from the CLI menu. The menu already reaches all 17 verbs, but it is verb-first (pick an action, then a target) with five aggregate reports and no per-entity view. This inverts that: browse a project, tech or theme, see every field with its provenance, and act on what you are looking at. Gated on M5 alongside M6, so the two run in parallel.
 
 ## Decisions that shaped the structure
 

@@ -436,6 +436,14 @@
 						"dependsOn": [
 							"5DR.22"
 						]
+					},
+					{
+						"id": "5DR.24",
+						"description": "Audit the Project property surface: no two fields claim the same fact, and every fact worth storing has exactly one home",
+						"status": "todo",
+						"dependsOn": [],
+						"notes": "Covers SyncedSource, AuthoredProject, Project, ProjectMetrics and the nested Contribution/TechTag/ProjectRelationship shapes. Overlap precedent: deployed is derived from liveUrl presence; progress and released were split because one field made two claims; retired and hide both carried the hero-pool exclusion. Coverage gap already known: activeMonths, spanMonths and maxGapDays are synced but reach no Project field.",
+						"assignee": "Jason"
 					}
 				]
 			},
@@ -470,6 +478,83 @@
 							"M3",
 							"M5"
 						]
+					}
+				]
+			},
+			{
+				"id": "M7",
+				"name": "Drift: Total Data Control",
+				"goal": "A drift portfolio's entire data state can be seen, controlled and manipulated through the drift CLI menu.",
+				"tasks": [
+					{
+						"id": "7DR.1",
+						"description": "Per-field provenance resolver: value, origin (synced / inferred / authored / overridden), and the inference an authored value agrees or disagrees with",
+						"status": "blocked",
+						"dependsOn": [
+							"M5"
+						],
+						"notes": "Provenance is currently spread across sources.json, overrides.json, the project overlay and defaults.ts. One resolver so the detail views and the existing redundancy tests read the same answer."
+					},
+					{
+						"id": "7DR.2",
+						"description": "Project detail view: every field for one project on a single screen, each with its provenance",
+						"status": "blocked",
+						"dependsOn": [
+							"7DR.1"
+						]
+					},
+					{
+						"id": "7DR.3",
+						"description": "Tech, tag and theme detail views on the same pattern as the project view",
+						"status": "blocked",
+						"dependsOn": [
+							"7DR.1"
+						]
+					},
+					{
+						"id": "7DR.4",
+						"description": "Act in context: invoke the relevant verbs from a detail view without re-picking the target",
+						"status": "blocked",
+						"dependsOn": [
+							"7DR.2",
+							"7DR.3"
+						],
+						"notes": "The menu is verb-first (pick a verb, then a target). This inverts it for the browse path; the verb-first sections stay for anyone who already knows what they want."
+					},
+					{
+						"id": "7DR.5",
+						"description": "Reach audit: confirm every field in every data file has a menu path, and fill the gaps",
+						"status": "blocked",
+						"dependsOn": [
+							"5DR.24"
+						],
+						"notes": "Only meaningful once 5DR.24 has settled the field set. Covers all eight configured data paths: sources, topology, local, overrides, excluded, cache, projects, in-progress."
+					},
+					{
+						"id": "7DR.6",
+						"description": "Search across projects, tech, tags and themes from one entry point",
+						"status": "blocked",
+						"dependsOn": [
+							"7DR.2",
+							"7DR.3"
+						]
+					},
+					{
+						"id": "7DR.7",
+						"description": "Filter and sort the browse lists (drift state, track, role, tier, kind)",
+						"status": "blocked",
+						"dependsOn": [
+							"7DR.6"
+						]
+					},
+					{
+						"id": "7DR.8",
+						"description": "Multi-select and bulk apply across a filtered set",
+						"status": "blocked",
+						"dependsOn": [
+							"7DR.7"
+						],
+						"notes": "Bulk writes are how redundant authored values get mass-produced, which the data.test.ts redundancy checks reject. A bulk write must surface which targets would gain a value matching the inference before it applies."
 					}
 				]
 			}
