@@ -1,6 +1,6 @@
 # Portfolio MVP Roadmap
 
-The site is live and substantially built: full routes, the graph/timeline/map/toolkit views, 30+ typed projects and the Drift CLI. This phase deepens the site as an artefact and decouples Drift's engine from its portfolio-specific couplings. Content (M1), features (M2) and design (M3) are done, and the Drift engine work (M5) is complete bar its enrichment verbs and a property-surface audit; quality (M4), Drift's tests-and-docs (M6) and total data control from the CLI menu (M7) remain.
+The site is live and substantially built: full routes, the graph/timeline/map/toolkit views, 30+ typed projects and the Drift CLI. This phase deepens the site as an artefact and decouples Drift's engine from its portfolio-specific couplings. Content (M1), features (M2) and design (M3) are done, and the Drift engine work (M5) is complete bar its enrichment verbs and a property-surface audit; quality (M4), Drift's tests-and-docs (M6), total data control from the CLI menu (M7) and ongoing aesthetics (M8) remain.
 
 **Critical path:** `4QU.5 → 4QU.1 → 4QU.3` — with M3 complete, the accessibility audit chain is the longest remaining run, and 4QU.5 is the one task gating it. M6 and M7 both wait on M5 rather than on design, so they run in parallel with each other and with M4.
 
@@ -124,6 +124,15 @@ The site is live and substantially built: full routes, the graph/timeline/map/to
 
 ---
 
+## Milestone 8 — Aesthetics: Ongoing
+
+**Goal:** The standing home for aesthetic work after the visual direction settled in M3: refinements to how the site and its generated artefacts look, taken up once the functional milestones they depend on have landed.
+
+- [ ] **8DE.1** — Spike: investigate enhancements to the procedural OG card generation, and record the options with a recommendation _(blocked — depends on M4, M5)_
+  - Note: Supersedes the parked "Generative OG variants per theme" idea, which was one avenue among several. src/lib/og/card.ts derives each card from project data, but keys its motif on runtime alone via runtimeArchetype(), so 23 of 33 projects collapse into two archetypes (bun 12, node 11) and 5 fall through to the generic dot. Avenues to weigh: widening the archetype signal beyond runtime; theme-driven variants (themes currently feed nothing in card.ts); using signal the card already receives and ignores (kind, track, role, tags, lineage); and the motif mechanics themselves (one fixed 132px tiling, hash-seeded rotation and phase). Output is a written comparison with a recommendation, not an implementation; follow-up tasks land after it is read.
+
+---
+
 ## Dependency Diagram
 
 ```mermaid
@@ -207,6 +216,8 @@ graph LR
 	7DR.7["7DR.7: Filter and sort the browse lists (drift…"]
 	7DR.8["7DR.8: Multi-select and bulk apply across a fil…"]
 	M7["M7: Drift: Total Data Control"]:::mile
+	8DE.1["8DE.1: Spike: investigate enhancements to the p…"]
+	M8["M8: Aesthetics: Ongoing"]:::mile
 	1CO.1 --> 1CO.2
 	1CO.1 --> 1CO.6
 	1CO.2 --> 1CO.8
@@ -249,6 +260,7 @@ graph LR
 	4QU.3 --> M4
 	4QU.7 --> M4
 	4QU.8 --> M4
+	M4 --> 8DE.1
 	5DR.0 --> 5DR.1
 	5DR.0 --> 5DR.14
 	5DR.1 --> 5DR.5
@@ -288,6 +300,7 @@ graph LR
 	M5 --> 5DR.9
 	M5 --> 5DR.10
 	M5 --> 7DR.1
+	M5 --> 8DE.1
 	1CO.5 --> M1
 	5DR.8 --> M6
 	5DR.9 --> M6
@@ -303,7 +316,8 @@ graph LR
 	7DR.6 --> 7DR.7
 	7DR.7 --> 7DR.8
 	7DR.8 --> M7
+	8DE.1 --> M8
 	class 4QU.4,4QU.5,5DR.22,5DR.24 todo
-	class 4QU.1,4QU.3,4QU.7,5DR.10,5DR.23,5DR.8,5DR.9,7DR.1,7DR.2,7DR.3,7DR.4,7DR.5,7DR.6,7DR.7,7DR.8 blocked
+	class 4QU.1,4QU.3,4QU.7,5DR.10,5DR.23,5DR.8,5DR.9,7DR.1,7DR.2,7DR.3,7DR.4,7DR.5,7DR.6,7DR.7,7DR.8,8DE.1 blocked
 	class 1CO.1,1CO.10,1CO.2,1CO.3,1CO.4,1CO.5,1CO.6,1CO.7,1CO.8,1CO.9,2FE.1,2FE.2,2FE.3,2FE.4,2FE.5,2FE.6,2FE.7,2FE.8,3DE.0,3DE.1,3DE.2,3DE.3,3DE.4,3DE.5,3DE.6,4QU.8,5DR.0,5DR.1,5DR.11,5DR.12,5DR.13,5DR.14,5DR.15,5DR.16,5DR.17,5DR.18,5DR.19,5DR.2,5DR.20,5DR.21,5DR.3,5DR.4,5DR.5,5DR.6,5DR.7 done
 ```

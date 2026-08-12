@@ -557,6 +557,23 @@
 						"notes": "Bulk writes are how redundant authored values get mass-produced, which the data.test.ts redundancy checks reject. A bulk write must surface which targets would gain a value matching the inference before it applies."
 					}
 				]
+			},
+			{
+				"id": "M8",
+				"name": "Aesthetics: Ongoing",
+				"goal": "The standing home for aesthetic work after the visual direction settled in M3: refinements to how the site and its generated artefacts look, taken up once the functional milestones they depend on have landed.",
+				"tasks": [
+					{
+						"id": "8DE.1",
+						"description": "Spike: investigate enhancements to the procedural OG card generation, and record the options with a recommendation",
+						"status": "blocked",
+						"dependsOn": [
+							"M4",
+							"M5"
+						],
+						"notes": "Supersedes the parked \"Generative OG variants per theme\" idea, which was one avenue among several. src/lib/og/card.ts derives each card from project data, but keys its motif on runtime alone via runtimeArchetype(), so 23 of 33 projects collapse into two archetypes (bun 12, node 11) and 5 fall through to the generic dot. Avenues to weigh: widening the archetype signal beyond runtime; theme-driven variants (themes currently feed nothing in card.ts); using signal the card already receives and ignores (kind, track, role, tags, lineage); and the motif mechanics themselves (one fixed 132px tiling, hash-seeded rotation and phase). Output is a written comparison with a recommendation, not an implementation; follow-up tasks land after it is read."
+					}
+				]
 			}
 		]
 	}
