@@ -24,7 +24,7 @@ const STILL_LIVE_WINDOW_DAYS = 56;
  * still-live when it is unretired and either being built or running
  * somewhere AND its last commit sits within `STILL_LIVE_WINDOW_DAYS` of
  * build-time `now`, OR it has recorded commits in the trailing four weeks
- * (`metrics.commitsRecent`) — the one signal the manifest carries that
+ * (`metrics.commitsMeRecent`) — the one signal the manifest carries that
  * directly means "touched very recently".
  */
 function isStillLive(project: Project, nowIso: string): boolean {
@@ -32,9 +32,9 @@ function isStillLive(project: Project, nowIso: string): boolean {
 		!project.retired && (project.progress === 'in-progress' || project.deployed);
 	const recentByDate =
 		stageIsActive &&
-		project.lastCommit !== undefined &&
-		dayDiff(project.lastCommit, nowIso) <= STILL_LIVE_WINDOW_DAYS;
-	const recentByCommits = (project.metrics?.commitsRecent ?? 0) > 0;
+		project.commitAnyLast !== undefined &&
+		dayDiff(project.commitAnyLast, nowIso) <= STILL_LIVE_WINDOW_DAYS;
+	const recentByCommits = (project.metrics?.commitsMeRecent ?? 0) > 0;
 	return recentByDate || recentByCommits;
 }
 
@@ -47,8 +47,8 @@ export function load() {
 	const labelledSlugs = selectLabelledSlugs(projects, TIMELINE_LABEL_COUNT);
 
 	const rails: TimelineRail[] = projects.map((project) => {
-		const firstCommit = project.firstCommit ?? null;
-		const lastCommit = project.lastCommit ?? null;
+		const commitAnyRoot = project.commitAnyRoot ?? null;
+		const commitAnyLast = project.commitAnyLast ?? null;
 		return {
 			slug: project.slug,
 			name: project.name,
@@ -60,9 +60,9 @@ export function load() {
 			stageProvisional: !project.trackAuthored,
 			tagline: project.tagline,
 			role: project.contribution.role,
-			firstCommit,
-			lastCommit,
-			durationDays: firstCommit && lastCommit ? dayDiff(firstCommit, lastCommit) : null,
+			commitAnyRoot,
+			commitAnyLast,
+			durationDays: commitAnyRoot && commitAnyLast ? dayDiff(commitAnyRoot, commitAnyLast) : null,
 			stillLive: isStillLive(project, now),
 			labelled: labelledSlugs.has(project.slug)
 		};

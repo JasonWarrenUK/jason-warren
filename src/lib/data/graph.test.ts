@@ -232,7 +232,7 @@ describe('selectLabelledSlugs', () => {
 	// the selector reads matter, so the rest is stubbed.
 	function faux(
 		slug: string,
-		m: { last?: string; linesAdded?: number; linesOfCode?: number; commitsRecent?: number }
+		m: { last?: string; linesMeAdded?: number; linesAny?: number; commitsMeRecent?: number }
 	): Project {
 		return {
 			slug,
@@ -247,11 +247,11 @@ describe('selectLabelledSlugs', () => {
 			repoUrl: '',
 			highlights: [],
 			relationships: [],
-			lastCommit: m.last,
+			commitAnyLast: m.last,
 			metrics: {
-				linesAdded: m.linesAdded,
-				linesOfCode: m.linesOfCode,
-				commitsRecent: m.commitsRecent
+				linesMeAdded: m.linesMeAdded,
+				linesAny: m.linesAny,
+				commitsMeRecent: m.commitsMeRecent
 			}
 		} as unknown as Project;
 	}
@@ -271,9 +271,9 @@ describe('selectLabelledSlugs', () => {
 	it('rotates through all four axes, one leader from each', () => {
 		const list = [
 			faux('recent', { last: '2026-06-01' }),
-			faux('mine', { linesAdded: 9999 }),
-			faux('big', { linesOfCode: 9999 }),
-			faux('active', { commitsRecent: 9999 }),
+			faux('mine', { linesMeAdded: 9999 }),
+			faux('big', { linesAny: 9999 }),
+			faux('active', { commitsMeRecent: 9999 }),
 			faux('filler-a', {}),
 			faux('filler-b', {})
 		];
@@ -287,8 +287,8 @@ describe('selectLabelledSlugs', () => {
 		// offer A), which the old early-exit misread as "queues drained",
 		// stranding C below the requested count.
 		const list = [
-			faux('a', { last: '2026-06-10', linesAdded: 1, linesOfCode: 1, commitsRecent: 1 }),
-			faux('b', { last: '2026-06-09', linesAdded: 99, linesOfCode: 99, commitsRecent: 99 }),
+			faux('a', { last: '2026-06-10', linesMeAdded: 1, linesAny: 1, commitsMeRecent: 1 }),
+			faux('b', { last: '2026-06-09', linesMeAdded: 99, linesAny: 99, commitsMeRecent: 99 }),
 			faux('c', {})
 		];
 		const labelled = selectLabelledSlugs(list, 3) as Set<string>;
@@ -298,9 +298,9 @@ describe('selectLabelledSlugs', () => {
 	it('dedupes a project that leads multiple axes, then fills from the rest', () => {
 		const list = [
 			// One project tops both recency and my-contribution.
-			faux('double', { last: '2026-06-10', linesAdded: 9999 }),
-			faux('big', { linesOfCode: 9999 }),
-			faux('active', { commitsRecent: 9999 }),
+			faux('double', { last: '2026-06-10', linesMeAdded: 9999 }),
+			faux('big', { linesAny: 9999 }),
+			faux('active', { commitsMeRecent: 9999 }),
 			faux('next-recent', { last: '2026-06-09' }),
 			faux('filler', {})
 		];

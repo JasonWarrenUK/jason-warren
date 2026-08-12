@@ -239,11 +239,11 @@ const ARRAY_FINGERPRINT_FIELDS = new Set(
 // Fields excluded from drift comparison even though they live in the schema
 // and persist in sources.json. These are metadata / provenance fields; their
 // changes are surfaced via advisory report sections, not as field drift.
-// techFirstSeen is an object: the scalar `was !== now` comparison used for
+// detectedTechFirstSeen is an object: the scalar `was !== now` comparison used for
 // non-array fields is always true for object identity, which would flag it
 // as drifted on every single sync. It is still fully persisted and written —
 // only excluded from the drift *report*, same treatment as measuredRef.
-const DRIFT_SKIP_FIELDS = new Set(['measuredRef', 'techFirstSeen']);
+const DRIFT_SKIP_FIELDS = new Set(['measuredRef', 'detectedTechFirstSeen']);
 
 // EXTENSION_LANGUAGE is imported from scripts/tag-taxonomy.js above.
 // That module is the single source of truth shared between the CLI and the app.
@@ -551,7 +551,7 @@ async function defaultBranch(repoPath) {
  * Intra-span activity shape for Jason's commits: how much of his own span he
  * was actually active in, and the longest silence inside it.
  *
- * firstCommit and lastCommit describe only the endpoints of a project's life,
+ * commitAnyRoot and commitAnyLast describe only the endpoints of a project's life,
  * so a repo touched once in month 1 and once in month 30 is indistinguishable
  * from one worked continuously for 30 months. Sampling the commit dates makes
  * the gap between those two cases detectable.
@@ -562,19 +562,19 @@ async function defaultBranch(repoPath) {
  * active across 30 months while Jason's own work was a 2-month burst.
  *
  * Returns:
- *   activeMonths — distinct YYYY-MM buckets containing at least one commit
- *   spanMonths   — calendar months from first to last commit, inclusive
- *   maxGapDays   — longest run of consecutive days with no commit
+ *   spanMonthsActive — distinct YYYY-MM buckets containing at least one commit
+ *   spanMonthsAll   — calendar months from first to last commit, inclusive
+ *   spanGapMaxDays   — longest run of consecutive days with no commit
  *
  * All three are null when Jason has no commits on the ref, so a team repo he
  * has not touched never reports a fabricated zero.
  *
  * @param {string} repoPath
  * @param {string} ref
- * @returns {Promise<{ activeMonths: number | null; spanMonths: number | null; maxGapDays: number | null }>}
+ * @returns {Promise<{ spanMonthsActive: number | null; spanMonthsAll: number | null; spanGapMaxDays: number | null }>}
  */
 async function sampleActivity(repoPath, ref = 'HEAD') {
-	const empty = { activeMonths: null, spanMonths: null, maxGapDays: null };
+	const empty = { spanMonthsActive: null, spanMonthsAll: null, spanGapMaxDays: null };
 	const r = await git(
 		['log', '--extended-regexp', `--author=${AUTHOR_PATTERN}`, '--format=%cs', ref],
 		repoPath
@@ -592,24 +592,24 @@ async function sampleActivity(repoPath, ref = 'HEAD') {
 	const last = Date.parse(dates[dates.length - 1]);
 	if (Number.isNaN(first) || Number.isNaN(last)) return empty;
 
-	const activeMonths = new Set(dates.map((date) => date.slice(0, 7))).size;
+	const spanMonthsActive = new Set(dates.map((date) => date.slice(0, 7))).size;
 
 	// Inclusive calendar-month count: a project living entirely inside one month
-	// spans 1, not 0, so activeMonths/spanMonths is always a usable ratio.
+	// spans 1, not 0, so spanMonthsActive/spanMonthsAll is always a usable ratio.
 	const firstDate = new Date(first);
 	const lastDate = new Date(last);
-	const spanMonths =
+	const spanMonthsAll =
 		(lastDate.getUTCFullYear() - firstDate.getUTCFullYear()) * 12 +
 		(lastDate.getUTCMonth() - firstDate.getUTCMonth()) +
 		1;
 
-	let maxGapDays = 0;
+	let spanGapMaxDays = 0;
 	for (let i = 1; i < dates.length; i += 1) {
 		const gap = Math.round((Date.parse(dates[i]) - Date.parse(dates[i - 1])) / 86_400_000);
-		if (gap > maxGapDays) maxGapDays = gap;
+		if (gap > spanGapMaxDays) spanGapMaxDays = gap;
 	}
 
-	return { activeMonths, spanMonths, maxGapDays };
+	return { spanMonthsActive, spanMonthsAll, spanGapMaxDays };
 }
 
 /**
@@ -756,7 +756,7 @@ function detectDependencies(repoPath) {
 	// real introduction date. Only manifest/lockfile/config-file paths are
 	// tracked here — the broader source-grep signals in detectSourceSignals
 	// are deliberately excluded (see that function's own comment) and those
-	// identities fall back to the repo's firstCommit downstream.
+	// identities fall back to the repo's commitAnyRoot downstream.
 	const detections = [];
 
 	const bunLockPath = ['bun.lock', 'bun.lockb', 'bunfig.toml']
@@ -1121,7 +1121,7 @@ function detectDependencies(repoPath) {
 
 /**
  * For each detected tech identity, finds the git date it was actually
- * introduced — as opposed to the repo's own inception date (firstCommit).
+ * introduced — as opposed to the repo's own inception date (commitAnyRoot).
  * A tag on a long-lived repo can enter years after the repo started (e.g.
  * migrating to Svelte 5 partway through a project's life); dating every tag
  * to the repo's birth silently back-dates it. This is the fix.
@@ -1139,7 +1139,7 @@ function detectDependencies(repoPath) {
  * A failed or empty query (e.g. `--follow` losing a renamed/relocated file,
  * or a query racing a shallow clone) OMITS that identity from the result
  * entirely, rather than guessing — the caller's downstream read already
- * falls back to firstCommit for any identity absent here.
+ * falls back to commitAnyRoot for any identity absent here.
  *
  * @param {string} repoPath
  * @param {string} ref
@@ -1289,25 +1289,25 @@ async function getFingerprint(repoPath, resolvedRef, slug) {
 	// Each call receives `ref` so it measures the resolved default branch.
 	const [
 		lcR,
-		commits,
-		commitsRecentAll,
-		commitsMine,
-		commitsRecent,
+		commitsAny,
+		commitsAnyRecent,
+		commitsMe,
+		commitsMeRecent,
 		churnMine,
 		churnAll,
 		churnMineRecent,
 		churnAllRecent,
 		remoteR,
-		firstCommit,
+		commitAnyRoot,
 		listing,
 		commitsHuman,
-		distinctAuthors,
-		distinctAuthorsHuman,
-		rootCommitMine,
+		authorsDistinct,
+		authorsDistinctHuman,
+		commitMeRoot,
 		activity,
 		lastCommitMineR
 	] = await Promise.all([
-		git(['log', '-1', '--format=%cs', ref], repoPath), // lastCommit
+		git(['log', '-1', '--format=%cs', ref], repoPath), // commitAnyLast
 		countCommits(repoPath, { ref }), // all, lifetime
 		countCommits(repoPath, { recent: true, ref }), // all, recent
 		countCommits(repoPath, { mine: true, ref }), // mine, lifetime
@@ -1328,15 +1328,15 @@ async function getFingerprint(repoPath, resolvedRef, slug) {
 		// 5DR.20 dormancy signal: intra-span activity shape, author-scoped.
 		sampleActivity(repoPath, ref),
 		// Mine-scoped last commit, so a span can be measured in one consistent
-		// scope. firstCommit is already mine-scoped; pairing it with the
-		// all-authors lastCommit measured a span that belonged to neither.
+		// scope. commitAnyRoot is already mine-scoped; pairing it with the
+		// all-authors commitAnyLast measured a span that belonged to neither.
 		git(
 			['log', '-1', '--extended-regexp', `--author=${AUTHOR_PATTERN}`, '--format=%cs', ref],
 			repoPath
 		)
 	]);
 
-	const lastCommit = lcR.ok ? lcR.out : null;
+	const commitAnyLast = lcR.ok ? lcR.out : null;
 	const remote = normaliseRemote(remoteR.ok ? remoteR.out : null);
 	const dependencies = detectDependencies(repoPath);
 
@@ -1346,7 +1346,7 @@ async function getFingerprint(repoPath, resolvedRef, slug) {
 	// Source signals (current-state grep) and per-tech dating (history pickaxe,
 	// only for the manifest/lockfile detections above) are independent history
 	// walks — run concurrently rather than sequentially.
-	const [sourceSignals, techFirstSeen] = await Promise.all([
+	const [sourceSignals, detectedTechFirstSeen] = await Promise.all([
 		detectSourceSignals(repoPath, ref, listing),
 		dateDetectedTech(repoPath, ref, dependencies.detections)
 	]);
@@ -1364,26 +1364,26 @@ async function getFingerprint(repoPath, resolvedRef, slug) {
 			!(f === 'tailwindcss' && hasVersioned('tailwindcss'))
 	);
 	const { database } = dependencies;
-	const linesOfCode = await countLinesOfCode(repoPath, listing, ref);
+	const linesAny = await countLinesOfCode(repoPath, listing, ref);
 
 	return {
-		head,
+		commitHead: head,
 		// Record which ref was measured. Excluded from drift comparison (DRIFT_SKIP_FIELDS)
 		// so a branch rename does not register as field drift. The HEAD-fallback advisory
 		// report section surfaces the signal when fellBack is true.
 		measuredRef: ref,
-		commits,
-		commitsRecentAll,
-		commitsMine,
-		commitsRecent,
+		commitsAny,
+		commitsAnyRecent,
+		commitsMe,
+		commitsMeRecent,
 		// All-authors count with non-human authors removed (5DR.21). The
 		// denominator role inference divides by: `commits` counts bot and agent
 		// commits as co-authorship, which reads solo work as a team project.
 		...(commitsHuman !== null && { commitsHuman }),
-		// Author headcount (5DR.21). distinctAuthorsHuman === 1 proves solo work
+		// Author headcount (5DR.21). authorsDistinctHuman === 1 proves solo work
 		// outright, whatever the commit share says.
-		...(distinctAuthors !== null && { distinctAuthors }),
-		...(distinctAuthorsHuman !== null && { distinctAuthorsHuman }),
+		...(authorsDistinct !== null && { authorsDistinct }),
+		...(authorsDistinctHuman !== null && { authorsDistinctHuman }),
 		// Whether Jason authored the root commit (5DR.21): originated vs joined.
 		// Null-guarded rather than passed through: these fields are new, so on a
 		// repo where the probe fails there is no saved value for
@@ -1391,45 +1391,45 @@ async function getFingerprint(repoPath, resolvedRef, slug) {
 		// null fails schema validation (fail-closed, blocking the whole sync).
 		// Omitting the key instead leaves the field simply absent, which the
 		// schema permits and the consumers already treat as "unknown".
-		...(rootCommitMine !== null && { rootCommitMine }),
-		lastCommit,
-		// Jason's most recent commit. Pairs with firstCommit (also mine-scoped)
-		// for a single-scope span; `lastCommit` stays all-authors so the report
+		...(commitMeRoot !== null && { commitMeRoot }),
+		commitAnyLast,
+		// Jason's most recent commit. Pairs with commitAnyRoot (also mine-scoped)
+		// for a single-scope span; `commitAnyLast` stays all-authors so the report
 		// can still show when the repo itself last moved.
-		...(lastCommitMineR.ok && lastCommitMineR.out && { lastCommitMine: lastCommitMineR.out }),
-		firstCommit,
-		// Intra-span activity shape (5DR.20), author-scoped like firstCommit.
+		...(lastCommitMineR.ok && lastCommitMineR.out && { commitMeLast: lastCommitMineR.out }),
+		commitAnyRoot,
+		// Intra-span activity shape (5DR.20), author-scoped like commitAnyRoot.
 		// Guarded together: they are one measurement, so a repo Jason has never
 		// committed to reports no activity shape at all rather than a
 		// fabricated zero.
-		...(activity.activeMonths !== null && {
-			activeMonths: activity.activeMonths,
-			spanMonths: activity.spanMonths,
-			maxGapDays: activity.maxGapDays
+		...(activity.spanMonthsActive !== null && {
+			spanMonthsActive: activity.spanMonthsActive,
+			spanMonthsAll: activity.spanMonthsAll,
+			spanGapMaxDays: activity.spanGapMaxDays
 		}),
-		languages,
-		linesOfCode,
+		detectedLanguages: languages,
+		linesAny,
 		// mine, lifetime
-		linesAdded: churnMine.added,
-		linesRemoved: churnMine.removed,
+		linesMeAdded: churnMine.added,
+		linesMeRemoved: churnMine.removed,
 		// all, lifetime
-		linesAddedAll: churnAll.added,
-		linesRemovedAll: churnAll.removed,
+		linesAnyAdded: churnAll.added,
+		linesAnyRemoved: churnAll.removed,
 		// mine, recent
-		linesAddedRecent: churnMineRecent.added,
-		linesRemovedRecent: churnMineRecent.removed,
+		linesMeAddedRecent: churnMineRecent.added,
+		linesMeRemovedRecent: churnMineRecent.removed,
 		// all, recent
-		linesAddedRecentAll: churnAllRecent.added,
-		linesRemovedRecentAll: churnAllRecent.removed,
+		linesAnyAddedRecent: churnAllRecent.added,
+		linesAnyRemovedRecent: churnAllRecent.removed,
 		// Dependency-manifest fields
-		...(remote && { remote }),
-		...(runtime.length > 0 && { runtime }),
-		...(framework.length > 0 && { framework }),
-		...(database.length > 0 && { database }),
+		...(remote && { urlRepo: remote }),
+		...(runtime.length > 0 && { detectedRuntime: runtime }),
+		...(framework.length > 0 && { detectedFramework: framework }),
+		...(database.length > 0 && { detectedDatabase: database }),
 		// Per-tech introduction dates (see dateDetectedTech). Guarded the same
 		// way as the arrays above: an empty result never clobbers a good saved
 		// value on a partial/failed history walk.
-		...(Object.keys(techFirstSeen).length > 0 && { techFirstSeen })
+		...(Object.keys(detectedTechFirstSeen).length > 0 && { detectedTechFirstSeen })
 	};
 }
 
@@ -1522,7 +1522,7 @@ function validateManifest(manifest) {
  * This is the core of `--full` mode: by comparing all fields (not just head),
  * it surfaces windowed-metric decay as the RECENT_WINDOW slides forward, and
  * catches any field added to the schema after a repo was first synced (e.g.
- * firstCommit and placeholder dates seeded before real syncs).
+ * commitAnyRoot and placeholder dates seeded before real syncs).
  *
  * Limitation: only works for repos that resolve locally. A placeholder value
  * on a missing/offloaded repo cannot be re-derived from git.
@@ -1542,7 +1542,7 @@ function diffFingerprint(saved, current) {
 		if (ARRAY_FINGERPRINT_FIELDS.has(field)) {
 			// `languages` order (by file count) is meaningful — join preserves it.
 			// `runtime`/`database`/`framework` order is not meaningful — sort before joining.
-			const sortFn = field === 'languages' ? (a) => a : (a) => [...a].sort();
+			const sortFn = field === 'detectedLanguages' ? (a) => a : (a) => [...a].sort();
 			const a = Array.isArray(was) ? sortFn(was).join(',') : '';
 			const b = Array.isArray(now) ? sortFn(now).join(',') : '';
 			if (a !== b) diffs.push({ field, was: was ?? null, now: now ?? null });
@@ -1591,7 +1591,7 @@ function mergeFingerprint(saved, current) {
 		const was = saved[field];
 		const now = merged[field];
 		if (ARRAY_FINGERPRINT_FIELDS.has(field)) {
-			const sortFn = field === 'languages' ? (a) => a : (a) => [...a].sort();
+			const sortFn = field === 'detectedLanguages' ? (a) => a : (a) => [...a].sort();
 			const a = Array.isArray(was) ? sortFn(was).join(',') : '';
 			const b = Array.isArray(now) ? sortFn(now).join(',') : '';
 			if (a !== b) changedFields.push({ field, was: was ?? null, now: now ?? null });
@@ -1784,21 +1784,33 @@ function orderedUnion(...values) {
 
 /** Merge repository-derived stack metadata while retaining primary metrics. */
 function mergeCompanionFingerprints(primary, companions) {
-	const companionRemotes = companions
-		.map((fingerprint) => fingerprint.remote)
-		.filter((remote) => remote != null);
-	const languages = orderedUnion(primary.languages, ...companions.map((item) => item.languages));
-	const runtime = orderedUnion(primary.runtime, ...companions.map((item) => item.runtime));
-	const framework = orderedUnion(primary.framework, ...companions.map((item) => item.framework));
-	const database = orderedUnion(primary.database, ...companions.map((item) => item.database));
+	const urlsRepoCompanion = companions
+		.map((fingerprint) => fingerprint.urlRepo)
+		.filter((urlRepo) => urlRepo != null);
+	const detectedLanguages = orderedUnion(
+		primary.detectedLanguages,
+		...companions.map((item) => item.detectedLanguages)
+	);
+	const detectedRuntime = orderedUnion(
+		primary.detectedRuntime,
+		...companions.map((item) => item.detectedRuntime)
+	);
+	const detectedFramework = orderedUnion(
+		primary.detectedFramework,
+		...companions.map((item) => item.detectedFramework)
+	);
+	const detectedDatabase = orderedUnion(
+		primary.detectedDatabase,
+		...companions.map((item) => item.detectedDatabase)
+	);
 
 	return {
 		...primary,
-		...(companionRemotes.length > 0 && { companionRemotes }),
-		...(languages.length > 0 && { languages }),
-		...(runtime.length > 0 && { runtime }),
-		...(framework.length > 0 && { framework }),
-		...(database.length > 0 && { database })
+		...(urlsRepoCompanion.length > 0 && { urlsRepoCompanion }),
+		...(detectedLanguages.length > 0 && { detectedLanguages }),
+		...(detectedRuntime.length > 0 && { detectedRuntime }),
+		...(detectedFramework.length > 0 && { detectedFramework }),
+		...(detectedDatabase.length > 0 && { detectedDatabase })
 	};
 }
 
@@ -1912,7 +1924,7 @@ async function computeDrift(
 			if (useCache) {
 				const entry = updatedCache[slug];
 				if (entry && entry.fingerprint) {
-					const cachedHeads = entry.heads ?? (entry.head ? [entry.head] : []);
+					const cachedHeads = entry.heads ?? (entry.commitHead ? [entry.commitHead] : []);
 					if (
 						cachedHeads.length === liveHeads.length &&
 						cachedHeads.every((head, index) => head === liveHeads[index])
@@ -2006,8 +2018,8 @@ async function computeDrift(
 			}
 		}
 
-		if (current.head !== saved.head) {
-			const delta = current.commits - saved.commits;
+		if (current.commitHead !== saved.commitHead) {
+			const delta = current.commitsAny - saved.commitsAny;
 			// Negative delta signals a history rewrite or branch switch (the measured ref
 			// changed so the baseline is ahead of the current count). Flag it so the
 			// renderer can annotate rather than displaying a misleading bare "-N".
@@ -2015,7 +2027,11 @@ async function computeDrift(
 			changed.push({
 				slug,
 				path: repoPath,
-				from: { head: saved.head, commits: saved.commits, lastCommit: saved.lastCommit },
+				from: {
+					commitHead: saved.commitHead,
+					commitsAny: saved.commitsAny,
+					commitAnyLast: saved.commitAnyLast
+				},
 				to: current,
 				delta,
 				deltaUnreliable
@@ -2175,25 +2191,25 @@ function renderReportMarkdown(result, manifest, full) {
 			lines.push(`### ${r.slug}`);
 			lines.push('');
 			lines.push(
-				`\`${r.from.head}\` → \`${r.to.head}\` · ${deltaStr} · first: ${r.to.firstCommit ?? '?'}, last: ${r.to.lastCommit}`
+				`\`${r.from.commitHead}\` → \`${r.to.commitHead}\` · ${deltaStr} · first: ${r.to.commitAnyRoot ?? '?'}, last: ${r.to.commitAnyLast}`
 			);
 			lines.push('');
-			lines.push(`size: ${r.to.linesOfCode ?? '?'} loc`);
+			lines.push(`size: ${r.to.linesAny ?? '?'} loc`);
 			lines.push('');
 
 			// Metric grid as a markdown table — commits and churn in separate rows.
-			const cAll = r.to.commits ?? '?';
-			const cMine = r.to.commitsMine ?? '?';
-			const cAllR = r.to.commitsRecentAll ?? '?';
-			const cMineR = r.to.commitsRecent ?? '?';
-			const addM = r.to.linesAdded ?? '?';
-			const remM = r.to.linesRemoved ?? '?';
-			const addA = r.to.linesAddedAll ?? '?';
-			const remA = r.to.linesRemovedAll ?? '?';
-			const addMR = r.to.linesAddedRecent ?? '?';
-			const remMR = r.to.linesRemovedRecent ?? '?';
-			const addAR = r.to.linesAddedRecentAll ?? '?';
-			const remAR = r.to.linesRemovedRecentAll ?? '?';
+			const cAll = r.to.commitsAny ?? '?';
+			const cMine = r.to.commitsMe ?? '?';
+			const cAllR = r.to.commitsAnyRecent ?? '?';
+			const cMineR = r.to.commitsMeRecent ?? '?';
+			const addM = r.to.linesMeAdded ?? '?';
+			const remM = r.to.linesMeRemoved ?? '?';
+			const addA = r.to.linesAnyAdded ?? '?';
+			const remA = r.to.linesAnyRemoved ?? '?';
+			const addMR = r.to.linesMeAddedRecent ?? '?';
+			const remMR = r.to.linesMeRemovedRecent ?? '?';
+			const addAR = r.to.linesAnyAddedRecent ?? '?';
+			const remAR = r.to.linesAnyRemovedRecent ?? '?';
 
 			lines.push(`| metric | life all | life mine | rec all | rec mine |`);
 			lines.push(`| --- | --- | --- | --- | --- |`);
@@ -2202,8 +2218,8 @@ function renderReportMarkdown(result, manifest, full) {
 			lines.push(`| churn - | ${remA} | ${remM} | ${remAR} | ${remMR} |`);
 			lines.push('');
 
-			if (r.to.languages.length > 0) {
-				lines.push(`languages: ${r.to.languages.join(', ')}`);
+			if ((r.to.detectedLanguages ?? []).length > 0) {
+				lines.push(`languages: ${r.to.detectedLanguages.join(', ')}`);
 				lines.push('');
 			}
 		}
@@ -2325,10 +2341,16 @@ function buildCoverageStats(manifest) {
 
 	// Count how many manifest entries carry each dependency field
 	const src = manifest.sources;
-	const hasLanguages = manifestSlugs.filter((s) => (src[s].languages ?? []).length > 0).length;
-	const hasRuntime = manifestSlugs.filter((s) => (src[s].runtime ?? []).length > 0).length;
-	const hasFramework = manifestSlugs.filter((s) => (src[s].framework ?? []).length > 0).length;
-	const hasDatabase = manifestSlugs.filter((s) => (src[s].database ?? []).length > 0).length;
+	const hasLanguages = manifestSlugs.filter(
+		(s) => (src[s].detectedLanguages ?? []).length > 0
+	).length;
+	const hasRuntime = manifestSlugs.filter((s) => (src[s].detectedRuntime ?? []).length > 0).length;
+	const hasFramework = manifestSlugs.filter(
+		(s) => (src[s].detectedFramework ?? []).length > 0
+	).length;
+	const hasDatabase = manifestSlugs.filter(
+		(s) => (src[s].detectedDatabase ?? []).length > 0
+	).length;
 
 	return {
 		line1: `${total} manifest slugs · ${excludedCount} excluded · ${withOverlay} with .ts overlay, ${manifestOnly} manifest-only`,
@@ -2354,7 +2376,7 @@ function buildCoverageStats(manifest) {
 
 /**
  * Returns a short identity line for a fingerprint entry.
- * Always includes firstCommit and lastCommit so they appear as context even
+ * Always includes commitAnyRoot and commitAnyLast so they appear as context even
  * when they did not drift. Remote is included when present.
  *
  * The optional `marker` callback receives (field, renderedValue) and returns
@@ -2371,14 +2393,14 @@ function buildCoverageStats(manifest) {
  * @returns {string}
  */
 function buildIdentityLine(fp, { marker = (_f, v) => v } = {}) {
-	const first = marker('firstCommit', fp?.firstCommit ?? '?');
-	const last = marker('lastCommit', fp?.lastCommit ?? '?');
-	const commits = fp?.commits != null ? marker('commits', `${fp.commits} commits`) : null;
-	const loc = fp?.linesOfCode != null ? marker('linesOfCode', `${fp.linesOfCode} loc`) : null;
-	const remote = fp?.remote != null ? marker('remote', fp.remote) : null;
+	const first = marker('commitAnyRoot', fp?.commitAnyRoot ?? '?');
+	const last = marker('commitAnyLast', fp?.commitAnyLast ?? '?');
+	const commitsAny = fp?.commitsAny != null ? marker('commits', `${fp.commitsAny} commits`) : null;
+	const loc = fp?.linesAny != null ? marker('linesAny', `${fp.linesAny} loc`) : null;
+	const remote = fp?.urlRepo != null ? marker('urlRepo', fp.urlRepo) : null;
 
 	const parts = [`first: ${first}`, `last: ${last}`];
-	if (commits) parts.push(commits);
+	if (commitsAny) parts.push(commitsAny);
 	if (loc) parts.push(loc);
 	const line = parts.join(' · ');
 	return remote ? `${remote}\n${line}` : line;
@@ -2405,7 +2427,7 @@ function renderCardMarkdown({ slug, current, fields, firstCard = false, preserve
 	lines.push(`### ${slug}`);
 	lines.push('');
 
-	// Identity line: always show firstCommit/lastCommit/remote as context.
+	// Identity line: always show commitAnyRoot/commitAnyLast/remote as context.
 	// Bold any token whose field drifted vs saved, mirroring the field table below.
 	const driftedIdentity = new Set((fields ?? []).map((f) => f.field));
 	const identity = buildIdentityLine(current, {
@@ -2580,23 +2602,23 @@ function runReport({ result, manifest, palette, json, full, useGum }) {
 				: `${dir}${r.delta} commits`;
 			console.log(`  ${CYAN}${r.slug}${RESET}`);
 			console.log(
-				`    ${r.from.head} → ${r.to.head}  (${deltaStr}, first: ${r.to.firstCommit ?? '?'}, last: ${r.to.lastCommit})`
+				`    ${r.from.commitHead} → ${r.to.commitHead}  (${deltaStr}, first: ${r.to.commitAnyRoot ?? '?'}, last: ${r.to.commitAnyLast})`
 			);
 			// Commits: all/mine × lifetime/recent
-			const cAll = r.to.commits ?? '?';
-			const cMine = r.to.commitsMine ?? '?';
-			const cAllR = r.to.commitsRecentAll ?? '?';
-			const cMineR = r.to.commitsRecent ?? '?';
+			const cAll = r.to.commitsAny ?? '?';
+			const cMine = r.to.commitsMe ?? '?';
+			const cAllR = r.to.commitsAnyRecent ?? '?';
+			const cMineR = r.to.commitsMeRecent ?? '?';
 			// Churn: mine/all × lifetime/recent
-			const addM = r.to.linesAdded ?? '?';
-			const remM = r.to.linesRemoved ?? '?';
-			const addA = r.to.linesAddedAll ?? '?';
-			const remA = r.to.linesRemovedAll ?? '?';
-			const addMR = r.to.linesAddedRecent ?? '?';
-			const remMR = r.to.linesRemovedRecent ?? '?';
-			const addAR = r.to.linesAddedRecentAll ?? '?';
-			const remAR = r.to.linesRemovedRecentAll ?? '?';
-			console.log(`    ${DIM}size: ${r.to.linesOfCode ?? '?'} loc${RESET}`);
+			const addM = r.to.linesMeAdded ?? '?';
+			const remM = r.to.linesMeRemoved ?? '?';
+			const addA = r.to.linesAnyAdded ?? '?';
+			const remA = r.to.linesAnyRemoved ?? '?';
+			const addMR = r.to.linesMeAddedRecent ?? '?';
+			const remMR = r.to.linesMeRemovedRecent ?? '?';
+			const addAR = r.to.linesAnyAddedRecent ?? '?';
+			const remAR = r.to.linesAnyRemovedRecent ?? '?';
+			console.log(`    ${DIM}size: ${r.to.linesAny ?? '?'} loc${RESET}`);
 			console.log(
 				`    ${DIM}commits  lifetime: ${cAll} all / ${cMine} mine  ·  recent (${RECENT_WINDOW}): ${cAllR} all / ${cMineR} mine${RESET}`
 			);
@@ -2606,8 +2628,8 @@ function runReport({ result, manifest, palette, json, full, useGum }) {
 			console.log(
 				`    ${DIM}         mine recent:   +${addMR}/−${remMR}  ·  all recent:   +${addAR}/−${remAR}${RESET}`
 			);
-			if (r.to.languages.length > 0) {
-				console.log(`    ${DIM}languages: ${r.to.languages.join(', ')}${RESET}`);
+			if ((r.to.detectedLanguages ?? []).length > 0) {
+				console.log(`    ${DIM}languages: ${r.to.detectedLanguages.join(', ')}${RESET}`);
 			}
 		}
 		console.log();
@@ -2767,7 +2789,7 @@ function runUpdate({ result, manifest, palette, useGum, args = [], dryRun = fals
 	}
 
 	// Backfill every resolvable repo (or the scoped subset), not just those whose
-	// head moved, so new fields (firstCommit, languages) populate across the manifest.
+	// head moved, so new fields (commitAnyRoot, languages) populate across the manifest.
 	// mergeFingerprint applies the same null-preservation logic as before: a transient
 	// git failure returning null cannot clobber previously-good data.
 	console.log('Updating sources.json with current fingerprints...');
@@ -2784,13 +2806,13 @@ function runUpdate({ result, manifest, palette, useGum, args = [], dryRun = fals
 	const today = new Date().toISOString().slice(0, 10);
 	manifest.lastSyncedAt = today;
 
-	// Only a full (un-scoped) update can declare all firstCommit values authoritative.
+	// Only a full (un-scoped) update can declare all commitAnyRoot values authoritative.
 	// A scoped partial update touching one repo must not flip the provisional flag for
 	// repos it never examined.
 	if (!isScoped && manifest.firstCommitProvisional) {
 		manifest.firstCommitProvisional = false;
 		console.log(
-			`${DIM}firstCommitProvisional cleared — firstCommit values are now authoritative.${RESET}`
+			`${DIM}firstCommitProvisional cleared — commitAnyRoot values are now authoritative.${RESET}`
 		);
 	}
 
@@ -5035,14 +5057,14 @@ function inferredLabelsForSlug(slug) {
 	}
 	if (!entry) return [];
 	const labels = new Set();
-	for (const name of entry.languages ?? []) {
+	for (const name of entry.detectedLanguages ?? []) {
 		const tag = LANGUAGE_TAGS[name];
 		if (tag) labels.add(tag.label);
 	}
 	for (const [identities, table] of [
-		[entry.runtime ?? [], RUNTIME_TAGS],
-		[entry.framework ?? [], FRAMEWORK_TAGS],
-		[entry.database ?? [], DATABASE_TAGS]
+		[entry.detectedRuntime ?? [], RUNTIME_TAGS],
+		[entry.detectedFramework ?? [], FRAMEWORK_TAGS],
+		[entry.detectedDatabase ?? [], DATABASE_TAGS]
 	]) {
 		for (const identity of identities) {
 			const tag = table[identity];
@@ -5940,7 +5962,7 @@ async function runAudit({ palette, useGum, json }) {
 //
 // Shows every current metric for every resolvable project, colourised so
 // changed-vs-saved values stand out from unchanged ones.  Unlike `report`,
-// which shows only deltas, `snapshot` always renders firstCommit and the
+// which shows only deltas, `snapshot` always renders commitAnyRoot and the
 // full metric set. `--full` is accepted for symmetry but is a no-op.
 // ---------------------------------------------------------------------------
 
@@ -6001,11 +6023,11 @@ function renderSnapshotMarkdown(snapshot) {
 		// Full metric table: every FINGERPRINT_FIELD, including absent ones.
 		// Absent or empty-array fields render as `-` so their absence is visible.
 		const IDENTITY_FIELDS = new Set([
-			'firstCommit',
-			'lastCommit',
-			'commits',
-			'linesOfCode',
-			'remote'
+			'commitAnyRoot',
+			'commitAnyLast',
+			'commitsAny',
+			'linesAny',
+			'urlRepo'
 		]);
 		lines.push(`| field | value |`);
 		lines.push(`| --- | --- |`);
@@ -6076,11 +6098,11 @@ function runSnapshotPlain(snapshot, palette) {
 		// All FINGERPRINT_FIELDS, including absent ones (skip identity fields).
 		// Absent or empty-array fields render as `-` so their absence is visible.
 		const IDENTITY_FIELDS = new Set([
-			'firstCommit',
-			'lastCommit',
-			'commits',
-			'linesOfCode',
-			'remote'
+			'commitAnyRoot',
+			'commitAnyLast',
+			'commitsAny',
+			'linesAny',
+			'urlRepo'
 		]);
 		for (const field of FINGERPRINT_FIELDS) {
 			if (IDENTITY_FIELDS.has(field)) continue;
@@ -6251,8 +6273,8 @@ drift keep --all-projects <field>
 ## Examples
 
 \`\`\`
-drift keep lyra-rose commitsMine
-drift keep --all-projects commitsMine
+drift keep lyra-rose commitsMe
+drift keep --all-projects commitsMe
 \`\`\``,
 
 	'keep-all': `# drift keep-all · dismiss every override-drift flag at once
@@ -6314,7 +6336,7 @@ drift promote <slug> <field>
 
 \`\`\`
 drift promote lyra-rose
-drift promote lyra-rose commitsMine
+drift promote lyra-rose commitsMe
 \`\`\``,
 
 	snapshot: `# drift snapshot · view all current metrics
@@ -6322,7 +6344,7 @@ drift promote lyra-rose commitsMine
 Shows every metric's current value for every resolvable project, colourised
 so changed-vs-saved fields (since the last \`drift sync\`) stand out from
 unchanged ones. Unlike \`report\`, which shows only deltas, snapshot always
-shows firstCommit, the full commit grid, churn grid, languages, and
+shows commitAnyRoot, the full commit grid, churn grid, languages, and
 dependency fields.
 
 Projects with no local path are listed separately as not resolvable.
@@ -6676,8 +6698,8 @@ flagged for it. Differs from keep-all (which keeps every flagged field).${RESET}
 
   Usage:   drift keep <slug> <field>
            drift keep --all-projects <field>
-  Example: drift keep lyra-rose commitsMine
-           drift keep --all-projects commitsMine`,
+  Example: drift keep lyra-rose commitsMe
+           drift keep --all-projects commitsMe`,
 
 		'keep-all': `${BOLD}drift keep-all${RESET} - dismiss every override-drift flag at once
 
@@ -6710,14 +6732,14 @@ Warns and no-ops when the slug is not in in-progress.json.${RESET}
   Usage:   drift promote <slug>
            drift promote <slug> <field>
   Example: drift promote lyra-rose
-           drift promote lyra-rose commitsMine`,
+           drift promote lyra-rose commitsMe`,
 
 		snapshot: `${BOLD}drift snapshot${RESET} - view all current metrics
 
 Shows every metric's current value for every resolvable project, colourised
 so changed-vs-saved fields (since the last drift sync) stand out from
 unchanged ones. Unlike report, which shows only deltas, snapshot always
-shows firstCommit, the full commit and churn grid, languages, and
+shows commitAnyRoot, the full commit and churn grid, languages, and
 dependency fields.
 
 ${DIM}--full is accepted for symmetry but is a no-op: snapshot always covers

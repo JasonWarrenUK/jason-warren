@@ -9,7 +9,7 @@ const staticPaths = ['/', '/projects', '/map', '/timeline', '/toolkit', '/about'
 export const GET: RequestHandler = () => {
 	const projectPaths = getAllProjects().map((project) => ({
 		path: `/projects/${project.slug}`,
-		lastmod: project.lastCommit
+		lastmod: project.commitAnyLast
 	}));
 
 	const urls = [...staticPaths.map((path) => ({ path, lastmod: undefined })), ...projectPaths];

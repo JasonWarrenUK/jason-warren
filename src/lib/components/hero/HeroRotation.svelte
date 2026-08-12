@@ -90,18 +90,18 @@
 
 						{#if project.metrics}
 							<dl class="hero-rotation__metrics">
-								{#if project.metrics.commits != null}
+								{#if project.metrics.commitsHeadline != null}
 									<div class="hero-rotation__metric">
 										<dd class="hero-rotation__metric-value">
-											{project.metrics.commits.toLocaleString()}
+											{project.metrics.commitsHeadline.toLocaleString()}
 										</dd>
 										<dt class="hero-rotation__metric-label">commits</dt>
 									</div>
 								{/if}
-								{#if project.metrics.linesAdded != null}
+								{#if project.metrics.linesMeAdded != null}
 									<div class="hero-rotation__metric">
 										<dd class="hero-rotation__metric-value">
-											+{project.metrics.linesAdded.toLocaleString()}
+											+{project.metrics.linesMeAdded.toLocaleString()}
 										</dd>
 										<dt class="hero-rotation__metric-label">lines added</dt>
 									</div>

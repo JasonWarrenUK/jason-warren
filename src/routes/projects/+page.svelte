@@ -59,7 +59,7 @@
 			progresses: activeProgresses,
 			flags: activeFlags,
 			query: activeQuery || undefined
-		}).sort((a, b) => (b.lastCommit ?? '').localeCompare(a.lastCommit ?? ''))
+		}).sort((a, b) => (b.commitAnyLast ?? '').localeCompare(a.commitAnyLast ?? ''))
 	);
 
 	// Persist filters across navigation: returning from a project (or the

@@ -16,24 +16,25 @@
 
 	const entries = $derived<Metric[]>(
 		[
-			metrics.commits != null
+			metrics.commitsHeadline != null
 				? {
 						label: 'Commits',
-						value: metrics.commits.toLocaleString(),
+						value: metrics.commitsHeadline.toLocaleString(),
+						// Only a Jason-scoped headline has an all-authors total to sit against.
 						context:
-							metrics.commitsAll != null
-								? `of ${metrics.commitsAll.toLocaleString()} total`
+							metrics.commitsHeadlineScope === 'me' && metrics.commitsAny != null
+								? `of ${metrics.commitsAny.toLocaleString()} total`
 								: undefined
 					}
 				: null,
-			metrics.linesAdded != null
-				? { label: 'Lines added', value: `+${metrics.linesAdded.toLocaleString()}` }
+			metrics.linesMeAdded != null
+				? { label: 'Lines added', value: `+${metrics.linesMeAdded.toLocaleString()}` }
 				: null,
-			metrics.linesRemoved != null
-				? { label: 'Lines removed', value: `−${metrics.linesRemoved.toLocaleString()}` }
+			metrics.linesMeRemoved != null
+				? { label: 'Lines removed', value: `−${metrics.linesMeRemoved.toLocaleString()}` }
 				: null,
-			metrics.linesOfCode != null
-				? { label: 'Source files', value: metrics.linesOfCode.toLocaleString() }
+			metrics.linesAny != null
+				? { label: 'Source files', value: metrics.linesAny.toLocaleString() }
 				: null
 		].filter((m): m is Metric => m !== null)
 	);

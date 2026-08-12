@@ -116,11 +116,18 @@ const precedenceSnippet = `// Precedence: override > synced > provisional.
 const prov = (field: keyof ProjectMetrics) =>
 	provisional?.tracked?.[field]?.value;
 
-commitsMine:
-	ov?.commitsMine?.value ?? synced?.commitsMine ?? prov('commitsMine'),
-linesOfCode:
-	ov?.linesOfCode?.value ?? synced?.linesOfCode ?? prov('linesOfCode'),
-// ...every metric field follows the same three-tier chain`;
+commitsMe:
+	ov?.commitsMe?.value ?? synced?.commitsMe ?? prov('commitsMe'),
+linesAny:
+	ov?.linesAny?.value ?? synced?.linesAny ?? prov('linesAny'),
+// ...every metric field follows the same three-tier chain
+
+// Scope stays honest: commitsAny is always all-authors and commitsMe is
+// always Jason, whatever the project's role. The role-keyed figure the
+// page actually shows is a separate field, so nothing reading a scoped
+// fact silently gets the other scope's number.
+commitsHeadline: isSolo ? synced?.commitsAny : synced?.commitsMe,
+commitsHeadlineScope: isSolo ? 'any' : 'me',`;
 
 // — src/lib/data/sources.json ————————————————————————————————————————————
 // One entry from the drift manifest. Written only by drift sync, and only

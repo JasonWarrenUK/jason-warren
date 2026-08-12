@@ -178,8 +178,8 @@ describe('drift promote: write-isolation', () => {
 		$schema: '../../scripts/sources.schema.json',
 		sources: {
 			'test-project': {
-				head: 'abc1234',
-				commits: 42
+				commitHead: 'abc1234',
+				commitsAny: 42
 			}
 		}
 	};
@@ -195,8 +195,8 @@ describe('drift promote: write-isolation', () => {
 						pipeline: ['feat/my-feature', 'main'],
 						visibility: 'public',
 						tracked: {
-							linesOfCode: { value: 1500, baseOnMain: 1200 },
-							commits: { value: 55, baseOnMain: 42 }
+							linesAny: { value: 1500, baseOnMain: 1200 },
+							commitsAny: { value: 55, baseOnMain: 42 }
 						}
 					}
 				}
@@ -225,21 +225,21 @@ describe('drift promote: write-isolation', () => {
 	});
 
 	it('promote <slug> <field> removes only that field, leaving others', () => {
-		const result = runPromoteWithConfig(dataDir, ['test-project', 'linesOfCode']);
+		const result = runPromoteWithConfig(dataDir, ['test-project', 'linesAny']);
 		expect(result.status, result.stderr).toBe(0);
 
 		const ip = JSON.parse(readFileSync(join(dataDir, 'in-progress.json'), 'utf8'));
-		// linesOfCode should be gone
-		expect(ip.inProgress['test-project'].tracked).not.toHaveProperty('linesOfCode');
+		// linesAny should be gone
+		expect(ip.inProgress['test-project'].tracked).not.toHaveProperty('linesAny');
 		// commits should still be present
-		expect(ip.inProgress['test-project'].tracked).toHaveProperty('commits');
+		expect(ip.inProgress['test-project'].tracked).toHaveProperty('commitsAny');
 	});
 
 	it('promote <slug> <field> retires the whole entry when it was the last field', () => {
 		// First promote one field, leaving only commits
-		runPromoteWithConfig(dataDir, ['test-project', 'linesOfCode']);
+		runPromoteWithConfig(dataDir, ['test-project', 'linesAny']);
 		// Now promote the last field
-		const result = runPromoteWithConfig(dataDir, ['test-project', 'commits']);
+		const result = runPromoteWithConfig(dataDir, ['test-project', 'commitsAny']);
 		expect(result.status, result.stderr).toBe(0);
 
 		const ip = JSON.parse(readFileSync(join(dataDir, 'in-progress.json'), 'utf8'));
@@ -273,7 +273,7 @@ describe('drift promote: write-isolation', () => {
 		expect(after).toBe(before);
 		// And the sentinel content is still parseable and correct
 		const parsed = JSON.parse(after);
-		expect(parsed.sources['test-project'].commits).toBe(42);
+		expect(parsed.sources['test-project'].commitsAny).toBe(42);
 	});
 });
 
@@ -2595,7 +2595,9 @@ function makeSyncSandbox(slug = 'sync-test-repo'): { dir: string; slug: string }
 		JSON.stringify(
 			{
 				$schema: '../../scripts/sources.schema.json',
-				sources: { [slug]: { head: 'deadbeef00000000000000000000000000000000', commits: 0 } }
+				sources: {
+					[slug]: { commitHead: 'deadbeef00000000000000000000000000000000', commitsAny: 0 }
+				}
 			},
 			null,
 			'\t'
@@ -2675,10 +2677,10 @@ describe('drift sync', () => {
 		const entry = parsed.sources[slug];
 
 		// The test repo has one commit; the sentinel value was 0.
-		expect(entry.commits).toBe(1);
+		expect(entry.commitsAny).toBe(1);
 		// head must have been updated from the dummy SHA.
-		expect(entry.head).not.toBe('deadbeef00000000000000000000000000000000');
-		expect(entry.framework).toEqual(['@sveltejs/kit', 'svelte-5', 'tailwindcss-4']);
+		expect(entry.commitHead).not.toBe('deadbeef00000000000000000000000000000000');
+		expect(entry.detectedFramework).toEqual(['@sveltejs/kit', 'svelte-5', 'tailwindcss-4']);
 		// lastSyncedAt is set on the manifest root (not per-entry).
 		expect(parsed.lastSyncedAt).toMatch(/^\d{4}-\d{2}-\d{2}$/);
 	});
@@ -2696,7 +2698,12 @@ describe('drift sync', () => {
 
 		expect(result.status, result.stderr).toBe(0);
 		const parsed = JSON.parse(readFileSync(join(dir, 'sources.json'), 'utf8'));
-		expect(parsed.sources[slug].framework).toEqual(['next', 'react', 'vite', 'tailwindcss-3']);
+		expect(parsed.sources[slug].detectedFramework).toEqual([
+			'next',
+			'react',
+			'vite',
+			'tailwindcss-3'
+		]);
 	});
 
 	it('falls back to the versionless tailwind identity for unparseable ranges', () => {
@@ -2711,7 +2718,7 @@ describe('drift sync', () => {
 
 		expect(result.status, result.stderr).toBe(0);
 		const parsed = JSON.parse(readFileSync(join(dir, 'sources.json'), 'utf8'));
-		expect(parsed.sources[slug].framework).toEqual(['tailwindcss']);
+		expect(parsed.sources[slug].detectedFramework).toEqual(['tailwindcss']);
 	});
 
 	it('collapses bare svelte into svelte-5 when a non-SvelteKit repo is on Svelte 5', () => {
@@ -2729,7 +2736,7 @@ describe('drift sync', () => {
 		const parsed = JSON.parse(readFileSync(join(dir, 'sources.json'), 'utf8'));
 		// Bare 'svelte' would otherwise sit alongside 'svelte-5' as a redundant
 		// adoption-timeline node for the same non-Kit Svelte 5 project.
-		expect(parsed.sources[slug].framework).toEqual(['svelte-5', 'vite']);
+		expect(parsed.sources[slug].detectedFramework).toEqual(['svelte-5', 'vite']);
 	});
 
 	it('detects other svelte majors as their own per-major identities', () => {
@@ -2744,7 +2751,7 @@ describe('drift sync', () => {
 
 		expect(result.status, result.stderr).toBe(0);
 		const parsed = JSON.parse(readFileSync(join(dir, 'sources.json'), 'utf8'));
-		expect(parsed.sources[slug].framework).toEqual(['svelte-4']);
+		expect(parsed.sources[slug].detectedFramework).toEqual(['svelte-4']);
 	});
 
 	it('detects Deno from a root lock file without package.json', () => {
@@ -2771,9 +2778,19 @@ describe('drift sync', () => {
 		expect(result.status, result.stderr).toBe(0);
 		const parsed = JSON.parse(readFileSync(join(dir, 'sources.json'), 'utf8'));
 		const entry = parsed.sources[slug];
-		expect(entry.runtime).toEqual(['deno']);
-		expect(entry.framework).toEqual(['oak', '@sveltejs/kit', 'svelte-5', 'vite', 'tailwindcss-4']);
-		expect(entry.database).toEqual(['neo4j-driver', '@supabase/supabase-js', 'supabase-postgres']);
+		expect(entry.detectedRuntime).toEqual(['deno']);
+		expect(entry.detectedFramework).toEqual([
+			'oak',
+			'@sveltejs/kit',
+			'svelte-5',
+			'vite',
+			'tailwindcss-4'
+		]);
+		expect(entry.detectedDatabase).toEqual([
+			'neo4j-driver',
+			'@supabase/supabase-js',
+			'supabase-postgres'
+		]);
 	});
 
 	it('detects Supabase and its PostgreSQL foundation from a package dependency', () => {
@@ -2792,8 +2809,8 @@ describe('drift sync', () => {
 
 		expect(result.status, result.stderr).toBe(0);
 		const parsed = JSON.parse(readFileSync(join(dir, 'sources.json'), 'utf8'));
-		expect(parsed.sources[slug].runtime).toEqual(['node', 'deno']);
-		expect(parsed.sources[slug].database).toEqual([
+		expect(parsed.sources[slug].detectedRuntime).toEqual(['node', 'deno']);
+		expect(parsed.sources[slug].detectedDatabase).toEqual([
 			'@supabase/supabase-js',
 			'supabase-postgres',
 			'graphql'
@@ -2811,8 +2828,8 @@ describe('drift sync', () => {
 
 		expect(result.status, result.stderr).toBe(0);
 		const parsed = JSON.parse(readFileSync(join(dir, 'sources.json'), 'utf8'));
-		expect(parsed.sources[slug].runtime).toEqual(['go']);
-		expect(parsed.sources[slug].framework).toEqual(['bubble-tea']);
+		expect(parsed.sources[slug].detectedRuntime).toEqual(['go']);
+		expect(parsed.sources[slug].detectedFramework).toEqual(['bubble-tea']);
 	});
 
 	it('detects Bun, Ink and Svelte 5 from committed source signals', () => {
@@ -2834,11 +2851,11 @@ describe('drift sync', () => {
 
 		expect(result.status, result.stderr).toBe(0);
 		const parsed = JSON.parse(readFileSync(join(dir, 'sources.json'), 'utf8'));
-		expect(parsed.sources[slug].runtime).toEqual(['bun', 'inkjs']);
-		expect(parsed.sources[slug].framework).toEqual(['svelte-5']);
+		expect(parsed.sources[slug].detectedRuntime).toEqual(['bun', 'inkjs']);
+		expect(parsed.sources[slug].detectedFramework).toEqual(['svelte-5']);
 	});
 
-	it('source-grep-only signals (inkjs) are absent from techFirstSeen', () => {
+	it('source-grep-only signals (inkjs) are absent from detectedTechFirstSeen', () => {
 		rmSync(join(dir, 'repo', 'package.json'));
 		writeFileSync(
 			join(dir, 'repo', 'engine.svelte.ts'),
@@ -2856,15 +2873,15 @@ describe('drift sync', () => {
 
 		expect(result.status, result.stderr).toBe(0);
 		const parsed = JSON.parse(readFileSync(join(dir, 'sources.json'), 'utf8'));
-		expect(parsed.sources[slug].runtime).toContain('inkjs');
-		expect(parsed.sources[slug].techFirstSeen?.inkjs).toBeUndefined();
+		expect(parsed.sources[slug].detectedRuntime).toContain('inkjs');
+		expect(parsed.sources[slug].detectedTechFirstSeen?.inkjs).toBeUndefined();
 	});
 
 	it("dates a dependency to the commit that introduced it, not the repo's inception", () => {
 		// makeSyncSandbox's init commit (package.json with svelte/@sveltejs/kit/
 		// @tailwindcss/vite) is dated 2000-01-01 by makeGitEnv. Add react in a
-		// LATER commit, dated explicitly, to prove techFirstSeen decouples from
-		// firstCommit — the core regression for the-work's Svelte 5 bug.
+		// LATER commit, dated explicitly, to prove detectedTechFirstSeen decouples from
+		// commitAnyRoot — the core regression for the-work's Svelte 5 bug.
 		const repoPath = join(dir, 'repo');
 		const laterEnv = {
 			...makeGitEnv(),
@@ -2894,13 +2911,13 @@ describe('drift sync', () => {
 		expect(result.status, result.stderr).toBe(0);
 		const parsed = JSON.parse(readFileSync(join(dir, 'sources.json'), 'utf8'));
 		const entry = parsed.sources[slug];
-		expect(entry.firstCommit).toBe('2000-01-01');
-		expect(entry.techFirstSeen.react).toBe('2025-05-01');
+		expect(entry.commitAnyRoot).toBe('2000-01-01');
+		expect(entry.detectedTechFirstSeen.react).toBe('2025-05-01');
 		// svelte/@sveltejs/kit/tailwindcss-4 entered at the repo's init commit —
-		// decoupled from firstCommit only in that it's independently derived,
+		// decoupled from commitAnyRoot only in that it's independently derived,
 		// not necessarily a different value.
-		expect(entry.techFirstSeen['svelte-5']).toBe('2000-01-01');
-		expect(entry.techFirstSeen['@sveltejs/kit']).toBe('2000-01-01');
+		expect(entry.detectedTechFirstSeen['svelte-5']).toBe('2000-01-01');
+		expect(entry.detectedTechFirstSeen['@sveltejs/kit']).toBe('2000-01-01');
 	});
 
 	it('dates a version-qualified migration to the migration commit, not the first dependency of any version', () => {
@@ -2963,8 +2980,8 @@ describe('drift sync', () => {
 		const parsed = JSON.parse(readFileSync(join(dir, 'sources.json'), 'utf8'));
 		// The migration commit's date, not the repo's 2022-01-01 inception
 		// (which only ever had svelte 4).
-		expect(parsed.sources[slug].firstCommit).toBe('2022-01-01');
-		expect(parsed.sources[slug].techFirstSeen['svelte-5']).toBe('2025-05-01');
+		expect(parsed.sources[slug].commitAnyRoot).toBe('2022-01-01');
+		expect(parsed.sources[slug].detectedTechFirstSeen['svelte-5']).toBe('2025-05-01');
 	});
 
 	it('monorepo: takes the earliest date across workspaces for the same identity', () => {
@@ -3016,7 +3033,7 @@ describe('drift sync', () => {
 		expect(result.status, result.stderr).toBe(0);
 		const parsed = JSON.parse(readFileSync(join(dir, 'sources.json'), 'utf8'));
 		// Earliest across both manifests wins, not the root (later) one.
-		expect(parsed.sources[slug].techFirstSeen.vite).toBe('2021-01-01');
+		expect(parsed.sources[slug].detectedTechFirstSeen.vite).toBe('2021-01-01');
 	});
 
 	it('detects .NET runtime, web framework and database packages from a root project', () => {
@@ -3037,9 +3054,9 @@ describe('drift sync', () => {
 		expect(result.status, result.stderr).toBe(0);
 		const parsed = JSON.parse(readFileSync(join(dir, 'sources.json'), 'utf8'));
 		const entry = parsed.sources[slug];
-		expect(entry.runtime).toEqual(['dotnet-8']);
-		expect(entry.framework).toEqual(['aspnet-core']);
-		expect(entry.database).toEqual(['entity-framework-core', 'npgsql']);
+		expect(entry.detectedRuntime).toEqual(['dotnet-8']);
+		expect(entry.detectedFramework).toEqual(['aspnet-core']);
+		expect(entry.detectedDatabase).toEqual(['entity-framework-core', 'npgsql']);
 	});
 
 	it('detects nested package and Python manifests in a monorepo', () => {
@@ -3066,11 +3083,15 @@ describe('drift sync', () => {
 		expect(result.status, result.stderr).toBe(0);
 		const parsed = JSON.parse(readFileSync(join(dir, 'sources.json'), 'utf8'));
 		const entry = parsed.sources[slug];
-		expect(entry.runtime).toEqual(['bun', 'python']);
-		expect(entry.framework).toEqual(
+		expect(entry.detectedRuntime).toEqual(['bun', 'python']);
+		expect(entry.detectedFramework).toEqual(
 			expect.arrayContaining(['@sveltejs/kit', 'svelte-5', 'fastapi'])
 		);
-		expect(entry.database).toEqual(['@sqlite.org/sqlite-wasm', 'supabase-py', 'supabase-postgres']);
+		expect(entry.detectedDatabase).toEqual([
+			'@sqlite.org/sqlite-wasm',
+			'supabase-py',
+			'supabase-postgres'
+		]);
 	});
 
 	it('merges companion stack and remotes while retaining primary metrics', () => {
@@ -3114,12 +3135,12 @@ describe('drift sync', () => {
 		expect(result.status, result.stderr).toBe(0);
 		const parsed = JSON.parse(readFileSync(join(dir, 'sources.json'), 'utf8'));
 		const entry = parsed.sources[slug];
-		expect(entry.commits).toBe(1);
-		expect(entry.remote).toBe('https://github.com/example/backend');
-		expect(entry.companionRemotes).toEqual(['https://github.com/example/frontend']);
-		expect(entry.languages).toEqual(expect.arrayContaining(['JavaScript']));
-		expect(entry.runtime).toEqual(expect.arrayContaining(['node', 'deno']));
-		expect(entry.framework).toEqual(
+		expect(entry.commitsAny).toBe(1);
+		expect(entry.urlRepo).toBe('https://github.com/example/backend');
+		expect(entry.urlsRepoCompanion).toEqual(['https://github.com/example/frontend']);
+		expect(entry.detectedLanguages).toEqual(expect.arrayContaining(['JavaScript']));
+		expect(entry.detectedRuntime).toEqual(expect.arrayContaining(['node', 'deno']));
+		expect(entry.detectedFramework).toEqual(
 			expect.arrayContaining(['@sveltejs/kit', 'svelte-5', 'tailwindcss-4', 'react'])
 		);
 

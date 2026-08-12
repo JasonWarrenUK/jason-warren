@@ -58,10 +58,10 @@ export const techOverlays: TechOverlay[] = [
 	{ label: 'Document / JSON', hiddenFrom: ['toolkit'] },
 	{ label: 'Ephemeral / in-memory', hiddenFrom: ['toolkit'] },
 	{ label: 'No persistence', hiddenFrom: ['toolkit'] }
-	// Bun, SvelteKit, Svelte 5: no curated floor. Per-tech dating (techFirstSeen)
+	// Bun, SvelteKit, Svelte 5: no curated floor. Per-tech dating (detectedTechFirstSeen)
 	// derives these honestly from when they actually entered the-work's history;
 	// a curated floor earlier than the true date would silently override the
-	// honest derived date and reintroduce the back-dating bug techFirstSeen
+	// honest derived date and reintroduce the back-dating bug detectedTechFirstSeen
 	// exists to fix.
 ];
 

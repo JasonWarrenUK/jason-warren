@@ -131,9 +131,9 @@
 
 	/** "Mar 2024 – Jul 2026, 2y 4mo" style lifespan summary for the modal. */
 	function lifespanSummary(rail: PlacedRail): string {
-		if (!rail.firstCommit || !rail.lastCommit) return 'Undated';
-		const start = formatMonthYear(rail.firstCommit);
-		const end = formatMonthYear(rail.lastCommit);
+		if (!rail.commitAnyRoot || !rail.commitAnyLast) return 'Undated';
+		const start = formatMonthYear(rail.commitAnyRoot);
+		const end = formatMonthYear(rail.commitAnyLast);
 		const span = start === end ? start : `${start} – ${end}`;
 		const days = rail.durationDays ?? 0;
 		if (days === 0) return `${span} (single day)`;
@@ -182,10 +182,10 @@
 	const hasDensity = $derived(layout.density.length > 0);
 
 	function describe(rail: PlacedRail): string {
-		const lifespan = rail.firstCommit
-			? rail.lastCommit && rail.lastCommit !== rail.firstCommit
-				? `${rail.firstCommit} to ${rail.lastCommit}`
-				: rail.firstCommit
+		const lifespan = rail.commitAnyRoot
+			? rail.commitAnyLast && rail.commitAnyLast !== rail.commitAnyRoot
+				? `${rail.commitAnyRoot} to ${rail.commitAnyLast}`
+				: rail.commitAnyRoot
 			: 'undated';
 		return `${rail.name}: ${stagePhraseFor(rail)}, ${lifespan}`;
 	}
@@ -338,7 +338,7 @@
 					<title>{describe(rail)}</title>
 
 					<!-- Rail line: this project's lifespan, from the inception node
-					     (yBottom, firstCommit) to the terminal node (yTop, lastCommit).
+					     (yBottom, commitAnyRoot) to the terminal node (yTop, commitAnyLast).
 					     No colour segments — a timeline rail has no lineage-lane concept,
 					     unlike the adoption chart. -->
 					<line class="timeline__rail" x1={rail.x} y1={rail.yTop} x2={rail.x} y2={rail.yBottom} />
@@ -359,7 +359,7 @@
 						/>
 					{/if}
 
-					<!-- Terminal node (yTop = lastCommit, most recent activity, nearest
+					<!-- Terminal node (yTop = commitAnyLast, most recent activity, nearest
 					     the `now` line). Deployed projects earn the outer ring here —
 					     the one meaning the second ring carries anywhere on the site:
 					     this runs somewhere. Liveness reads from the rail fade above. -->
@@ -409,7 +409,7 @@
 						onblur={() => (activeSlug = null)}
 					/>
 
-					<!-- Inception node (yBottom = firstCommit). Plain survey mark, no
+					<!-- Inception node (yBottom = commitAnyRoot). Plain survey mark, no
 					     outer ring — deployment reads at the terminal end above, not here. -->
 					<circle
 						class="timeline__ring"

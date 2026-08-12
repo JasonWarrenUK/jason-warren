@@ -300,10 +300,10 @@ export const MAP_LABEL_COUNT = 10;
  *
  * Axes (all best-first; missing values sort last, ties broken by slug so the
  * result stays deterministic even when an axis is unpopulated):
- *   1. most recent commit            (`lastCommit`)
- *   2. most code contributed by me   (`metrics.linesAdded`)
- *   3. largest overall codebase      (`metrics.linesOfCode`)
- *   4. most of my commits, last 4wks (`metrics.commitsRecent`)
+ *   1. most recent commit            (`commitAnyLast`)
+ *   2. most code contributed by me   (`metrics.linesMeAdded`)
+ *   3. largest overall codebase      (`metrics.linesAny`)
+ *   4. most of my commits, last 4wks (`metrics.commitsMeRecent`)
  *
  * Two of these axes are only populated once the drift pipeline syncs; until
  * then they contribute ties and selection leans on the populated axes.
@@ -319,13 +319,13 @@ export function selectLabelledSlugs(
 			(value(b) ?? -Infinity) - (value(a) ?? -Infinity) || bySlug(a, b);
 
 	const commitTime = (p: Project): number | undefined =>
-		p.lastCommit ? Date.parse(p.lastCommit) : undefined;
+		p.commitAnyLast ? Date.parse(p.commitAnyLast) : undefined;
 
 	const queues: Project[][] = [
 		[...projectList].sort(byDesc(commitTime)),
-		[...projectList].sort(byDesc((p) => p.metrics?.linesAdded)),
-		[...projectList].sort(byDesc((p) => p.metrics?.linesOfCode)),
-		[...projectList].sort(byDesc((p) => p.metrics?.commitsRecent))
+		[...projectList].sort(byDesc((p) => p.metrics?.linesMeAdded)),
+		[...projectList].sort(byDesc((p) => p.metrics?.linesAny)),
+		[...projectList].sort(byDesc((p) => p.metrics?.commitsMeRecent))
 	];
 
 	const selected = new Set<ProjectSlug>();
