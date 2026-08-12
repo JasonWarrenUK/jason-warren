@@ -1,8 +1,8 @@
 # Portfolio MVP Roadmap
 
-The site is live and substantially built: full routes, the graph/timeline/map/toolkit views, 30+ typed projects and the Drift CLI. This phase deepens the site as an artefact and decouples Drift's engine from its portfolio-specific couplings. Content (M1), features (M2) and the Drift engine work (M5, bar its verb backlog) are done; design (M3), quality (M4) and Drift's tests-and-docs (M6) remain.
+The site is live and substantially built: full routes, the graph/timeline/map/toolkit views, 30+ typed projects and the Drift CLI. This phase deepens the site as an artefact and decouples Drift's engine from its portfolio-specific couplings. Content (M1), features (M2) and design (M3) are done, and the Drift engine work (M5) is complete bar its two enrichment verbs; quality (M4) and Drift's tests-and-docs (M6) remain.
 
-**Critical path:** `3DE.0 → 3DE.1 → 3DE.3 → 3DE.2 → M3 → 4QU.5 → 4QU.1 → 4QU.3` — the visual-direction decision unblocks every design task, M3 gates all of M4 and M6, and the accessibility audit chain is the longest quality run.
+**Critical path:** `4QU.5 → 4QU.1 → 4QU.3` — with M3 complete, the accessibility audit chain is the longest remaining run, and 4QU.5 is the one task gating it. M6 waits on M5's enrichment verbs (`5DR.22 → 5DR.23`) rather than on design.
 
 ---
 

@@ -16,10 +16,10 @@ _Stub — synthesised from the milestone goals._
 
 - **M1 Content Depth & Polish** (done): make the written substance match the engineering; every entry flagship-ready, connective copy carrying voice and intent.
 - **M2 Exploration & New Features** (done): more ways into the work — search, deep-linkable selections, multi-select filters, polished interactions, the tech-stack constellation.
-- **M3 Design & Interaction Polish**: a distinct visual identity, with the direction decision (3DE.0) gating every other polish task.
-- **M4 Quality & Reach**: accessibility, discoverability, test coverage; gated on M3 so audits run against the settled design.
-- **M5 Drift Decoupling: Engine & Verbs** (three verbs remaining): the config-driven engine/integration split; the unbuilt verb backlog lands inside the decoupled design.
-- **M6 Drift: Tests & Docs**: lock the stable engine down; gated on M3 and M5.
+- **M3 Design & Interaction Polish** (done): a distinct visual identity, with the direction decision (3DE.0) gating every other polish task.
+- **M4 Quality & Reach**: accessibility, discoverability, test coverage. Was gated on M3 so audits run against the settled design; now that M3 has landed, 4QU.5 is the one task gating the rest.
+- **M5 Drift Decoupling: Engine & Verbs** (two verbs remaining): the config-driven engine/integration split; the unbuilt verb backlog lands inside the decoupled design.
+- **M6 Drift: Tests & Docs**: lock the stable engine down; gated on M3 and M5, so with M3 done it now waits on M5's enrichment verbs alone.
 
 ## Decisions that shaped the structure
 
