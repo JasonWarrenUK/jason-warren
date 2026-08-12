@@ -3,10 +3,10 @@
  *
  * Pure derivation over the project registry, in the style of queries.ts and
  * graph.ts. For every tag, finds the earliest project that uses it (by
- * firstCommit) and reads that as the adoption date. Deterministic: ties break
+ * commitAnyRoot) and reads that as the adoption date. Deterministic: ties break
  * on date then slug, so prerender output never drifts between builds.
  *
- * Adoption dates ride on project.firstCommit, which is seeded provisionally in
+ * Adoption dates ride on project.commitAnyRoot, which is seeded provisionally in
  * sources.json until `scripts/check-drift.js --update` writes the true root
  * dates. The provisional flag is surfaced to the UI by the route loader.
  */
@@ -40,7 +40,7 @@ export interface TechAdoption {
  * authoring surface for per-tech data; see tech-overlays.ts for the entries
  * and their rationale). A curated entry records history that predates any
  * tracked repo; it acts as a floor, not a trump. When a project carrying the
- * tag has a firstCommit earlier than or equal to the curated date, the
+ * tag has a commitAnyRoot earlier than or equal to the curated date, the
  * derived date wins so drift keeps the timeline honest as repos sync.
  */
 export const CURATED_FIRST_USED: Record<string, string> = Object.fromEntries(
@@ -68,7 +68,7 @@ interface AdoptionAccumulator {
 
 /**
  * Technologies ordered by adoption date (earliest first), then label. A tag is
- * included only when at least one project carrying it has a firstCommit; tags
+ * included only when at least one project carrying it has a commitAnyRoot; tags
  * with no dated project are omitted rather than faked.
  */
 export function getTechAdoption(opts?: { kinds?: TagKind[] }): TechAdoption[] {
@@ -92,7 +92,7 @@ export function getTechAdoption(opts?: { kinds?: TagKind[] }): TechAdoption[] {
 			// a tech can enter a long-lived repo years after the repo started
 			// (e.g. migrating to Svelte 5 partway through a project's life), and
 			// dating every tag to the repo's birth silently back-dates it.
-			const date = project.techFirstSeen?.[tag.label] ?? project.firstCommit;
+			const date = project.detectedTechFirstSeen?.[tag.label] ?? project.commitAnyRoot;
 
 			const existing = byLabel.get(tag.label);
 			if (existing) {
@@ -128,7 +128,7 @@ export function getTechAdoption(opts?: { kinds?: TagKind[] }): TechAdoption[] {
 	const adoption: TechAdoption[] = [];
 	for (const entry of byLabel.values()) {
 		// The curated date is a floor: it survives only when it predates any repo
-		// evidence. Derived evidence (earliest firstCommit among carrying projects)
+		// evidence. Derived evidence (earliest commitAnyRoot among carrying projects)
 		// wins whenever it is earlier than or equal to the floor, so synced repos
 		// keep the timeline honest without hand-editing. ISO strings compare
 		// correctly with <=.

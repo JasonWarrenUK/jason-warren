@@ -58,7 +58,7 @@ const isOverridden = (slug: string, field: string): boolean =>
 
 // The drift manifest's per-repo language lists (the exhaustive truth the curated
 // language tags gate). Empty until the author runs `check-drift.js --update`.
-const sources = sourcesManifest.sources as Record<string, { languages?: string[] }>;
+const sources = sourcesManifest.sources as Record<string, { detectedLanguages?: string[] }>;
 
 // Curated language labels the extension scan does not emit, or where the local
 // repo path points at a related but structurally different checkout (e.g. a
@@ -250,7 +250,7 @@ describe('project registry', () => {
 		// audit is desired, 5DR.11 (the `drift audit` verb) is the right place.
 		const offenders: string[] = [];
 		for (const project of projects) {
-			const detected = sources[project.slug]?.languages;
+			const detected = sources[project.slug]?.detectedLanguages;
 			if (!detected || detected.length === 0) continue;
 			const truth = new Set(detected);
 			for (const tag of project.tags) {
@@ -441,10 +441,10 @@ describe('synced metrics from sources.json', () => {
 	const synced = sourcesManifest.sources as Record<
 		string,
 		{
-			commits?: number;
-			commitsMine?: number;
-			lastCommit?: string;
-			firstCommit?: string;
+			commitsAny?: number;
+			commitsMe?: number;
+			commitAnyLast?: string;
+			commitAnyRoot?: string;
 		}
 	>;
 
@@ -468,69 +468,81 @@ describe('synced metrics from sources.json', () => {
 		expect(unknown, `Project slugs not in sources.json: ${unknown.join(', ')}`).toHaveLength(0);
 	});
 
-	it('overlays lastCommit date onto each project (synced wins)', () => {
+	it('overlays commitAnyLast date onto each project (synced wins)', () => {
 		const offenders: string[] = [];
 		for (const project of projects) {
 			const source = synced[project.slug];
 			if (!source) continue;
-			// Skip projects with a manual override on lastCommit — override winning is correct.
-			if (isOverridden(project.slug, 'lastCommit')) continue;
-			if (source.lastCommit && project.lastCommit !== source.lastCommit) {
-				offenders.push(`${project.slug} lastCommit ${project.lastCommit} != ${source.lastCommit}`);
+			// Skip projects with a manual override on commitAnyLast — override winning is correct.
+			if (isOverridden(project.slug, 'commitAnyLast')) continue;
+			if (source.commitAnyLast && project.commitAnyLast !== source.commitAnyLast) {
+				offenders.push(
+					`${project.slug} commitAnyLast ${project.commitAnyLast} != ${source.commitAnyLast}`
+				);
 			}
 		}
-		expect(offenders, `Synced lastCommit not applied:\n${offenders.join('\n')}`).toHaveLength(0);
+		expect(offenders, `Synced commitAnyLast not applied:\n${offenders.join('\n')}`).toHaveLength(0);
 	});
 
-	it('applies the role-keyed commit headline (solo: all-authors; team: Jason-scoped)', () => {
-		// Projects whose manifest entry has no commits yet are skipped —
-		// the gate cannot be verified before the manifest is populated.
-		// Projects with a manual override on `commits` or `commitsAll` are also
-		// skipped for those fields — override winning is correct, not a gate failure.
+	it('keeps commitsAny all-authors on every project, whatever the role', () => {
+		// The scope-purity guarantee. Before the headline was split out into its
+		// own field, this field held Jason-only data on team projects, so any
+		// consumer reading it as a quantity (map node sizing) compared team
+		// projects' Jason-scoped counts against solo projects' all-authors ones.
+		//
+		// Projects whose manifest entry has no commits yet are skipped: the gate
+		// cannot be verified before the manifest is populated. Projects with a
+		// manual override are skipped for that field — the pin winning is correct.
 		const offenders: string[] = [];
 		for (const project of projects) {
 			const source = synced[project.slug];
-			if (!source || source.commits === undefined) continue;
+			if (!source || source.commitsAny === undefined) continue;
+			if (isOverridden(project.slug, 'commitsAny')) continue;
+
+			if (project.metrics?.commitsAny !== source.commitsAny) {
+				offenders.push(
+					`${project.slug} (${project.contribution.role}) commitsAny ${project.metrics?.commitsAny} != synced.commitsAny ${source.commitsAny}`
+				);
+			}
+		}
+		expect(offenders, `commitsAny is not all-authors:\n${offenders.join('\n')}`).toHaveLength(0);
+	});
+
+	it('applies the role-keyed commit headline (solo: all-authors; team: Jason-scoped)', () => {
+		const offenders: string[] = [];
+		for (const project of projects) {
+			const source = synced[project.slug];
+			if (!source || source.commitsAny === undefined) continue;
 
 			const isSolo = project.contribution.role === 'solo';
-			const commitsOverridden = isOverridden(project.slug, 'commits');
-			const commitsAllOverridden = isOverridden(project.slug, 'commitsAll');
+			const expectedScope = isSolo ? 'any' : 'me';
+			if (project.metrics?.commitsHeadlineScope !== expectedScope) {
+				offenders.push(
+					`${project.slug} (${project.contribution.role}) headline scope ${project.metrics?.commitsHeadlineScope} != ${expectedScope}`
+				);
+			}
+
+			if (isOverridden(project.slug, 'commitsHeadline')) continue;
 
 			if (isSolo) {
-				// Solo: rendered commits must equal the all-authors total.
-				if (!commitsOverridden && project.metrics?.commits !== source.commits) {
-					offenders.push(
-						`${project.slug} (solo) commits ${project.metrics?.commits} != synced.commits ${source.commits}`
-					);
-				}
-				// Solo: commitsAll context must not be set (no override can put it here).
-				if (!commitsAllOverridden && project.metrics?.commitsAll != null) {
-					offenders.push(
-						`${project.slug} (solo) has commitsAll set — should be undefined for solo projects`
-					);
-				}
-			} else {
-				// Team: rendered commits must be Jason-scoped (synced.commitsMine when
-				// present, otherwise the authored fallback — not synced.commits).
+				// Solo: Jason is all authors, so the headline is the all-authors total.
 				if (
-					!commitsOverridden &&
-					source.commitsMine !== undefined &&
-					project.metrics?.commits !== source.commitsMine
+					!isOverridden(project.slug, 'commitsAny') &&
+					project.metrics?.commitsHeadline !== source.commitsAny
 				) {
 					offenders.push(
-						`${project.slug} (team) commits ${project.metrics?.commits} != synced.commitsMine ${source.commitsMine}`
+						`${project.slug} (solo) headline ${project.metrics?.commitsHeadline} != synced.commitsAny ${source.commitsAny}`
 					);
 				}
-				// Team: commitsAll must equal the all-authors total.
-				if (
-					!commitsAllOverridden &&
-					source.commits !== undefined &&
-					project.metrics?.commitsAll !== source.commits
-				) {
-					offenders.push(
-						`${project.slug} (team) commitsAll ${project.metrics?.commitsAll} != synced.commits ${source.commits}`
-					);
-				}
+			} else if (
+				source.commitsMe !== undefined &&
+				!isOverridden(project.slug, 'commitsMe') &&
+				project.metrics?.commitsHeadline !== source.commitsMe
+			) {
+				// Team: the headline is Jason's own count.
+				offenders.push(
+					`${project.slug} (team) headline ${project.metrics?.commitsHeadline} != synced.commitsMe ${source.commitsMe}`
+				);
 			}
 		}
 		expect(offenders, `Curation gate misapplied:\n${offenders.join('\n')}`).toHaveLength(0);
@@ -543,61 +555,71 @@ describe('curation gate', () => {
 	// The gate is exercised via the live `projects` export, which merges sources.json at
 	// module load time — so we verify the gate's current output, not a mock.
 
-	it('solo project (iris) exposes commits as all-authors total from manifest', () => {
+	it('solo project (iris) takes its headline from the all-authors total', () => {
 		const iris = projects.find((p) => p.slug === 'iris');
 		expect(iris, 'iris project not found').toBeDefined();
 		if (!iris) return;
 
-		const manifestEntry = (sourcesManifest.sources as Record<string, { commits?: number }>)['iris'];
-		if (!manifestEntry?.commits) return; // skip if not yet synced
+		const manifestEntry = (sourcesManifest.sources as Record<string, { commitsAny?: number }>)[
+			'iris'
+		];
+		if (!manifestEntry?.commitsAny) return; // skip if not yet synced
 
-		// For solo: metrics.commits should equal the synced all-authors total
-		// (unless a manual override is in place — then the override wins by design)
-		if (!isOverridden('iris', 'commits')) {
-			expect(iris.metrics?.commits).toBe(manifestEntry.commits);
+		// commitsAny is a pure scoped fact: always the synced all-authors total,
+		// whatever the role (unless manually overridden — then the pin wins by design).
+		if (!isOverridden('iris', 'commitsAny')) {
+			expect(iris.metrics?.commitsAny).toBe(manifestEntry.commitsAny);
+			// Solo: Jason is all authors, so the headline is that same figure...
+			expect(iris.metrics?.commitsHeadline).toBe(manifestEntry.commitsAny);
 		}
-		// For solo: no "of N total" context (unless commitsAll is itself overridden)
-		if (!isOverridden('iris', 'commitsAll')) {
-			expect(iris.metrics?.commitsAll).toBeUndefined();
-		}
+		// ...and the scope marker says so, which is what suppresses the
+		// "of N total" context line in MetricsPanel.
+		expect(iris.metrics?.commitsHeadlineScope).toBe('any');
 	});
 
-	it('team project (chirpdb) exposes Jason-scoped headline, all-authors as context', () => {
+	it('team project (chirpdb) headlines Jason-scoped commits, keeps all-authors as context', () => {
 		const chirpdb = projects.find((p) => p.slug === 'chirpdb');
 		expect(chirpdb, 'chirpdb project not found').toBeDefined();
 		if (!chirpdb) return;
 
 		const manifestEntry = (
-			sourcesManifest.sources as Record<string, { commits?: number; commitsMine?: number }>
+			sourcesManifest.sources as Record<string, { commitsAny?: number; commitsMe?: number }>
 		)['chirpdb'];
-		if (!manifestEntry?.commits) return; // skip if not yet synced
+		if (!manifestEntry?.commitsAny) return; // skip if not yet synced
 
-		if (!isOverridden('chirpdb', 'commits') && manifestEntry.commitsMine !== undefined) {
-			// If synced.commitsMine is present and not overridden, it must be the headline
-			expect(chirpdb.metrics?.commits).toBe(manifestEntry.commitsMine);
+		// The headline is Jason's count...
+		if (!isOverridden('chirpdb', 'commitsMe') && manifestEntry.commitsMe !== undefined) {
+			expect(chirpdb.metrics?.commitsHeadline).toBe(manifestEntry.commitsMe);
 		}
-		// The all-authors total must appear as context (unless commitsAll is itself overridden)
-		if (!isOverridden('chirpdb', 'commitsAll')) {
-			expect(chirpdb.metrics?.commitsAll).toBe(manifestEntry.commits);
+		// ...while commitsAny keeps meaning all-authors rather than being
+		// overwritten by the headline. This is the regression F7 introduced:
+		// team projects used to report Jason-only data in this field, so map
+		// node sizing compared them against solo projects' all-authors totals.
+		if (!isOverridden('chirpdb', 'commitsAny')) {
+			expect(chirpdb.metrics?.commitsAny).toBe(manifestEntry.commitsAny);
 		}
+		expect(chirpdb.metrics?.commitsHeadlineScope).toBe('me');
 	});
 
-	it('team project without synced commitsMine renders no commit headline', () => {
-		// Overlays no longer carry metrics, so with commitsMine absent from the
+	it('team project without synced commitsMe renders no commit headline', () => {
+		// Overlays no longer carry metrics, so with commitsMe absent from the
 		// manifest the headline must be absent rather than a stale authored number
 		// or the misleading all-authors total.
 		const chirpdb = projects.find((p) => p.slug === 'chirpdb');
 		if (!chirpdb) return;
 
 		const manifestEntry = (
-			sourcesManifest.sources as Record<string, { commits?: number; commitsMine?: number }>
+			sourcesManifest.sources as Record<string, { commitsAny?: number; commitsMe?: number }>
 		)['chirpdb'];
 
-		// Only run this sub-case when commitsMine is absent from the manifest
-		if (manifestEntry?.commitsMine !== undefined) return;
+		// Only run this sub-case when commitsMe is absent from the manifest
+		if (manifestEntry?.commitsMe !== undefined) return;
 
-		if (!isOverridden('chirpdb', 'commits')) {
-			expect(chirpdb.metrics?.commits).toBeUndefined();
+		// The headline is what must be absent. commitsAny may still hold a
+		// perfectly good all-authors total — showing that as the headline is
+		// exactly the misattribution this guards against.
+		if (!isOverridden('chirpdb', 'commitsMe')) {
+			expect(chirpdb.metrics?.commitsHeadline).toBeUndefined();
 		}
 	});
 });
@@ -605,22 +627,24 @@ describe('curation gate', () => {
 describe('manual overrides', () => {
 	// The overridable field allow-list: every ProjectMetrics key plus the two top-level dates.
 	const OVERRIDABLE_FIELDS = new Set([
-		'commits',
-		'commitsRecentAll',
-		'commitsMine',
-		'commitsRecent',
-		'commitsAll',
-		'linesOfCode',
-		'linesAdded',
-		'linesRemoved',
-		'linesAddedAll',
-		'linesRemovedAll',
-		'linesAddedRecent',
-		'linesRemovedRecent',
-		'linesAddedRecentAll',
-		'linesRemovedRecentAll',
-		'lastCommit',
-		'firstCommit'
+		'commitsAny',
+		'commitsAnyRecent',
+		'commitsMe',
+		'commitsMeRecent',
+		// commitsHeadlineScope is deliberately absent: it records which scope the
+		// gate chose, so pinning it would let an override misattribute a figure.
+		'commitsHeadline',
+		'linesAny',
+		'linesMeAdded',
+		'linesMeRemoved',
+		'linesAnyAdded',
+		'linesAnyRemoved',
+		'linesMeAddedRecent',
+		'linesMeRemovedRecent',
+		'linesAnyAddedRecent',
+		'linesAnyRemovedRecent',
+		'commitAnyLast',
+		'commitAnyRoot'
 	]);
 
 	it('every override slug resolves to a curated project', () => {
@@ -685,8 +709,8 @@ describe('manual overrides', () => {
 
 				// Resolve where the rendered value lives on the project
 				let rendered: unknown;
-				if (field === 'lastCommit') rendered = project.lastCommit;
-				else if (field === 'firstCommit') rendered = project.firstCommit;
+				if (field === 'commitAnyLast') rendered = project.commitAnyLast;
+				else if (field === 'commitAnyRoot') rendered = project.commitAnyRoot;
 				else rendered = project.metrics?.[field as keyof typeof project.metrics];
 
 				if (rendered !== expected) {
@@ -709,7 +733,7 @@ describe('manual overrides', () => {
 			if (!source) continue;
 
 			// Pick the first synced field that is NOT overridden and has a known value
-			const syncedCandidates = ['commitsMine', 'commits', 'linesAdded', 'linesOfCode'] as const;
+			const syncedCandidates = ['commitsMe', 'commits', 'linesMeAdded', 'linesAny'] as const;
 			for (const candidate of syncedCandidates) {
 				if (isOverridden(slug, candidate)) continue;
 				const syncedValue = source[candidate];

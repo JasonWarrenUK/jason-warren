@@ -70,16 +70,16 @@ export function getAllProjects(): Project[] {
 
 /** Projects sorted by most recent commit date, newest first. Projects with no date sort last. */
 export function getAllProjectsByRecency(): Project[] {
-	return [...projects].sort((a, b) => (b.lastCommit ?? '').localeCompare(a.lastCommit ?? ''));
+	return [...projects].sort((a, b) => (b.commitAnyLast ?? '').localeCompare(a.commitAnyLast ?? ''));
 }
 
 /**
  * Projects sorted by inception, most recently started first. Falls back to
- * lastCommit, then empty, so projects without a firstCommit still place
+ * commitAnyLast, then empty, so projects without a commitAnyRoot still place
  * deterministically.
  */
 export function getAllProjectsByInception(): Project[] {
-	const inception = (p: Project): string => p.firstCommit ?? p.lastCommit ?? '';
+	const inception = (p: Project): string => p.commitAnyRoot ?? p.commitAnyLast ?? '';
 	return [...projects].sort((a, b) => inception(b).localeCompare(inception(a)));
 }
 
@@ -90,7 +90,7 @@ export function getAllProjectsByInception(): Project[] {
  * project is exactly what a lifespan chart wants to show, so retired and
  * uncategorised projects are kept here.
  *
- * Sort: inception (firstCommit, falling back to lastCommit, then empty)
+ * Sort: inception (commitAnyRoot, falling back to commitAnyLast, then empty)
  * descending — newest-started first — with slug ascending as a stable
  * tiebreaker for deterministic prerender, matching `getAllProjectsByInception`
  * and `getHeroPool`'s own tiebreak discipline.
@@ -98,7 +98,7 @@ export function getAllProjectsByInception(): Project[] {
  * @param list - Override the default registry (for testing).
  */
 export function getTimelineProjects(list: Project[] = projects): Project[] {
-	const inception = (p: Project): string => p.firstCommit ?? p.lastCommit ?? '';
+	const inception = (p: Project): string => p.commitAnyRoot ?? p.commitAnyLast ?? '';
 	return [...list]
 		.filter((p) => !p.hide)
 		.sort((a, b) => inception(b).localeCompare(inception(a)) || a.slug.localeCompare(b.slug));

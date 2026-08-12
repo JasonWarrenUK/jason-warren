@@ -6,12 +6,18 @@
 	"required": ["lastSyncedAt", "sources"],
 	"additionalProperties": false,
 	"properties": {
-		"$schema": { "type": "string" },
-		"_note": { "type": "string" },
-		"_firstCommitNote": { "type": "string" },
+		"$schema": {
+			"type": "string"
+		},
+		"_note": {
+			"type": "string"
+		},
+		"_firstCommitNote": {
+			"type": "string"
+		},
 		"firstCommitProvisional": {
 			"type": "boolean",
-			"description": "True while firstCommit values are provisional estimates. Set to false after a real `drift sync`."
+			"description": "True while commitAnyRoot values are provisional estimates. Set to false after a real `drift sync`."
 		},
 		"lastSyncedAt": {
 			"type": "string",
@@ -30,9 +36,9 @@
 		"SyncedSource": {
 			"type": "object",
 			"additionalProperties": false,
-			"description": "Git fingerprint for one source repo. All fields optional — populated incrementally by check-drift.js. Property order matches FINGERPRINT_FIELDS in check-drift.js so Object.keys() derivation preserves field-drift display order.",
+			"description": "Git fingerprint for one source repo. All fields optional \u2014 populated incrementally by check-drift.js. Property order matches FINGERPRINT_FIELDS in check-drift.js so Object.keys() derivation preserves field-drift display order.",
 			"properties": {
-				"head": {
+				"commitHead": {
 					"type": "string",
 					"description": "Short SHA of HEAD at last sync."
 				},
@@ -40,22 +46,22 @@
 					"type": "string",
 					"description": "Git ref the fingerprint was measured against (resolved default branch, e.g. 'main', or 'HEAD' when no default branch could be resolved). Metadata only; excluded from drift comparison via DRIFT_SKIP_FIELDS."
 				},
-				"commits": {
+				"commitsAny": {
 					"type": "integer",
 					"minimum": 0,
 					"description": "All-authors commit count, lifetime."
 				},
-				"commitsRecentAll": {
+				"commitsAnyRecent": {
 					"type": "integer",
 					"minimum": 0,
 					"description": "All-authors commit count, trailing 4 weeks."
 				},
-				"commitsMine": {
+				"commitsMe": {
 					"type": "integer",
 					"minimum": 0,
 					"description": "Jason-authored commit count, lifetime."
 				},
-				"commitsRecent": {
+				"commitsMeRecent": {
 					"type": "integer",
 					"minimum": 0,
 					"description": "Jason-authored commit count, trailing 4 weeks."
@@ -65,128 +71,141 @@
 					"minimum": 0,
 					"description": "Commit count excluding non-human authors (CI bots, AI agents), lifetime. The denominator role inference divides by: `commits` counts bot commits as co-authorship, which reads solo work as a team project."
 				},
-				"distinctAuthors": {
+				"authorsDistinct": {
 					"type": "integer",
 					"minimum": 0,
 					"description": "Distinct commit authors by email, all authors including bots."
 				},
-				"distinctAuthorsHuman": {
+				"authorsDistinctHuman": {
 					"type": "integer",
 					"minimum": 0,
 					"description": "Distinct human commit authors by email. A value of 1 proves solo work regardless of commit share."
 				},
-				"rootCommitMine": {
+				"commitMeRoot": {
 					"type": "boolean",
 					"description": "Whether Jason authored the repository's root commit: originated the project rather than joined it."
 				},
-				"lastCommit": {
+				"commitAnyLast": {
 					"type": "string",
 					"format": "date",
 					"description": "ISO date of the most recent commit."
 				},
-				"lastCommitMine": {
+				"commitMeLast": {
 					"type": "string",
 					"format": "date",
-					"description": "ISO date of Jason's most recent commit. Pairs with firstCommit (also author-scoped) for a single-scope span."
+					"description": "ISO date of Jason's most recent commit. Pairs with commitAnyRoot (also author-scoped) for a single-scope span."
 				},
-				"firstCommit": {
+				"commitAnyRoot": {
 					"type": "string",
 					"format": "date",
 					"description": "ISO date of Jason's earliest commit (his inception on the project), falling back to the repo root commit when he authored none."
 				},
-				"activeMonths": {
+				"spanMonthsActive": {
 					"type": "integer",
 					"minimum": 0,
-					"description": "Distinct calendar months containing at least one Jason-authored commit. With spanMonths, distinguishes sustained work from a burst followed by dormancy."
+					"description": "Distinct calendar months containing at least one Jason-authored commit. With spanMonthsAll, distinguishes sustained work from a burst followed by dormancy."
 				},
-				"spanMonths": {
+				"spanMonthsAll": {
 					"type": "integer",
 					"minimum": 0,
 					"description": "Calendar months from Jason's first to last commit, inclusive."
 				},
-				"maxGapDays": {
+				"spanGapMaxDays": {
 					"type": "integer",
 					"minimum": 0,
 					"description": "Longest run of consecutive days with no Jason-authored commit, inside his own span. Makes intra-span dormancy detectable where the first/last endpoints alone cannot."
 				},
-				"languages": {
+				"detectedLanguages": {
 					"type": "array",
-					"items": { "type": "string" },
-					"description": "Languages present in the repo, ordered by file count. Advisory only — language tags are hand-curated."
+					"items": {
+						"type": "string"
+					},
+					"description": "Languages present in the repo, ordered by file count. Advisory only \u2014 language tags are hand-curated."
 				},
-				"linesOfCode": {
+				"linesAny": {
 					"type": "integer",
 					"minimum": 0,
 					"description": "Total lines across tracked source files, all authors."
 				},
-				"linesAdded": {
+				"linesMeAdded": {
 					"type": "integer",
 					"minimum": 0,
 					"description": "Lines added by Jason, lifetime."
 				},
-				"linesRemoved": {
+				"linesMeRemoved": {
 					"type": "integer",
 					"minimum": 0,
 					"description": "Lines removed by Jason, lifetime."
 				},
-				"linesAddedAll": {
+				"linesAnyAdded": {
 					"type": "integer",
 					"minimum": 0,
 					"description": "Lines added by all authors, lifetime."
 				},
-				"linesRemovedAll": {
+				"linesAnyRemoved": {
 					"type": "integer",
 					"minimum": 0,
 					"description": "Lines removed by all authors, lifetime."
 				},
-				"linesAddedRecent": {
+				"linesMeAddedRecent": {
 					"type": "integer",
 					"minimum": 0,
 					"description": "Lines added by Jason, trailing 4 weeks."
 				},
-				"linesRemovedRecent": {
+				"linesMeRemovedRecent": {
 					"type": "integer",
 					"minimum": 0,
 					"description": "Lines removed by Jason, trailing 4 weeks."
 				},
-				"linesAddedRecentAll": {
+				"linesAnyAddedRecent": {
 					"type": "integer",
 					"minimum": 0,
 					"description": "Lines added by all authors, trailing 4 weeks."
 				},
-				"linesRemovedRecentAll": {
+				"linesAnyRemovedRecent": {
 					"type": "integer",
 					"minimum": 0,
 					"description": "Lines removed by all authors, trailing 4 weeks."
 				},
-				"remote": {
+				"urlRepo": {
 					"type": "string",
 					"description": "HTTPS URL of the primary git remote (git remote get-url origin), normalised from any SSH form. Used as the default repoUrl for un-authored projects."
 				},
-				"companionRemotes": {
+				"urlsRepoCompanion": {
 					"type": "array",
-					"items": { "type": "string" },
+					"items": {
+						"type": "string"
+					},
 					"description": "HTTPS URLs of companion repositories, in tracked topology order."
 				},
-				"runtime": {
+				"detectedRuntime": {
 					"type": "array",
-					"items": { "type": "string" },
+					"items": {
+						"type": "string"
+					},
 					"description": "Runtime identity strings detected by the dependency-manifest parser (e.g. 'bun', 'deno', 'node', 'python', 'go'). Keys match RUNTIME_TAGS in tag-taxonomy.js."
 				},
-				"database": {
+				"detectedDatabase": {
 					"type": "array",
-					"items": { "type": "string" },
+					"items": {
+						"type": "string"
+					},
 					"description": "Database package identities detected by the dependency-manifest parser (e.g. 'pg', '@supabase/supabase-js'). Keys match DATABASE_TAGS in tag-taxonomy.js."
 				},
-				"framework": {
+				"detectedFramework": {
 					"type": "array",
-					"items": { "type": "string" },
+					"items": {
+						"type": "string"
+					},
 					"description": "Framework package identities detected by the dependency-manifest parser (e.g. 'svelte', '@sveltejs/kit', 'react'). Keys match FRAMEWORK_TAGS in tag-taxonomy.js."
 				},
-				"techFirstSeen": {
+				"detectedTechFirstSeen": {
 					"type": "object",
-					"additionalProperties": { "type": "string", "format": "date" },
-					"description": "First-introduced date (YYYY-MM-DD) per detected tech identity, keyed by the same identity strings used in runtime/framework/database arrays (e.g. 'svelte-5', '@sveltejs/kit', 'bun'). Populated by a git pickaxe/file-add search against package.json, lockfiles and config files at drift sync time. Source-grep-only signals (e.g. inkjs when detected only via source import) are intentionally absent here and fall back to firstCommit downstream. Excluded from drift comparison via DRIFT_SKIP_FIELDS (object identity would otherwise always read as drifted)."
+					"additionalProperties": {
+						"type": "string",
+						"format": "date"
+					},
+					"description": "First-introduced date (YYYY-MM-DD) per detected tech identity, keyed by the same identity strings used in runtime/framework/database arrays (e.g. 'svelte-5', '@sveltejs/kit', 'bun'). Populated by a git pickaxe/file-add search against package.json, lockfiles and config files at drift sync time. Source-grep-only signals (e.g. inkjs when detected only via source import) are intentionally absent here and fall back to commitAnyRoot downstream. Excluded from drift comparison via DRIFT_SKIP_FIELDS (object identity would otherwise always read as drifted)."
 				}
 			}
 		}

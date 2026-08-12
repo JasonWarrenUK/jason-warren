@@ -36,7 +36,7 @@ function makeProject(
 		deployed?: boolean;
 		retired?: boolean;
 		commits?: number;
-		lastCommit?: string;
+		commitAnyLast?: string;
 		pin?: boolean;
 		hide?: boolean;
 		name?: string;
@@ -65,7 +65,7 @@ function makeProject(
 		repoUrl: `https://github.com/JasonWarrenUK/${slug}`,
 		highlights: [],
 		relationships: [],
-		lastCommit: overrides.lastCommit ?? '2026-06-18',
+		commitAnyLast: overrides.commitAnyLast ?? '2026-06-18',
 		metrics: overrides.commits !== undefined ? { commits: overrides.commits } : { commits: 100 },
 		pin: overrides.pin,
 		hide: overrides.hide
@@ -82,8 +82,8 @@ describe('getHeroPool — eligible filter', () => {
 		// exclusion, which left neither owning it; the score already sinks ended
 		// work without a categorical ban.
 		const projects = [
-			makeProject('active', { commits: 200, lastCommit: '2026-06-18' }),
-			makeProject('ended', { retired: true, commits: 500, lastCommit: '2026-06-17' })
+			makeProject('active', { commits: 200, commitAnyLast: '2026-06-18' }),
+			makeProject('ended', { retired: true, commits: 500, commitAnyLast: '2026-06-17' })
 		];
 		const pool = getHeroPool(BASE_NOW, projects);
 		expect(pool.map((p) => p.slug)).toContain('ended');
@@ -126,8 +126,8 @@ describe('getHeroPool — eligible filter', () => {
 describe('getHeroPool — pin floats above score', () => {
 	it('a low-scoring pinned project precedes a high-scoring unpinned one', () => {
 		const projects = [
-			makeProject('high-score', { commits: 1000, lastCommit: '2026-06-18' }),
-			makeProject('pinned-small', { commits: 5, lastCommit: '2026-06-01', pin: true })
+			makeProject('high-score', { commits: 1000, commitAnyLast: '2026-06-18' }),
+			makeProject('pinned-small', { commits: 5, commitAnyLast: '2026-06-01', pin: true })
 		];
 		const pool = getHeroPool(BASE_NOW, projects);
 		expect(pool[0].slug).toBe('pinned-small');
@@ -142,9 +142,9 @@ describe('getHeroPool — pin floats above score', () => {
 describe('getHeroPool — ordering', () => {
 	it('orders by heroScore descending', () => {
 		const projects = [
-			makeProject('low', { commits: 10, lastCommit: '2025-01-01' }),
-			makeProject('mid', { commits: 100, lastCommit: '2026-03-01' }),
-			makeProject('high', { commits: 300, lastCommit: '2026-06-18' })
+			makeProject('low', { commits: 10, commitAnyLast: '2025-01-01' }),
+			makeProject('mid', { commits: 100, commitAnyLast: '2026-03-01' }),
+			makeProject('high', { commits: 300, commitAnyLast: '2026-06-18' })
 		];
 		const pool = getHeroPool(BASE_NOW, projects);
 		// Scores should be strictly decreasing.
@@ -155,11 +155,11 @@ describe('getHeroPool — ordering', () => {
 	});
 
 	it('breaks ties by slug ascending (stable tiebreaker)', () => {
-		// Same commits, same lastCommit → identical heroScore.
+		// Same commits, same commitAnyLast → identical heroScore.
 		const projects = [
-			makeProject('zebra', { commits: 100, lastCommit: '2026-06-18' }),
-			makeProject('apple', { commits: 100, lastCommit: '2026-06-18' }),
-			makeProject('mango', { commits: 100, lastCommit: '2026-06-18' })
+			makeProject('zebra', { commits: 100, commitAnyLast: '2026-06-18' }),
+			makeProject('apple', { commits: 100, commitAnyLast: '2026-06-18' }),
+			makeProject('mango', { commits: 100, commitAnyLast: '2026-06-18' })
 		];
 		const pool = getHeroPool(BASE_NOW, projects);
 		const slugs = pool.map((p) => p.slug);
@@ -315,10 +315,10 @@ function searchHaystack(p: Project): string {
 describe('getTimelineProjects — hide filter', () => {
 	it('excludes hidden projects but keeps retired and untriaged', () => {
 		const projects = [
-			makeProject('visible', { commits: 200, lastCommit: '2026-06-18' }),
-			makeProject('hidden', { commits: 500, hide: true, lastCommit: '2026-06-17' }),
-			makeProject('retired-kept', { retired: true, lastCommit: '2025-01-01' }),
-			makeProject('untriaged-kept', { trackAuthored: false, lastCommit: '2025-06-01' })
+			makeProject('visible', { commits: 200, commitAnyLast: '2026-06-18' }),
+			makeProject('hidden', { commits: 500, hide: true, commitAnyLast: '2026-06-17' }),
+			makeProject('retired-kept', { retired: true, commitAnyLast: '2025-01-01' }),
+			makeProject('untriaged-kept', { trackAuthored: false, commitAnyLast: '2025-06-01' })
 		];
 		const timeline = getTimelineProjects(projects);
 		const slugs = timeline.map((p) => p.slug);
@@ -332,9 +332,9 @@ describe('getTimelineProjects — hide filter', () => {
 describe('getTimelineProjects — deterministic ordering', () => {
 	it('orders newest inception first, slug ascending as a tiebreak', () => {
 		const projects = [
-			makeProject('zebra', { lastCommit: '2025-01-01' }),
-			makeProject('apple', { lastCommit: '2025-01-01' }),
-			makeProject('newest', { lastCommit: '2026-06-18' })
+			makeProject('zebra', { commitAnyLast: '2025-01-01' }),
+			makeProject('apple', { commitAnyLast: '2025-01-01' }),
+			makeProject('newest', { commitAnyLast: '2026-06-18' })
 		];
 		const timeline = getTimelineProjects(projects);
 		expect(timeline.map((p) => p.slug)).toEqual(['newest', 'apple', 'zebra']);
@@ -342,9 +342,9 @@ describe('getTimelineProjects — deterministic ordering', () => {
 
 	it('is deterministic across repeated calls and independent of input order', () => {
 		const projects = [
-			makeProject('gamma', { lastCommit: '2025-03-01' }),
-			makeProject('alpha', { lastCommit: '2026-01-01' }),
-			makeProject('beta', { lastCommit: '2025-03-01' })
+			makeProject('gamma', { commitAnyLast: '2025-03-01' }),
+			makeProject('alpha', { commitAnyLast: '2026-01-01' }),
+			makeProject('beta', { commitAnyLast: '2025-03-01' })
 		];
 		const a = getTimelineProjects(projects).map((p) => p.slug);
 		const b = getTimelineProjects([...projects].reverse()).map((p) => p.slug);

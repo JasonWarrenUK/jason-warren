@@ -47,9 +47,9 @@ export function load() {
 				kind: node.project.kind,
 				hub: hubSlugs.has(node.slug),
 				labelled: labelled.has(node.slug),
-				lastCommit: node.project.lastCommit ?? null,
-				commits: node.project.metrics?.commits ?? null,
-				linesOfCode: node.project.metrics?.linesOfCode ?? null,
+				commitAnyLast: node.project.commitAnyLast ?? null,
+				commitsAny: node.project.metrics?.commitsAny ?? null,
+				linesAny: node.project.metrics?.linesAny ?? null,
 				x: point?.x ?? layout.width / 2,
 				y: point?.y ?? layout.height / 2
 			};

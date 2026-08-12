@@ -49,11 +49,11 @@ describe('getTechAdoption', () => {
 
 	/**
 	 * The date a project would contribute for a given tag label: its own
-	 * introduction date (techFirstSeen) when known, else the project's repo
-	 * inception (firstCommit). Mirrors adoption.ts's per-tag read exactly.
+	 * introduction date (detectedTechFirstSeen) when known, else the project's repo
+	 * inception (commitAnyRoot). Mirrors adoption.ts's per-tag read exactly.
 	 */
 	function projectDateFor(project: (typeof projects)[number], label: string): string | undefined {
-		return project.techFirstSeen?.[label] ?? project.firstCommit;
+		return project.detectedTechFirstSeen?.[label] ?? project.commitAnyRoot;
 	}
 
 	it('derived entries use the earliest per-tag date across projects carrying the tag', () => {
@@ -170,11 +170,11 @@ describe('getTechAdoption', () => {
 			expect(project?.tags.some((t) => t.label === item.label)).toBe(true);
 			if (item.dateSource === 'derived') {
 				// A derived date is per-tag: it comes from the tag's own
-				// introduction date (techFirstSeen) when the project has one for
+				// introduction date (detectedTechFirstSeen) when the project has one for
 				// this label, and only falls back to the project's repo-inception
-				// date (firstCommit) otherwise. The two legitimately differ when a
+				// date (commitAnyRoot) otherwise. The two legitimately differ when a
 				// tech entered a long-lived repo well after the repo started.
-				const expected = project?.techFirstSeen?.[item.label] ?? project?.firstCommit;
+				const expected = project?.detectedTechFirstSeen?.[item.label] ?? project?.commitAnyRoot;
 				expect(expected).toBe(item.firstDate);
 			}
 		}

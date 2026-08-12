@@ -20,7 +20,7 @@
 		"SlugOverrides": {
 			"type": "object",
 			"additionalProperties": false,
-			"description": "Per-field overrides for one project. Keys are field names from ProjectMetrics plus lastCommit and firstCommit.",
+			"description": "Per-field overrides for one project. Keys are field names from ProjectMetrics plus commitAnyLast and commitAnyRoot.",
 			"properties": {
 				"_note": {
 					"type": "string",
@@ -28,17 +28,17 @@
 				},
 				"commits": {
 					"$ref": "#/$defs/NumericOverride",
-					"description": "Headline commit count (all-authors for solo; Jason-scoped for team). Use syncedField: 'commitsMine' for team projects."
+					"description": "Headline commit count (all-authors for solo; Jason-scoped for team). Use syncedField: 'commitsMe' for team projects."
 				},
-				"commitsRecentAll": {
+				"commitsAnyRecent": {
 					"$ref": "#/$defs/NumericOverride",
 					"description": "All-authors commit count, trailing 4 weeks."
 				},
-				"commitsMine": {
+				"commitsMe": {
 					"$ref": "#/$defs/NumericOverride",
 					"description": "Jason-authored commit count, lifetime."
 				},
-				"commitsRecent": {
+				"commitsMeRecent": {
 					"$ref": "#/$defs/NumericOverride",
 					"description": "Jason-authored commit count, trailing 4 weeks."
 				},
@@ -46,47 +46,47 @@
 					"$ref": "#/$defs/NumericOverride",
 					"description": "Gate output: all-authors total exposed as context for team projects."
 				},
-				"linesOfCode": {
+				"linesAny": {
 					"$ref": "#/$defs/NumericOverride",
 					"description": "Total lines across tracked source files, all authors."
 				},
-				"linesAdded": {
+				"linesMeAdded": {
 					"$ref": "#/$defs/NumericOverride",
 					"description": "Lines added by Jason, lifetime."
 				},
-				"linesRemoved": {
+				"linesMeRemoved": {
 					"$ref": "#/$defs/NumericOverride",
 					"description": "Lines removed by Jason, lifetime."
 				},
-				"linesAddedAll": {
+				"linesAnyAdded": {
 					"$ref": "#/$defs/NumericOverride",
 					"description": "Lines added by all authors, lifetime."
 				},
-				"linesRemovedAll": {
+				"linesAnyRemoved": {
 					"$ref": "#/$defs/NumericOverride",
 					"description": "Lines removed by all authors, lifetime."
 				},
-				"linesAddedRecent": {
+				"linesMeAddedRecent": {
 					"$ref": "#/$defs/NumericOverride",
 					"description": "Lines added by Jason, trailing 4 weeks."
 				},
-				"linesRemovedRecent": {
+				"linesMeRemovedRecent": {
 					"$ref": "#/$defs/NumericOverride",
 					"description": "Lines removed by Jason, trailing 4 weeks."
 				},
-				"linesAddedRecentAll": {
+				"linesAnyAddedRecent": {
 					"$ref": "#/$defs/NumericOverride",
 					"description": "Lines added by all authors, trailing 4 weeks."
 				},
-				"linesRemovedRecentAll": {
+				"linesAnyRemovedRecent": {
 					"$ref": "#/$defs/NumericOverride",
 					"description": "Lines removed by all authors, trailing 4 weeks."
 				},
-				"lastCommit": {
+				"commitAnyLast": {
 					"$ref": "#/$defs/DateOverride",
 					"description": "ISO date of the most recent commit."
 				},
-				"firstCommit": {
+				"commitAnyRoot": {
 					"$ref": "#/$defs/DateOverride",
 					"description": "ISO date of the root commit (project inception)."
 				}
@@ -106,7 +106,7 @@
 				},
 				"syncedField": {
 					"type": "string",
-					"description": "The underlying synced field to compare against (defaults to this field's name). Only `commits` ever needs this — set to 'commitsMine' for team projects, 'commits' for solo."
+					"description": "The underlying synced field to compare against (defaults to this field's name). Only `commits` ever needs this — set to 'commitsMe' for team projects, 'commits' for solo."
 				},
 				"_setNote": {
 					"type": "string",
@@ -116,7 +116,7 @@
 		},
 		"DateOverride": {
 			"type": "object",
-			"description": "Override for a date field (lastCommit, firstCommit). syncedWhenSet records the synced date string when the override was authored.",
+			"description": "Override for a date field (commitAnyLast, commitAnyRoot). syncedWhenSet records the synced date string when the override was authored.",
 			"required": ["value", "syncedWhenSet"],
 			"additionalProperties": false,
 			"properties": {

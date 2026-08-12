@@ -79,47 +79,58 @@ export interface ProjectMetrics {
 	// ---------------------------------------------------------------------------
 
 	/** All-authors, lifetime. Headline for solo projects (Jason IS all authors). */
-	commits?: number;
+	commitsAny?: number;
 	/** All-authors, trailing four weeks. */
-	commitsRecentAll?: number;
+	commitsAnyRecent?: number;
 	/** Jason only, lifetime. Headline for team projects; overlaid from drift manifest. */
-	commitsMine?: number;
+	commitsMe?: number;
 	/** Jason only, trailing four weeks. */
-	commitsRecent?: number;
+	commitsMeRecent?: number;
 	/**
-	 * Gate output: the all-authors total exposed as context for team projects.
-	 * Set by withSyncedMetrics when role !== 'solo'; used to render "N mine of M total".
-	 * Never authored in project .ts files — populated by the curation gate only.
+	 * Gate output: the role-keyed commit count to show as the headline figure.
+	 * Solo projects take `commitsAny` (Jason is all authors); team projects take
+	 * `commitsMe`. Never authored in project .ts files — populated by the
+	 * curation gate only.
+	 *
+	 * This exists so `commitsAny` and `commitsMe` can each stay a pure scoped
+	 * fact. Presentation asks for the headline; anything reasoning about
+	 * quantity reads the scoped field it actually means.
 	 */
-	commitsAll?: number;
+	commitsHeadline?: number;
+	/**
+	 * Which scope `commitsHeadline` was taken from. `'me'` means the headline is
+	 * Jason-only and `commitsAny` holds the larger all-authors total worth
+	 * showing as "N mine of M total"; `'any'` means the two are the same figure.
+	 */
+	commitsHeadlineScope?: 'any' | 'me';
 
 	// ---------------------------------------------------------------------------
 	// Churn grid: Jason-only / all-authors × lifetime / recent (×2 for added/removed)
 	// ---------------------------------------------------------------------------
 
 	/** Lines added by Jason, lifetime. */
-	linesAdded?: number;
+	linesMeAdded?: number;
 	/** Lines removed by Jason, lifetime. */
-	linesRemoved?: number;
+	linesMeRemoved?: number;
 	/** Lines added by all authors, lifetime. */
-	linesAddedAll?: number;
+	linesAnyAdded?: number;
 	/** Lines removed by all authors, lifetime. */
-	linesRemovedAll?: number;
+	linesAnyRemoved?: number;
 	/** Lines added by Jason, trailing four weeks. */
-	linesAddedRecent?: number;
+	linesMeAddedRecent?: number;
 	/** Lines removed by Jason, trailing four weeks. */
-	linesRemovedRecent?: number;
+	linesMeRemovedRecent?: number;
 	/** Lines added by all authors, trailing four weeks. */
-	linesAddedRecentAll?: number;
+	linesAnyAddedRecent?: number;
 	/** Lines removed by all authors, trailing four weeks. */
-	linesRemovedRecentAll?: number;
+	linesAnyRemovedRecent?: number;
 
 	// ---------------------------------------------------------------------------
 	// Size — every metric here has a synced source in the drift manifest
 	// ---------------------------------------------------------------------------
 
 	/** Overall codebase size: total lines across tracked source files, all authors. */
-	linesOfCode?: number;
+	linesAny?: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -336,16 +347,16 @@ export interface Project {
 	/** URLs of companion repos, preserving Drift's tracked topology order. */
 	companionRepoUrls: string[];
 	/** ISO date (YYYY-MM-DD) of the most recent commit, from the source drift manifest. */
-	lastCommit?: string;
+	commitAnyLast?: string;
 	/** ISO date (YYYY-MM-DD) of the first (root) commit, from the source drift manifest. Orders the timeline by inception. */
-	firstCommit?: string;
+	commitAnyRoot?: string;
 	/**
 	 * First-introduced date (YYYY-MM-DD) per tech-tag label, e.g. `{ 'Svelte 5': '2025-03-01' }`.
-	 * Distinct from firstCommit: a tag can enter a long-lived repo years after
+	 * Distinct from commitAnyRoot: a tag can enter a long-lived repo years after
 	 * the repo started, so the toolkit adoption timeline prefers this per-tag
-	 * date and falls back to firstCommit for any label absent here.
+	 * date and falls back to commitAnyRoot for any label absent here.
 	 */
-	techFirstSeen?: Record<string, string>;
+	detectedTechFirstSeen?: Record<string, string>;
 	liveUrl?: string;
 	/** 3–5 technically interesting things about this project. */
 	highlights: string[];

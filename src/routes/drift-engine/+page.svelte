@@ -578,7 +578,7 @@
 					<span class="stage-pool__worker">commits</span>
 					<span class="stage-pool__worker">churn</span>
 					<span class="stage-pool__worker">languages</span>
-					<span class="stage-pool__worker">linesOfCode</span>
+					<span class="stage-pool__worker">linesAny</span>
 					<span class="stage-pool__worker">dates</span>
 					<span class="stage-pool__worker">runtime</span>
 				</div>

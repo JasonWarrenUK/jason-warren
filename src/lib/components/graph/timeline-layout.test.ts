@@ -49,8 +49,8 @@ const GEO: TimelineGeometry = {
 
 function rail(
 	slug: string,
-	firstCommit: string | null,
-	lastCommit: string | null,
+	commitAnyRoot: string | null,
+	commitAnyLast: string | null,
 	overrides: Partial<TimelineRail> = {}
 ): TimelineRail {
 	return {
@@ -64,9 +64,9 @@ function rail(
 		stageProvisional: overrides.stageProvisional ?? false,
 		tagline: overrides.tagline ?? '',
 		role: overrides.role ?? 'solo',
-		firstCommit,
-		lastCommit,
-		durationDays: firstCommit && lastCommit ? dayDiff(firstCommit, lastCommit) : null,
+		commitAnyRoot,
+		commitAnyLast,
+		durationDays: commitAnyRoot && commitAnyLast ? dayDiff(commitAnyRoot, commitAnyLast) : null,
 		stillLive: overrides.stillLive ?? false,
 		labelled: overrides.labelled ?? false
 	};
@@ -77,7 +77,7 @@ function rail(
  *  live data (not just synthetic fixtures). */
 function realRails(): TimelineRail[] {
 	return getTimelineProjects().map((p) =>
-		rail(p.slug, p.firstCommit ?? null, p.lastCommit ?? null, {
+		rail(p.slug, p.commitAnyRoot ?? null, p.commitAnyLast ?? null, {
 			name: p.name,
 			track: p.track,
 			progress: p.progress,
@@ -120,7 +120,7 @@ describe('computeTimelineLayout — placement completeness', () => {
 });
 
 describe('computeTimelineLayout — time monotonicity', () => {
-	it('an earlier firstCommit always yields a larger (older, lower) yTop', () => {
+	it('an earlier commitAnyRoot always yields a larger (older, lower) yTop', () => {
 		const rails: TimelineRail[] = [
 			rail('early', '2023-01-01', '2023-06-01'),
 			rail('mid', '2024-06-01', '2024-06-01'),
@@ -132,30 +132,30 @@ describe('computeTimelineLayout — time monotonicity', () => {
 		expect(byLabel.get('mid')!.yTop).toBeGreaterThan(byLabel.get('late')!.yTop);
 	});
 
-	it('holds across the real registry: yBottom (inception end) orders the reverse of firstCommit, within the minRailHeight floor', () => {
-		// yBottom is driven by firstCommit (a rail's inception, the chart's
-		// "older" end), so ITS ordering is the reverse of firstCommit ordering.
-		// yTop is driven by lastCommit (most recent activity) instead, and the
-		// real registry has pairs whose firstCommit and lastCommit orderings
+	it('holds across the real registry: yBottom (inception end) orders the reverse of commitAnyRoot, within the minRailHeight floor', () => {
+		// yBottom is driven by commitAnyRoot (a rail's inception, the chart's
+		// "older" end), so ITS ordering is the reverse of commitAnyRoot ordering.
+		// yTop is driven by commitAnyLast (most recent activity) instead, and the
+		// real registry has pairs whose commitAnyRoot and commitAnyLast orderings
 		// disagree (e.g. the-work vs flyt both start ~2023-03 but the-work is
 		// still active while flyt's last commit is months earlier) — so yTop
-		// alone is not guaranteed to track firstCommit order across all pairs.
+		// alone is not guaranteed to track commitAnyRoot order across all pairs.
 		//
 		// The minRailHeight floor can push a very-short rail's yBottom past a
 		// neighbour's un-floored yBottom (e.g. code-arcana, zero-length, floored
 		// past chirpdb's naturally-computed yBottom despite starting three days
 		// later) — a real, intended effect of the floor, not a packing bug — so
 		// the tolerance matches that floor rather than asserting strict order.
-		const rails = realRails().filter((r) => r.firstCommit !== null);
+		const rails = realRails().filter((r) => r.commitAnyRoot !== null);
 		const result = computeTimelineLayout(rails, [], NOW, GEO);
 		const byLabel = new Map(result.placed.map((p) => [p.slug, p]));
 		const sortedByFirstCommit = [...rails].sort((a, b) =>
-			(a.firstCommit ?? '').localeCompare(b.firstCommit ?? '')
+			(a.commitAnyRoot ?? '').localeCompare(b.commitAnyRoot ?? '')
 		);
 		for (let i = 1; i < sortedByFirstCommit.length; i++) {
 			const prev = byLabel.get(sortedByFirstCommit[i - 1].slug)!;
 			const curr = byLabel.get(sortedByFirstCommit[i].slug)!;
-			if (sortedByFirstCommit[i - 1].firstCommit! < sortedByFirstCommit[i].firstCommit!) {
+			if (sortedByFirstCommit[i - 1].commitAnyRoot! < sortedByFirstCommit[i].commitAnyRoot!) {
 				expect(prev.yBottom).toBeGreaterThanOrEqual(curr.yBottom - GEO.minRailHeight);
 			}
 		}
@@ -434,7 +434,7 @@ describe('computeTimelineLayout — zero-length rails', () => {
 		const rails = realRails();
 		const result = computeTimelineLayout(rails, [], NOW, GEO);
 		const zeroLength = rails.filter(
-			(r) => r.firstCommit !== null && r.firstCommit === r.lastCommit
+			(r) => r.commitAnyRoot !== null && r.commitAnyRoot === r.commitAnyLast
 		);
 		expect(zeroLength.length).toBeGreaterThan(0); // sanity: the real data has these
 		const byLabel = new Map(result.placed.map((p) => [p.slug, p]));
@@ -530,9 +530,9 @@ describe('computeTimelineLayout — determinism', () => {
 	});
 
 	it('computeMonthBands alone: identical inputs (including shuffled order) produce byte-identical bands', () => {
-		const rails = realRails().filter((r) => r.firstCommit !== null);
+		const rails = realRails().filter((r) => r.commitAnyRoot !== null);
 		const shuffled = [...rails].reverse();
-		const minDay = Math.min(...rails.map((r) => dayValue(r.firstCommit!)));
+		const minDay = Math.min(...rails.map((r) => dayValue(r.commitAnyRoot!)));
 		const nowDay = dayValue(NOW);
 
 		const a = computeMonthBands(rails, minDay, nowDay, GEO.topPad);

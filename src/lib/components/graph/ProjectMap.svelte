@@ -80,9 +80,9 @@
 		kind: ProjectKind;
 		hub: boolean;
 		labelled: boolean;
-		lastCommit: string | null;
-		commits: number | null;
-		linesOfCode: number | null;
+		commitAnyLast: string | null;
+		commitsAny: number | null;
+		linesAny: number | null;
 		x: number;
 		y: number;
 	}
@@ -225,10 +225,10 @@
 	// ---------------------------------------------------------------------------
 
 	const radiusScale = $derived.by(() => {
-		const weights = projectNodes.map((n) => n.commits ?? (n.linesOfCode ? n.linesOfCode / 50 : 0));
+		const weights = projectNodes.map((n) => n.commitsAny ?? (n.linesAny ? n.linesAny / 50 : 0));
 		const max = Math.max(1, ...weights);
 		return (node: MapNode): number => {
-			const w = node.commits ?? (node.linesOfCode ? node.linesOfCode / 50 : 0);
+			const w = node.commitsAny ?? (node.linesAny ? node.linesAny / 50 : 0);
 			const base = 8 + 17.5 * Math.sqrt(w / max);
 			return node.hub ? Math.max(19, base) : base;
 		};
@@ -236,15 +236,15 @@
 
 	const opacityScale = $derived.by(() => {
 		const times = projectNodes
-			.map((n) => (n.lastCommit ? Date.parse(n.lastCommit) : NaN))
+			.map((n) => (n.commitAnyLast ? Date.parse(n.commitAnyLast) : NaN))
 			.filter((t) => !Number.isNaN(t));
 		if (times.length === 0) return (): number => 0.5;
 		const min = Math.min(...times);
 		const max = Math.max(...times);
 		const span = max - min || 1;
 		return (node: MapNode): number => {
-			if (!node.lastCommit) return 0.5;
-			const t = Date.parse(node.lastCommit);
+			if (!node.commitAnyLast) return 0.5;
+			const t = Date.parse(node.commitAnyLast);
 			if (Number.isNaN(t)) return 0.5;
 			return 0.55 + 0.45 * ((t - min) / span);
 		};
@@ -994,10 +994,10 @@
 		const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 		function buildProjectSimNodes(nodes: MapNode[]): LiveSimNode[] {
-			const weights = nodes.map((n) => n.commits ?? (n.linesOfCode ? n.linesOfCode / 50 : 0));
+			const weights = nodes.map((n) => n.commitsAny ?? (n.linesAny ? n.linesAny / 50 : 0));
 			const maxWeight = Math.max(1, ...weights);
 			return nodes.map((n) => {
-				const weight = n.commits ?? (n.linesOfCode ? n.linesOfCode / 50 : 0);
+				const weight = n.commitsAny ?? (n.linesAny ? n.linesAny / 50 : 0);
 				const base = 16 + 39 * Math.sqrt(weight / maxWeight);
 				const radius = n.hub ? Math.max(43, base) : base;
 				return { slug: n.slug, radius, x: n.x, y: n.y };

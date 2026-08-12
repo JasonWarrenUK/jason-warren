@@ -20,8 +20,8 @@
  * neighbouring columns (app left, library right, so extraction reads
  * rightward), which keeps their ribbon one column wide and legible.
  * Everything else about x is pure collision avoidance. Each project becomes
- * a vertical RAIL running from its `lastCommit` (top/newer end, its most
- * recent activity) to its `firstCommit` (bottom/older end, its inception);
+ * a vertical RAIL running from its `commitAnyLast` (top/newer end, its most
+ * recent activity) to its `commitAnyRoot` (bottom/older end, its inception);
  * lineage pairs are placed together into the lowest pair of adjacent free
  * columns, and every other rail packs into the leftmost column that doesn't
  * overlap an already-placed rail — a swapped-axis greedy first-fit analogous
@@ -127,10 +127,10 @@ export interface TimelineRail {
 	tagline: string;
 	role: ProjectRole;
 	/** ISO `YYYY-MM-DD`, or null when undated. */
-	firstCommit: string | null;
+	commitAnyRoot: string | null;
 	/** ISO `YYYY-MM-DD`, or null when undated. */
-	lastCommit: string | null;
-	/** Whole days between firstCommit and lastCommit; null when undated. */
+	commitAnyLast: string | null;
+	/** Whole days between commitAnyRoot and commitAnyLast; null when undated. */
 	durationDays: number | null;
 	stillLive: boolean;
 	/**
@@ -146,11 +146,11 @@ export interface PlacedRail extends TimelineRail {
 	/** Packed column index; 0 = leftmost. Undated rails use columns beyond `columnCount`. */
 	column: number;
 	x: number;
-	/** y of the newer end (lastCommit — most recent activity). */
+	/** y of the newer end (commitAnyLast — most recent activity). */
 	yTop: number;
-	/** y of the older end (firstCommit — inception). */
+	/** y of the older end (commitAnyRoot — inception). */
 	yBottom: number;
-	/** True when firstCommit is null — the rail has no place on the time axis. */
+	/** True when commitAnyRoot is null — the rail has no place on the time axis. */
 	undated: boolean;
 }
 
@@ -280,7 +280,7 @@ export interface MonthBand {
 }
 
 // Month-row sizing. A month's height scales with how many rails have their
-// [firstCommit, lastCommit] interval overlapping it, so months where lots of
+// [commitAnyRoot, commitAnyLast] interval overlapping it, so months where lots of
 // projects were concurrently active get more vertical room and quiet months
 // compress — the direct vertical analogue of computeYearBands's density-sized
 // year columns, but bucketed by MONTH (the real registry's crush concentrates
@@ -313,7 +313,7 @@ const MONTH_BANDS_TARGET_HEIGHT = 1550;
 
 /**
  * Splits `[minDay, nowDay]` into one contiguous pixel band per calendar month,
- * each sized by how many `dated` rails have their `[firstCommit, lastCommit]`
+ * each sized by how many `dated` rails have their `[commitAnyRoot, commitAnyLast]`
  * interval overlapping that month (inclusive overlap test on day ranges, not
  * just "starts in"). Bands are returned keyed by `year*12+(month-1)` so
  * lookups are O(1) integer arithmetic; iteration order when building is
@@ -337,8 +337,8 @@ export function computeMonthBands(
 	const overlapByMonth = new Map<number, number>();
 	for (let m = firstMonth; m <= lastMonth; m++) overlapByMonth.set(m, 0);
 	for (const rail of dated) {
-		const startMonth = monthIndexOfDayValue(dayValue(rail.firstCommit!));
-		const endMonth = monthIndexOfDayValue(dayValue(rail.lastCommit ?? rail.firstCommit!));
+		const startMonth = monthIndexOfDayValue(dayValue(rail.commitAnyRoot!));
+		const endMonth = monthIndexOfDayValue(dayValue(rail.commitAnyLast ?? rail.commitAnyRoot!));
 		const lo = Math.max(firstMonth, startMonth);
 		const hi = Math.min(lastMonth, endMonth);
 		for (let m = lo; m <= hi; m++) overlapByMonth.set(m, overlapByMonth.get(m)! + 1);
@@ -651,8 +651,8 @@ export function computeTimelineLayout(
 	expand?: { year: number; factor: number }
 ): TimelineLayoutResult {
 	void expand; // wired up in a later build step (zoom/expand); accepted now for API shape only
-	const dated = rails.filter((r) => r.firstCommit !== null);
-	const undated = rails.filter((r) => r.firstCommit === null);
+	const dated = rails.filter((r) => r.commitAnyRoot !== null);
+	const undated = rails.filter((r) => r.commitAnyRoot === null);
 
 	const nowDay = dayValue(now);
 
@@ -672,7 +672,7 @@ export function computeTimelineLayout(
 		};
 	}
 
-	const minDay = Math.min(...dated.map((r) => dayValue(r.firstCommit!)));
+	const minDay = Math.min(...dated.map((r) => dayValue(r.commitAnyRoot!)));
 	const firstMonth = monthIndexOfDayValue(minDay);
 	const lastMonth = monthIndexOfDayValue(nowDay);
 	// Bands start `stillLiveFade` px below topPad, not at topPad itself, so the
@@ -686,10 +686,10 @@ export function computeTimelineLayout(
 	const y = makeMonthBandedY(monthBands, firstMonth, lastMonth);
 
 	const placed: PlacedRail[] = dated.map((rail) => {
-		const firstDay = dayValue(rail.firstCommit!);
-		const lastDay = dayValue(rail.lastCommit ?? rail.firstCommit!);
-		// firstCommit is a project's inception (chronologically the OLDER date;
-		// larger y, further down the chart), lastCommit its most recent activity
+		const firstDay = dayValue(rail.commitAnyRoot!);
+		const lastDay = dayValue(rail.commitAnyLast ?? rail.commitAnyRoot!);
+		// commitAnyRoot is a project's inception (chronologically the OLDER date;
+		// larger y, further down the chart), commitAnyLast its most recent activity
 		// (chronologically NEWER; smaller y, closer to nowY at the top). y() maps
 		// larger day values to smaller y, so yTop (the visually topmost, smaller
 		// y edge) is y(lastDay), and yBottom is y(firstDay).

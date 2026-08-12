@@ -41,69 +41,73 @@ export * from './types.js';
  * The engine validates every record against that schema before writing sources.json.
  * Any new field must be added to the schema first — the validation gate enforces this.
  *
- * Field naming mirrors ProjectMetrics exactly; `commitsAll` is omitted here
- * because it is produced by the curation gate, not stored in the manifest.
+ * Field naming mirrors ProjectMetrics exactly; the `commitsHeadline*` pair is
+ * omitted here because it is produced by the curation gate, not measured.
+ *
+ * Scope is explicit in every name: `Any` is all-authors, `Me` is Jason only.
+ * `Human` is a filter within the all-authors scope (bots and agents removed),
+ * not a third scope.
  */
 export interface SyncedSource {
-	head?: string;
+	commitHead?: string;
 	// Ref the fingerprint was measured against (resolved default branch, or 'HEAD' fallback).
 	// Metadata only; excluded from drift comparison and used for the HEAD-fallback advisory.
 	measuredRef?: string;
 	// Commit grid
-	commits?: number;
-	commitsRecentAll?: number;
-	commitsMine?: number;
-	commitsRecent?: number;
+	commitsAny?: number;
+	commitsAnyRecent?: number;
+	commitsMe?: number;
+	commitsMeRecent?: number;
 	// All-authors count with non-human authors (CI bots, AI agents) removed.
-	// The denominator inferContribution divides by: `commits` counts bot commits
+	// The denominator inferContribution divides by: `commitsAny` counts bot commits
 	// as co-authorship, which reads solo work as a team project.
 	commitsHuman?: number;
-	// Distinct commit authors by identity. `distinctAuthorsHuman` collapses all of
+	// Distinct commit authors by identity. `authorsDistinctHuman` collapses all of
 	// Jason's git identities to one, so a value of 1 proves solo work outright,
 	// whatever the commit share says.
-	distinctAuthors?: number;
-	distinctAuthorsHuman?: number;
+	authorsDistinct?: number;
+	authorsDistinctHuman?: number;
 	// Whether Jason authored the root commit: originated the project vs joined it.
-	rootCommitMine?: boolean;
+	commitMeRoot?: boolean;
 	// Dates
-	lastCommit?: string;
-	// Jason's most recent commit. Pairs with firstCommit (also author-scoped) for
-	// a span measured in one consistent scope; `lastCommit` stays all-authors.
-	lastCommitMine?: string;
-	firstCommit?: string;
-	// Intra-span activity shape, author-scoped like firstCommit. firstCommit and
-	// lastCommit describe only endpoints, so a repo touched once at each end is
+	commitAnyLast?: string;
+	// Jason's most recent commit. Pairs with commitAnyRoot (also author-scoped) for
+	// a span measured in one consistent scope; `commitAnyLast` stays all-authors.
+	commitMeLast?: string;
+	commitAnyRoot?: string;
+	// Intra-span activity shape, author-scoped like commitAnyRoot. commitAnyRoot and
+	// commitAnyLast describe only endpoints, so a repo touched once at each end is
 	// indistinguishable from one worked continuously; these make the difference
-	// detectable. activeMonths/spanMonths is the sustained-vs-bursty ratio,
-	// maxGapDays the longest silence inside the span.
-	activeMonths?: number;
-	spanMonths?: number;
-	maxGapDays?: number;
+	// detectable. spanMonthsActive/spanMonthsAll is the sustained-vs-bursty ratio,
+	// spanGapMaxDays the longest silence inside the span.
+	spanMonthsActive?: number;
+	spanMonthsAll?: number;
+	spanGapMaxDays?: number;
 	// Languages (advisory; not overlaid onto tags but now also fed to inferTags)
-	languages?: string[];
+	detectedLanguages?: string[];
 	// Codebase size
-	linesOfCode?: number;
+	linesAny?: number;
 	// Churn grid (Jason-only / all-authors × lifetime / recent × added/removed)
-	linesAdded?: number;
-	linesRemoved?: number;
-	linesAddedAll?: number;
-	linesRemovedAll?: number;
-	linesAddedRecent?: number;
-	linesRemovedRecent?: number;
-	linesAddedRecentAll?: number;
-	linesRemovedRecentAll?: number;
+	linesMeAdded?: number;
+	linesMeRemoved?: number;
+	linesAnyAdded?: number;
+	linesAnyRemoved?: number;
+	linesMeAddedRecent?: number;
+	linesMeRemovedRecent?: number;
+	linesAnyAddedRecent?: number;
+	linesAnyRemovedRecent?: number;
 	// Repo identity and dependency-manifest fields (Phase 2 / Phase 6)
-	remote?: string;
-	companionRemotes?: string[];
-	runtime?: string[];
-	database?: string[];
-	framework?: string[];
+	urlRepo?: string;
+	urlsRepoCompanion?: string[];
+	detectedRuntime?: string[];
+	detectedDatabase?: string[];
+	detectedFramework?: string[];
 	// First-introduced date (YYYY-MM-DD) per detected tech identity, keyed by
 	// the same identity strings as runtime/framework/database (e.g. 'svelte-5').
-	// Populated by a git history search, distinct from firstCommit (repo
+	// Populated by a git history search, distinct from commitAnyRoot (repo
 	// inception) — a tag on a long-lived repo can enter years after the repo
 	// started. Source-grep-only signals are absent here by design.
-	techFirstSeen?: Record<string, string>;
+	detectedTechFirstSeen?: Record<string, string>;
 }
 
 const sources = sourcesManifest.sources as Record<string, SyncedSource>;
@@ -123,10 +127,16 @@ interface FieldOverride<T = number> {
 /**
  * All manual overrides for one project slug. Keys mirror ProjectMetrics fields
  * plus the two top-level date fields. The `_note` key is for human annotation only.
+ *
+ * `commitsHeadlineScope` is excluded: it is not a measurement but a record of
+ * which scope the gate picked, so overriding it would let a pin claim a figure
+ * came from a scope it did not.
  */
-type SlugOverrides = Partial<Record<keyof ProjectMetrics, FieldOverride>> & {
-	lastCommit?: FieldOverride<string>;
-	firstCommit?: FieldOverride<string>;
+type SlugOverrides = Partial<
+	Record<Exclude<keyof ProjectMetrics, 'commitsHeadlineScope'>, FieldOverride>
+> & {
+	commitAnyLast?: FieldOverride<string>;
+	commitAnyRoot?: FieldOverride<string>;
 	_note?: string;
 };
 
@@ -228,9 +238,20 @@ const excludedSlugs = new Set<string>(excludedManifest.slugs);
  *
  * ### Curation gate — commit headline
  *
- * - solo: headline = all-authors lifetime count (synced.commits). No commitsAll context.
- * - lead / collaborator: headline = Jason's count (synced.commitsMine). All-authors total
- *   exposed as commitsAll for "N mine of M total" UI.
+ * `commitsAny` and `commitsMe` are pure scoped facts: each always means exactly
+ * what its name says, whatever the project's role. The role-keyed *display*
+ * value lives in `commitsHeadline`, with `commitsHeadlineScope` recording which
+ * scope was chosen:
+ *
+ * - solo: headline = all-authors lifetime count, scope 'any'. Jason is all
+ *   authors, so there is no "of N total" context to show.
+ * - lead / collaborator: headline = Jason's count, scope 'me'. `commitsAny`
+ *   carries the all-authors total for the "N mine of M total" UI.
+ *
+ * Previously the headline was written into `commitsAny` itself, so that field
+ * silently held Jason-only data on team projects. Consumers reading it for a
+ * scoped fact (map node sizing) were comparing all-authors totals on solo
+ * projects against Jason-only totals on team ones.
  */
 function withSyncedMetrics(project: Project): Project {
 	const synced = sources[project.slug];
@@ -242,58 +263,62 @@ function withSyncedMetrics(project: Project): Project {
 
 	const isSolo = project.contribution.role === 'solo';
 
-	// Role-keyed commit headline
-	const headlineCommits = isSolo ? synced?.commits : synced?.commitsMine;
-	const contextCommits = isSolo ? undefined : (synced?.commits ?? undefined);
-
 	// Provisional field accessor: returns the in-progress tracked value for a metric
 	// field, or undefined when no provisional entry exists. Precedence: override > synced > provisional.
 	const prov = (field: keyof ProjectMetrics): number | undefined =>
 		provisional?.tracked?.[field]?.value;
 
 	const merged: ProjectMetrics = {
-		commits: ov?.commits?.value ?? headlineCommits,
-		commitsAll: ov?.commitsAll?.value ?? contextCommits,
-		commitsRecentAll:
-			ov?.commitsRecentAll?.value ?? synced?.commitsRecentAll ?? prov('commitsRecentAll'),
-		commitsMine: ov?.commitsMine?.value ?? synced?.commitsMine ?? prov('commitsMine'),
-		commitsRecent: ov?.commitsRecent?.value ?? synced?.commitsRecent ?? prov('commitsRecent'),
-		linesOfCode: ov?.linesOfCode?.value ?? synced?.linesOfCode ?? prov('linesOfCode'),
-		linesAdded: ov?.linesAdded?.value ?? synced?.linesAdded ?? prov('linesAdded'),
-		linesRemoved: ov?.linesRemoved?.value ?? synced?.linesRemoved ?? prov('linesRemoved'),
-		linesAddedAll: ov?.linesAddedAll?.value ?? synced?.linesAddedAll ?? prov('linesAddedAll'),
-		linesRemovedAll:
-			ov?.linesRemovedAll?.value ?? synced?.linesRemovedAll ?? prov('linesRemovedAll'),
-		linesAddedRecent:
-			ov?.linesAddedRecent?.value ?? synced?.linesAddedRecent ?? prov('linesAddedRecent'),
-		linesRemovedRecent:
-			ov?.linesRemovedRecent?.value ?? synced?.linesRemovedRecent ?? prov('linesRemovedRecent'),
-		linesAddedRecentAll:
-			ov?.linesAddedRecentAll?.value ?? synced?.linesAddedRecentAll ?? prov('linesAddedRecentAll'),
-		linesRemovedRecentAll:
-			ov?.linesRemovedRecentAll?.value ??
-			synced?.linesRemovedRecentAll ??
-			prov('linesRemovedRecentAll')
+		commitsAny: ov?.commitsAny?.value ?? synced?.commitsAny ?? prov('commitsAny'),
+		commitsHeadline:
+			ov?.commitsHeadline?.value ??
+			(isSolo
+				? (ov?.commitsAny?.value ?? synced?.commitsAny)
+				: (ov?.commitsMe?.value ?? synced?.commitsMe)),
+		commitsHeadlineScope: isSolo ? 'any' : 'me',
+		commitsAnyRecent:
+			ov?.commitsAnyRecent?.value ?? synced?.commitsAnyRecent ?? prov('commitsAnyRecent'),
+		commitsMe: ov?.commitsMe?.value ?? synced?.commitsMe ?? prov('commitsMe'),
+		commitsMeRecent:
+			ov?.commitsMeRecent?.value ?? synced?.commitsMeRecent ?? prov('commitsMeRecent'),
+		linesAny: ov?.linesAny?.value ?? synced?.linesAny ?? prov('linesAny'),
+		linesMeAdded: ov?.linesMeAdded?.value ?? synced?.linesMeAdded ?? prov('linesMeAdded'),
+		linesMeRemoved: ov?.linesMeRemoved?.value ?? synced?.linesMeRemoved ?? prov('linesMeRemoved'),
+		linesAnyAdded: ov?.linesAnyAdded?.value ?? synced?.linesAnyAdded ?? prov('linesAnyAdded'),
+		linesAnyRemoved:
+			ov?.linesAnyRemoved?.value ?? synced?.linesAnyRemoved ?? prov('linesAnyRemoved'),
+		linesMeAddedRecent:
+			ov?.linesMeAddedRecent?.value ?? synced?.linesMeAddedRecent ?? prov('linesMeAddedRecent'),
+		linesMeRemovedRecent:
+			ov?.linesMeRemovedRecent?.value ??
+			synced?.linesMeRemovedRecent ??
+			prov('linesMeRemovedRecent'),
+		linesAnyAddedRecent:
+			ov?.linesAnyAddedRecent?.value ?? synced?.linesAnyAddedRecent ?? prov('linesAnyAddedRecent'),
+		linesAnyRemovedRecent:
+			ov?.linesAnyRemovedRecent?.value ??
+			synced?.linesAnyRemovedRecent ??
+			prov('linesAnyRemovedRecent')
 	};
 
 	for (const key of Object.keys(merged) as (keyof ProjectMetrics)[]) {
 		if (merged[key] === undefined) delete merged[key];
 	}
 
-	// Re-key the manifest's identity-keyed techFirstSeen (e.g. 'svelte-5') to
+	// Re-key the manifest's identity-keyed detectedTechFirstSeen (e.g. 'svelte-5') to
 	// the tag-label-keyed form adoption.ts reads (e.g. 'Svelte 5'), via the
 	// same taxonomy lookups inferTags uses. No per-label override shape exists
 	// in SlugOverrides yet — this seam is deliberately ready for one (mirroring
-	// lastCommit/firstCommit above) rather than a gap; add override precedence
+	// commitAnyLast/commitAnyRoot above) rather than a gap; add override precedence
 	// here if that's ever built.
-	const techFirstSeen = synced ? inferTechFirstSeen(synced) : project.techFirstSeen;
+	const detectedTechFirstSeen = synced ? inferTechFirstSeen(synced) : project.detectedTechFirstSeen;
 
 	return {
 		...project,
 		// Date overlay: override > synced > base default (empty string for manifest-only)
-		lastCommit: ov?.lastCommit?.value ?? synced?.lastCommit ?? project.lastCommit,
-		firstCommit: ov?.firstCommit?.value ?? synced?.firstCommit ?? project.firstCommit,
-		techFirstSeen,
+		commitAnyLast: ov?.commitAnyLast?.value ?? synced?.commitAnyLast ?? project.commitAnyLast,
+		commitAnyRoot: ov?.commitAnyRoot?.value ?? synced?.commitAnyRoot ?? project.commitAnyRoot,
+		detectedTechFirstSeen,
 		metrics: Object.keys(merged).length > 0 ? merged : undefined
 	};
 }

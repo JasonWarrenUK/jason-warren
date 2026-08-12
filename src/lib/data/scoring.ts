@@ -41,7 +41,7 @@ export const HUB_PERCENTILE = 0.85;
 /**
  * How much project is here: lifetime effort + codebase size, log-damped.
  *
- * `commitsMine` is preferred over `commits` so the score reflects your own
+ * `commitsMe` is preferred over `commits` so the score reflects your own
  * work rather than collaborator volume. Falls back gracefully when either
  * metric is absent.
  *
@@ -49,23 +49,23 @@ export const HUB_PERCENTILE = 0.85;
  * difference — large projects score proportionally higher, not astronomically.
  */
 export function substanceScore(p: Project): number {
-	const commits = p.metrics?.commitsMine ?? p.metrics?.commits ?? 0;
-	const loc = p.metrics?.linesOfCode ?? 0;
+	const commits = p.metrics?.commitsMe ?? p.metrics?.commitsAny ?? 0;
+	const loc = p.metrics?.linesAny ?? 0;
 	return Math.log1p(commits) + Math.log1p(loc / 50);
 }
 
 /**
  * Recency decay: 1.0 if last touched today, halving every HERO_HALF_LIFE_DAYS.
- * Returns 0 when `lastCommit` is absent (missing date → treated as unreachable).
+ * Returns 0 when `commitAnyLast` is absent (missing date → treated as unreachable).
  *
- * @param lastCommit - ISO date string (YYYY-MM-DD) or undefined
+ * @param commitAnyLast - ISO date string (YYYY-MM-DD) or undefined
  * @param now        - Unix timestamp (ms) for the reference point. Pass
  *                     `Date.parse(sources.lastSyncedAt)` at build time so the
  *                     output is byte-stable across re-runs of the same build.
  */
-export function recencyDecay(lastCommit: string | undefined, now: number): number {
-	if (!lastCommit) return 0;
-	const days = Math.max(0, (now - Date.parse(lastCommit)) / 86_400_000);
+export function recencyDecay(commitAnyLast: string | undefined, now: number): number {
+	if (!commitAnyLast) return 0;
+	const days = Math.max(0, (now - Date.parse(commitAnyLast)) / 86_400_000);
 	return Math.exp((-Math.LN2 / HERO_HALF_LIFE_DAYS) * days);
 }
 
@@ -74,7 +74,7 @@ export function recencyDecay(lastCommit: string | undefined, now: number): numbe
  * A project must have both momentum and mass to score well.
  */
 export function heroScore(p: Project, now: number): number {
-	return recencyDecay(p.lastCommit, now) * substanceScore(p);
+	return recencyDecay(p.commitAnyLast, now) * substanceScore(p);
 }
 
 /**
