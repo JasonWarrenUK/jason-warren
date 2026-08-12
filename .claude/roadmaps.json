@@ -440,7 +440,7 @@
 					{
 						"id": "5DR.24",
 						"description": "Audit the Project property surface: no two fields claim the same fact, and every fact worth storing has exactly one home",
-						"status": "todo",
+						"status": "done",
 						"dependsOn": [],
 						"notes": "Covers SyncedSource, AuthoredProject, Project, ProjectMetrics and the nested Contribution/TechTag/ProjectRelationship shapes. Overlap precedent: deployed is derived from liveUrl presence; progress and released were split because one field made two claims; retired and hide both carried the hero-pool exclusion. Coverage gap already known: activeMonths, spanMonths and maxGapDays are synced but reach no Project field.",
 						"assignee": "Jason"
@@ -448,7 +448,7 @@
 					{
 						"id": "5DR.25",
 						"description": "Surface the intra-span activity metrics (spanMonthsActive, spanMonthsAll, spanGapMaxDays) so the sustained-vs-bursty signal reaches the site",
-						"status": "blocked",
+						"status": "todo",
 						"dependsOn": [
 							"5DR.24"
 						],
@@ -534,7 +534,7 @@
 					{
 						"id": "7DR.5",
 						"description": "Reach audit: confirm every field in every data file has a menu path, and fill the gaps",
-						"status": "blocked",
+						"status": "todo",
 						"dependsOn": [
 							"5DR.24"
 						],

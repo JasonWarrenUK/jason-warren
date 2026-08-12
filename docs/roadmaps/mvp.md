@@ -1,6 +1,6 @@
 # Portfolio MVP Roadmap
 
-The site is live and substantially built: full routes, the graph/timeline/map/toolkit views, 30+ typed projects and the Drift CLI. This phase deepens the site as an artefact and decouples Drift's engine from its portfolio-specific couplings. Content (M1), features (M2) and design (M3) are done, and the Drift engine work (M5) is complete bar its enrichment verbs and a property-surface audit; quality (M4), Drift's tests-and-docs (M6), total data control from the CLI menu (M7) and ongoing aesthetics (M8) remain.
+The site is live and substantially built: full routes, the graph/timeline/map/toolkit views, 30+ typed projects and the Drift CLI. This phase deepens the site as an artefact and decouples Drift's engine from its portfolio-specific couplings. Content (M1), features (M2) and design (M3) are done, and the Drift engine work (M5) is complete bar its enrichment verbs and surfacing the intra-span activity metrics; quality (M4), Drift's tests-and-docs (M6), total data control from the CLI menu (M7) and ongoing aesthetics (M8) remain.
 
 **Critical path:** `4QU.5 → 4QU.1 → 4QU.3` — with M3 complete, the accessibility audit chain is the longest remaining run, and 4QU.5 is the one task gating it. M6 and M7 both wait on M5 rather than on design, so they run in parallel with each other and with M4.
 
@@ -90,8 +90,8 @@ The site is live and substantially built: full routes, the graph/timeline/map/to
 - [x] **5DR.21** — Improve role detection: richer signals than commit share for the solo/lead/collaborator inference _(depends on 5DR.6)_
 - [ ] **5DR.22** — drift enrich verb: opt-in gh-backed enrichment writing GitHub's own archived repo flag and homepageUrl into a schema-extended sources.json section, while drift sync stays offline _(depends on 5DR.5, 5DR.6)_
 - [ ] **5DR.23** — Derive the site's retired and deployed axes from enriched manifest data, replacing the authored placeholders _(blocked — depends on 5DR.22)_
-- [ ] **5DR.24** — Audit the Project property surface: no two fields claim the same fact, and every fact worth storing has exactly one home
-- [ ] **5DR.25** — Surface the intra-span activity metrics (spanMonthsActive, spanMonthsAll, spanGapMaxDays) so the sustained-vs-bursty signal reaches the site _(blocked — depends on 5DR.24)_
+- [x] **5DR.24** — Audit the Project property surface: no two fields claim the same fact, and every fact worth storing has exactly one home
+- [ ] **5DR.25** — Surface the intra-span activity metrics (spanMonthsActive, spanMonthsAll, spanGapMaxDays) so the sustained-vs-bursty signal reaches the site _(depends on 5DR.24)_
   - Note: Covers SyncedSource, AuthoredProject, Project, ProjectMetrics and the nested Contribution/TechTag/ProjectRelationship shapes. Overlap precedent: deployed is derived from liveUrl presence; progress and released were split because one field made two claims; retired and hide both carried the hero-pool exclusion. Coverage gap already known: activeMonths, spanMonths and maxGapDays are synced but reach no Project field.
 
 ---
@@ -116,7 +116,7 @@ The site is live and substantially built: full routes, the graph/timeline/map/to
 - [ ] **7DR.3** — Tech, tag and theme detail views on the same pattern as the project view _(blocked — depends on 7DR.1)_
 - [ ] **7DR.4** — Act in context: invoke the relevant verbs from a detail view without re-picking the target _(blocked — depends on 7DR.2, 7DR.3)_
   - Note: The menu is verb-first (pick a verb, then a target). This inverts it for the browse path; the verb-first sections stay for anyone who already knows what they want.
-- [ ] **7DR.5** — Reach audit: confirm every field in every data file has a menu path, and fill the gaps _(blocked — depends on 5DR.24)_
+- [ ] **7DR.5** — Reach audit: confirm every field in every data file has a menu path, and fill the gaps _(depends on 5DR.24)_
   - Note: Only meaningful once 5DR.24 has settled the field set. Covers all eight configured data paths: sources, topology, local, overrides, excluded, cache, projects, in-progress.
 - [ ] **7DR.6** — Search across projects, tech, tags and themes from one entry point _(blocked — depends on 7DR.2, 7DR.3)_
 - [ ] **7DR.7** — Filter and sort the browse lists (drift state, track, role, tier, kind) _(blocked — depends on 7DR.6)_
@@ -320,7 +320,7 @@ graph LR
 	7DR.7 --> 7DR.8
 	7DR.8 --> M7
 	8DE.1 --> M8
-	class 4QU.4,4QU.5,5DR.22,5DR.24 todo
-	class 4QU.1,4QU.3,4QU.7,5DR.10,5DR.23,5DR.25,5DR.8,5DR.9,7DR.1,7DR.2,7DR.3,7DR.4,7DR.5,7DR.6,7DR.7,7DR.8,8DE.1 blocked
-	class 1CO.1,1CO.10,1CO.2,1CO.3,1CO.4,1CO.5,1CO.6,1CO.7,1CO.8,1CO.9,2FE.1,2FE.2,2FE.3,2FE.4,2FE.5,2FE.6,2FE.7,2FE.8,3DE.0,3DE.1,3DE.2,3DE.3,3DE.4,3DE.5,3DE.6,4QU.8,5DR.0,5DR.1,5DR.11,5DR.12,5DR.13,5DR.14,5DR.15,5DR.16,5DR.17,5DR.18,5DR.19,5DR.2,5DR.20,5DR.21,5DR.3,5DR.4,5DR.5,5DR.6,5DR.7 done
+	class 4QU.4,4QU.5,5DR.22,5DR.25,7DR.5 todo
+	class 4QU.1,4QU.3,4QU.7,5DR.10,5DR.23,5DR.8,5DR.9,7DR.1,7DR.2,7DR.3,7DR.4,7DR.6,7DR.7,7DR.8,8DE.1 blocked
+	class 1CO.1,1CO.10,1CO.2,1CO.3,1CO.4,1CO.5,1CO.6,1CO.7,1CO.8,1CO.9,2FE.1,2FE.2,2FE.3,2FE.4,2FE.5,2FE.6,2FE.7,2FE.8,3DE.0,3DE.1,3DE.2,3DE.3,3DE.4,3DE.5,3DE.6,4QU.8,5DR.0,5DR.1,5DR.11,5DR.12,5DR.13,5DR.14,5DR.15,5DR.16,5DR.17,5DR.18,5DR.19,5DR.2,5DR.20,5DR.21,5DR.24,5DR.3,5DR.4,5DR.5,5DR.6,5DR.7 done
 ```
