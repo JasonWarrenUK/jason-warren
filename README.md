@@ -48,7 +48,7 @@ Every project is a typed object under `src/lib/data/projects/` (33 at present). 
 - `ProjectSlug` is a string-literal union, so every cross-link between projects is checked at compile time.
 - `Contribution` is a discriminated union that forces a `contributionNote` on team projects.
 - Relationships (`powers`, `extracted-from`, `related`) are first-class data, which is what makes the connection views possible.
-- Lifecycle is decomposed into four orthogonal axes rather than one `status` enum: `track` and `progress` are authored (falling back to heuristics, which render as dotted-provisional), `deployed` derives from `liveUrl`, and `archived` is an authored end-state flag.
+- Lifecycle is decomposed into orthogonal axes rather than one `status` enum: `track` is authored (falling back to a heuristic, which renders as dotted-provisional), `progress` is observed-only and never authored, `deployed` derives from `liveUrl`, and `released` and `retired` are authored flags for reach and end-state.
 
 `src/lib/data/queries.ts` holds pure query helpers; `src/lib/data/graph.ts` normalises the relationship data into a single graph (collapsing reciprocal edges) and computes a deterministic layout. Both are covered by structural tests in `src/lib/data/*.test.ts`.
 
