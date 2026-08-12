@@ -312,8 +312,10 @@ function inferTrack(manifest: SyncedSource): Project['track'] {
  * `complete` from silence therefore asserted something the data never
  * supported, on every quiet repo.
  *
- * `complete` is authored-only: a human declaring the work finished. That makes
- * it a real claim, and it never renders dotted-provisional.
+ * What `complete` was reaching for now lives in `released`, which is authored
+ * only: a human recording that the work reached someone else. That makes it a
+ * real claim rather than an inference from silence, and it is orthogonal to
+ * this field, so released work can be either in-progress or dormant.
  */
 function inferProgress(manifest: SyncedSource): Project['progress'] {
 	return (manifest.commitsRecent ?? 0) > 0 ? 'in-progress' : 'dormant';
