@@ -3317,12 +3317,19 @@ export const ${binding}: AuthoredProject = {
 	// One of: 'app' | 'game' | 'website' | 'toy' | 'library' | 'tool' | 'tui' | 'repo'
 	kind: 'app',
 
-	// For 'solo', no note is needed. For 'lead' | 'collaborator', add a specific
-	// contributionNote (PRs, stats, named features) to reach Full tier.
-	contribution: { role: 'solo' },
-
-	// One of: 'live' | 'wip' | 'finished' | 'prototype' | 'archived' | 'uncategorised'
-	status: 'wip',
+	// Stage fields (track, released, retired) and contribution are authored ONLY
+	// where they DISAGREE with what the manifest infers. A value restating the
+	// inference pins no judgement, and it silently upgrades a heuristic guess
+	// into a confident claim: trackAuthored drives the dotted-provisional
+	// convention, so authoring a matching track retires that signal for the
+	// project. Two tests in data.test.ts fail on a redundant track or a bare
+	// role. Add them deliberately, not by default.
+	//
+	//   track: 'product' | 'exploration'
+	//   released: true    the work reached someone else (authored only)
+	//   retired: true     present it as ended (presentation only)
+	//   contribution: { role: 'lead', collaboration: { team: '...' },
+	//                   contributionNote: '...' }  a note reaches Full tier
 
 	liveUrl: '',
 
@@ -3364,18 +3371,14 @@ function createOverlayIfAbsent(slug) {
 // Scalar string fields drift author can set without an editor. pin/hide are
 // deliberately absent (drift flag owns them); arrays and objects need
 // $EDITOR, relate or tag.
-const AUTHOR_EDITABLE_FIELDS = [
-	'name',
-	'tagline',
-	'blurb',
-	'description',
-	'kind',
-	'status',
-	'liveUrl'
-];
+// `status` is deliberately absent: the single-axis ProjectStatus field
+// ('live' | 'wip' | 'finished' | 'prototype' | 'archived' | 'uncategorised')
+// was decomposed into track × progress plus released/retired/deployed, and
+// dropped from AuthoredProject. Offering it here wrote a key the type layer
+// rejects, so a scaffolded overlay failed `bun run check` on creation.
+const AUTHOR_EDITABLE_FIELDS = ['name', 'tagline', 'blurb', 'description', 'kind', 'liveUrl'];
 const AUTHOR_FIELD_ENUMS = {
-	kind: ['app', 'game', 'website', 'toy', 'library', 'tool', 'tui', 'repo'],
-	status: ['live', 'wip', 'finished', 'prototype', 'archived', 'uncategorised']
+	kind: ['app', 'game', 'website', 'toy', 'library', 'tool', 'tui', 'repo']
 };
 
 async function runAuthor({ args, palette }) {
