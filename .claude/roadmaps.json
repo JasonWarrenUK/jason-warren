@@ -422,7 +422,7 @@
 					},
 					{
 						"id": "5DR.22",
-						"description": "drift enrich verb: opt-in gh-backed enrichment writing archived and homepageUrl into a schema-extended sources.json section, while drift sync stays offline",
+						"description": "drift enrich verb: opt-in gh-backed enrichment writing GitHub's own archived repo flag and homepageUrl into a schema-extended sources.json section, while drift sync stays offline",
 						"status": "todo",
 						"dependsOn": [
 							"5DR.5",
@@ -431,7 +431,7 @@
 					},
 					{
 						"id": "5DR.23",
-						"description": "Derive the site's archived and deployed axes from enriched manifest data, replacing the authored placeholders",
+						"description": "Derive the site's retired and deployed axes from enriched manifest data, replacing the authored placeholders",
 						"status": "blocked",
 						"dependsOn": [
 							"5DR.22"
