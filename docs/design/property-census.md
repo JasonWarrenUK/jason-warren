@@ -20,7 +20,7 @@ single owner (orphan).
 
 ---
 
-## 1. SyncedSource (`src/lib/data/index.ts:47`)
+## 1. SyncedSource (`src/lib/data/types.ts`)
 
 All-synced by definition. Contract lives in `scripts/sources.schema.json`.
 
@@ -53,9 +53,11 @@ All-synced by definition. Contract lives in `scripts/sources.schema.json`.
 | `detectedRuntime` / `detectedDatabase` / `detectedFramework` | S    | —                                 | Detected tech identities                                       |
 | `detectedTechFirstSeen`                                      | S    | —                                 | First-introduced date per tech identity (identity-keyed)       |
 
-## 2. ProjectMetrics (`types.ts:76`)
+## 2. ProjectMetrics (`types.ts`)
 
-Mirrors SyncedSource field-for-field, minus identity/date/tech fields.
+Derived from `SyncedSource` via `Pick<SyncedSource, SyncedMetricKey>` (F4), plus
+the two gate-produced headline fields. The synced rows below are inherited, not
+restated.
 
 | Field                                           | Prov  | Scope       | Notes                                                                                     |
 | ----------------------------------------------- | ----- | ----------- | ----------------------------------------------------------------------------------------- |
@@ -138,12 +140,20 @@ everywhere tags are assembled.
 
 ### Duplicate pairs — two fields asserting the same fact
 
-**F1. `progress` and `commitsMeRecent` are the same fact.**
-`inferProgress` is a total function of one field: `commitsRecent > 0`. `progress`
-stores no information `metrics.commitsRecent` does not already carry, and both
-reach the merged `Project`. The threshold (`> 0`, 4-week window) is the only
-content, and it lives in code, not data. Candidate for deriving at read time
-rather than storing.
+**F1. `progress` and `commitsMeRecent` are the same fact. RESOLVED — kept by
+design.** `inferProgress` is a total function of one field:
+`commitsMeRecent > 0`, so `progress` stores no information the metric does not
+already carry.
+
+Kept anyway. `progress` is read at 12+ sites across the colour system
+(`ProjectMap`, `TimelineChart`, `NeighbourhoodGraph`, `StageBadge`) and filtered
+on as a union value in `queries.ts`. Deriving at read time would replace a named
+domain state with a magic comparison at every one of them.
+
+The census rule wants one home per fact; it does not want a raw count standing
+in for a vocabulary. `ProjectProgress` is the language the UI speaks, and
+`commitsMeRecent` is the input that decides it. The duplication is a derivation,
+recorded as such on the field.
 
 ### Near-duplicates — resolved, worth recording as precedent
 
@@ -152,37 +162,64 @@ rather than storing.
 merge, never authored: this is the precedent the roadmap note cites. Not a
 finding, but the pattern F1 and F3 should follow.
 
-**F3. `trackAuthored` and `track`.** `trackAuthored` is a provenance bit about
-`track`, not a fact about the project. It is the only field in the surface that
-records _where another field came from_. Note the asymmetry: `released` and
-`retired` are equally authored-only and carry no such bit, and `progress` is
-equally inference-only and carries no such bit. Either provenance deserves a
-uniform mechanism or `trackAuthored` should be reachable another way.
+**F3. `trackAuthored` and `track`. RESOLVED — kept by design.**
+`trackAuthored` is a provenance bit about `track` rather than a fact about the
+project, and it is the only such bit in the surface.
 
-**F4. `SyncedSource` and `ProjectMetrics` overlap on 13 field names.**
-Deliberate mirroring, and the comment says so. The duplication is structural
-rather than semantic: the same fact, two shapes, one copied to the other. Worth
-asking in the audit whether `ProjectMetrics` can be a derived subset type of
-`SyncedSource` instead of a hand-maintained parallel list. The two
-`commitsHeadline*` fields are the only ones needing special handling, being
-gate-produced rather than measured.
+The asymmetry turns out to be the domain, not an oversight: `track` is the only
+field carrying a heuristic worth marking as uncertain (heuristic values render
+dotted-provisional). `released` and `retired` are authored-or-absent, so there
+is no guess to flag; `progress` is always inferred, so there is no variation to
+record. A uniform provenance mechanism would be machinery for one real case.
+The reasoning now lives on the field.
+
+**F4. `SyncedSource` and `ProjectMetrics` overlapped on 13 field names. FIXED.**
+The same 13 facts were declared twice and kept in step by hand.
+
+`SyncedSource` moved into `types.ts` (it is part of the data model, and `types.ts`
+imports nothing, so the dependency runs the right way). `ProjectMetrics` now
+reads:
+
+```ts
+export interface ProjectMetrics extends Pick<SyncedSource, SyncedMetricKey> {
+	commitsHeadline?: number;
+	commitsHeadlineScope?: 'any' | 'me';
+}
+```
+
+`SyncedMetricKey` is the single list deciding which measurements are
+portfolio-facing, and being constrained to `keyof SyncedSource` it cannot name a
+field nothing measures. Verified: adding an invented key to `SyncedMetricKey`
+fails the build rather than compiling to an always-undefined field. The
+`commitsHeadline*` pair stays declared locally, being gate-produced.
+
+Import paths are unchanged: `index.ts` re-exports everything from `types.ts`.
 
 ### Orphans — facts with no clear home
 
-**F5. Six synced fields are inference-only inputs.** `commitsHuman`,
-`authorsDistinct`, `authorsDistinctHuman`, `commitMeRoot`, `commitMeLast`
-and `detectedLanguages` never reach `Project`: `ProjectMetrics` omits them, so nothing
-portfolio-facing can read them. Each is consumed at build time in `defaults.ts`
-(`inferContribution` for the first four, `inferTrack` for `commitMeLast`,
-`inferTags` for `detectedLanguages`). Verified by grep across `src/`. This looks
-deliberate rather than orphaned, so the audit's job is to state the category
-explicitly, not to promote them.
+**F5. Six synced fields are inference-only inputs. RESOLVED — category now
+explicit.** `commitsHuman`, `authorsDistinct`, `authorsDistinctHuman`,
+`commitMeRoot`, `commitMeLast` and `detectedLanguages` never reach `Project`.
+Each is consumed at build time in `defaults.ts` (`inferContribution` for the
+first four, `inferTrack` for `commitMeLast`, `inferTags` for
+`detectedLanguages`).
 
-**F6. `spanMonthsActive` / `spanMonthsAll` / `spanGapMaxDays` have zero consumers.** Synced
-with a clear purpose in the comment (sustained-vs-bursty shape) but absent from
-`ProjectMetrics` and from every inference function. A grep across `src/` finds
-no reads outside the interface declaration itself. Measured and stored for
-nothing: either wire them up or stop syncing them.
+Correct as-is: these are raw signals the site has no vocabulary for, and each
+already feeds a field that _is_ surfaced. The risk was a future reader mistaking
+them for an omission and promoting one. They now sit under a named
+"inference-only inputs" heading in `SyncedSource` saying exactly that, and their
+absence from `SyncedMetricKey` is what keeps them off the site.
+
+**F6. `spanMonthsActive` / `spanMonthsAll` / `spanGapMaxDays` have zero
+consumers. SCHEDULED.** Synced with a clear purpose (sustained-vs-bursty shape)
+but absent from `SyncedMetricKey` and from every inference function. Re-verified
+after the rename: no reads anywhere in `src/` outside the interface declaration
+and the engine that writes them.
+
+Resolved as "surface them", not "stop measuring them": the measurement is the
+expensive part and it already works, and the signal distinguishes a repo worked
+steadily for eight months from one with two commits eight months apart, which
+the endpoint dates cannot. Tracked as its own roadmap task.
 
 **F7. Scope was encoded in field names, not in the type. FIXED.** The
 all-authors vs Jason-only distinction was carried by a `…All` / `…Mine` suffix

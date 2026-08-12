@@ -70,22 +70,161 @@ export interface TechTag {
 }
 
 // ---------------------------------------------------------------------------
-// Metrics — all optional; fill in what's known
+// Synced fingerprint — the drift manifest's per-repo record
 // ---------------------------------------------------------------------------
 
-export interface ProjectMetrics {
-	// ---------------------------------------------------------------------------
-	// Commit grid: all-authors / Jason-only × lifetime / recent
-	// ---------------------------------------------------------------------------
+/**
+ * One synced fingerprint from the drift manifest. Every field is optional: the
+ * manifest is populated incrementally by `drift sync`, so a freshly added repo
+ * may only carry a subset of fields until the next full sync.
+ *
+ * Canonical contract: `scripts/sources.schema.json` (`$defs/SyncedSource`).
+ * The engine validates every record against that schema before writing sources.json.
+ * Any new field must be added to the schema first — the validation gate enforces this.
+ *
+ * Scope is explicit in every name: `Any` is all-authors, `Me` is Jason only.
+ * `Human` is a filter within the all-authors scope (bots and agents removed),
+ * not a third scope.
+ *
+ * `ProjectMetrics` derives its synced half from this interface via `Pick`, so
+ * the two shapes cannot drift apart: adding a metric here and to
+ * `SYNCED_METRIC_KEYS` is all it takes to surface it.
+ */
+export interface SyncedSource {
+	commitHead?: string;
+	/**
+	 * Ref the fingerprint was measured against (resolved default branch, or
+	 * 'HEAD' fallback). Metadata only; excluded from drift comparison and used
+	 * for the HEAD-fallback advisory.
+	 */
+	measuredRef?: string;
 
-	/** All-authors, lifetime. Headline for solo projects (Jason IS all authors). */
+	// Commit grid
+	/** All-authors, lifetime. */
 	commitsAny?: number;
 	/** All-authors, trailing four weeks. */
 	commitsAnyRecent?: number;
-	/** Jason only, lifetime. Headline for team projects; overlaid from drift manifest. */
+	/** Jason only, lifetime. */
 	commitsMe?: number;
 	/** Jason only, trailing four weeks. */
 	commitsMeRecent?: number;
+
+	// ---------------------------------------------------------------------------
+	// Inference-only inputs.
+	//
+	// These never reach `Project`: they are deliberately absent from
+	// SYNCED_METRIC_KEYS, so nothing portfolio-facing can read them. Each is
+	// consumed at build time in defaults.ts to derive a field that IS surfaced.
+	// Promoting one into ProjectMetrics would expose a raw signal the site has
+	// no vocabulary for; derive from it instead.
+	// ---------------------------------------------------------------------------
+
+	/**
+	 * All-authors count with non-human authors (CI bots, AI agents) removed.
+	 * The denominator inferContribution divides by: `commitsAny` counts bot
+	 * commits as co-authorship, which reads solo work as a team project.
+	 */
+	commitsHuman?: number;
+	/**
+	 * Distinct commit authors by identity. `authorsDistinctHuman` collapses all
+	 * of Jason's git identities to one, so a value of 1 proves solo work
+	 * outright, whatever the commit share says.
+	 */
+	authorsDistinct?: number;
+	authorsDistinctHuman?: number;
+	/** Whether Jason authored the root commit: originated the project vs joined it. */
+	commitMeRoot?: boolean;
+	/**
+	 * Jason's most recent commit. Pairs with commitAnyRoot (also author-scoped)
+	 * for a span measured in one consistent scope; `commitAnyLast` stays
+	 * all-authors. Feeds inferTrack.
+	 */
+	commitMeLast?: string;
+	/** Detected languages. Advisory: feeds inferTags rather than being overlaid onto tags. */
+	detectedLanguages?: string[];
+
+	// Dates
+	commitAnyLast?: string;
+	commitAnyRoot?: string;
+
+	/**
+	 * Intra-span activity shape, author-scoped like commitAnyRoot. commitAnyRoot
+	 * and commitAnyLast describe only endpoints, so a repo touched once at each
+	 * end is indistinguishable from one worked continuously; these make the
+	 * difference detectable. spanMonthsActive/spanMonthsAll is the
+	 * sustained-vs-bursty ratio, spanGapMaxDays the longest silence inside the span.
+	 *
+	 * Measured and persisted, but not yet surfaced on the site: absent from
+	 * SYNCED_METRIC_KEYS and from every inference function.
+	 */
+	spanMonthsActive?: number;
+	spanMonthsAll?: number;
+	spanGapMaxDays?: number;
+
+	// Codebase size
+	linesAny?: number;
+
+	// Churn grid (Jason-only / all-authors × lifetime / recent × added/removed)
+	linesMeAdded?: number;
+	linesMeRemoved?: number;
+	linesAnyAdded?: number;
+	linesAnyRemoved?: number;
+	linesMeAddedRecent?: number;
+	linesMeRemovedRecent?: number;
+	linesAnyAddedRecent?: number;
+	linesAnyRemovedRecent?: number;
+
+	// Repo identity and dependency-manifest fields
+	urlRepo?: string;
+	urlsRepoCompanion?: string[];
+	detectedRuntime?: string[];
+	detectedDatabase?: string[];
+	detectedFramework?: string[];
+	/**
+	 * First-introduced date (YYYY-MM-DD) per detected tech identity, keyed by
+	 * the same identity strings as detectedRuntime/detectedFramework/detectedDatabase
+	 * (e.g. 'svelte-5'). Populated by a git history search, distinct from
+	 * commitAnyRoot (repo inception) — a tag on a long-lived repo can enter years
+	 * after the repo started. Source-grep-only signals are absent here by design.
+	 */
+	detectedTechFirstSeen?: Record<string, string>;
+}
+
+// ---------------------------------------------------------------------------
+// Metrics — all optional; fill in what's known
+// ---------------------------------------------------------------------------
+
+/**
+ * The SyncedSource fields that reach the site as metrics.
+ *
+ * This list is the single place that decides which measurements are
+ * portfolio-facing. Everything absent from it is either an inference-only input
+ * or not yet surfaced (see the comments on SyncedSource).
+ */
+export type SyncedMetricKey =
+	| 'commitsAny'
+	| 'commitsAnyRecent'
+	| 'commitsMe'
+	| 'commitsMeRecent'
+	| 'linesAny'
+	| 'linesMeAdded'
+	| 'linesMeRemoved'
+	| 'linesAnyAdded'
+	| 'linesAnyRemoved'
+	| 'linesMeAddedRecent'
+	| 'linesMeRemovedRecent'
+	| 'linesAnyAddedRecent'
+	| 'linesAnyRemovedRecent';
+
+/**
+ * Metrics as the site sees them: every synced measurement that is surfaced,
+ * plus the gate-produced headline pair.
+ *
+ * The synced half is derived from SyncedSource rather than restated, so the two
+ * cannot fall out of step. Adding a surfaced metric means adding it to
+ * SyncedSource and to SyncedMetricKey — the compiler enforces the rest.
+ */
+export interface ProjectMetrics extends Pick<SyncedSource, SyncedMetricKey> {
 	/**
 	 * Gate output: the role-keyed commit count to show as the headline figure.
 	 * Solo projects take `commitsAny` (Jason is all authors); team projects take
@@ -103,34 +242,6 @@ export interface ProjectMetrics {
 	 * showing as "N mine of M total"; `'any'` means the two are the same figure.
 	 */
 	commitsHeadlineScope?: 'any' | 'me';
-
-	// ---------------------------------------------------------------------------
-	// Churn grid: Jason-only / all-authors × lifetime / recent (×2 for added/removed)
-	// ---------------------------------------------------------------------------
-
-	/** Lines added by Jason, lifetime. */
-	linesMeAdded?: number;
-	/** Lines removed by Jason, lifetime. */
-	linesMeRemoved?: number;
-	/** Lines added by all authors, lifetime. */
-	linesAnyAdded?: number;
-	/** Lines removed by all authors, lifetime. */
-	linesAnyRemoved?: number;
-	/** Lines added by Jason, trailing four weeks. */
-	linesMeAddedRecent?: number;
-	/** Lines removed by Jason, trailing four weeks. */
-	linesMeRemovedRecent?: number;
-	/** Lines added by all authors, trailing four weeks. */
-	linesAnyAddedRecent?: number;
-	/** Lines removed by all authors, trailing four weeks. */
-	linesAnyRemovedRecent?: number;
-
-	// ---------------------------------------------------------------------------
-	// Size — every metric here has a synced source in the drift manifest
-	// ---------------------------------------------------------------------------
-
-	/** Overall codebase size: total lines across tracked source files, all authors. */
-	linesAny?: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -334,8 +445,21 @@ export interface Project {
 	contribution: Contribution;
 	tags: TechTag[];
 	track: ProjectTrack;
-	/** True when track was authored; heuristic values render dotted-provisional. */
+	/**
+	 * True when track was authored; heuristic values render dotted-provisional.
+	 *
+	 * The only provenance bit in the surface, and deliberately so: `track` is the
+	 * only field with a heuristic worth marking as uncertain. `released` and
+	 * `retired` are authored-or-absent, so there is no guess to flag, and
+	 * `progress` is always inferred, so there is no variation to record.
+	 */
 	trackAuthored: boolean;
+	/**
+	 * Observed, never authored. Derived from `commitsMeRecent > 0` at merge time
+	 * rather than stored raw: the union is the vocabulary the colour system,
+	 * badges and filters speak, so the named state is the useful form even though
+	 * the underlying count already implies it.
+	 */
 	progress: ProjectProgress;
 	/** Derived: the project runs somewhere (liveUrl is present). */
 	deployed: boolean;

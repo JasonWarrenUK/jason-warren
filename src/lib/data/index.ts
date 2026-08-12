@@ -27,88 +27,20 @@ import excludedManifest from './excluded.json';
 import inProgressManifest from './in-progress.json';
 import { defaultProjectFromManifest, mergeAuthored, inferTechFirstSeen } from './defaults.js';
 import { getTechKindOverrides } from './tech-overlays.js';
-import type { Project, AuthoredProject, ProjectMetrics, InProgressEntry } from './types.js';
+import type {
+	Project,
+	AuthoredProject,
+	ProjectMetrics,
+	InProgressEntry,
+	SyncedSource
+} from './types.js';
 
 export type { Project };
 export * from './types.js';
 
-/**
- * One synced fingerprint from the drift manifest. Every field is optional: the
- * manifest is populated incrementally by `drift sync`, so a freshly added repo
- * may only carry a subset of fields until the next full sync.
- *
- * Canonical contract: `scripts/sources.schema.json` (`$defs/SyncedSource`).
- * The engine validates every record against that schema before writing sources.json.
- * Any new field must be added to the schema first — the validation gate enforces this.
- *
- * Field naming mirrors ProjectMetrics exactly; the `commitsHeadline*` pair is
- * omitted here because it is produced by the curation gate, not measured.
- *
- * Scope is explicit in every name: `Any` is all-authors, `Me` is Jason only.
- * `Human` is a filter within the all-authors scope (bots and agents removed),
- * not a third scope.
- */
-export interface SyncedSource {
-	commitHead?: string;
-	// Ref the fingerprint was measured against (resolved default branch, or 'HEAD' fallback).
-	// Metadata only; excluded from drift comparison and used for the HEAD-fallback advisory.
-	measuredRef?: string;
-	// Commit grid
-	commitsAny?: number;
-	commitsAnyRecent?: number;
-	commitsMe?: number;
-	commitsMeRecent?: number;
-	// All-authors count with non-human authors (CI bots, AI agents) removed.
-	// The denominator inferContribution divides by: `commitsAny` counts bot commits
-	// as co-authorship, which reads solo work as a team project.
-	commitsHuman?: number;
-	// Distinct commit authors by identity. `authorsDistinctHuman` collapses all of
-	// Jason's git identities to one, so a value of 1 proves solo work outright,
-	// whatever the commit share says.
-	authorsDistinct?: number;
-	authorsDistinctHuman?: number;
-	// Whether Jason authored the root commit: originated the project vs joined it.
-	commitMeRoot?: boolean;
-	// Dates
-	commitAnyLast?: string;
-	// Jason's most recent commit. Pairs with commitAnyRoot (also author-scoped) for
-	// a span measured in one consistent scope; `commitAnyLast` stays all-authors.
-	commitMeLast?: string;
-	commitAnyRoot?: string;
-	// Intra-span activity shape, author-scoped like commitAnyRoot. commitAnyRoot and
-	// commitAnyLast describe only endpoints, so a repo touched once at each end is
-	// indistinguishable from one worked continuously; these make the difference
-	// detectable. spanMonthsActive/spanMonthsAll is the sustained-vs-bursty ratio,
-	// spanGapMaxDays the longest silence inside the span.
-	spanMonthsActive?: number;
-	spanMonthsAll?: number;
-	spanGapMaxDays?: number;
-	// Languages (advisory; not overlaid onto tags but now also fed to inferTags)
-	detectedLanguages?: string[];
-	// Codebase size
-	linesAny?: number;
-	// Churn grid (Jason-only / all-authors × lifetime / recent × added/removed)
-	linesMeAdded?: number;
-	linesMeRemoved?: number;
-	linesAnyAdded?: number;
-	linesAnyRemoved?: number;
-	linesMeAddedRecent?: number;
-	linesMeRemovedRecent?: number;
-	linesAnyAddedRecent?: number;
-	linesAnyRemovedRecent?: number;
-	// Repo identity and dependency-manifest fields (Phase 2 / Phase 6)
-	urlRepo?: string;
-	urlsRepoCompanion?: string[];
-	detectedRuntime?: string[];
-	detectedDatabase?: string[];
-	detectedFramework?: string[];
-	// First-introduced date (YYYY-MM-DD) per detected tech identity, keyed by
-	// the same identity strings as runtime/framework/database (e.g. 'svelte-5').
-	// Populated by a git history search, distinct from commitAnyRoot (repo
-	// inception) — a tag on a long-lived repo can enter years after the repo
-	// started. Source-grep-only signals are absent here by design.
-	detectedTechFirstSeen?: Record<string, string>;
-}
+// SyncedSource now lives in types.ts alongside the rest of the data model, so
+// ProjectMetrics can derive its synced half from it. Re-exported by the
+// `export * from './types.js'` above, keeping every existing import path valid.
 
 const sources = sourcesManifest.sources as Record<string, SyncedSource>;
 
