@@ -44,8 +44,8 @@ The site is live and substantially built: full routes, the graph/timeline/map/to
 
 - [x] **3DE.0** — Define visual direction / signature: mood, type pairing, motion language, graph styling principles
 - [x] **3DE.1** — Typography pass (scale, rhythm, measure) across all routes _(depends on 3DE.0)_
-- [ ] **3DE.2** — Responsive audit: map / timeline / grids on small viewports _(blocked — depends on 3DE.3, 3DE.4)_
-- [ ] **3DE.3** — Motion pass: meaningful transitions, respect prefers-reduced-motion _(depends on 3DE.1)_
+- [x] **3DE.2** — Responsive audit: map / timeline / grids on small viewports _(depends on 3DE.3, 3DE.4)_
+- [x] **3DE.3** — Motion pass: meaningful transitions, respect prefers-reduced-motion _(depends on 3DE.1)_
 - [x] **3DE.4** — Refine graph aesthetics (edge styling, clustering legibility, constellation view) _(depends on 3DE.5, 3DE.6)_
 - [x] **3DE.5** — Consistency sweep of semantic colour aliases vs Reasonable Colors usage _(depends on 3DE.0)_
 - [x] **3DE.6** — Drastically improve the /map graph layout for legibility _(depends on 3DE.0)_
@@ -88,8 +88,8 @@ The site is live and substantially built: full routes, the graph/timeline/map/to
 - [x] **5DR.19** — drift link verb: write a TechRelationship into tech-relationships.ts _(depends on 5DR.6)_
 - [x] **5DR.20** — Intra-span dormancy signal: sample commit dates so activity gaps become detectable _(depends on 5DR.7)_
 - [x] **5DR.21** — Improve role detection: richer signals than commit share for the solo/lead/collaborator inference _(depends on 5DR.6)_
-- [ ] **5DR.22** — drift enrich verb: opt-in gh-backed enrichment writing archived and homepageUrl into a schema-extended sources.json section, while drift sync stays offline _(depends on 5DR.5, 5DR.6)_
-- [ ] **5DR.23** — Derive the site's archived and deployed axes from enriched manifest data, replacing the authored placeholders _(blocked — depends on 5DR.22)_
+- [ ] **5DR.22** — drift enrich verb: opt-in gh-backed enrichment writing GitHub's own archived repo flag and homepageUrl into a schema-extended sources.json section, while drift sync stays offline _(depends on 5DR.5, 5DR.6)_
+- [ ] **5DR.23** — Derive the site's retired and deployed axes from enriched manifest data, replacing the authored placeholders _(blocked — depends on 5DR.22)_
 
 ---
 
@@ -168,7 +168,7 @@ graph LR
 	5DR.20["5DR.20: Intra-span dormancy signal: sample comm…"]
 	5DR.21["5DR.21: Improve role detection: richer signals…"]
 	5DR.22["5DR.22: drift enrich verb: opt-in gh-backed enr…"]
-	5DR.23["5DR.23: Derive the site's archived and deployed…"]
+	5DR.23["5DR.23: Derive the site's retired and deployed…"]
 	M5["M5: Drift Decoupling: Engine & Verbs"]:::mile
 	1CO.5["1CO.5: Expand the Colophon into the drift-engin…"]
 	M1["M1: Content Depth & Polish"]:::mile
@@ -258,7 +258,7 @@ graph LR
 	5DR.8 --> M6
 	5DR.9 --> M6
 	5DR.10 --> M6
-	class 3DE.3,4QU.8,5DR.20,5DR.21,5DR.22 todo
-	class 3DE.2,4QU.1,4QU.3,4QU.4,4QU.5,4QU.7,5DR.10,5DR.23,5DR.8,5DR.9 blocked
-	class 1CO.1,1CO.10,1CO.2,1CO.3,1CO.4,1CO.5,1CO.6,1CO.7,1CO.8,1CO.9,2FE.1,2FE.2,2FE.3,2FE.4,2FE.5,2FE.6,2FE.7,2FE.8,3DE.0,3DE.1,3DE.4,3DE.5,3DE.6,5DR.0,5DR.1,5DR.11,5DR.12,5DR.13,5DR.14,5DR.15,5DR.16,5DR.17,5DR.18,5DR.19,5DR.2,5DR.3,5DR.4,5DR.5,5DR.6,5DR.7 done
+	class 4QU.4,4QU.5,5DR.22 todo
+	class 4QU.1,4QU.3,4QU.7,5DR.10,5DR.23,5DR.8,5DR.9 blocked
+	class 1CO.1,1CO.10,1CO.2,1CO.3,1CO.4,1CO.5,1CO.6,1CO.7,1CO.8,1CO.9,2FE.1,2FE.2,2FE.3,2FE.4,2FE.5,2FE.6,2FE.7,2FE.8,3DE.0,3DE.1,3DE.2,3DE.3,3DE.4,3DE.5,3DE.6,4QU.8,5DR.0,5DR.1,5DR.11,5DR.12,5DR.13,5DR.14,5DR.15,5DR.16,5DR.17,5DR.18,5DR.19,5DR.2,5DR.20,5DR.21,5DR.3,5DR.4,5DR.5,5DR.6,5DR.7 done
 ```
