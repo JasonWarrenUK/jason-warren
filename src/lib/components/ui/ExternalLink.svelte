@@ -78,16 +78,16 @@
 	}
 
 	/* The live-site link is the deployed register in link form, tinted from
-	   the complete-progress ink: running somewhere is a property of
-	   finished work (colour-system.md §9). */
+	   the released ink: running somewhere is a property of work that
+	   reached someone (colour-system.md §9). */
 	.external-link--live {
-		color: var(--progress-complete-text);
-		border-color: var(--progress-complete);
-		background-color: var(--progress-complete-bg);
+		color: var(--progress-released-text);
+		border-color: var(--progress-released);
+		background-color: var(--progress-released-bg);
 	}
 
 	.external-link--live:hover {
-		background-color: var(--progress-complete);
+		background-color: var(--progress-released);
 		color: white;
 	}
 

@@ -71,7 +71,7 @@
 	--ink-oxide: light-dark(var(--color-cinnamon-4), var(--color-cinnamon-3));
 	--ink-succession-fwd: light-dark(var(--color-lime-4), var(--color-lime-3));
 	--ink-succession-back: light-dark(var(--color-raspberry-4), var(--color-raspberry-3));
-	/* Ordinal ramp: in-progress → dormant → complete. The three inks walk one
+	/* Ordinal ramp: in-progress → dormant → released. The three inks walk one
 	   direction through the palette's hue order (purple → violet → indigo), so
 	   an adjacent-hue confusion costs one step rather than a whole category
 	   (colour-system.md §8). */
@@ -113,17 +113,17 @@
 		color-mix(in oklab, var(--color-violet-6) 35%, #1a1b1e)
 	);
 	--progress-dormant-text: light-dark(var(--color-violet-6), var(--color-violet-2));
-	--progress-complete: var(--ink-progress-3);
-	--progress-complete-retired: color-mix(
+	--progress-released: var(--ink-progress-3);
+	--progress-released-retired: color-mix(
 		in oklab,
 		var(--ink-progress-3) var(--fade-ink-share),
 		var(--color-text-muted)
 	);
-	--progress-complete-bg: light-dark(
+	--progress-released-bg: light-dark(
 		var(--color-indigo-1),
 		color-mix(in oklab, var(--color-indigo-6) 35%, #1a1b1e)
 	);
-	--progress-complete-text: light-dark(var(--color-indigo-6), var(--color-indigo-2));
+	--progress-released-text: light-dark(var(--color-indigo-6), var(--color-indigo-2));
 	--edge-extraction: var(--ink-oxide);
 	--tech-mark: var(--ink);
 	--tech-mark-historic: color-mix(

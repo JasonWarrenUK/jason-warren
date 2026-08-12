@@ -91,8 +91,7 @@ export function stageInk(progress: ProjectProgress, released = false): StageInk 
  *
  * `released` maps onto the ramp's third ink (colour-system.md §2), so the five
  * released projects read as settled on the map and timeline and not merely on
- * their badge. The CSS custom properties still carry the historical `complete`
- * name, which the badge shares.
+ * their badge.
  */
 export function progressColour(
 	progress: ProjectProgress,
@@ -105,12 +104,12 @@ export function progressColour(
 /**
  * Ink for a ramp rung directly, for legends that enumerate the ramp rather than
  * colouring a specific project.
+ *
+ * Every rung name matches its token suffix in tokens.css, so this interpolates
+ * straight through with no translation step.
  */
 export function stageInkColour(ink: StageInk, retired = false): string {
-	// The settled rung is spelled `complete` in tokens.css, the name the badge
-	// and the live-site link already consume.
-	const token = ink === 'released' ? 'complete' : ink;
-	return retired ? `var(--progress-${token}-retired)` : `var(--progress-${token})`;
+	return retired ? `var(--progress-${ink}-retired)` : `var(--progress-${ink})`;
 }
 
 /** Human-readable label for an edge kind, phrased from source to target. */

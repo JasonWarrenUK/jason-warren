@@ -82,8 +82,8 @@
 	/* Released work reads on the settled end of the ramp whether or not it is
 	   still being maintained; the phrase carries that distinction in words. */
 	.stage-badge--released {
-		color: var(--progress-complete-text);
-		background-color: var(--progress-complete-bg);
+		color: var(--progress-released-text);
+		background-color: var(--progress-released-bg);
 	}
 
 	/* Exploration track: hollow pill, the mark convention carried into type.
@@ -109,10 +109,10 @@
 		border: 1px solid var(--color-border-strong);
 	}
 
-	/* Deployed: tinted from the complete-progress ink, the same family the
+	/* Deployed: tinted from the released ink, the same family the
 	   live-site link uses. Running somewhere is a property of finished work. */
 	.stage-badge--deployed {
-		color: var(--progress-complete-text);
-		background-color: var(--progress-complete-bg);
+		color: var(--progress-released-text);
+		background-color: var(--progress-released-bg);
 	}
 </style>

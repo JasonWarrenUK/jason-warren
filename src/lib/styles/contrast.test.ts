@@ -248,7 +248,7 @@ const BODY_PAIRS: [string, string, number][] = [
 	['--color-accent-text', '--color-accent-bg', 4.5],
 	['--progress-in-progress-text', '--progress-in-progress-bg', 4.5],
 	['--progress-dormant-text', '--progress-dormant-bg', 4.5],
-	['--progress-complete-text', '--progress-complete-bg', 4.5]
+	['--progress-released-text', '--progress-released-bg', 4.5]
 ];
 
 /**
@@ -275,7 +275,7 @@ const INK_PAIRS: [string, string, number][] = [
 const FADE_PAIRS: [string, string, number][] = [
 	['--progress-in-progress-retired', '--color-surface-sunken', 2.2],
 	['--progress-dormant-retired', '--color-surface-sunken', 2.2],
-	['--progress-complete-retired', '--color-surface-sunken', 2.2],
+	['--progress-released-retired', '--color-surface-sunken', 2.2],
 	['--tech-mark-historic', '--color-surface-sunken', 2.2]
 ];
 
@@ -290,7 +290,7 @@ const FADE_PAIRS: [string, string, number][] = [
 const FADE_CHROMA_PAIRS: [string, string, number][] = [
 	['--progress-in-progress', '--progress-in-progress-retired', 0.55],
 	['--progress-dormant', '--progress-dormant-retired', 0.55],
-	['--progress-complete', '--progress-complete-retired', 0.55],
+	['--progress-released', '--progress-released-retired', 0.55],
 	['--tech-mark', '--tech-mark-historic', 0.55]
 ];
 
