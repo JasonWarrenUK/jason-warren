@@ -26,15 +26,31 @@
  * signature (RPC timeout + a clean "Tests N passed (N)" summary) and still
  * fails on any real test failure. Don't fold this back into a plain
  * `vitest run` without keeping both the isolation and the wrapper.
+ *
+ * Timeout: every test here waits on a spawnSync that is itself budgeted at
+ * 15s or 30s, so vitest's 5s default cut in below the subprocess it was
+ * waiting for. Locally the promote subprocesses finish in well under a
+ * second and the default never bit; CI runs this file roughly twice as
+ * slowly (77s wall vs ~40s here), which pushed the first promote over 5s
+ * and failed it as a test timeout rather than anything to do with promote.
+ * The file-level budget sits above the largest subprocess timeout so a
+ * genuinely stuck subprocess is killed by spawnSync and reported as a
+ * failed assertion on its exit status, instead of surfacing as an opaque
+ * "Test timed out" with no stderr.
  */
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, cpSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { rmSync } from 'node:fs';
+
+// Above the 30s ceiling on this file's longest spawnSync, so the subprocess
+// timeout always fires first and reports a real exit status. See the timeout
+// note in the file header.
+vi.setConfig({ testTimeout: 45_000 });
 
 const scriptDir = fileURLToPath(new URL('.', import.meta.url));
 const repoRoot = join(scriptDir, '..');
