@@ -205,8 +205,8 @@ function withSyncedMetrics(project: Project): Project {
 		commitsHeadline:
 			ov?.commitsHeadline?.value ??
 			(isSolo
-				? (ov?.commitsAny?.value ?? synced?.commitsAny)
-				: (ov?.commitsMe?.value ?? synced?.commitsMe)),
+				? (ov?.commitsAny?.value ?? synced?.commitsAny ?? prov('commitsAny'))
+				: (ov?.commitsMe?.value ?? synced?.commitsMe ?? prov('commitsMe'))),
 		commitsHeadlineScope: isSolo ? 'any' : 'me',
 		commitsAnyRecent:
 			ov?.commitsAnyRecent?.value ?? synced?.commitsAnyRecent ?? prov('commitsAnyRecent'),
@@ -236,6 +236,12 @@ function withSyncedMetrics(project: Project): Project {
 	for (const key of Object.keys(merged) as (keyof ProjectMetrics)[]) {
 		if (merged[key] === undefined) delete merged[key];
 	}
+
+	// The scope describes a headline, so it must not outlive one. Left unconditional
+	// it would claim a figure came from 'any' or 'me' when there is no figure, and
+	// would keep `merged` permanently non-empty — handing consumers a metrics object
+	// whose only key is the scope of a value that isn't there.
+	if (merged.commitsHeadline === undefined) delete merged.commitsHeadlineScope;
 
 	// Re-key the manifest's identity-keyed detectedTechFirstSeen (e.g. 'svelte-5') to
 	// the tag-label-keyed form adoption.ts reads (e.g. 'Svelte 5'), via the

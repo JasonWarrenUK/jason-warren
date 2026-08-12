@@ -6,7 +6,7 @@
  * needs fixing, not that the application logic is wrong.
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import { readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -833,6 +833,67 @@ describe('provisional (in-progress.json) precedence', () => {
 				).toBe(syncedValue);
 			}
 		}
+	});
+});
+
+// ---------------------------------------------------------------------------
+// Provisional-only merge shapes
+//
+// The corpus-driven tests above iterate over the committed in-progress.json,
+// which is currently empty — they pass vacuously and cannot see either of the
+// failure modes below. These synthesise the manifests instead, so the real
+// withSyncedMetrics runs against a project whose only numbers are provisional.
+// Re-implementing the merge inline would test a copy that can drift from the
+// code it mimics, so the module is re-imported against mocked manifests.
+// ---------------------------------------------------------------------------
+
+describe('provisional-only projects (synthesised manifests)', () => {
+	const slug = 'iris';
+
+	/** Loads a fresh registry with the three metric manifests replaced. */
+	async function metricsFor(tracked?: Record<string, { value: number; baseOnMain: number }>) {
+		vi.resetModules();
+
+		vi.doMock('./sources.json', () => ({
+			default: { sources: { [slug]: { slug } } }
+		}));
+		vi.doMock('./overrides.json', () => ({ default: { overrides: {} } }));
+		vi.doMock('./in-progress.json', () => ({
+			default: { inProgress: tracked ? { [slug]: { visibility: 'public', tracked } } : {} }
+		}));
+
+		const fresh = await import('./index.js');
+		return fresh.projects.find((p) => p.slug === slug)?.metrics;
+	}
+
+	afterEach(() => {
+		vi.doUnmock('./sources.json');
+		vi.doUnmock('./overrides.json');
+		vi.doUnmock('./in-progress.json');
+		vi.resetModules();
+	});
+
+	it('surfaces a provisional commit count as the headline on a solo project', async () => {
+		// The headline gates the whole commits row in both MetricsPanel and
+		// HeroRotation. Without the provisional tier here, a project whose numbers
+		// are all provisional reports commitsAny 42 and no commit figure at all —
+		// though the tracked value was promoted precisely to surface.
+		const metrics = await metricsFor({ commitsAny: { value: 42, baseOnMain: 0 } });
+
+		expect(metrics?.commitsAny).toBe(42);
+		expect(metrics?.commitsHeadline).toBe(42);
+		expect(metrics?.commitsHeadlineScope).toBe('any');
+	});
+
+	it('drops the scope marker when no headline survives the merge', async () => {
+		// An orphan scope claims a figure came from 'any' or 'me' when there is no
+		// figure, and keeps `merged` permanently non-empty — so `metrics` is never
+		// undefined and HeroRotation emits an empty <dl>.
+		const metrics = await metricsFor();
+
+		expect(metrics?.commitsHeadline).toBeUndefined();
+		expect(metrics?.commitsHeadlineScope).toBeUndefined();
+		expect(metrics).toBeUndefined();
 	});
 });
 
