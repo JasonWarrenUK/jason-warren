@@ -52,7 +52,7 @@ The old `status` field conflates at least three axes. Decomposed, with provenanc
 | `activity` | continuous recency     | derived now (`lastCommit`, `commitsRecent`)                       | opacity, floor 0.55               |
 | `retired`  | boolean                | authored; presentation only, never a visibility control           | fixed-ratio chroma drain          |
 
-Unstaged projects (neither axis authored, heuristic unavailable) render pale neutral, as `uncategorised` does today. Archived projects are exempt from the activity fade; the shade shift is their recession, and stacking both would sink them below findability.
+Unstaged projects (neither axis authored, heuristic unavailable) render pale neutral, as `uncategorised` does today. Retired projects are exempt from the activity fade; the chroma drain is their recession, and stacking both would sink them below findability.
 
 **Model B (track × progress) is the chosen model** (review round 1). Model A, a single ordinal scale `prototype → developing → complete`, was rejected for a structural reason: prototypes do not graduate. A prototype that proves its idea gets rebuilt as a new project; a prototype that finishes its exploration is _done_, and Model A files it under the earliest stop of a maturity scale it was never on. Six of the current 33 projects are prototypes, and several completed exactly what they set out to test.
 
@@ -87,14 +87,17 @@ The axes were therefore separated, so each field asserts one thing and no field 
 
 ## 4. The ramp
 
-**Chosen (review round 1): the violet family, purple → violet.** Adjacent Reasonable hues reading as one graded ink, hypsometric-tint style; hexes verifiable at [reasonable.work/colors](https://www.reasonable.work/colors/).
+**Chosen (review round 1): the violet family, purple → violet, extended to indigo in August 2026.** Adjacent Reasonable hues reading as one graded ink, hypsometric-tint style; hexes verifiable at [reasonable.work/colors](https://www.reasonable.work/colors/).
 
-| Progress    | Light              | Dark               |
-| ----------- | ------------------ | ------------------ |
-| in-progress | purple-4 `#b01fe3` | purple-3 `#d150ff` |
-| complete    | violet-4 `#794aff` | violet-3 `#9b70ff` |
+| Rung        | Light              | Dark               | Register                 |
+| ----------- | ------------------ | ------------------ | ------------------------ |
+| in-progress | purple-4 `#b01fe3` | purple-3 `#d150ff` | `--progress-in-progress` |
+| dormant     | violet-4 `#794aff` | violet-3 `#9b70ff` | `--progress-dormant`     |
+| released    | indigo-4 `#0061fc` | indigo-3 `#3d81ff` | `--progress-released`    |
 
-Inherits violet-means-prototype in reverse: violet becomes the _complete_ end. Cool and abstract against the warm paper, and higher contrast with oxide and the succession pair than the alternative offered.
+Inherits violet-means-prototype in reverse: the ramp walks away from purple as work settles. Cool and abstract against the warm paper, and higher contrast with oxide and the succession pair than the alternative offered.
+
+The third rung arrived with the progress/released split (§3). Two rungs could not carry three states once "the work stopped" and "the work reached someone" became separate claims, so indigo takes the settled end and violet moves to the middle. `released` sits beyond `dormant` because it is authored rather than observed: the ramp reads left to right as increasing certainty that the work arrived somewhere.
 
 The rejected candidate was the green family (chartreuse-4 `#497c00` → green-4 `#008217` under Model B), carrying the site's green-means-healthy association from `live = emerald` (emerald-4 `#008147`) and the vegetation-tint register of survey sheets. It lost on separation: the violet family sits further from oxide, from succession lime and from the amber-adjacent warmth of the paper itself.
 
@@ -140,7 +143,9 @@ Progressive disclosure for every edge web. At rest a sheet shows its structure i
 
 ## 7. Mechanism
 
-Two layers of tokens. The ink layer names the census (`--ink`, `--ink-oxide`, `--ink-succession-fwd`, `--ink-succession-back`, `--ink-progress-1`, `--ink-progress-2`); the register layer maps meanings onto inks (`--progress-complete: var(--ink-progress-2)`, `--edge-extraction: var(--ink-oxide)`). Components consume register tokens only. Opening the census means adding an ink, which means editing one visible table in one file, which is the audit trail.
+Two layers of tokens. The ink layer names the census (`--ink`, `--ink-oxide`, `--ink-succession-fwd`, `--ink-succession-back`, `--ink-progress-1`, `--ink-progress-2`, `--ink-progress-3`); the register layer maps meanings onto inks (`--progress-released: var(--ink-progress-3)`, `--edge-extraction: var(--ink-oxide)`). Components consume register tokens only. Opening the census means adding an ink, which means editing one visible table in one file, which is the audit trail.
+
+The ink names are deliberately ordinal rather than semantic: `--ink-progress-3` is a position on the ramp, so the register above it can be renamed when the vocabulary moves without disturbing the census. That is what happened in August 2026, when `--progress-complete` became `--progress-released` and the ink underneath it did not change.
 
 Every token defines once via `light-dark()`. The theme toggle sets `color-scheme` on the root instead of swapping token blocks. This deletes the duplicated `[data-theme='dark']` and `@media (prefers-color-scheme: dark)` blocks, which are token-for-token copies today with no test guarding their agreement.
 
@@ -150,68 +155,74 @@ The contrast test extends to cover the ramp inks against both surfaces, resolves
 
 ## 8. Accessibility
 
-Every same-shade Reasonable hue pair sits in one lightness band, so a categorical system built on hue alone fails colour-blind readers precisely where it has the most values. This redesign reduces exposure structurally: tech-kind moves to glyphs, which survive any colour vision; deployed is a ring, retired is a shade, activity is opacity, provisional is a dot pattern. The progress ramp is ordinal, where adjacent-hue confusion costs a step rather than a category, and every track and progress value also appears as badge text. The succession pair (lime and raspberry) is the one remaining hue-only distinction between exactly two values; their arrowheads and positions carry direction redundantly.
+Every same-shade Reasonable hue pair sits in one lightness band, so a categorical system built on hue alone fails colour-blind readers precisely where it has the most values. This redesign reduces exposure structurally: tech-kind moves to glyphs, which survive any colour vision; deployed is a ring, retired is a chroma drain (the mix toward the mid neutral described above, which reads as duller rather than lighter), activity is opacity, provisional is a dot pattern.
+
+The progress ramp is ordinal, where adjacent-hue confusion costs a step rather than a category. Since August 2026 it carries three rungs rather than two, which widens the hue span it asks a reader to distinguish; every rung is also spelled out in badge text (`Building`, `Dormant`, `Released · Maintained`, `Released · Settled`), so hue is never the only carrier. Track appears as text on the same badge.
+
+The succession pair (lime and raspberry) remains the one hue-only distinction between exactly two values; their arrowheads and positions carry direction redundantly. Retired marks are the one place where a ramp rung and a treatment combine, and the fade is pinned by tests in both themes so the drained ink stays findable (§4).
 
 ## 9. Migration
 
 ### Views
 
-| View                       | Before                                                                      | After                                                                                                           |
-| -------------------------- | --------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
-| ProjectMap · relationships | 7 theme edge hues + 7 hull tints + status nodes + accent/primary extraction | neutral web, paper hulls with serif labels, oxide lift on legend hover; progress-ramp nodes with deployed rings |
-| ProjectMap · stack         | 6 category edge hues + status nodes                                         | neutral web, oxide lift via existing chips; progress-ramp nodes                                                 |
-| ProjectMap · technologies  | 7 kind hues on nodes, lime/raspberry lineage                                | ink glyph marks, historic one shade paperward; lime/raspberry unchanged                                         |
-| AdoptionTimeline           | kind hues on dots and rails, lime/raspberry connectors                      | ink glyphs, historic shade-shifted; succession colours on rails and connectors unchanged                        |
-| TimelineChart              | status rails, blue extraction bows, grey density                            | progress-ramp rails with deployed rings and activity fade; oxide extraction ribbons; oxide density wash         |
-| NeighbourhoodGraph         | status nodes, primary/neutral edges                                         | progress-ramp nodes; extraction edges oxide                                                                     |
-| ThemeTerritories           | text-only already                                                           | unchanged                                                                                                       |
-| StatusBadge                | 6 status pill tints                                                         | progress pill in ramp tint, hollow-marked for exploration; `deployed` chip; archived pill shade-shifted         |
-| ExternalLink               | `live` variant tinted emerald                                               | keyed off `deployed`, tinted from the complete-progress ink                                                     |
-| EngineThread               | oxide arrow and library border                                              | unchanged; the rest of the site now agrees with it                                                              |
-| Role pills                 | azure / violet / cyan tints                                                 | neutral paper                                                                                                   |
+| View                         | Before                                                                      | After                                                                                                           |
+| ---------------------------- | --------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| ProjectMap · relationships   | 7 theme edge hues + 7 hull tints + status nodes + accent/primary extraction | neutral web, paper hulls with serif labels, oxide lift on legend hover; progress-ramp nodes with deployed rings |
+| ProjectMap · stack           | 6 category edge hues + status nodes                                         | neutral web, oxide lift via existing chips; progress-ramp nodes                                                 |
+| ProjectMap · technologies    | 7 kind hues on nodes, lime/raspberry lineage                                | ink glyph marks, historic one shade paperward; lime/raspberry unchanged                                         |
+| AdoptionTimeline             | kind hues on dots and rails, lime/raspberry connectors                      | ink glyphs, historic shade-shifted; succession colours on rails and connectors unchanged                        |
+| TimelineChart                | status rails, blue extraction bows, grey density                            | progress-ramp rails with deployed rings and activity fade; oxide extraction ribbons; oxide density wash         |
+| NeighbourhoodGraph           | status nodes, primary/neutral edges                                         | progress-ramp nodes; extraction edges oxide                                                                     |
+| ThemeTerritories             | text-only already                                                           | unchanged                                                                                                       |
+| StageBadge (was StatusBadge) | 6 status pill tints                                                         | stage pill in ramp tint, hollow-marked for exploration; `deployed` chip; `retired` pill on paper neutrals       |
+| ExternalLink                 | `live` variant tinted emerald                                               | keyed off `deployed`, tinted from the released ink                                                              |
+| EngineThread                 | oxide arrow and library border                                              | unchanged; the rest of the site now agrees with it                                                              |
+| Role pills                   | azure / violet / cyan tints                                                 | neutral paper                                                                                                   |
 
 ### Data
 
 `ProjectStatus` retires. The registry's 33 overlays migrate mechanically except where noted:
 
-| Old         | Count          | New                                                      |
-| ----------- | -------------- | -------------------------------------------------------- |
-| `wip`       | 11             | product · in-progress                                    |
-| `finished`  | 12             | product · complete                                       |
-| `prototype` | 6              | exploration · progress judged per project                |
-| `live`      | 1 (the-tongue) | product · complete · deployed (liveUrl already authored) |
-| `archived`  | 3              | per-project outcomes below (review round 1)              |
+The `Old` column records the literal `ProjectStatus` values and their counts as they stood before the migration; no overlay carries the field now. The `New` column is stated in the current vocabulary, which the August 2026 split (§3) changed after this table was first written: `progress` became observed-only, and what `complete` asserted moved to the authored `released`.
 
-The archived three, as ruled at review:
+| Old         | Count          | New                                                 |
+| ----------- | -------------- | --------------------------------------------------- |
+| `wip`       | 11             | product · progress observed                         |
+| `finished`  | 12             | product · `released` where the work reached someone |
+| `prototype` | 6              | exploration · progress observed                     |
+| `live`      | 1 (the-tongue) | product · `deployed` (liveUrl already authored)     |
+| `archived`  | 3              | per-project outcomes below (review round 1)         |
 
-- **beacons**: product · archived. Progress recorded as complete (the LIFT backend shipped end-to-end before the engagement closed); the ramp ink needs a progress value to shade-shift from, and complete is the honest one.
-- **psyche**: exploration · archived. Reclassified from my product proposal: the storylet engine was an experiment in quality-based narrative, and it belongs on the exploration track. Progress recorded as complete; the exploration ran its course, 63 storylets and a full suite deep.
-- **things-we-do**: product · complete, no archived flag. Deliberately un-archived at review.
+Progress is no longer authored at migration, so the rows state only what an overlay pins. The three ruled at review, as they now stand:
+
+- **beacons**: product, `retired`. The LIFT backend shipped end-to-end before the engagement closed. Under the old vocabulary that was recorded as complete; the ramp needs no authored progress value now, since the drain applies to whichever rung the observation lands on.
+- **psyche**: `retired`, track left to the heuristic. Reclassified from my product proposal at review: the storylet engine was an experiment in quality-based narrative and belongs on the exploration track, which is what the inference reads, so authoring it would only retire the provisional marker.
+- **things-we-do**: product, `released`, not retired. Deliberately un-retired at review; the release claim is what the old `complete` was reaching for.
 
 ### Sequencing (implementation phase, planned separately after sign-off)
 
 1. tokens.css rewrite: ink layer, register layer, `light-dark()`, warmth unification
 2. graph-style.ts: register mappings, glyph vocabulary
 3. Quiet webs and progressive disclosure (ProjectMap), glyph marks (ProjectMap, AdoptionTimeline)
-4. Data model: track/progress/deployed/archived fields, overlay migration, heuristic default
+4. Data model: track/progress/deployed/retired fields, overlay migration, heuristic default
 5. Badges and legends site-wide
 6. Contrast test extension
 7. The queued timeline rework (extraction ribbons, lineage-adjacent packing, density retune), which lands on the new system
 
-Roadmap tasks created alongside: role-detection improvement; `drift enrich`, the opt-in gh-backed command that derives `archived` and `deployed` while `drift sync` stays offline.
+Roadmap tasks created alongside: role-detection improvement; `drift enrich`, the opt-in gh-backed command that reads GitHub's own `archived` repo flag to derive the site's `retired` and `deployed` axes while `drift sync` stays offline.
 
 ## Review record
 
-Round 1 (16 July 2026), all six open items ruled:
+Round 1 (16 July 2026), all six open items ruled. Minutes, so the rulings are recorded in the vocabulary of the day: `archived` became `retired` and `complete` split into `dormant` and `released` in August 2026 (§3), and items 2, 5 and 6 were revised afterwards as noted.
 
 1. Stage model: **B, track × progress** (§3)
-2. Ramp family: **violet, purple → violet** (§4)
+2. Ramp family: **violet, purple → violet** (§4; extended to a third rung, indigo, in August 2026)
 3. Glyph vocabulary: **abstraction-gradient variant**; square/diamond accepted for now (§5)
 4. Tech marks in ink (blue): **confirmed**
-5. Archived shade, one step paperward: **confirmed**, then widened to two steps at round 2 (one step proved invisible)
-6. Archived three: **beacons product · archived, psyche exploration · archived, things-we-do product · complete** (§9)
+5. Archived shade, one step paperward: **confirmed**, then widened to two steps at round 2 (one step proved invisible), and finally replaced by the chroma drain (§4)
+6. Archived three: **beacons product · archived, psyche exploration · archived, things-we-do product · complete** (§9; now beacons and psyche `retired`, things-we-do `released`)
 
 Two interpretations recorded for correction if wrong:
 
-- beacons and psyche were ruled without a progress value; both are recorded as `complete` because the shade shift needs a progress ink to start from, and both ran their course.
-- things-we-do was ruled un-archived; its overlay description still reads "The project is now archived" and needs that sentence rewritten at migration.
+- beacons and psyche were ruled without a progress value; both were recorded as `complete` at the time because the shade shift needed a progress ink to start from. Resolved by the August 2026 split (§3): progress is observed, so neither carries an authored value and the drain applies to whichever rung the observation lands on.
+- things-we-do was ruled un-retired; its overlay description read "The project is now archived" and needed that sentence rewritten at migration. Done: no overlay carries the phrase, and the project is authored `released` without a retired flag.
