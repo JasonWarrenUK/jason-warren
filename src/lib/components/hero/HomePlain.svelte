@@ -313,22 +313,33 @@
 		display: flex;
 		flex-wrap: wrap;
 		gap: var(--space-4);
-		align-items: flex-start;
+		align-items: stretch;
 	}
 
+	/* A quotation-shaped card: serif display face and a primary-coloured
+	   left rule, so the claim reads as a pull-quote rather than a form
+	   control. Flex column so the "Explain?" cue sits on the bottom edge
+	   at the same height in every sibling. */
 	.plain__details {
 		flex: 1 1 20rem;
+		display: flex;
+		flex-direction: column;
 		border: 1px solid var(--color-border);
+		border-left: 4px solid var(--color-primary);
 		border-radius: var(--radius-md);
 		background-color: var(--color-surface-raised);
 	}
 
 	.plain__summary {
+		flex: 1;
 		display: flex;
 		flex-direction: column;
-		gap: var(--space-2);
-		padding: var(--space-3) var(--space-4);
-		font-size: var(--text-lg);
+		justify-content: space-between;
+		gap: var(--space-3);
+		padding: var(--space-4) var(--space-5);
+		font-family: var(--font-display);
+		font-size: var(--text-xl);
+		font-style: italic;
 		line-height: 1.5;
 		color: var(--color-text);
 		cursor: pointer;
@@ -345,7 +356,9 @@
 		align-items: center;
 		gap: var(--space-2);
 		align-self: flex-end;
+		font-family: var(--font-sans);
 		font-size: var(--text-sm);
+		font-style: normal;
 		font-weight: 500;
 		color: var(--color-text-muted);
 	}
@@ -394,7 +407,7 @@
 	}
 
 	.plain__details > p {
-		padding: 0 var(--space-4) var(--space-4);
+		padding: 0 var(--space-5) var(--space-5);
 	}
 
 	.plain__link {
