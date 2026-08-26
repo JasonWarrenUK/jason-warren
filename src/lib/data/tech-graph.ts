@@ -17,7 +17,13 @@
 
 import { projects } from './index.js';
 import { hiddenTechLabels, surfaceAdmitsKind } from './tech-overlays.js';
-import { getTechIndex, layoutSimNodes, normaliseToCanvas, LAYOUT_CANDIDATES } from './graph.js';
+import {
+	getTechIndex,
+	keepLegibleEdges,
+	layoutSimNodes,
+	normaliseToCanvas,
+	LAYOUT_CANDIDATES
+} from './graph.js';
 import type { SimNode, SimLink, LayoutResult, Point } from './graph.js';
 import type { TagKind, TechRelationship } from './types.js';
 
@@ -140,7 +146,8 @@ export interface TechCoEdgeOptions {
 /**
  * Derives co-occurrence edges between tech labels. Two labels get an edge when
  * `minShared` or more projects use both. A per-node degree cap prevents any one
- * technology from becoming a hairball hub.
+ * technology from becoming a hairball hub, and `keepLegibleEdges` bridges the
+ * clusters that cap would otherwise sever.
  *
  * Endpoints are restricted to the kinds the map surface admits, the same
  * `SURFACE_KINDS` policy `getTechNodes` applies, so no edge dangles towards a
@@ -206,19 +213,9 @@ export function getTechCoEdges(options: TechCoEdgeOptions = {}): TechCoEdge[] {
 			b.weight - a.weight || a.source.localeCompare(b.source) || a.target.localeCompare(b.target)
 	);
 
-	// Greedily keep an edge while both endpoints are below the cap.
-	const degree = new Map<string, number>();
-	const edges: TechCoEdge[] = [];
-	for (const edge of candidates) {
-		const ds = degree.get(edge.source) ?? 0;
-		const dt = degree.get(edge.target) ?? 0;
-		if (ds >= maxPerNode || dt >= maxPerNode) continue;
-		degree.set(edge.source, ds + 1);
-		degree.set(edge.target, dt + 1);
-		edges.push(edge);
-	}
-
-	return edges;
+	// Cap, then bridge: at cap 6 alone the landscape splits into seven
+	// islands that co-occur across projects; the bridge pass rejoins them.
+	return keepLegibleEdges(candidates, maxPerNode);
 }
 
 // ---------------------------------------------------------------------------

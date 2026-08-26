@@ -12,6 +12,7 @@ import {
 	computeTechLayout,
 	buildLineageLinks
 } from './tech-graph.js';
+import type { TechCoEdge } from './tech-graph.js';
 import type { TechRelationship } from './types.js';
 
 describe('getTechNodes', () => {
@@ -66,16 +67,53 @@ describe('getTechCoEdges', () => {
 		}
 	});
 
-	it('per-node degree cap holds at default maxPerNode', () => {
+	it('per-node degree cap holds at default maxPerNode, bar the bridges', () => {
 		const maxPerNode = 6; // matches the default
+		// Bridges: edges past the bare cap that rejoin severed clusters. Count
+		// them by replaying the cap alone over the uncapped candidates.
+		const candidates = getTechCoEdges({ maxPerNode: Number.POSITIVE_INFINITY });
+		const bareDegree = new Map<string, number>();
+		let bareKept = 0;
+		for (const e of candidates) {
+			const ds = bareDegree.get(e.source) ?? 0;
+			const dt = bareDegree.get(e.target) ?? 0;
+			if (ds >= maxPerNode || dt >= maxPerNode) continue;
+			bareDegree.set(e.source, ds + 1);
+			bareDegree.set(e.target, dt + 1);
+			bareKept++;
+		}
+		const bridges = edges.length - bareKept;
 		const degree = new Map<string, number>();
 		for (const e of edges) {
 			degree.set(e.source, (degree.get(e.source) ?? 0) + 1);
 			degree.set(e.target, (degree.get(e.target) ?? 0) + 1);
 		}
 		for (const [label, deg] of degree) {
-			expect(deg, `${label} exceeds cap ${maxPerNode}`).toBeLessThanOrEqual(maxPerNode);
+			expect(deg, `${label} exceeds cap ${maxPerNode} + ${bridges} bridges`).toBeLessThanOrEqual(
+				maxPerNode + bridges
+			);
 		}
+	});
+
+	it('keeps the co-occurrence landscape as connected as its candidates', () => {
+		const candidates = getTechCoEdges({ maxPerNode: Number.POSITIVE_INFINITY });
+		const components = (list: TechCoEdge[]): number => {
+			const parent = new Map<string, string>();
+			const find = (n: string): string => {
+				if (!parent.has(n)) parent.set(n, n);
+				let r = n;
+				while (parent.get(r) !== r) r = parent.get(r)!;
+				parent.set(n, r);
+				return r;
+			};
+			for (const e of candidates) {
+				find(e.source);
+				find(e.target);
+			}
+			for (const e of list) parent.set(find(e.source), find(e.target));
+			return new Set([...parent.keys()].map(find)).size;
+		};
+		expect(components(edges)).toBe(components(candidates));
 	});
 
 	it('at most 4 isolated non-language nodes with default settings', () => {
