@@ -1,5 +1,5 @@
 import sources from '$lib/data/sources.json';
-import { getHeroPool, HERO_COUNT } from '$lib/data/queries.js';
+import { getHeroPool, HERO_COUNT, getPlainProjects } from '$lib/data/queries.js';
 import { getEngineThreads } from '$lib/data/threads.js';
 import { getThemes } from '$lib/data/theme-queries.js';
 
@@ -13,6 +13,7 @@ export function load() {
 		heroPool: getHeroPool(now),
 		heroCount: HERO_COUNT,
 		engineThreads: getEngineThreads(),
-		themes: getThemes()
+		themes: getThemes(),
+		plainProjects: getPlainProjects()
 	};
 }
