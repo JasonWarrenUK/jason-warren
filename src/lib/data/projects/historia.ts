@@ -5,6 +5,8 @@ export const historia: AuthoredProject = {
 	tagline:
 		'An interactive historical atlas rendering animated maps of Anglo-Saxon and Viking-era English kingdoms across time, with linked events, artefacts, and a timeline.',
 	blurb: 'An animated atlas of Anglo-Saxon and Viking-era England.',
+	plainBlurb:
+		'An animated map of England between the Romans leaving and the Normans arriving. Drag a slider and watch the kingdoms grow, shrink and swallow each other.',
 	description:
 		'An interactive historical atlas that renders real GIS maps of Anglo-Saxon and Viking-era English kingdoms with MapLibre GL, styled through a custom atlas-style.ts and a dedicated map renderer. It ships a hand-authored dataset covering kingdoms across the early, heptarchy, viking, and late periods alongside events, artefacts, and geographic data, fed through a TopoJSON preprocessing pipeline for optimised delivery into a rich component tree of map canvas, timeline, kingdom, artefact and events panels, legend and tooltip. The codebase began as a React and D3 prototype and was rewritten in SvelteKit, with the original react.jsx kept in the repo as a cross-framework porting reference.',
 	kind: 'website',

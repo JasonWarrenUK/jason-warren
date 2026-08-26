@@ -5,6 +5,8 @@ export const guardrails: AuthoredProject = {
 	tagline:
 		'A PII-redaction guardrail service: prompts pass through a browser extension and a FastAPI/Presidio NER pipeline before reaching Claude or OpenAI, with an org-level admin panel.',
 	blurb: 'A PII-redaction pipeline that cleans prompts before they reach an LLM.',
+	plainBlurb:
+		'A safety net for people using AI chatbots at work. Before a message is sent, it spots names, addresses and other personal details and blanks them out.',
 	description:
 		'A PII-redaction guardrail as a polyglot microservice: a Chrome MV3 extension intercepts prompts, a FastAPI service running Microsoft Presidio and Flair NER scans for PII and redacts before the prompt reaches Claude, OpenAI or Gemini, and an Express API with a React admin panel handles auth and org management. I worked across the full stack: file scanning end-to-end (PDF, DOCX, XLSX and plain-text extractors, auto-scan trigger, sidebar review UI); a full role hierarchy (deactivate, reactivate, promote, demote) with soft-delete and session revocation; anonymised usage analytics from extension through server to an admin dashboard; login and signup pathway improvements including dual-mint auth for panel-role extension sign-ins; smarter PII detection for UK postcodes, name initials and location spans; and the extension popup auth flow including self-healing after sign-in.',
 	kind: 'tool',

@@ -5,6 +5,8 @@ export const rhea: AuthoredProject = {
 	tagline:
 		'An AI curriculum generator for peer-led learning cohorts. Produces multi-week course structures via Claude, with optional live research so output reflects current industry practice.',
 	blurb: 'An AI curriculum generator for peer-led learning cohorts.',
+	plainBlurb:
+		'A course planner for a peer-led course on a subject that changes monthly. Each group reviews only the module they are about to teach, checking it against what the field looks like now; Rhea then carries their changes forward through every later module, so the whole plan stays current without anyone rewriting it all at once.',
 	description:
 		'Peer-led learning cohorts need multi-week course structures, and this generates them through Claude with optional live research so output reflects current industry practice. Named sub-workflows (Themis for courses, Metis for modules, Theia for import and export) share a common generation engine backed by the Anthropic SDK and LangChain, keeping each workflow independently maintainable. A provenance cascade gives every generated module a changelog, a high, medium, or low confidence score, and auto-cited research sources, so reviewers know exactly what to trust, while Zod enforces the output contract with automatic retry up to three attempts on failed generations. Deploys via Deno Deploy.',
 	kind: 'app',

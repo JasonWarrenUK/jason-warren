@@ -5,6 +5,8 @@ export const commonsTraybake: AuthoredProject = {
 	tagline:
 		'A comparative RAG experiment demonstrating that "ethics-neutral" data-processing choices are not neutral, by applying four chunking strategies to UK Parliament (Hansard) data and surfacing what each retrieves.',
 	blurb: "A RAG experiment showing that 'neutral' chunking choices never are.",
+	plainBlurb:
+		'When a computer summarises a parliamentary debate, someone has to chop the transcript into pieces first. That sounds like plumbing. This shows the same debate chopped four different ways, and that the "neutral" choice changes which MPs get quoted.',
 	description:
 		'The argument that "ethics-neutral" data-processing choices are not neutral is hard to make in the abstract, so this shows the same parliamentary debate through four different chunking lenses and lets the divergence speak for itself. The strategies span early chunking at 1024 and 256 tokens and late chunking that blends embeddings 70% chunk to 30% debate context, a non-standard approach with measurable retrieval effects, all stored across five vector indexes in Neo4j with OpenAI text-embedding-3-large. A divergence-analysis UI shows that only 8 to 25% of retrieved chunks overlap between strategies, making the point concrete rather than merely auditable. I implemented the semantic-chunking foundation, the UK Parliament Hansard API integration and the roadmap and documentation system.',
 	kind: 'toy',

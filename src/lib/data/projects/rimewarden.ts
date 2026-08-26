@@ -5,6 +5,8 @@ export const rimewarden: AuthoredProject = {
 	tagline:
 		'A Svelte 5 campaign tracker for Frosthaven that renders your scenario-progression graph as a generated D2 diagram.',
 	blurb: 'A Frosthaven campaign tracker that draws your progress as a diagram.',
+	plainBlurb:
+		'A companion for a long board-game campaign. It keeps track of your resources and progress, and draws a map of where the story could go next.',
 	description:
 		"A personal prototype for tracking a Frosthaven board-game campaign: town resources, party composition, and scenario unlocks. Built with SvelteKit and Svelte 5 runes, it uses a class-based CampaignManager store with localStorage persistence and JSON import/export over a strongly-typed domain model covering resources, building costs, scenario links and party composition. D2 diagram generation builds the campaign's scenario-progression graph directly from saved state, styling completed, pending, and unknown nodes; the affordableBuildings derivation checks resource sufficiency against building costs without server involvement.",
 	kind: 'tool',

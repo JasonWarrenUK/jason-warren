@@ -5,6 +5,8 @@ export const flyt: AuthoredProject = {
 	tagline:
 		'A Norse interactive fiction game about flyting (ritual insult-poetry contests) where you defend your honour through stat-checked verbal duels.',
 	blurb: 'A Norse interactive fiction about ritual insult-poetry duels.',
+	plainBlurb:
+		'A story you play about a Norse insult contest: two poets trading verses in a great hall, each trying to shame the other into silence. Your cards are your wit; play the wrong one and the hall laughs at you.',
 	description:
 		'A Norse interactive fiction game about flyting, the ritual insult-poetry contest, where you defend your honour through stat-checked verbal duels. It is built on DendryNexus, a niche StoryNexus-style card-and-deck format: rather than wait for a packaged engine, I wrote a custom compiler that parses the .dry format into a static game.json, consumed by a hand-written reactive runtime with card priority and frequency draw ordering, broad and narrow difficulty checks, and tag-based choice expansion. A substantial authored .dry corpus spans two story areas, the contest and the great-hall, and Claude Code hooks auto-compile .dry files on save to keep the developer loop tight. The reactive engine was later extracted into the standalone Riffle library.',
 	kind: 'game',

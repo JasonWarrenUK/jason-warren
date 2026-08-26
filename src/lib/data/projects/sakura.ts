@@ -5,6 +5,8 @@ export const sakura: AuthoredProject = {
 	tagline:
 		'A colour-palette manager with a hex-to-name matching engine, built on ASP.NET Core and Entity Framework.',
 	blurb: 'A colour-palette manager with a hex-to-name matching engine.',
+	plainBlurb:
+		'A colour tool that understands descriptions. Type "bright light reddish orange" and it hands you the exact colour, then lets you keep it in a palette with others you have collected.',
 	description:
 		'A colour-palette manager where users collect and organise palettes with per-collection privacy controls, built on an ASP.NET Core 8 and Entity Framework Core API backed by PostgreSQL, paired with a React frontend in a companion repo. I led the API, designing the Entity Framework Core data model (including a ColourCollection join table with explicit ordering and a full migrations history) and the privacy-filtered collections-by-user endpoints scoped to the authenticated user. ColourSearch.cs is the part I am most proud of: type "bright light reddish orange" and it returns the correct hex. It converts between hex, RGB and HSL, then traverses the named-colour space by perceptual distance to resolve any description to its nearest match. The REST API is documented with Swagger and secured with ASP.NET Identity authentication.',
 	kind: 'app',

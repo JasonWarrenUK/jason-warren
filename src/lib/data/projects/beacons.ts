@@ -5,6 +5,8 @@ export const beacons: AuthoredProject = {
 	tagline:
 		'A graph-native language tool that turns free-text statements into a queryable grammar, backed by Neo4j and deployed on Deno.',
 	blurb: 'A graph-native tool that turns free text into a queryable grammar.',
+	plainBlurb:
+		'Write a plain sentence like "Priya approved the invoice" and it works out who did what, then files the sentence by meaning. Later you can ask "what has Priya approved?" and it finds every matching statement, even ones that never used the word "approved".',
 	description:
 		'Free-text statements are decomposed into a Neo4j graph of subject and verb nodes, with a route that converts raw input into a structured Grammar object. The Deno and Oak API exposes the graph layer alongside an NLP pipeline (built on the compromise library) that extracts and encodes verbs from the corpus for semantic search, passwordless magic-link authentication tied to Neo4j user records, and a Deno Cron job that keeps the database warm. A feature-organised React frontend in a companion repo walks users through a statement-building wizard with framer-motion transitions and virtualised lists.',
 	kind: 'app',

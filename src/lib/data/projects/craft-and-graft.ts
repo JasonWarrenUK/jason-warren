@@ -6,6 +6,9 @@ export const craftAndGraft: AuthoredProject = {
 	tagline:
 		'A team-built e-commerce storefront with session-based authentication and a PostgreSQL product catalogue.',
 	blurb: 'A team-built e-commerce storefront on PostgreSQL.',
+	plainBlurb:
+		'An online shop, built with a team: product pages, a basket and a checkout, with the stock and orders kept properly in a database.',
+	hideFromPlainIntro: true,
 	description:
 		"A team-built e-commerce storefront pairing an Express and PostgreSQL API with a React and Tailwind frontend. Session-based authentication uses bcrypt-hashed passwords and PostgreSQL-backed sessions via connect-pg-simple, with login, signup, and logout controllers in the API and a storefront whose navigation and views adapt to login status, fetching products live from the companion API repo. I led the React storefront, building the authentication flow, the database-driven product views and the Netlify continuous-deployment pipeline wired up from pull requests, and set up the team's GitHub Actions automation including a stale-issue bot and a first-contributor greeter.",
 	kind: 'app',

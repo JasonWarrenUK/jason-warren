@@ -5,6 +5,8 @@ export const riffle: AuthoredProject = {
 	tagline:
 		'A reactive DendryNexus game engine for SvelteKit: cards, decks, difficulty checks, quality systems, and arena topology, all built on Svelte 5 runes.',
 	blurb: 'A reactive DendryNexus card-game engine for SvelteKit.',
+	plainBlurb:
+		'The machinery behind a card-based storytelling game, separated out so that other games can be built on the same deck-and-hand rules.',
 	description:
 		'The reactive DendryNexus engine outgrew the Norse duel it was written for and became Riffle: a reactive game engine for SvelteKit built on Svelte 5 runes with no Svelte UI dependencies of its own. It implements the full StoryNexus-style card, deck, and hand system (draw, play, and discard across multiple hands with pinned cards and per-hand state), a quality system of named attributes with typed display modes and min/max clamping, and broad and narrow difficulty checks with configurable scalers and human-readable labels from almost impossible to straightforward. A concentric-circle arena topology adds spatial structure across inner, middle, and outer rings (13 zones) with adjacency relationships, and content rendering covers quality interpolation, conditional text, and markdown-style formatting.',
 	kind: 'library',

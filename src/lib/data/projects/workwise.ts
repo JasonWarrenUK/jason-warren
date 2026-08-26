@@ -6,6 +6,8 @@ export const workwise: AuthoredProject = {
 	tagline:
 		'A digital workplace passport that helps neurodivergent employees document their needs and share them with line managers, built for Founders and Coders and the LIFT programme.',
 	blurb: 'A workplace passport for neurodivergent employees to document their needs.',
+	plainBlurb:
+		'A "workplace passport" for neurodivergent people: one place to set out what you need at work and why, written once and shared on your terms, so a new manager starts informed rather than you starting again.',
 	description:
 		'A digital workplace passport, built for Founders and Coders and the LIFT programme, that helps neurodivergent employees document their needs and share them with line managers. Employees record the accommodations that help them work best; managers use it to understand and act on those needs, with Row-Level Security enforcing data isolation between the two. I led the response-state architecture, where answers are versioned by creation date rather than overwritten, and built the tile-based dashboard layout, database-driven status indicators with no hardcoded states and a consolidated CSS architecture. The developer loop runs on a local Supabase-in-Docker setup with two-tier seeding and TypeScript types generated from the database schema.',
 	kind: 'app',

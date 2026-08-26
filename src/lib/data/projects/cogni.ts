@@ -5,6 +5,8 @@ export const cogni: AuthoredProject = {
 	tagline:
 		'A developer cognition self-assessment: map your style across 17 two-axis compasses, then see which methodologies (TDD, Shape Up, Kanban…) fit you and why.',
 	blurb: 'A self-assessment that maps your developer style to methodologies.',
+	plainBlurb:
+		'Software teams argue about "the right way to work" as if it were the same for everyone. This asks how you actually think first (do you like risk, do you like plans, do you need to see the whole picture?) and only then says which ways of working would suit you and which would grate.',
 	description:
 		'Most advice on choosing a methodology ignores how the person actually thinks, so this maps developer cognition first. Seventeen two-axis compasses, organised across three tiers, capture style choices like risk tolerance, collaboration, and abstraction preference, with constraint propagation crosshatching any quadrant that would contradict a position already set. From that profile it evaluates more than ten methodologies (TDD, Scrum, Shape Up, Kanban, XP and others), explaining per-methodology why each one fits or causes friction, and exports the result as portable Markdown for 1:1s, job evaluations and retrospectives.',
 	kind: 'app',

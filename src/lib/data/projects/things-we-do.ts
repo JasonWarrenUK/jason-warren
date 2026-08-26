@@ -5,6 +5,8 @@ export const thingsWeDo: AuthoredProject = {
 	tagline:
 		'An installable PWA for managing tasks and emotional wellbeing through mood tracking and personalised coping-strategy toolkits.',
 	blurb: 'A PWA for managing tasks and wellbeing through mood tracking.',
+	plainBlurb:
+		"Commissioned by a researcher and built on their chosen model of emotion (Lövheim's cube, which maps eight basic feelings onto three brain chemicals). You place how you feel inside that cube, choose what to do next and keep a toolkit of what helps, so over weeks the patterns become visible.",
 	description:
 		'An installable, offline-first PWA for managing tasks and emotional wellbeing through mood tracking and personalised coping-strategy toolkits, built by the FAC-30 cohort. Offline support comes from a Serwist service worker over RxDB local storage, which I initialised including the schema design. I built the next-actions feature end-to-end (creation, immediate selection, view, and deletion), designed the insights charts including a 3D mood visualisation in Plotly.js, and implemented ephemeral categories with modal confirmations.',
 	kind: 'app',

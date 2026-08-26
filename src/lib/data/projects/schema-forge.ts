@@ -5,6 +5,8 @@ export const schemaForge: AuthoredProject = {
 	tagline:
 		'An XSD-driven schema system for TypeScript: parse XSD files into queryable registries, then validate data, map CSV rows to nested schema objects, and generate valid XML.',
 	blurb: 'An XSD-driven schema system for validating data and generating XML.',
+	plainBlurb:
+		'When the government publishes a rulebook for how a file must be laid out, this reads the rulebook and checks your data against it, then produces the file in the right shape.',
 	description:
 		'An XSD-driven schema system for TypeScript that crystallised the validation approach used across the Iris ILR toolkit. It separates the parsing concern, building SchemaRegistry objects with element trees, lookup maps, and full constraint metadata, from the application concerns of validation, CSV mapping, and XML generation. Data is validated against XSD-defined types, patterns, cardinality, ranges, and enumerations; flat CSV columns map to nested XSD paths with optional named transforms; and XML is generated from data objects using the schema structure and namespace information. Over 17 built-in transformation functions cover common type conversion, string formatting, and date handling.',
 	kind: 'library',
