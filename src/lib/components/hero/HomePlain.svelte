@@ -11,6 +11,56 @@
 
 	const HAND_SIZE = 3;
 
+	// The site's pages in plain words. Paths are the nav's own, so a renamed
+	// route breaks here at build time rather than silently 404ing.
+	interface PageEntry {
+		path: string;
+		label: string;
+		what: string;
+		more?: string;
+	}
+
+	const pages: PageEntry[] = [
+		{
+			path: '/projects',
+			label: 'Projects',
+			what: 'Every project, with the numbers behind it: how much work went in and when.'
+		},
+		{
+			path: '/map',
+			label: 'Map',
+			what: 'All the projects drawn as a web.',
+			more: 'Lines show which projects grew out of which, and which ones share the same tools. Drag things around; hover to see how a project connects to the rest.'
+		},
+		{
+			path: '/timeline',
+			label: 'Timeline',
+			what: 'Each project as a bar from when it started to the last time I worked on it.',
+			more: 'The bars are to scale, so you can see what was live at the same time and which projects I keep returning to years later.'
+		},
+		{
+			path: '/toolkit',
+			label: 'Toolkit',
+			what: 'The order I picked up each tool, and the subjects the projects keep returning to.'
+		},
+		{
+			path: '/about',
+			label: 'About',
+			what: 'Who I am, how I work and where I came from.'
+		},
+		{
+			path: '/hire',
+			label: 'Hire',
+			what: 'The kinds of work I take on and how to get in touch.'
+		},
+		{
+			path: '/drift-engine',
+			label: 'Drift Engine',
+			what: 'How the numbers on this site are gathered.',
+			more: 'Every figure is measured from the real history of each project by a small program I wrote, checked against a set of rules and only then shown here. Nothing is typed in by hand, so the site cannot quietly go out of date.'
+		}
+	];
+
 	// The deal order. Prerender and first paint use registry order so server
 	// and client markup agree; the pool is shuffled once after mount, and again
 	// each time a full pass through it completes, so the hand is random and no
@@ -131,6 +181,26 @@
 			{/each}
 		</ul>
 		<a href="{base}/projects" class="plain__cta">See everything I've built →</a>
+	</section>
+
+	<section class="plain__section" aria-labelledby="plain-pages">
+		<h2 id="plain-pages" class="plain__title">Where to go next</h2>
+		<ul class="plain__pages" role="list">
+			{#each pages as entry (entry.path)}
+				<li class="plain__page">
+					<a href="{base}{entry.path}" class="plain__page-name">{entry.label}</a>
+					<div class="plain__page-body">
+						<p class="plain__page-what">{entry.what}</p>
+						{#if entry.more}
+							<details class="plain__page-more">
+								<summary class="plain__page-summary">A bit more</summary>
+								<p>{entry.more}</p>
+							</details>
+						{/if}
+					</div>
+				</li>
+			{/each}
+		</ul>
 	</section>
 
 	<div class="plain__row">
@@ -395,6 +465,101 @@
 		color: var(--color-text-muted);
 		max-width: var(--measure);
 		margin: 0;
+	}
+
+	.plain__pages {
+		display: flex;
+		flex-direction: column;
+		margin: 0;
+		padding: 0;
+		border-top: 1px solid var(--color-border);
+	}
+
+	.plain__page {
+		display: grid;
+		grid-template-columns: 1fr;
+		gap: var(--space-1) var(--space-6);
+		padding: var(--space-4) 0;
+		border-bottom: 1px solid var(--color-border);
+	}
+
+	@media (min-width: 40rem) {
+		.plain__page {
+			grid-template-columns: 9rem 1fr;
+		}
+	}
+
+	.plain__page-name {
+		font-family: var(--font-display);
+		font-size: var(--text-lg);
+		font-weight: 600;
+		color: var(--color-primary-text);
+		text-decoration: none;
+		align-self: start;
+	}
+
+	.plain__page-name:hover {
+		text-decoration: underline;
+	}
+
+	.plain__page-body {
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-2);
+		max-width: var(--measure);
+	}
+
+	.plain__page-what {
+		font-size: var(--text-base);
+		line-height: 1.6;
+		color: var(--color-text-subtle);
+		margin: 0;
+	}
+
+	.plain__page-summary {
+		display: inline-flex;
+		align-items: center;
+		gap: var(--space-2);
+		font-size: var(--text-sm);
+		font-weight: 500;
+		color: var(--color-text-muted);
+		cursor: pointer;
+		list-style: none;
+		user-select: none;
+	}
+
+	.plain__page-summary::-webkit-details-marker {
+		display: none;
+	}
+
+	.plain__page-summary::after {
+		content: '';
+		display: inline-block;
+		width: 0.4rem;
+		height: 0.4rem;
+		margin-bottom: 0.15rem;
+		border-right: 2px solid currentColor;
+		border-bottom: 2px solid currentColor;
+		transform: rotate(45deg);
+		transition: transform var(--dur-micro) var(--ease-standard);
+	}
+
+	.plain__page-more[open] .plain__page-summary::after {
+		transform: rotate(-135deg);
+		margin-bottom: 0;
+		margin-top: 0.15rem;
+	}
+
+	.plain__page-summary:focus-visible {
+		outline: 2px solid var(--color-primary);
+		outline-offset: 2px;
+	}
+
+	.plain__page-more > p {
+		font-size: var(--text-sm);
+		line-height: 1.6;
+		color: var(--color-text-subtle);
+		margin: var(--space-2) 0 0;
 	}
 
 	.plain__row {
