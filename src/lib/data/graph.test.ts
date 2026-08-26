@@ -15,6 +15,7 @@ import {
 	getSharedTechEdges,
 	getStackGroups,
 	stackItemsFor,
+	keepLegibleEdges,
 	computeForceLayout,
 	computeRelayoutTargets,
 	countCrossings,
@@ -27,6 +28,43 @@ import type { LiveSimNode } from './graph.js';
 import type { Project, ProjectSlug, TechTag } from './types.js';
 
 const slugs = new Set<ProjectSlug>(projects.map((p) => p.slug));
+
+type Endpoints = { source: string; target: string };
+
+/** Connected components among the endpoints of `universe`, joined by `edges`. */
+function componentCount(edges: Endpoints[], universe: Endpoints[]): number {
+	const parent = new Map<string, string>();
+	const find = (n: string): string => {
+		if (!parent.has(n)) parent.set(n, n);
+		let r = n;
+		while (parent.get(r) !== r) r = parent.get(r)!;
+		parent.set(n, r);
+		return r;
+	};
+	for (const e of universe) {
+		find(e.source);
+		find(e.target);
+	}
+	for (const e of edges) parent.set(find(e.source), find(e.target));
+	const roots = new Set<string>();
+	for (const n of parent.keys()) roots.add(find(n));
+	return roots.size;
+}
+
+/** How many edges a bare per-node cap keeps from strongest-first `candidates`. */
+function bareCapCount(candidates: Endpoints[], maxPerNode: number): number {
+	const degree = new Map<string, number>();
+	let kept = 0;
+	for (const e of candidates) {
+		const ds = degree.get(e.source) ?? 0;
+		const dt = degree.get(e.target) ?? 0;
+		if (ds >= maxPerNode || dt >= maxPerNode) continue;
+		degree.set(e.source, ds + 1);
+		degree.set(e.target, dt + 1);
+		kept++;
+	}
+	return kept;
+}
 
 describe('getProjectGraph', () => {
 	const graph = getProjectGraph();
@@ -160,18 +198,29 @@ describe('getSharedTechEdges', () => {
 		expect(edges.some((e) => (e.category as string) === 'language')).toBe(false);
 	});
 
-	it('caps each node at maxPerNode edges within a category', () => {
+	it('caps each node per category, allowing only bridge edges past the cap', () => {
 		const maxPerNode = 3;
 		const edges = getSharedTechEdges({ maxPerNode });
-		const degree = new Map<string, number>();
-		for (const edge of edges) {
-			const ks = `${edge.source}:${edge.category}`;
-			const kt = `${edge.target}:${edge.category}`;
-			degree.set(ks, (degree.get(ks) ?? 0) + 1);
-			degree.set(kt, (degree.get(kt) ?? 0) + 1);
-		}
-		for (const [key, count] of degree) {
-			expect(count, `${key} exceeds the per-category cap`).toBeLessThanOrEqual(maxPerNode);
+		const uncapped = getSharedTechEdges({ maxPerNode: Number.POSITIVE_INFINITY });
+		for (const category of EDGE_CATEGORIES) {
+			const kept = edges.filter((e) => e.category === category);
+			const candidates = uncapped.filter((e) => e.category === category);
+			// Every kept edge is a real candidate, and the kept set connects
+			// exactly what the candidates connect: no cluster is severed by the cap.
+			expect(componentCount(kept, candidates)).toBe(componentCount(candidates, candidates));
+			// Degree overshoot is bounded by the number of bridges the cap made
+			// necessary, which is at most (clusters under the bare cap - 1).
+			const degree = new Map<string, number>();
+			for (const edge of kept) {
+				degree.set(edge.source, (degree.get(edge.source) ?? 0) + 1);
+				degree.set(edge.target, (degree.get(edge.target) ?? 0) + 1);
+			}
+			const bridges = kept.length - bareCapCount(candidates, maxPerNode);
+			for (const [slug, count] of degree) {
+				expect(count, `${slug} exceeds cap + bridges in ${category}`).toBeLessThanOrEqual(
+					maxPerNode + bridges
+				);
+			}
 		}
 	});
 
@@ -498,20 +547,79 @@ describe('getThemeEdges', () => {
 		expect(getThemeEdges()).toEqual(edges);
 	});
 
-	it('per-theme degree cap holds at maxPerNode: 2', () => {
+	it('every theme stays one connected cluster at maxPerNode: 2', () => {
 		const capped = getThemeEdges({ maxPerNode: 2 });
-		const degree = new Map<string, Map<string, number>>();
-		for (const e of capped) {
-			if (!degree.has(e.theme)) degree.set(e.theme, new Map());
-			const td = degree.get(e.theme)!;
-			td.set(e.source, (td.get(e.source) ?? 0) + 1);
-			td.set(e.target, (td.get(e.target) ?? 0) + 1);
+		for (const theme of themes) {
+			const kept = capped.filter((e) => e.theme === theme.id);
+			const members = theme.slugs.map((slug) => ({ source: slug, target: slug }));
+			expect(componentCount(kept, members), `theme ${theme.id} is severed`).toBe(1);
 		}
-		for (const [themeId, td] of degree) {
-			for (const [slug, deg] of td) {
-				expect(deg, `${slug} exceeds cap in theme ${themeId}`).toBeLessThanOrEqual(2);
+	});
+
+	it('caps each member per theme, allowing only bridge edges past the cap', () => {
+		const maxPerNode = 2;
+		const capped = getThemeEdges({ maxPerNode });
+		for (const theme of themes) {
+			const kept = capped.filter((e) => e.theme === theme.id);
+			const candidates = getThemeEdges({ maxPerNode: Number.POSITIVE_INFINITY }).filter(
+				(e) => e.theme === theme.id
+			);
+			const bridges = kept.length - bareCapCount(candidates, maxPerNode);
+			const degree = new Map<string, number>();
+			for (const e of kept) {
+				degree.set(e.source, (degree.get(e.source) ?? 0) + 1);
+				degree.set(e.target, (degree.get(e.target) ?? 0) + 1);
+			}
+			for (const [slug, deg] of degree) {
+				expect(deg, `${slug} exceeds cap + bridges in ${theme.id}`).toBeLessThanOrEqual(
+					maxPerNode + bridges
+				);
 			}
 		}
+	});
+});
+
+describe('keepLegibleEdges', () => {
+	type E = { source: string; target: string; weight: number };
+	const edge = (source: string, target: string, weight: number): E => ({ source, target, weight });
+
+	it('keeps the strongest edges under the cap and drops the rest', () => {
+		// a is a hub touching b, c, d; cap 2 keeps its two strongest.
+		const candidates = [edge('a', 'b', 3), edge('a', 'c', 2), edge('a', 'd', 1), edge('c', 'd', 1)];
+		expect(keepLegibleEdges(candidates, 2)).toEqual([
+			edge('a', 'b', 3),
+			edge('a', 'c', 2),
+			edge('c', 'd', 1)
+		]);
+	});
+
+	it('re-admits the strongest dropped edge that joins two severed clusters', () => {
+		// Two triangles, each saturated at cap 2, linked only by two weak
+		// candidates. The cap drops both; the bridge pass restores the stronger.
+		const candidates = [
+			edge('a', 'b', 5),
+			edge('b', 'c', 5),
+			edge('a', 'c', 5),
+			edge('x', 'y', 5),
+			edge('y', 'z', 5),
+			edge('x', 'z', 5),
+			edge('c', 'x', 2),
+			edge('a', 'z', 1)
+		];
+		const kept = keepLegibleEdges(candidates, 2);
+		expect(kept).toContainEqual(edge('c', 'x', 2));
+		expect(kept).not.toContainEqual(edge('a', 'z', 1));
+		expect(kept).toHaveLength(7);
+	});
+
+	it('never adds an edge the candidates do not already connect', () => {
+		const candidates = [edge('a', 'b', 1), edge('c', 'd', 1)];
+		expect(keepLegibleEdges(candidates, 1)).toEqual(candidates);
+	});
+
+	it('leaves sparse input untouched when the cap never binds', () => {
+		const candidates = [edge('a', 'b', 2), edge('b', 'c', 1)];
+		expect(keepLegibleEdges(candidates, 3)).toEqual(candidates);
 	});
 });
 
