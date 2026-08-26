@@ -34,6 +34,65 @@ import { substanceScore, hubThreshold } from './scoring.js';
 import { themes } from './themes.js';
 
 // ---------------------------------------------------------------------------
+// Legibility policy: cap, then bridge
+// ---------------------------------------------------------------------------
+
+/**
+ * Keeps a map legible without hiding the shape of the data. Two passes over
+ * `candidates`, which must arrive strongest-first:
+ *
+ * 1. Cap: greedily keep an edge only while both endpoints are below
+ *    `maxPerNode`, so hub-heavy categories surface each node's strongest
+ *    links without becoming a hairball.
+ * 2. Bridge: walk the dropped candidates strongest-first and re-admit any
+ *    edge that joins two clusters the cap left apart. A flat cap alone
+ *    fragments dense categories into islands that share plenty (framework at
+ *    cap 3 split one connected candidate graph into eight); the bridge pass
+ *    restores every connection the data supports at a cost of at most
+ *    (clusters - 1) extra edges, so the degree overshoot stays small.
+ *
+ * Sparse inputs are untouched: when the cap never binds there is nothing to
+ * bridge. Deterministic for a fixed input order.
+ */
+export function keepLegibleEdges<E extends { source: string; target: string }>(
+	candidates: E[],
+	maxPerNode: number
+): E[] {
+	const kept: E[] = [];
+	const keptSet = new Set<E>();
+	const degree = new Map<string, number>();
+	for (const edge of candidates) {
+		const ds = degree.get(edge.source) ?? 0;
+		const dt = degree.get(edge.target) ?? 0;
+		if (ds >= maxPerNode || dt >= maxPerNode) continue;
+		degree.set(edge.source, ds + 1);
+		degree.set(edge.target, dt + 1);
+		kept.push(edge);
+		keptSet.add(edge);
+	}
+
+	// Union-find over the capped graph; a dropped candidate that spans two
+	// roots is a bridge worth more than the cap it breaks.
+	const parent = new Map<string, string>();
+	const find = (node: string): string => {
+		let root = node;
+		while (parent.has(root) && parent.get(root) !== root) root = parent.get(root)!;
+		parent.set(node, root);
+		return root;
+	};
+	for (const edge of kept) parent.set(find(edge.source), find(edge.target));
+	for (const edge of candidates) {
+		if (keptSet.has(edge)) continue;
+		const a = find(edge.source);
+		const b = find(edge.target);
+		if (a === b) continue;
+		parent.set(a, b);
+		kept.push(edge);
+	}
+	return kept;
+}
+
+// ---------------------------------------------------------------------------
 // Graph shape
 // ---------------------------------------------------------------------------
 
@@ -132,7 +191,10 @@ export interface SharedTechEdge {
 export interface SharedTechOptions {
 	/** Minimum shared tags (within a category) for a pair to qualify. */
 	minShared?: number;
-	/** Maximum edges kept per node, per category, strongest first. */
+	/**
+	 * Per-node, per-category degree cap for the first pass; bridge edges that
+	 * reconnect severed clusters may push a node slightly past it.
+	 */
 	maxPerNode?: number;
 }
 
@@ -140,9 +202,10 @@ export interface SharedTechOptions {
  * Derives per-category "shared stack" edges from tag overlap to give the map
  * structure the sparse curated relationships cannot. One edge type per tag
  * category (`language` excluded, see `EDGE_CATEGORIES`) so related-by-runtime
- * reads differently from related-by-data. The hairball is tamed by a per-node,
- * per-category degree cap that keeps only each project's strongest links in
- * each category. Deterministic for a fixed registry.
+ * reads differently from related-by-data. The hairball is tamed by the
+ * cap-then-bridge policy in `keepLegibleEdges`: each project keeps only its
+ * strongest links per category, and clusters the cap would sever are
+ * re-joined by their strongest dropped edge. Deterministic for a fixed registry.
  */
 export function getSharedTechEdges(options: SharedTechOptions = {}): SharedTechEdge[] {
 	const minShared = options.minShared ?? 1;
@@ -182,18 +245,10 @@ export function getSharedTechEdges(options: SharedTechOptions = {}): SharedTechE
 				b.weight - a.weight || a.source.localeCompare(b.source) || a.target.localeCompare(b.target)
 		);
 
-		// Greedily keep an edge only while both endpoints are below the cap for
-		// this category, so common categories (framework, runtime) surface their
-		// best links without dominating the picture.
-		const degree = new Map<ProjectSlug, number>();
-		for (const edge of candidates) {
-			const ds = degree.get(edge.source) ?? 0;
-			const dt = degree.get(edge.target) ?? 0;
-			if (ds >= maxPerNode || dt >= maxPerNode) continue;
-			degree.set(edge.source, ds + 1);
-			degree.set(edge.target, dt + 1);
-			edges.push(edge);
-		}
+		// Cap per category so common categories (framework, runtime) surface
+		// their best links without dominating, then bridge whatever the cap
+		// split apart (see keepLegibleEdges).
+		edges.push(...keepLegibleEdges(candidates, maxPerNode));
 	}
 
 	return edges;
@@ -263,14 +318,15 @@ export interface SharedThemeEdge {
 }
 
 export interface SharedThemeOptions {
-	/** Maximum edges kept per node per theme, strongest-weighted first. Default: 4. */
+	/** Per-node, per-theme cap for the first pass (default 4); bridges may exceed it. */
 	maxPerNode?: number;
 }
 
 /**
  * Derives "shares a theme" edges from the curated theme territories. Emits one
  * edge per (pair, theme) so each thread can be coloured and toggled independently.
- * A degree cap per theme prevents large themes from creating a dense clique.
+ * A degree cap per theme prevents large themes from creating a dense clique;
+ * `keepLegibleEdges` then bridges any members the cap left disconnected.
  * Deterministic for a fixed registry and theme list.
  */
 export function getThemeEdges(options: SharedThemeOptions = {}): SharedThemeEdge[] {
@@ -280,7 +336,6 @@ export function getThemeEdges(options: SharedThemeOptions = {}): SharedThemeEdge
 	for (const theme of themes) {
 		// Emit one edge per pair of co-members, capped per theme.
 		const slugs = [...theme.slugs].sort();
-		const degree = new Map<ProjectSlug, number>();
 		const candidates: Array<[ProjectSlug, ProjectSlug]> = [];
 
 		for (let i = 0; i < slugs.length; i++) {
@@ -290,15 +345,14 @@ export function getThemeEdges(options: SharedThemeOptions = {}): SharedThemeEdge
 			}
 		}
 
-		// Greedily keep while both endpoints are below the per-theme cap.
-		for (const [source, target] of candidates) {
-			const ds = degree.get(source) ?? 0;
-			const dt = degree.get(target) ?? 0;
-			if (ds >= maxPerNode || dt >= maxPerNode) continue;
-			degree.set(source, ds + 1);
-			degree.set(target, dt + 1);
-			edges.push({ source, target, theme: theme.id });
-		}
+		// Cap per theme, then bridge: a seven-member theme at cap 4 otherwise
+		// splits into two clusters that are, by definition, the same theme.
+		edges.push(
+			...keepLegibleEdges(
+				candidates.map(([source, target]) => ({ source, target, theme: theme.id })),
+				maxPerNode
+			)
+		);
 	}
 
 	return edges;

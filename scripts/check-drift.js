@@ -3958,12 +3958,11 @@ function findElementByStringField(ts, sf, arrayLit, field, value, options = {}) 
  * unchanged — it only slices spans.
  *
  * @param {import('typescript')} ts
- * @param {import('typescript').SourceFile} sf
  * @param {import('typescript').ArrayLiteralExpression} arrayLit
  * @param {string} value
  * @returns {number}
  */
-function findStringElementIndex(ts, sf, arrayLit, value) {
+function findStringElementIndex(ts, arrayLit, value) {
 	for (let i = 0; i < arrayLit.elements.length; i++) {
 		const el = arrayLit.elements[i];
 		if (ts.isStringLiteral(el) && el.text === value) return i;
@@ -5263,7 +5262,7 @@ async function runTag({ args, values, palette }) {
 				palette
 			);
 			if (suppressProp !== null) {
-				const idx = findStringElementIndex(fresh.ts, fresh.sf, suppressProp.initializer, label);
+				const idx = findStringElementIndex(fresh.ts, suppressProp.initializer, label);
 				if (idx !== -1) {
 					// Dropping the last entry drops the whole property — an empty
 					// suppressTags authors nothing.
@@ -5296,7 +5295,7 @@ async function runTag({ args, values, palette }) {
 		const { ts, path, text, sf, objLit, relPath } = await loadOverlayForEdit(slug, palette);
 		const suppressProp = overlayArrayProp(ts, sf, objLit, 'suppressTags', relPath, palette);
 		if (suppressProp !== null) {
-			if (findStringElementIndex(ts, sf, suppressProp.initializer, label) !== -1) {
+			if (findStringElementIndex(ts, suppressProp.initializer, label) !== -1) {
 				process.stdout.write(
 					`${YELLOW}'${label}' is already suppressed on '${slug}' — nothing to do.${RESET}\n`
 				);
@@ -5344,7 +5343,7 @@ async function runTag({ args, values, palette }) {
 	const suppressProp =
 		objLit === null ? null : overlayArrayProp(ts, sf, objLit, 'suppressTags', overlayPath, palette);
 	const idx =
-		suppressProp === null ? -1 : findStringElementIndex(ts, sf, suppressProp.initializer, label);
+		suppressProp === null ? -1 : findStringElementIndex(ts, suppressProp.initializer, label);
 	if (idx === -1) {
 		process.stdout.write(
 			`${YELLOW}'${label}' is not suppressed on '${slug}' — nothing to do.${RESET}\n`
@@ -5591,7 +5590,7 @@ async function runTheme({ args, values, palette }) {
 		);
 		process.exit(1);
 	}
-	const memberIndex = findStringElementIndex(ts, sf, slugsProp.initializer, slug);
+	const memberIndex = findStringElementIndex(ts, slugsProp.initializer, slug);
 
 	if (action === 'add') {
 		if (memberIndex !== -1) {
