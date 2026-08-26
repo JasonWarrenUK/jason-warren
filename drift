@@ -1,0 +1,4 @@
+#!/bin/zsh
+# Drift checker for the portfolio project.
+# Delegates to the Node.js script; all subcommands and flags pass through.
+node "${0:A:h}/scripts/check-drift.js" "$@"
