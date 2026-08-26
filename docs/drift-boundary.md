@@ -192,6 +192,7 @@ The engine enforces single-file writes per verb. No verb touches more than one d
 | `drift author`                  | `projects/<slug>.ts` only (create-if-absent)              |
 | `drift pin`                     | `projects/<slug>.ts` only (insert or flip `pin` property) |
 | `drift audit`                   | (no writes — read-only)                                   |
+| `drift authored`                | (no writes — read-only; same overlay import as `audit`)   |
 | (cache)                         | `.drift-cache.json` only                                  |
 
 The integration layer never writes any of these files. Authored `projects/*.ts`

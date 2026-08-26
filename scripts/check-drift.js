@@ -6181,6 +6181,236 @@ function runSnapshot({ result, manifest, palette, json, useGum }) {
 	runSnapshotPlain(snapshot, palette);
 }
 
+// ---------------------------------------------------------------------------
+// authored verb
+//
+// The curated counterpart to `snapshot`: shows every AuthoredProject field for
+// every projects/*.ts overlay, absent fields rendered as `-` so gaps are as
+// visible as content. Where snapshot answers "what does git say about each
+// repo", authored answers "what have I written about each project".
+//
+// Data access: reuses loadOverlays (the sanctioned 5DR.11 dynamic import of
+// each overlay's typed export value). Never regex-scrapes source text.
+//
+// Write-isolation: writes nothing.
+// ---------------------------------------------------------------------------
+
+/**
+ * Every AuthoredProject field except `slug`, in display order. Mirrors the
+ * interface in src/lib/data/types.ts; a field added there should be added
+ * here too, or it will never surface in `drift authored`.
+ */
+const AUTHORED_FIELDS = [
+	'name',
+	'tagline',
+	'blurb',
+	'plainBlurb',
+	'description',
+	'kind',
+	'track',
+	'released',
+	'retired',
+	'liveUrl',
+	'contribution',
+	'tags',
+	'suppressTags',
+	'highlights',
+	'relationships',
+	'pin',
+	'hide',
+	'hideFromPlainIntro'
+];
+
+/**
+ * Renders one authored field value as an array of display lines. Returns
+ * null when the field is absent (or an empty array) so callers can render
+ * absence consistently. Nested shapes (contribution, tags, relationships)
+ * flatten to one line per item.
+ *
+ * @param {string} field
+ * @param {unknown} raw
+ * @returns {string[] | null}
+ */
+function formatAuthoredValue(field, raw) {
+	if (raw === undefined || raw === null) return null;
+	if (Array.isArray(raw) && raw.length === 0) return null;
+	switch (field) {
+		case 'contribution': {
+			const c =
+				/** @type {{ role?: string, contributionNote?: string, collaboration?: { team?: string, organisation?: string } }} */ (
+					raw
+				);
+			const lines = [`role: ${c.role ?? '-'}`];
+			if (c.collaboration?.team) lines.push(`team: ${c.collaboration.team}`);
+			if (c.collaboration?.organisation)
+				lines.push(`organisation: ${c.collaboration.organisation}`);
+			if (c.contributionNote) lines.push(`note: ${c.contributionNote}`);
+			return lines;
+		}
+		case 'tags':
+			return /** @type {Array<{ label: string, kind: string }>} */ (raw).map(
+				(t) => `${t.label} (${t.kind})`
+			);
+		case 'relationships':
+			return /** @type {Array<{ kind: string, target: string, note?: string }>} */ (raw).map(
+				(r) => `${r.kind} → ${r.target}${r.note ? `: ${r.note}` : ''}`
+			);
+		case 'highlights':
+		case 'suppressTags':
+			return /** @type {string[]} */ (raw).map((s) => String(s));
+		default:
+			return [String(raw)];
+	}
+}
+
+/**
+ * Derives per-overlay display entries from loaded overlays. Pure function.
+ *
+ * @param {object[]} overlays  Output of loadOverlays (sorted by slug).
+ * @param {string | undefined} onlySlug  Optional slug filter.
+ * @returns {{ entries: Array<{ slug: string, fields: Array<{ field: string, lines: string[] | null }>, loadError?: string }>, authoredCount: number, absentCount: number }}
+ */
+function computeAuthored(overlays, onlySlug) {
+	const entries = [];
+	let authoredCount = 0;
+	let absentCount = 0;
+	for (const o of overlays) {
+		if (onlySlug && o.slug !== onlySlug) continue;
+		if (o._loadError) {
+			entries.push({ slug: o.slug, fields: [], loadError: o._loadError });
+			continue;
+		}
+		const fields = AUTHORED_FIELDS.map((field) => {
+			const lines = formatAuthoredValue(field, o[field]);
+			if (lines === null) absentCount++;
+			else authoredCount++;
+			return { field, lines };
+		});
+		entries.push({ slug: o.slug, fields });
+	}
+	return { entries, authoredCount, absentCount };
+}
+
+/**
+ * Renders the authored view as markdown (gum path).
+ *
+ * @param {ReturnType<typeof computeAuthored>} authored
+ * @returns {string}
+ */
+function renderAuthoredMarkdown(authored) {
+	const lines = [];
+	lines.push(`# Portfolio authored content`);
+	lines.push(`_Every authored field for every overlay. \`-\` marks a field not yet written._`);
+	lines.push('');
+	lines.push(
+		`${authored.entries.length} overlay${authored.entries.length === 1 ? '' : 's'} · ${authored.authoredCount} fields authored · ${authored.absentCount} absent`
+	);
+	lines.push('');
+
+	for (let i = 0; i < authored.entries.length; i++) {
+		const entry = authored.entries[i];
+		if (i > 0) lines.push('---');
+		lines.push('');
+		lines.push(`### ${entry.slug}`);
+		lines.push('');
+		if (entry.loadError) {
+			lines.push(`_load error: ${entry.loadError}_`);
+			lines.push('');
+			continue;
+		}
+		for (const { field, lines: valueLines } of entry.fields) {
+			if (valueLines === null) {
+				lines.push(`- ${field}: -`);
+			} else if (valueLines.length === 1) {
+				lines.push(`- **${field}**: ${valueLines[0]}`);
+			} else {
+				lines.push(`- **${field}**:`);
+				for (const v of valueLines) lines.push(`  - ${v}`);
+			}
+		}
+		lines.push('');
+	}
+	return lines.join('\n');
+}
+
+/**
+ * Plain ANSI fallback for the authored view. Present fields in normal
+ * weight; absent fields dimmed so the gaps read at a glance.
+ *
+ * @param {ReturnType<typeof computeAuthored>} authored
+ * @param {object} palette
+ */
+function runAuthoredPlain(authored, palette) {
+	const { RESET, BOLD, CYAN, DIM, RED } = palette;
+
+	console.log(
+		`\n${BOLD}Portfolio authored content${RESET} ${DIM}(every authored field per overlay, absent fields dimmed)${RESET}\n`
+	);
+	console.log(
+		`${DIM}${authored.entries.length} overlay${authored.entries.length === 1 ? '' : 's'} · ${authored.authoredCount} fields authored · ${authored.absentCount} absent${RESET}\n`
+	);
+
+	for (let i = 0; i < authored.entries.length; i++) {
+		const entry = authored.entries[i];
+		if (i > 0) console.log(`${DIM}${'─'.repeat(60)}${RESET}`);
+		console.log(`${BOLD}${CYAN}${entry.slug}${RESET}`);
+		if (entry.loadError) {
+			console.log(`  ${RED}load error: ${entry.loadError}${RESET}\n`);
+			continue;
+		}
+		for (const { field, lines } of entry.fields) {
+			if (lines === null) {
+				console.log(`  ${DIM}${field}  -${RESET}`);
+			} else if (lines.length === 1) {
+				console.log(`  ${BOLD}${field}${RESET}  ${lines[0]}`);
+			} else {
+				console.log(`  ${BOLD}${field}${RESET}`);
+				for (const v of lines) console.log(`    ${v}`);
+			}
+		}
+		console.log('');
+	}
+}
+
+/**
+ * Entry point for the authored verb. Mirrors runSnapshot's structure:
+ * --json first (raw overlay objects), then gum markdown, then plain ANSI.
+ *
+ * @param {{ args: string[], palette: object, json: boolean, useGum: boolean }} opts
+ */
+async function runAuthored({ args, palette, json, useGum }) {
+	const onlySlug = args[0];
+	const overlays = await loadOverlays();
+	if (onlySlug && !overlays.some((o) => o.slug === onlySlug)) {
+		process.stderr.write(`No authored overlay for "${onlySlug}" in ${projectsDir}\n`);
+		process.exitCode = 1;
+		return;
+	}
+	const authored = computeAuthored(overlays, onlySlug);
+
+	if (json) {
+		const payload = overlays
+			.filter((o) => !onlySlug || o.slug === onlySlug)
+			.map((o) => (o._loadError ? { slug: o.slug, loadError: o._loadError } : o));
+		process.stdout.write(JSON.stringify(payload, null, 2) + '\n');
+		return;
+	}
+
+	if (useGum && process.stdout.isTTY) {
+		const md = renderAuthoredMarkdown(authored);
+		const out = spawnSync('gum', ['format', '--theme', config.theme.markdownTheme], {
+			input: md,
+			encoding: 'utf8'
+		});
+		if (out.status === 0 && out.stdout) {
+			process.stdout.write('\n' + out.stdout + '\n');
+			return;
+		}
+	}
+
+	runAuthoredPlain(authored, palette);
+}
+
 // Markdown source for gum-formatted help — rendered via `gum format --theme pink`
 // when interactive. The plain `banners` object below is the fallback.
 // Coverage must stay in parity: any flag or form added here must also appear in
@@ -6194,6 +6424,7 @@ Compare synced fingerprints against current git state and surface new repos.
 
 - \`drift [report] [--json] [--full] [--check] [--no-color]\`
 - \`drift snapshot [--json] [--no-color]\`
+- \`drift authored [<slug>] [--json] [--no-color]\`
 - \`drift sync [<slug>...] [--dry-run]\`
 - \`drift keep <slug> <field>\`
 - \`drift keep --all-projects <field>\`
@@ -6214,6 +6445,7 @@ Compare synced fingerprints against current git state and surface new repos.
 
 - \`report\` · compare synced fingerprints to current git state (default); shows only deltas
 - \`snapshot\` · show ALL current metrics for every project, colourised changed vs unchanged
+- \`authored\` · show every authored field for every overlay, absent fields marked
 - \`sync\` · rewrite sources.json with current fingerprints
 - \`keep\` · keep your manual override value, refreshing its synced baseline to dismiss the flag
 - \`keep-all\` · refresh every flagged override baseline at once
@@ -6617,6 +6849,30 @@ Writes nothing. Recomputes from live files every run.
 \`\`\`
 drift audit
 drift audit --json
+\`\`\``,
+
+	authored: `# drift authored · view all authored project content
+
+The curated counterpart to \`snapshot\`. Reads every
+\`src/lib/data/projects/*.ts\` overlay and shows every AuthoredProject
+field for each: name, tagline, blurb, plainBlurb, description, kind,
+track, released, retired, liveUrl, contribution, tags, suppressTags,
+highlights, relationships, pin, hide, hideFromPlainIntro.
+
+Absent fields render as \`-\` so gaps are as visible as content. Nested
+fields (contribution, tags, relationships) flatten to one line per item.
+
+Pass a slug to show a single overlay. \`--json\` emits the raw overlay
+objects.
+
+Writes nothing. Reads live files every run.
+
+## Usage
+
+\`\`\`
+drift authored
+drift authored <slug>
+drift authored --json
 \`\`\``
 };
 
@@ -6642,6 +6898,7 @@ function printHelp(verb, palette, useGum) {
 ${BOLD}Usage:${RESET}
   drift [report] [--json] [--full] [--check] [--no-color]
   drift snapshot [--json] [--no-color]
+  drift authored [<slug>] [--json] [--no-color]
   drift sync [<slug>...] [--dry-run]
   drift keep <slug> <field>
   drift keep --all-projects <field>
@@ -6661,6 +6918,7 @@ ${BOLD}Usage:${RESET}
 ${BOLD}Verbs:${RESET}
   report      Compare synced fingerprints to current git state (default). Shows only deltas.
   snapshot    Show ALL current metrics for every project, colourised changed vs unchanged.
+  authored    Show every authored field for every overlay, absent fields marked.
   sync        Rewrite sources.json with current fingerprints.
   keep        Keep your manual override value, refreshing its baseline to dismiss the flag.
   keep-all    Refresh every flagged override baseline at once.
@@ -6895,7 +7153,23 @@ names). Volatile findings never affect the tier.
 ${DIM}Writes nothing. Recomputes from live files every run.${RESET}
 
   Usage: drift audit
-         drift audit --json`
+         drift audit --json`,
+
+		authored: `${BOLD}drift authored${RESET} - view all authored project content
+
+The curated counterpart to snapshot. Reads every projects/*.ts overlay and
+shows every AuthoredProject field for each (name, tagline, blurb, plainBlurb,
+description, kind, track, released, retired, liveUrl, contribution, tags,
+suppressTags, highlights, relationships, pin, hide, hideFromPlainIntro).
+Absent fields render as - so gaps are as visible as content.
+
+Pass a slug to show a single overlay. --json emits the raw overlay objects.
+
+${DIM}Writes nothing. Reads live files every run.${RESET}
+
+  Usage: drift authored
+         drift authored <slug>
+         drift authored --json`
 	};
 	process.stdout.write((banners[verb] ?? banners.report) + '\n');
 }
@@ -7111,6 +7385,7 @@ async function runInteractiveMenu({ manifests, palette, useGum, onProgress, clea
 					'report-full'
 				],
 				['Snapshot', 'Every current metric value, changed fields highlighted', 'snapshot'],
+				['Authored', 'Every authored field per overlay, absent fields marked', 'authored'],
 				['Audit', 'Score every authored overlay against the depth rubric', 'audit']
 			]
 		},
@@ -7255,6 +7530,9 @@ async function runInteractiveMenu({ manifests, palette, useGum, onProgress, clea
 					json: false,
 					useGum
 				});
+				break;
+			case 'authored':
+				await runAuthored({ args: [], palette, useGum, json: false });
 				break;
 			case 'sync':
 				runUpdate({
@@ -7956,6 +8234,7 @@ async function main() {
 	const KNOWN_VERBS = new Set([
 		'report',
 		'snapshot',
+		'authored',
 		'sync',
 		'keep',
 		'keep-all',
@@ -8027,6 +8306,10 @@ async function main() {
 	}
 	if (verb === 'audit') {
 		await runAudit({ palette, useGum, json: values.json });
+		return;
+	}
+	if (verb === 'authored') {
+		await runAuthored({ args, palette, useGum, json: values.json });
 		return;
 	}
 

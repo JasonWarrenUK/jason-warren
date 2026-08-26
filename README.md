@@ -120,6 +120,7 @@ Each has a JSON Schema alongside it, and `sources.schema.json` is the engine's p
 ```sh
 drift [report]     # compare synced fingerprints to current git state (default)
 drift snapshot     # show ALL current metrics, changed vs unchanged
+drift authored     # show every authored field per overlay, absent fields marked
 drift sync         # rewrite sources.json with current fingerprints
 drift keep         # keep a manual override, refreshing its baseline
 drift hide         # remove a slug from the public site

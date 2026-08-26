@@ -40,7 +40,15 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, cpSync, existsSync } from 'node:fs';
+import {
+	mkdtempSync,
+	mkdirSync,
+	writeFileSync,
+	readFileSync,
+	readdirSync,
+	cpSync,
+	existsSync
+} from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
@@ -2383,6 +2391,68 @@ describe('drift audit', () => {
 // Advisory only — every case here also asserts the tier is unaffected, since
 // the whole point of the check is that it never changes the depth verdict.
 // ---------------------------------------------------------------------------
+
+describe('drift authored', () => {
+	let dir: string;
+	let configPath: string;
+
+	beforeEach(() => {
+		({ dir, configPath } = makeOverlaySandbox());
+	});
+
+	afterEach(() => {
+		rmSync(dir, { recursive: true, force: true });
+	});
+
+	it('--json emits the raw overlay objects, sorted by slug', () => {
+		writeFixture(dir, 'zeta', { description: 'Last.', tagline: 'Z' });
+		writeFixture(dir, 'alpha', { description: 'First.', highlights: ['one', 'two'] });
+		const result = runVerbInSandbox(configPath, ['authored', '--json']);
+		expect(result.status, result.stderr).toBe(0);
+		const payload = JSON.parse(result.stdout);
+		expect(payload.map((o: { slug: string }) => o.slug)).toEqual(['alpha', 'zeta']);
+		expect(payload[0].highlights).toEqual(['one', 'two']);
+		expect(payload[1].tagline).toBe('Z');
+	});
+
+	it('plain output shows every authored field, marking absent ones with -', () => {
+		writeFixture(dir, 'gap-entry', { description: 'Written.', tagline: 'Has a tagline' });
+		const result = runVerbInSandbox(configPath, ['authored']);
+		expect(result.status, result.stderr).toBe(0);
+		expect(result.stdout).toContain('gap-entry');
+		expect(result.stdout).toContain('tagline  Has a tagline');
+		expect(result.stdout).toContain('description  Written.');
+		expect(result.stdout).toContain('contribution');
+		expect(result.stdout).toContain('role: solo');
+		// Absent fields are still listed, rendered as `-`.
+		expect(result.stdout).toMatch(/blurb {2}-/);
+		expect(result.stdout).toMatch(/liveUrl {2}-/);
+	});
+
+	it('filters to one overlay when a slug is given', () => {
+		writeFixture(dir, 'shown', { description: 'Shown.' });
+		writeFixture(dir, 'hidden-one', { description: 'Hidden.' });
+		const result = runVerbInSandbox(configPath, ['authored', 'shown']);
+		expect(result.status, result.stderr).toBe(0);
+		expect(result.stdout).toContain('shown');
+		expect(result.stdout).not.toContain('hidden-one');
+	});
+
+	it('exits non-zero for an unknown slug', () => {
+		writeFixture(dir, 'exists', { description: 'Here.' });
+		const result = runVerbInSandbox(configPath, ['authored', 'nope']);
+		expect(result.status).toBe(1);
+		expect(result.stderr).toContain('nope');
+	});
+
+	it('writes nothing', () => {
+		writeFixture(dir, 'ro', { description: 'Read only.' });
+		const before = readFileSync(join(dir, 'projects', 'ro.ts'), 'utf8');
+		runVerbInSandbox(configPath, ['authored']);
+		expect(readFileSync(join(dir, 'projects', 'ro.ts'), 'utf8')).toBe(before);
+		expect(readdirSync(join(dir, 'projects'))).toEqual(['ro.ts']);
+	});
+});
 
 describe('drift audit volatile prose', () => {
 	let dir: string;
