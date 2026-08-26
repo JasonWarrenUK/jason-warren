@@ -45,6 +45,7 @@ export function load() {
 				deployed: node.project.deployed,
 				stageProvisional: !node.project.trackAuthored,
 				kind: node.project.kind,
+				tags: node.project.tags,
 				hub: hubSlugs.has(node.slug),
 				labelled: labelled.has(node.slug),
 				commitAnyLast: node.project.commitAnyLast ?? null,

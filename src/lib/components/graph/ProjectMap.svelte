@@ -12,7 +12,8 @@
 		type ProjectKind,
 		type ProjectProgress,
 		type ProjectTrack,
-		type TagKind
+		type TagKind,
+		type TechTag
 	} from '$lib/data/types.js';
 	import { techRelationships } from '$lib/data/tech-relationships.js';
 	import { parseSet, serialiseSet, encodeTechLabel, decodeTechLabel } from '$lib/url-state.js';
@@ -29,7 +30,8 @@
 	import {
 		createForceSimulation,
 		createForceSimulationFromLinks,
-		computeRelayoutTargets
+		computeRelayoutTargets,
+		stackItemsFor
 	} from '$lib/data/graph.js';
 	import type { TechCoEdge } from '$lib/data/tech-graph.js';
 	import { techNodeRadius, buildLineageLinks } from '$lib/data/tech-graph.js';
@@ -78,6 +80,8 @@
 		/** True when track or progress is a heuristic guess; draws dotted. */
 		stageProvisional: boolean;
 		kind: ProjectKind;
+		/** Merged tech tags; stack mode lists the ones in the active categories. */
+		tags: TechTag[];
 		hub: boolean;
 		labelled: boolean;
 		commitAnyLast: string | null;
@@ -632,6 +636,23 @@
 		browser ? parseSet<EdgeType>($page.url.searchParams.get('show-edges')) : new Set<EdgeType>()
 	);
 
+	// Stack mode only: the tech categories whose chips are currently on. With
+	// isolate active this is the isolated set (or every category when nothing
+	// is isolated yet); otherwise every category not hidden. Drives which of a
+	// project's tags the hover annotation and selection modal list.
+	const activeStackCategories = $derived.by((): EdgeCategory[] => {
+		if (isolateMode) {
+			const chosen = EDGE_CATEGORIES.filter((c) => isolatedEdgeTypes.has(c));
+			return chosen.length > 0 ? chosen : EDGE_CATEGORIES;
+		}
+		return EDGE_CATEGORIES.filter((c) => !hiddenEdgeTypes.has(c));
+	});
+
+	/** A project's stack items for the active categories; empty outside stack mode. */
+	function stackItems(node: MapNode): string[] {
+		return activeMode === 'stack' ? stackItemsFor(node.tags, activeStackCategories) : [];
+	}
+
 	// ---------------------------------------------------------------------------
 	// Pin state
 	// ---------------------------------------------------------------------------
@@ -652,11 +673,21 @@
 	const effectivePinnedSlug = $derived(activeSlug ?? pinnedSlug);
 	const effectivePinnedTech = $derived(activeTechLabel ?? pinnedTechLabel);
 
-	let selectedProject = $state<{ slug: string; name: string; tagline: string } | null>(null);
+	let selectedProject = $state<{
+		slug: string;
+		name: string;
+		tagline: string;
+		stackItems: string[];
+	} | null>(null);
 	let selectedTech = $state<{ label: string; kind: TagKind; projectCount: number } | null>(null);
 
 	function openProjectModal(node: MapNode): void {
-		selectedProject = { slug: node.slug, name: node.name, tagline: node.tagline };
+		selectedProject = {
+			slug: node.slug,
+			name: node.name,
+			tagline: node.tagline,
+			stackItems: stackItems(node)
+		};
 	}
 
 	function openTechModal(node: TechMapNode): void {
@@ -888,8 +919,13 @@
 		alignRight: boolean;
 		title: string;
 		meta: string;
+		/** Stack mode: the project's tags in the active categories, one bullet each. */
+		items: string[];
 		boxWidth: number;
 	}
+
+	/** Vertical pitch of one stack-item bullet line in the focus annotation. */
+	const ANNOTATION_ITEM_STEP = 15;
 
 	const FOCUS_CANDIDATES: { dx: number; dy: number }[] = [
 		{ dx: 130, dy: -95 },
@@ -924,7 +960,7 @@
 		const phrase = stagePhrase(node.progress, node.released);
 		const stage = node.track === 'exploration' ? `${trackLabel[node.track]} · ${phrase}` : phrase;
 		const meta = `${stage} · ${routeCount} route${routeCount === 1 ? '' : 's'}`;
-		return buildAnnotation(p, r, node.name.toUpperCase(), node.hub, meta, others);
+		return buildAnnotation(p, r, node.name.toUpperCase(), node.hub, meta, others, stackItems(node));
 	});
 
 	function buildAnnotation(
@@ -933,7 +969,8 @@
 		title: string,
 		hub: boolean,
 		meta: string,
-		others: Point[]
+		others: Point[],
+		items: string[] = []
 	): FocusAnnotation {
 		const clearOf = (x: number, y: number): boolean =>
 			others.every((o) => Math.hypot(o.x - x, o.y - y) > 85);
@@ -951,7 +988,8 @@
 		}
 		const alignRight = ax >= p.x;
 		const label = hub ? `${title} · HUB` : title;
-		const boxWidth = Math.max(label.length, meta.length) * 7.2 + 20;
+		const itemWidth = Math.max(0, ...items.map((item) => item.length + 2));
+		const boxWidth = Math.max(label.length, meta.length, itemWidth) * 7.2 + 20;
 		return {
 			anchorX: ax,
 			anchorY: ay,
@@ -960,6 +998,7 @@
 			alignRight,
 			title: label,
 			meta,
+			items,
 			boxWidth
 		};
 	}
@@ -1567,7 +1606,7 @@
 					x={fa.alignRight ? fa.anchorX - 6 : fa.anchorX - fa.boxWidth + 6}
 					y={fa.anchorY - 14}
 					width={fa.boxWidth}
-					height="38"
+					height={38 + fa.items.length * ANNOTATION_ITEM_STEP}
 					rx="4"
 					class="map__annotation-bg"
 				/>
@@ -1587,6 +1626,16 @@
 				>
 					{fa.meta}
 				</text>
+				{#each fa.items as item, index (item)}
+					<text
+						x={fa.anchorX + (fa.alignRight ? 8 : -8)}
+						y={fa.anchorY + 17 + (index + 1) * ANNOTATION_ITEM_STEP}
+						text-anchor={fa.alignRight ? 'start' : 'end'}
+						class="map__annotation-item"
+					>
+						• {item}
+					</text>
+				{/each}
 			</g>
 		{/if}
 	</svg>
@@ -1817,6 +1866,13 @@
 	{@const isPinned = pinnedSlug === selectedProject.slug}
 	<SelectionModal open={true} title={selectedProject.name} onclose={() => (selectedProject = null)}>
 		<p class="map-modal__tagline">{selectedProject.tagline}</p>
+		{#if selectedProject.stackItems.length > 0}
+			<ul class="map-modal__stack">
+				{#each selectedProject.stackItems as item (item)}
+					<li>{item}</li>
+				{/each}
+			</ul>
+		{/if}
 		<button type="button" class="modal-action modal-action--primary" onclick={pinSelectedProject}>
 			{isPinned ? 'Unpin' : 'Pin this project'}
 		</button>
@@ -2113,6 +2169,13 @@
 		fill: var(--color-text-muted);
 	}
 
+	.map__annotation-item {
+		font-family: var(--font-mono);
+		font-size: 10.5px;
+		letter-spacing: 0.03em;
+		fill: var(--color-text);
+	}
+
 	/* Legend: a centred column of titled rows, sharing one visual language
 	   with the timeline and toolkit keys — mono small-caps titles leading
 	   centred entry rows. */
@@ -2251,6 +2314,15 @@
 		font-size: var(--text-xs);
 		color: var(--color-text-muted);
 		text-align: center;
+	}
+
+	.map-modal__stack {
+		margin: 0;
+		padding-left: var(--space-4);
+		list-style: disc;
+		font-family: var(--font-mono);
+		font-size: var(--text-sm);
+		color: var(--color-text);
 	}
 
 	.map-modal__tagline {
