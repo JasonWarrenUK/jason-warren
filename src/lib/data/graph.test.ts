@@ -14,6 +14,7 @@ import {
 	getTechIndex,
 	getSharedTechEdges,
 	getStackGroups,
+	stackItemsFor,
 	computeForceLayout,
 	computeRelayoutTargets,
 	countCrossings,
@@ -23,7 +24,7 @@ import {
 } from './graph.js';
 import { EDGE_CATEGORIES } from './types.js';
 import type { LiveSimNode } from './graph.js';
-import type { Project, ProjectSlug } from './types.js';
+import type { Project, ProjectSlug, TechTag } from './types.js';
 
 const slugs = new Set<ProjectSlug>(projects.map((p) => p.slug));
 
@@ -511,5 +512,26 @@ describe('getThemeEdges', () => {
 				expect(deg, `${slug} exceeds cap in theme ${themeId}`).toBeLessThanOrEqual(2);
 			}
 		}
+	});
+});
+
+describe('stackItemsFor', () => {
+	const tags: TechTag[] = [
+		{ label: 'Svelte 5', kind: 'framework' },
+		{ label: 'TypeScript', kind: 'language' },
+		{ label: 'Deno', kind: 'runtime' },
+		{ label: 'Vitest', kind: 'tool' }
+	];
+
+	it('lists only tags in the requested categories, in EDGE_CATEGORIES order', () => {
+		expect(stackItemsFor(tags, ['framework', 'runtime'])).toEqual(['Deno', 'Svelte 5']);
+	});
+
+	it('never lists language tags, even when every category is requested', () => {
+		expect(stackItemsFor(tags, EDGE_CATEGORIES)).toEqual(['Deno', 'Svelte 5', 'Vitest']);
+	});
+
+	it('returns an empty list when no category is requested', () => {
+		expect(stackItemsFor(tags, [])).toEqual([]);
 	});
 });

@@ -29,7 +29,7 @@ import {
 } from 'd3-force';
 import { projects } from './index.js';
 import { EDGE_CATEGORIES } from './types.js';
-import type { EdgeCategory, Project, ProjectSlug } from './types.js';
+import type { EdgeCategory, Project, ProjectSlug, TechTag } from './types.js';
 import { substanceScore, hubThreshold } from './scoring.js';
 import { themes } from './themes.js';
 
@@ -208,6 +208,26 @@ export function getSharedTechEdges(options: SharedTechOptions = {}): SharedTechE
  * technology (runtime, framework, data, ...) settle into the same region, the
  * stack-mode analogue of the relationships-mode theme anchors.
  */
+/**
+ * The stack items a project contributes to the By-stack map for a given set of
+ * edge categories: the labels of its tags whose kind is one of `categories`,
+ * ordered by `EDGE_CATEGORIES` first and then by authored tag order within a
+ * category. Drives the hover annotation and selection modal in stack mode, so
+ * isolating "runtime" and "framework" lists exactly the runtime and framework
+ * tags. Language tags never qualify: they are not an edge category.
+ */
+export function stackItemsFor(tags: TechTag[], categories: Iterable<EdgeCategory>): string[] {
+	const wanted = new Set(categories);
+	const items: string[] = [];
+	for (const category of EDGE_CATEGORIES) {
+		if (!wanted.has(category)) continue;
+		for (const tag of tags) {
+			if (tag.kind === category) items.push(tag.label);
+		}
+	}
+	return items;
+}
+
 export function getStackGroups(): Map<ProjectSlug, EdgeCategory> {
 	const groups = new Map<ProjectSlug, EdgeCategory>();
 	for (const project of projects) {
