@@ -3,7 +3,7 @@
 	"_note": "Last-synced fingerprints for each source repo. Run `bun run scripts/check-drift.js sync` to update. Local paths live in sources.local.json (gitignored).",
 	"_firstCommitNote": "commitAnyRoot values are PROVISIONAL estimates derived from commit volume and commitAnyLast, seeded so the /toolkit adoption timeline can render before a real sync. `bun run scripts/check-drift.js sync` overwrites them with true root-commit dates. After syncing, set firstCommitProvisional to false.",
 	"firstCommitProvisional": false,
-	"lastSyncedAt": "2026-08-11",
+	"lastSyncedAt": "2026-08-26",
 	"sources": {
 		"baby-names": {
 			"commitHead": "9f5bdf1",
