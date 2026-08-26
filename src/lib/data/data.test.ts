@@ -304,6 +304,15 @@ describe('project registry', () => {
 		expect(offenders, `Blurb problems: ${offenders.join(', ')}`).toHaveLength(0);
 	});
 
+	it('every authored project has a plain-English blurb', () => {
+		// Manifest-only projects legitimately have an empty plainBlurb.
+		const missing = projects.filter((p) => authoredSlugs.has(p.slug) && !p.plainBlurb.trim());
+		expect(
+			missing,
+			`Authored projects with no plainBlurb: ${missing.map((p) => p.slug).join(', ')}`
+		).toHaveLength(0);
+	});
+
 	it('no authored description still carries the [Placeholder] marker', () => {
 		// Manifest-only descriptions are '' (empty), which does not contain [Placeholder].
 		const placeholders = projects.filter(

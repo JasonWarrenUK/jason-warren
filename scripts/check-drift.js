@@ -3332,6 +3332,10 @@ export const ${binding}: AuthoredProject = {
 	// Short card face, roughly 1/3 of the tagline. Shown on collapsed cards.
 	blurb: '',
 
+	// What it is and who it is for, for a reader who knows nothing about
+	// software. Drives the "for everyone else" home page.
+	plainBlurb: '',
+
 	// Longer case-study body. Name the problem, the architecture or approach, and
 	// a verification or outcome signal. Aim for >= 80 words for a Full tier.
 	description: '',
@@ -3398,7 +3402,15 @@ function createOverlayIfAbsent(slug) {
 // was decomposed into track × progress plus released/retired/deployed, and
 // dropped from AuthoredProject. Offering it here wrote a key the type layer
 // rejects, so a scaffolded overlay failed `bun run check` on creation.
-const AUTHOR_EDITABLE_FIELDS = ['name', 'tagline', 'blurb', 'description', 'kind', 'liveUrl'];
+const AUTHOR_EDITABLE_FIELDS = [
+	'name',
+	'tagline',
+	'blurb',
+	'plainBlurb',
+	'description',
+	'kind',
+	'liveUrl'
+];
 const AUTHOR_FIELD_ENUMS = {
 	kind: ['app', 'game', 'website', 'toy', 'library', 'tool', 'tui', 'repo']
 };

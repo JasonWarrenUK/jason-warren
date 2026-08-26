@@ -389,6 +389,7 @@ export interface AuthoredProject {
 	name?: string;
 	tagline?: string;
 	blurb?: string;
+	plainBlurb?: string;
 	description?: string;
 	kind?: ProjectKind;
 	contribution?: AuthoredContribution;
@@ -426,6 +427,12 @@ export interface AuthoredProject {
 	 * Use when a project is technically live but not portfolio-ready.
 	 */
 	hide?: boolean;
+	/**
+	 * Exclude this project from the "for everyone else" home page. Default is
+	 * shown; set when the plain description would need more caveats than it
+	 * is worth (a training exercise, a prototype, a joke).
+	 */
+	hideFromPlainIntro?: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -439,6 +446,11 @@ export interface Project {
 	tagline: string;
 	/** Short card face, roughly a third of the tagline. Cards show this when collapsed. */
 	blurb: string;
+	/**
+	 * What the project is and who it is for, written for a reader who knows
+	 * nothing about software. Drives the "for everyone else" home page.
+	 */
+	plainBlurb: string;
 	/** Longer body copy for the case-study page. Placeholder text initially. */
 	description: string;
 	kind: ProjectKind;
@@ -495,6 +507,12 @@ export interface Project {
 	 * Use when a project is technically live but not portfolio-ready.
 	 */
 	hide?: boolean;
+	/**
+	 * Exclude this project from the "for everyone else" home page. Default is
+	 * shown; set when the plain description would need more caveats than it
+	 * is worth (a training exercise, a prototype, a joke).
+	 */
+	hideFromPlainIntro?: boolean;
 	metrics?: ProjectMetrics;
 }
 

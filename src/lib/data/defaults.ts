@@ -335,6 +335,7 @@ export function defaultProjectFromManifest(slug: string, manifest: SyncedSource)
 		name: humaniseSlug(slug),
 		tagline: '',
 		blurb: '',
+		plainBlurb: '',
 		description: '',
 		kind: 'repo',
 		contribution: inferContribution(manifest),
@@ -443,6 +444,7 @@ export function mergeAuthored(base: Project, authored: AuthoredProject | undefin
 		name: authored.name !== undefined ? authored.name : base.name,
 		tagline: authored.tagline !== undefined ? authored.tagline : base.tagline,
 		blurb: authored.blurb !== undefined ? authored.blurb : base.blurb,
+		plainBlurb: authored.plainBlurb !== undefined ? authored.plainBlurb : base.plainBlurb,
 		description: authored.description !== undefined ? authored.description : base.description,
 		kind: authored.kind !== undefined ? authored.kind : base.kind,
 		contribution: mergeContribution(base.contribution, authored.contribution),
@@ -462,6 +464,10 @@ export function mergeAuthored(base: Project, authored: AuthoredProject | undefin
 			authored.relationships !== undefined ? authored.relationships : base.relationships,
 		pin: authored.pin !== undefined ? authored.pin : base.pin,
 		hide: authored.hide !== undefined ? authored.hide : base.hide,
+		hideFromPlainIntro:
+			authored.hideFromPlainIntro !== undefined
+				? authored.hideFromPlainIntro
+				: base.hideFromPlainIntro,
 		metrics: base.metrics
 	};
 }
