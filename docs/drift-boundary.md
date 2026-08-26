@@ -182,6 +182,10 @@ completeness audit belongs in 5DR.11 (`drift audit`).
 
 ## Write-isolation contract
 
+See [`docs/drift-authoring.md`](./drift-authoring.md#what-will-overwrite-me) for the
+per-field authoring guide's own verb-by-verb table, kept current against the source
+`Write-isolation` declarations in `check-drift.js`.
+
 The engine enforces single-file writes per verb. No verb touches more than one data file:
 
 | Verb                            | File written                                              |
