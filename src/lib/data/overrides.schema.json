@@ -1,7 +1,7 @@
 {
 	"$schema": "http://json-schema.org/draft-07/schema#",
 	"title": "Portfolio metric overrides",
-	"description": "Manual overrides for synced and authored git metrics. Written by hand; never touched by `scripts/check-drift.js --update`. Each field carries the pinned value alongside the synced baseline at the time the override was set, so the drift report can flag when the ground truth has moved.",
+	"description": "Manual overrides for synced git metrics. Written by hand; only `drift keep` / `drift keep-all` touch this file, and only to refresh an existing entry's baseline. Each field carries the pinned value alongside the synced baseline at the time the override was set, so the drift report can flag when the ground truth has moved.",
 	"type": "object",
 	"required": ["overrides"],
 	"additionalProperties": false,
@@ -20,15 +20,15 @@
 		"SlugOverrides": {
 			"type": "object",
 			"additionalProperties": false,
-			"description": "Per-field overrides for one project. Keys are field names from ProjectMetrics plus commitAnyLast and commitAnyRoot.",
+			"description": "Per-field overrides for one project. Keys mirror the OVERRIDABLE_FIELDS allow-list enforced in src/lib/data/data.test.ts: every ProjectMetrics key except commitsHeadlineScope, plus commitAnyLast and commitAnyRoot.",
 			"properties": {
 				"_note": {
 					"type": "string",
 					"description": "Why this project has manual overrides."
 				},
-				"commits": {
+				"commitsAny": {
 					"$ref": "#/$defs/NumericOverride",
-					"description": "Headline commit count (all-authors for solo; Jason-scoped for team). Use syncedField: 'commitsMe' for team projects."
+					"description": "All-authors commit count, lifetime."
 				},
 				"commitsAnyRecent": {
 					"$ref": "#/$defs/NumericOverride",
@@ -42,9 +42,9 @@
 					"$ref": "#/$defs/NumericOverride",
 					"description": "Jason-authored commit count, trailing 4 weeks."
 				},
-				"commitsAll": {
+				"commitsHeadline": {
 					"$ref": "#/$defs/NumericOverride",
-					"description": "Gate output: all-authors total exposed as context for team projects."
+					"description": "The role-keyed display figure: all-authors count for solo projects, Jason-scoped for team projects. Pin this to override what's shown regardless of role."
 				},
 				"linesAny": {
 					"$ref": "#/$defs/NumericOverride",
@@ -100,13 +100,12 @@
 			"properties": {
 				"value": { "type": "integer", "minimum": 0, "description": "The pinned value to render." },
 				"syncedWhenSet": {
-					"type": "integer",
-					"minimum": 0,
-					"description": "The synced value at the time this override was set. Every overridable metric has a synced source, so this is never null."
+					"oneOf": [{ "type": "integer", "minimum": 0 }, { "type": "null" }],
+					"description": "The synced value at the time this override was set. Null means a pure pin with no baseline: the drift report never flags it as stale."
 				},
 				"syncedField": {
 					"type": "string",
-					"description": "The underlying synced field to compare against (defaults to this field's name). Only `commits` ever needs this — set to 'commitsMe' for team projects, 'commits' for solo."
+					"description": "The underlying synced field to compare against (defaults to this field's name). Only `commitsHeadline` ever needs this — set to 'commitsMe' for team projects, 'commitsAny' for solo."
 				},
 				"_setNote": {
 					"type": "string",
