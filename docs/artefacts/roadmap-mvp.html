@@ -2,16 +2,18 @@
 <!--
 	roadmap-artefact.html: template consumed by `roadmap.py render`.
 	Two placeholders, each substituted exactly once below: the phase-name
-	title (in the head and heading) and the JSON data blob
-	(phase, generated, stats, ready, mermaid, validation), which lands in the
-	roadmap-data script element near the foot of the document. Render does a
-	global string replace, so the data-blob token must appear verbatim exactly
-	once in this file (the render step asserts this); a second copy here would
-	inject the blob into this comment and the mermaid edge arrows would close
-	the comment early and spill the JSON onto the page. For the same reason
-	this comment must not contain a raw comment-close sequence.
+	title (in the head; the h1 is overwritten by JS from project/phase, since
+	the two placeholders cannot diverge) and the JSON data blob
+	(project, phase, generated, stats, ready, mermaid, validation, devColours,
+	depKinds), which lands in the roadmap-data script element near the foot of
+	the document. Render does a global string replace, so the data-blob token
+	must appear verbatim exactly once in this file (the render step asserts
+	this); a second copy here would inject the blob into this comment and the
+	mermaid edge arrows would close the comment early and spill the JSON onto
+	the page. For the same reason this comment must not contain a raw
+	comment-close sequence.
 	Everything else is static so regenerated artefacts diff cleanly.
-	Palette: the canonical status to colour table from
+	Palette: the canonical status/milestone-state/dev-chip colour table from
 	library/references/roadmap-conventions.md (STATUS_STYLE in roadmap.py).
 -->
 <html lang="en-GB">
@@ -19,73 +21,168 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Roadmap — MVP</title>
-<link rel="stylesheet" href="https://unpkg.com/reasonable-colors@0.4.0/reasonable-colors.css">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
 :root {
-	/* Milestone — sky (structural, steel-blue half of the terminal gradient) */
-	--color-milestone:       var(--color-sky-4);
-	--color-milestone-bg:    var(--color-sky-1);
-	--color-milestone-text:  var(--color-sky-6);
+	/* Palette: the roadmap system's own fixed status table (see roadmap.py
+	   STATUS_STYLE); literal hexes so the artefact is self-contained.
+	   Milestone — sky (structural, steel-blue half of the terminal gradient) */
+	--color-milestone:       #007590;
+	--color-milestone-bg:    #e3f7ff;
+	--color-milestone-text:  #001f28;
 	/* Primary accent — pink (warm half of the gradient; never a status) */
-	--color-primary:         var(--color-pink-4);
-	--color-primary-bg:      var(--color-pink-1);
-	--color-primary-text:    var(--color-pink-6);
+	--color-primary:         #d2008f;
+	--color-primary-bg:      #fff7fb;
+	--color-primary-text:    #4b0030;
 	/* Status semantics: green finished, gray blank, red stop, purple parked,
 	   cinnamon shelved, faded gray struck, yellow external */
-	--color-done:            var(--color-green-4);
-	--color-done-bg:         var(--color-green-1);
-	--color-todo:            var(--color-gray-4);
-	--color-todo-bg:         var(--color-gray-1);
-	--color-blocked:         var(--color-red-4);
-	--color-blocked-bg:      var(--color-red-1);
-	--color-paused:          var(--color-purple-4);
-	--color-paused-bg:       var(--color-purple-1);
-	--color-deferred:        var(--color-cinnamon-4);
-	--color-deferred-bg:     var(--color-cinnamon-1);
-	--color-out-of-scope:    var(--color-gray-3);
-	--color-out-of-scope-bg: var(--color-gray-1);
-	--color-gate:            var(--color-yellow-4);
-	--color-gate-bg:         var(--color-yellow-1);
+	--color-done:            #008217;
+	--color-done-bg:         #e0ffd9;
+	--color-todo:            #6f6f6f;
+	--color-todo-bg:         #f6f6f6;
+	--color-blocked:         #e0002b;
+	--color-blocked-bg:      #fff8f6;
+	--color-paused:          #b01fe3;
+	--color-paused-bg:       #fdf4ff;
+	--color-deferred:        #ac5c00;
+	--color-deferred-bg:     #fff8f3;
+	--color-out-of-scope:    #8b8b8b;
+	--color-out-of-scope-bg: #f6f6f6;
+	--color-gate:            #7d6f00;
+	--color-gate-bg:         #fff9e5;
+	/* Milestone-level derived state (see roadmap-conventions.md): azure is
+	   unclaimed by task status and distinct from sky (structural), so a
+	   part-done milestone reads as "live" rather than the same gray as
+	   untouched work. */
+	--color-in-progress:     #0071af;
+	--color-in-progress-bg:  #e8f2ff;
+	/* Dev-chip palette: assignee is free-text with no roster (never
+	   inferred), so chips are coloured by a stable hash, never a hardcoded
+	   name map. Disjoint from every status/milestone/gate hue above. */
+	--color-dev-teal:        #007c6e;
+	--color-dev-teal-bg:     #d7fff7;
+	--color-dev-lime:        #677600;
+	--color-dev-lime-bg:     #f7ffac;
+	--color-dev-magenta:     #ca00b6;
+	--color-dev-magenta-bg:  #fff3fc;
+	--color-dev-indigo:      #0061fc;
+	--color-dev-indigo-bg:   #f3f3ff;
+	--color-dev-amber:       #926700;
+	--color-dev-amber-bg:    #fff8ef;
+	--color-dev-rose:        #db0072;
+	--color-dev-rose-bg:     #fff7f9;
 
-	--bg: var(--color-gray-1);
+	--bg: #f6f6f6;
 	--surface: #ffffff;
-	--text: var(--color-gray-6);
-	--muted: var(--color-gray-4);
-	--line: var(--color-gray-2);
+	--text: #222222;
+	--muted: #6f6f6f;
+	--line: #e2e2e2;
 	--grid-line: rgba(0, 117, 144, 0.06);
+	/* Mermaid chrome (edge stroke, arrowhead, edge-label backing) that the
+	   diagram's own classDefs don't cover — see the render script below for
+	   why this can't just be mermaid's base-theme default. */
+	--diagram-line: #6f6f6f;
+	--diagram-edge-label-bg: #ffffff;
+	--diagram-text: var(--text);
 }
 @media (prefers-color-scheme: dark) {
-	:root {
-		--color-milestone:       var(--color-sky-2);
-		--color-milestone-bg:    var(--color-sky-6);
-		--color-milestone-text:  var(--color-sky-1);
-		--color-primary:         var(--color-pink-2);
-		--color-primary-bg:      var(--color-pink-6);
-		--color-primary-text:    var(--color-pink-1);
-		--color-done:            var(--color-green-2);
-		--color-done-bg:         var(--color-green-6);
-		--color-todo:            var(--color-gray-3);
-		--color-todo-bg:         var(--color-gray-6);
-		--color-blocked:         var(--color-red-2);
-		--color-blocked-bg:      var(--color-red-6);
-		--color-paused:          var(--color-purple-2);
-		--color-paused-bg:       var(--color-purple-6);
-		--color-deferred:        var(--color-cinnamon-2);
-		--color-deferred-bg:     var(--color-cinnamon-6);
-		--color-out-of-scope:    var(--color-gray-5);
-		--color-out-of-scope-bg: var(--color-gray-6);
-		--color-gate:            var(--color-yellow-2);
-		--color-gate-bg:         var(--color-yellow-6);
+	:root:not([data-theme="light"]) {
+		--color-milestone:       #aee9ff;
+		--color-milestone-bg:    #001f28;
+		--color-milestone-text:  #e3f7ff;
+		--color-primary:         #ffdcec;
+		--color-primary-bg:      #4b0030;
+		--color-primary-text:    #fff7fb;
+		--color-done:            #72ff6c;
+		--color-done-bg:         #062800;
+		--color-todo:            #8b8b8b;
+		--color-todo-bg:         #222222;
+		--color-blocked:         #ffddd8;
+		--color-blocked-bg:      #530003;
+		--color-paused:          #f7d9ff;
+		--color-paused-bg:       #3a004f;
+		--color-deferred:        #ffdfc6;
+		--color-deferred-bg:     #371d00;
+		--color-out-of-scope:    #3e3e3e;
+		--color-out-of-scope-bg: #222222;
+		--color-gate:            #ffe53e;
+		--color-gate-bg:         #292300;
+		--color-in-progress:     #c6e0ff;
+		--color-in-progress-bg:  #001c30;
+		--color-dev-teal:        #00ffe4;
+		--color-dev-teal-bg:     #002722;
+		--color-dev-lime:        #d5f200;
+		--color-dev-lime-bg:     #222600;
+		--color-dev-magenta:     #ffd7f6;
+		--color-dev-magenta-bg:  #44003c;
+		--color-dev-indigo:      #deddff;
+		--color-dev-indigo-bg:   #001649;
+		--color-dev-amber:       #ffe0b2;
+		--color-dev-amber-bg:    #302100;
+		--color-dev-rose:        #ffdce5;
+		--color-dev-rose-bg:     #4c0023;
 
 		--bg: #121216;
 		--surface: #1b1b21;
-		--text: var(--color-gray-1);
-		--muted: var(--color-gray-3);
-		--line: var(--color-gray-5);
+		--text: #f6f6f6;
+		--muted: #8b8b8b;
+		--line: #3e3e3e;
 		--grid-line: rgba(174, 233, 255, 0.05);
+		--diagram-line: #8b8b8b;
+		--diagram-edge-label-bg: var(--surface);
+		--diagram-text: var(--text);
 	}
+}
+/* Third theming state: an explicit toggle wins in both directions, even
+   against a light OS preference. The masthead ships the light/system/dark
+   control from library/references/artefact-conventions.md; this block is
+   what it writes to when a reader picks light or dark explicitly. */
+:root[data-theme="dark"] {
+	--color-milestone:       #aee9ff;
+	--color-milestone-bg:    #001f28;
+	--color-milestone-text:  #e3f7ff;
+	--color-primary:         #ffdcec;
+	--color-primary-bg:      #4b0030;
+	--color-primary-text:    #fff7fb;
+	--color-done:            #72ff6c;
+	--color-done-bg:         #062800;
+	--color-todo:            #8b8b8b;
+	--color-todo-bg:         #222222;
+	--color-blocked:         #ffddd8;
+	--color-blocked-bg:      #530003;
+	--color-paused:          #f7d9ff;
+	--color-paused-bg:       #3a004f;
+	--color-deferred:        #ffdfc6;
+	--color-deferred-bg:     #371d00;
+	--color-out-of-scope:    #3e3e3e;
+	--color-out-of-scope-bg: #222222;
+	--color-gate:            #ffe53e;
+	--color-gate-bg:         #292300;
+	--color-in-progress:     #c6e0ff;
+	--color-in-progress-bg:  #001c30;
+	--color-dev-teal:        #00ffe4;
+	--color-dev-teal-bg:     #002722;
+	--color-dev-lime:        #d5f200;
+	--color-dev-lime-bg:     #222600;
+	--color-dev-magenta:     #ffd7f6;
+	--color-dev-magenta-bg:  #44003c;
+	--color-dev-indigo:      #deddff;
+	--color-dev-indigo-bg:   #001649;
+	--color-dev-amber:       #ffe0b2;
+	--color-dev-amber-bg:    #302100;
+	--color-dev-rose:        #ffdce5;
+	--color-dev-rose-bg:     #4c0023;
+
+	--bg: #121216;
+	--surface: #1b1b21;
+	--text: #f6f6f6;
+	--muted: #8b8b8b;
+	--line: #3e3e3e;
+	--grid-line: rgba(174, 233, 255, 0.05);
+	--diagram-line: #8b8b8b;
+	--diagram-edge-label-bg: var(--surface);
+	--diagram-text: var(--text);
 }
 
 * { box-sizing: border-box; }
@@ -110,8 +207,20 @@ nav a { display: block; padding: 0.35rem 0.6rem; color: var(--muted); text-decor
 nav a:hover, nav a.active { color: var(--color-milestone); border-left-color: var(--color-milestone); }
 main { flex: 1; min-width: 0; padding: 2rem 0 4rem; }
 
+header.page { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
 header.page h1 { font-size: 1.6rem; font-weight: 600; margin: 0 0 0.2rem; }
 header.page .meta { font-family: "IBM Plex Mono", monospace; font-size: 0.75rem; color: var(--muted); }
+
+.theme-toggle { display: flex; gap: 0.15rem; margin-left: auto; flex: none; }
+.theme-toggle button {
+	font: 600 0.8rem "IBM Plex Mono", monospace; line-height: 1;
+	color: var(--muted); background: var(--surface); border: 1px solid var(--line);
+	border-radius: 3px; padding: 0.3rem 0.55rem; cursor: pointer;
+}
+.theme-toggle button:hover { color: var(--text); border-color: var(--color-milestone); }
+.theme-toggle button:focus-visible { outline: 2px solid var(--color-milestone); outline-offset: 2px; }
+.theme-toggle button[aria-pressed="true"] { color: var(--color-milestone-text); background: var(--color-milestone-bg); border-color: var(--color-milestone); }
+@media print { .theme-toggle { display: none; } }
 
 section { margin-top: 2.5rem; }
 h2 {
@@ -128,12 +237,16 @@ h2 .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--color-m
 
 .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 0.9rem; margin-top: 0.9rem; }
 .grid > * { min-width: 0; }
+.mini { border-color: var(--m-colour, var(--line)); }
 .mini h3 { margin: 0 0 0.3rem; font-size: 0.9rem; font-weight: 600; overflow-wrap: break-word; }
 .mini .count { font-family: "IBM Plex Mono", monospace; font-size: 0.75rem; color: var(--muted); }
 .progress-bar { height: 6px; background: var(--line); border-radius: 3px; margin-top: 0.55rem; overflow: hidden; }
 .progress-fill { height: 100%; border-radius: 3px; }
 
-details.milestone { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; margin-bottom: 0.8rem; }
+details.milestone {
+	background: var(--surface); border: 1px solid var(--m-colour, var(--line));
+	border-radius: 8px; margin-bottom: 0.8rem;
+}
 details.milestone > summary {
 	cursor: pointer; padding: 0.85rem 1.2rem; font-weight: 600;
 	display: flex; align-items: center; gap: 0.7rem; list-style: none; min-width: 0;
@@ -148,13 +261,24 @@ details.milestone > summary .count { margin-left: auto; font-family: "IBM Plex M
 details.milestone .body { padding: 0 1.2rem 1rem; }
 .group h4 { font-family: "IBM Plex Mono", monospace; font-size: 0.72rem; font-weight: 500; text-transform: uppercase; letter-spacing: 0.06em; margin: 0.9rem 0 0.35rem; }
 .group ul { list-style: none; margin: 0; padding: 0; }
-.group li { position: relative; padding: 0.28rem 0 0.28rem 1.15rem; overflow-wrap: break-word; min-width: 0; }
-.group li::before { content: ""; position: absolute; left: 0; top: 0.72rem; width: 8px; height: 8px; border-radius: 50%; background: var(--g-colour, var(--muted)); }
+.group li { padding: 0.28rem 0; overflow-wrap: break-word; min-width: 0; display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.4rem; }
 .tid {
 	font-family: "IBM Plex Mono", monospace; font-size: 0.72rem;
 	background: var(--color-primary-bg); color: var(--color-primary-text);
-	border: 1px solid var(--color-primary); border-radius: 4px; padding: 0.05rem 0.35rem; margin-right: 0.45rem;
+	border: 1px solid var(--color-primary); border-radius: 4px; padding: 0.05rem 0.35rem;
 }
+/* Generic coloured chip: dev-assignee and dependency chips share this shape,
+   coloured per-instance via the --chip-fg/--chip-bg custom properties so one
+   rule serves every status/milestone/gate/dev colour without a class per
+   colour. */
+.chip {
+	font-family: "IBM Plex Mono", monospace; font-size: 0.7rem;
+	background: var(--chip-bg, var(--line)); color: var(--chip-fg, var(--muted));
+	border: 1px solid var(--chip-fg, var(--line)); border-radius: 4px; padding: 0.05rem 0.4rem;
+	white-space: nowrap;
+}
+.deps { display: inline-flex; flex-wrap: wrap; gap: 0.3rem; margin-left: auto; }
+.tasktext { flex: 1 1 auto; }
 .depnote { color: var(--muted); font-size: 0.82rem; }
 li.oos { text-decoration: line-through; color: var(--muted); }
 
@@ -183,13 +307,11 @@ li.oos { text-decoration: line-through; color: var(--muted); }
 .legend .key--gate { font-style: italic; }
 .legend .keynote { flex-basis: 100%; }
 
-.nextup li { display: block; }
-.pill {
-	font-family: "IBM Plex Mono", monospace; font-size: 0.68rem;
-	background: var(--color-milestone-bg); color: var(--color-milestone-text);
-	border: 1px solid var(--color-milestone); border-radius: 999px; padding: 0.05rem 0.5rem; margin-left: 0.45rem; white-space: nowrap;
-}
-.signal { color: var(--muted); font-size: 0.78rem; font-family: "IBM Plex Mono", monospace; margin-left: 0.4rem; }
+.nextup li:not(.nextup-devgroup) { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.4rem; padding: 0.3rem 0; }
+.nextup-devgroup { display: block; padding: 0; margin-top: 1rem; }
+.nextup-devgroup:first-child { margin-top: 0; }
+.nextup-devgroup h4 { margin: 0 0 0.4rem; font-size: 0.72rem; font-weight: 500; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
+.signal { color: var(--muted); font-size: 0.78rem; font-family: "IBM Plex Mono", monospace; margin-left: auto; }
 
 .validation { border-left: 3px solid var(--color-blocked); background: var(--color-blocked-bg); color: var(--text); padding: 0.7rem 1rem; border-radius: 0 6px 6px 0; margin-top: 1rem; font-size: 0.85rem; }
 .validation ul { margin: 0.3rem 0 0; padding-left: 1.1rem; }
@@ -203,6 +325,36 @@ li.oos { text-decoration: line-through; color: var(--muted); }
 </style>
 </head>
 <body>
+<script>
+(function () {
+	var KEY = 'theme';
+	var root = document.documentElement;
+	function read() {
+		try { return localStorage.getItem(KEY) || 'system'; }
+		catch (e) { return 'system'; }
+	}
+	function write(mode) {
+		try { localStorage.setItem(KEY, mode); }
+		catch (e) { /* private window, blocked storage, preview capture: ignore */ }
+	}
+	function apply(mode) {
+		if (mode === 'system') root.removeAttribute('data-theme');
+		else root.setAttribute('data-theme', mode);
+		document.querySelectorAll('[data-set-theme]').forEach(function (b) {
+			b.setAttribute('aria-pressed', String(b.dataset.setTheme === mode));
+		});
+	}
+	apply(read());
+	document.addEventListener('DOMContentLoaded', function () {
+		document.querySelectorAll('[data-set-theme]').forEach(function (b) {
+			b.addEventListener('click', function () {
+				write(b.dataset.setTheme);
+				apply(b.dataset.setTheme);
+			});
+		});
+	});
+})();
+</script>
 <div class="layout">
 	<nav>
 		<a href="#overview">Overview</a>
@@ -212,8 +364,15 @@ li.oos { text-decoration: line-through; color: var(--muted); }
 	</nav>
 	<main>
 		<header class="page">
-			<h1>MVP</h1>
-			<div class="meta" id="meta"></div>
+			<div>
+				<h1 id="pageTitle">MVP</h1>
+				<div class="meta" id="meta"></div>
+			</div>
+			<div class="theme-toggle" role="group" aria-label="Colour theme">
+				<button type="button" data-set-theme="light"  aria-pressed="false">☀</button>
+				<button type="button" data-set-theme="system" aria-pressed="true">◐</button>
+				<button type="button" data-set-theme="dark"   aria-pressed="false">☾</button>
+			</div>
 		</header>
 		<div id="validation"></div>
 
@@ -258,7 +417,7 @@ li.oos { text-decoration: line-through; color: var(--muted); }
 	</main>
 </div>
 
-<script id="roadmap-data" type="application/json">{"phase": "MVP", "generated": "2026-08-12T22:48:50", "stats": {"phase": "MVP", "total": 66, "byStatus": {"paused": 0, "deferred": 0, "blocked": 15, "todo": 5, "done": 46, "out_of_scope": 0}, "invalid": [], "donePct": 70, "milestones": [{"id": "M1", "name": "Content Depth & Polish", "total": 10, "done": 10, "byStatus": {"paused": 0, "deferred": 0, "blocked": 0, "todo": 0, "done": 10, "out_of_scope": 0}, "donePct": 100}, {"id": "M2", "name": "Exploration & New Features", "total": 8, "done": 8, "byStatus": {"paused": 0, "deferred": 0, "blocked": 0, "todo": 0, "done": 8, "out_of_scope": 0}, "donePct": 100}, {"id": "M3", "name": "Design & Interaction Polish", "total": 7, "done": 7, "byStatus": {"paused": 0, "deferred": 0, "blocked": 0, "todo": 0, "done": 7, "out_of_scope": 0}, "donePct": 100}, {"id": "M4", "name": "Quality & Reach", "total": 6, "done": 1, "byStatus": {"paused": 0, "deferred": 0, "blocked": 3, "todo": 2, "done": 1, "out_of_scope": 0}, "donePct": 17}, {"id": "M5", "name": "Drift Decoupling: Engine & Verbs", "total": 23, "done": 20, "byStatus": {"paused": 0, "deferred": 0, "blocked": 1, "todo": 2, "done": 20, "out_of_scope": 0}, "donePct": 87}, {"id": "M6", "name": "Drift: Tests & Docs", "total": 3, "done": 0, "byStatus": {"paused": 0, "deferred": 0, "blocked": 3, "todo": 0, "done": 0, "out_of_scope": 0}, "donePct": 0}, {"id": "M7", "name": "Drift: Total Data Control", "total": 8, "done": 0, "byStatus": {"paused": 0, "deferred": 0, "blocked": 7, "todo": 1, "done": 0, "out_of_scope": 0}, "donePct": 0}, {"id": "M8", "name": "Aesthetics: Ongoing", "total": 1, "done": 0, "byStatus": {"paused": 0, "deferred": 0, "blocked": 1, "todo": 0, "done": 0, "out_of_scope": 0}, "donePct": 0}]}, "tasks": [{"id": "1CO.1", "description": "Audit every project entry for depth; output in docs/audits/content-depth.md", "status": "done", "dependsOn": [], "milestone": "M1", "notes": "", "assignee": ""}, {"id": "1CO.2", "description": "Bring every project entry to flagship-ready depth (worklist in docs/audits/content-depth.md)", "status": "done", "dependsOn": ["1CO.1"], "milestone": "M1", "notes": "", "assignee": ""}, {"id": "1CO.3", "description": "Strengthen contributionNote copy across all team projects", "status": "done", "dependsOn": [], "milestone": "M1", "notes": "", "assignee": ""}, {"id": "1CO.4", "description": "Rewrite About page narrative (positioning, voice)", "status": "done", "dependsOn": [], "milestone": "M1", "notes": "", "assignee": ""}, {"id": "1CO.5", "description": "Expand the Colophon into the drift-engine deep-dive: the build, the data model and the Drift tooling story", "status": "done", "dependsOn": ["M5"], "milestone": "M1", "notes": "", "assignee": ""}, {"id": "1CO.6", "description": "Review theme groupings and theme copy for coherence", "status": "done", "dependsOn": ["1CO.1"], "milestone": "M1", "notes": "", "assignee": ""}, {"id": "1CO.7", "description": "Review engine-extraction thread narratives for clarity", "status": "done", "dependsOn": ["1CO.4"], "milestone": "M1", "notes": "", "assignee": ""}, {"id": "1CO.8", "description": "Pass all copy through the writing-style guide (British spelling, voice)", "status": "done", "dependsOn": ["1CO.2", "1CO.3", "1CO.7", "1CO.9"], "milestone": "M1", "notes": "", "assignee": ""}, {"id": "1CO.9", "description": "CV / hire-me positioning copy on a new /hire route", "status": "done", "dependsOn": ["1CO.4"], "milestone": "M1", "notes": "", "assignee": ""}, {"id": "1CO.10", "description": "Surfaced-project rotation: fully derived hero scoring and map hub selection", "status": "done", "dependsOn": ["1CO.2"], "milestone": "M1", "notes": "", "assignee": ""}, {"id": "2FE.1", "description": "Client-side search across projects (title, tags, description)", "status": "done", "dependsOn": [], "milestone": "M2", "notes": "", "assignee": ""}, {"id": "2FE.2", "description": "Deep-link map / timeline / toolkit selections via shared URL params", "status": "done", "dependsOn": [], "milestone": "M2", "notes": "", "assignee": ""}, {"id": "2FE.3", "description": "Polish existing interactions: keyboard and ARIA parity, shared dim tokens, cross-view link fixes", "status": "done", "dependsOn": [], "milestone": "M2", "notes": "", "assignee": ""}, {"id": "2FE.4", "description": "Multi-select filters: OR within a dimension, AND across dimensions", "status": "done", "dependsOn": [], "milestone": "M2", "notes": "", "assignee": ""}, {"id": "2FE.5", "description": "Cross-view continuity: shared pin helpers and view-to-view links", "status": "done", "dependsOn": ["2FE.2"], "milestone": "M2", "notes": "", "assignee": ""}, {"id": "2FE.6", "description": "Tech-stack constellation visualisation (technologies mode on the map)", "status": "done", "dependsOn": [], "milestone": "M2", "notes": "", "assignee": ""}, {"id": "2FE.7", "description": "Technology lineage edges (leads-to / replaced-by) on the map and adoption chart", "status": "done", "dependsOn": [], "milestone": "M2", "notes": "", "assignee": ""}, {"id": "2FE.8", "description": "Robust filter-toggle relayout: deterministic best-of-N reheat", "status": "done", "dependsOn": [], "milestone": "M2", "notes": "", "assignee": ""}, {"id": "3DE.0", "description": "Define visual direction / signature: mood, type pairing, motion language, graph styling principles", "status": "done", "dependsOn": ["M2"], "milestone": "M3", "notes": "", "assignee": ""}, {"id": "3DE.1", "description": "Typography pass (scale, rhythm, measure) across all routes", "status": "done", "dependsOn": ["3DE.0"], "milestone": "M3", "notes": "", "assignee": ""}, {"id": "3DE.2", "description": "Responsive audit: map / timeline / grids on small viewports", "status": "done", "dependsOn": ["3DE.3", "3DE.4"], "milestone": "M3", "notes": "", "assignee": ""}, {"id": "3DE.3", "description": "Motion pass: meaningful transitions, respect prefers-reduced-motion", "status": "done", "dependsOn": ["3DE.1"], "milestone": "M3", "notes": "", "assignee": ""}, {"id": "3DE.4", "description": "Refine graph aesthetics (edge styling, clustering legibility, constellation view)", "status": "done", "dependsOn": ["3DE.5", "3DE.6"], "milestone": "M3", "notes": "", "assignee": ""}, {"id": "3DE.5", "description": "Consistency sweep of semantic colour aliases vs Reasonable Colors usage", "status": "done", "dependsOn": ["3DE.0"], "milestone": "M3", "notes": "", "assignee": ""}, {"id": "3DE.6", "description": "Drastically improve the /map graph layout for legibility", "status": "done", "dependsOn": ["3DE.0"], "milestone": "M3", "notes": "", "assignee": ""}, {"id": "4QU.1", "description": "Accessibility audit: keyboard nav, ARIA, contrast, SVG view semantics", "status": "blocked", "dependsOn": ["4QU.5"], "milestone": "M4", "notes": "", "assignee": ""}, {"id": "4QU.3", "description": "SEO pass: structured data, meta completeness, sitemap; light perf sanity-check", "status": "blocked", "dependsOn": ["4QU.1"], "milestone": "M4", "notes": "", "assignee": ""}, {"id": "4QU.4", "description": "Confirm OG image coverage for every route and project", "status": "todo", "dependsOn": ["M3"], "milestone": "M4", "notes": "", "assignee": ""}, {"id": "4QU.5", "description": "Component / interaction test coverage for the connection views", "status": "todo", "dependsOn": ["M3"], "milestone": "M4", "notes": "", "assignee": ""}, {"id": "4QU.7", "description": "a11y regression pass on the tech-stack constellation", "status": "blocked", "dependsOn": ["4QU.1"], "milestone": "M4", "notes": "", "assignee": ""}, {"id": "4QU.8", "description": "Analyse and reconcile where the map's Technologies mode and the Toolkit get their data: overlapping tech vocabularies from different sources should agree", "status": "done", "dependsOn": [], "milestone": "M4", "notes": "", "assignee": ""}, {"id": "5DR.0", "description": "Drift CLI foundation: dispatcher, fingerprinting, cache, manifest registry, core verbs", "status": "done", "dependsOn": [], "milestone": "M5", "notes": "", "assignee": ""}, {"id": "5DR.1", "description": "Boundary doc: the core-engine vs Svelte-integration contract", "status": "done", "dependsOn": ["5DR.0"], "milestone": "M5", "notes": "", "assignee": ""}, {"id": "5DR.2", "description": "Coupling inventory: annotate the six couplings in check-drift.js", "status": "done", "dependsOn": ["5DR.12"], "milestone": "M5", "notes": "", "assignee": ""}, {"id": "5DR.3", "description": "Config layer: paths, author pattern, scan root, excludes, gum theme", "status": "done", "dependsOn": ["5DR.1", "5DR.2"], "milestone": "M5", "notes": "", "assignee": ""}, {"id": "5DR.4", "description": "Relocate the tag taxonomy to the engine boundary", "status": "done", "dependsOn": ["5DR.3"], "milestone": "M5", "notes": "", "assignee": ""}, {"id": "5DR.5", "description": "Define the engine's public data schema (the sources.schema.json contract)", "status": "done", "dependsOn": ["5DR.1"], "milestone": "M5", "notes": "", "assignee": ""}, {"id": "5DR.6", "description": "Split the core engine from the Svelte integration", "status": "done", "dependsOn": ["5DR.4", "5DR.14"], "milestone": "M5", "notes": "", "assignee": ""}, {"id": "5DR.7", "description": "Branch awareness plus the in-progress.json staging pipeline", "status": "done", "dependsOn": ["5DR.6"], "milestone": "M5", "notes": "", "assignee": ""}, {"id": "5DR.11", "description": "drift audit verb: mechanical-proxy tier scoring across authored overlays", "status": "done", "dependsOn": ["5DR.5", "5DR.6"], "milestone": "M5", "notes": "", "assignee": ""}, {"id": "5DR.12", "description": "Migrate the repo package manager from npm to Bun", "status": "done", "dependsOn": [], "milestone": "M5", "notes": "", "assignee": ""}, {"id": "5DR.13", "description": "drift init scaffold verb", "status": "done", "dependsOn": ["5DR.7"], "milestone": "M5", "notes": "", "assignee": ""}, {"id": "5DR.14", "description": "Rename Drift verbs for clearer intent (update to sync, accept to keep, exclude to hide)", "status": "done", "dependsOn": ["5DR.0"], "milestone": "M5", "notes": "", "assignee": ""}, {"id": "5DR.15", "description": "drift author verb: scaffold and open a project overlay", "status": "done", "dependsOn": ["5DR.6"], "milestone": "M5", "notes": "", "assignee": ""}, {"id": "5DR.16", "description": "drift pin verb: set pin in a project overlay", "status": "done", "dependsOn": ["5DR.6"], "milestone": "M5", "notes": "", "assignee": ""}, {"id": "5DR.17", "description": "drift flag verb: the pin and hide overlay flags under one verb", "status": "done", "dependsOn": ["5DR.16"], "milestone": "M5", "notes": "", "assignee": ""}, {"id": "5DR.18", "description": "drift relate verb: write a ProjectRelationship into a project overlay", "status": "done", "dependsOn": ["5DR.6"], "milestone": "M5", "notes": "", "assignee": ""}, {"id": "5DR.19", "description": "drift link verb: write a TechRelationship into tech-relationships.ts", "status": "done", "dependsOn": ["5DR.6"], "milestone": "M5", "notes": "", "assignee": ""}, {"id": "5DR.20", "description": "Intra-span dormancy signal: sample commit dates so activity gaps become detectable", "status": "done", "dependsOn": ["5DR.7"], "milestone": "M5", "notes": "", "assignee": ""}, {"id": "5DR.21", "description": "Improve role detection: richer signals than commit share for the solo/lead/collaborator inference", "status": "done", "dependsOn": ["5DR.6"], "milestone": "M5", "notes": "", "assignee": ""}, {"id": "5DR.22", "description": "drift enrich verb: opt-in gh-backed enrichment writing GitHub's own archived repo flag and homepageUrl into a schema-extended sources.json section, while drift sync stays offline", "status": "todo", "dependsOn": ["5DR.5", "5DR.6"], "milestone": "M5", "notes": "", "assignee": ""}, {"id": "5DR.23", "description": "Derive the site's retired and deployed axes from enriched manifest data, replacing the authored placeholders", "status": "blocked", "dependsOn": ["5DR.22"], "milestone": "M5", "notes": "", "assignee": ""}, {"id": "5DR.24", "description": "Audit the Project property surface: no two fields claim the same fact, and every fact worth storing has exactly one home", "status": "done", "dependsOn": [], "milestone": "M5", "notes": "Covers SyncedSource, AuthoredProject, Project, ProjectMetrics and the nested Contribution/TechTag/ProjectRelationship shapes. Overlap precedent: deployed is derived from liveUrl presence; progress and released were split because one field made two claims; retired and hide both carried the hero-pool exclusion. Coverage gap already known: activeMonths, spanMonths and maxGapDays are synced but reach no Project field.", "assignee": "Jason"}, {"id": "5DR.25", "description": "Surface the intra-span activity metrics (spanMonthsActive, spanMonthsAll, spanGapMaxDays) so the sustained-vs-bursty signal reaches the site", "status": "todo", "dependsOn": ["5DR.24"], "milestone": "M5", "notes": "Finding F6 of the property census (docs/design/property-census.md). All three are measured by check-drift.js on every sync and persisted for all 33 repos, but nothing in src/ reads them: they are absent from SyncedMetricKey and from every inference function. spanMonthsActive/spanMonthsAll is the sustained-vs-bursty ratio, spanGapMaxDays the longest silence inside the span; together they distinguish a repo worked steadily for eight months from one with two commits eight months apart, which the commitAnyRoot/commitAnyLast endpoint dates cannot. Since F4 the data-layer half is adding the three keys to SyncedMetricKey and the withSyncedMetrics gate; the rest is choosing a presentation (a MetricsPanel row, or a timeline visual).", "assignee": "Jason"}, {"id": "5DR.8", "description": "Engine test suite: config resolution, fingerprinting, drift computation", "status": "blocked", "dependsOn": ["M3", "M5"], "milestone": "M6", "notes": "", "assignee": ""}, {"id": "5DR.9", "description": "Drift docs: config reference, data model, metric-precedence lifecycle diagram", "status": "blocked", "dependsOn": ["M3", "M5"], "milestone": "M6", "notes": "", "assignee": ""}, {"id": "5DR.10", "description": "Authoring guide: which fields Drift populates vs hand-authored, and where overrides live", "status": "blocked", "dependsOn": ["M3", "M5"], "milestone": "M6", "notes": "", "assignee": ""}, {"id": "7DR.1", "description": "Per-field provenance resolver: value, origin (synced / inferred / authored / overridden), and the inference an authored value agrees or disagrees with", "status": "blocked", "dependsOn": ["M5"], "milestone": "M7", "notes": "Provenance is currently spread across sources.json, overrides.json, the project overlay and defaults.ts. One resolver so the detail views and the existing redundancy tests read the same answer.", "assignee": ""}, {"id": "7DR.2", "description": "Project detail view: every field for one project on a single screen, each with its provenance", "status": "blocked", "dependsOn": ["7DR.1"], "milestone": "M7", "notes": "", "assignee": ""}, {"id": "7DR.3", "description": "Tech, tag and theme detail views on the same pattern as the project view", "status": "blocked", "dependsOn": ["7DR.1"], "milestone": "M7", "notes": "", "assignee": ""}, {"id": "7DR.4", "description": "Act in context: invoke the relevant verbs from a detail view without re-picking the target", "status": "blocked", "dependsOn": ["7DR.2", "7DR.3"], "milestone": "M7", "notes": "The menu is verb-first (pick a verb, then a target). This inverts it for the browse path; the verb-first sections stay for anyone who already knows what they want.", "assignee": ""}, {"id": "7DR.5", "description": "Reach audit: confirm every field in every data file has a menu path, and fill the gaps", "status": "todo", "dependsOn": ["5DR.24"], "milestone": "M7", "notes": "Only meaningful once 5DR.24 has settled the field set. Covers all eight configured data paths: sources, topology, local, overrides, excluded, cache, projects, in-progress.", "assignee": ""}, {"id": "7DR.6", "description": "Search across projects, tech, tags and themes from one entry point", "status": "blocked", "dependsOn": ["7DR.2", "7DR.3"], "milestone": "M7", "notes": "", "assignee": ""}, {"id": "7DR.7", "description": "Filter and sort the browse lists (drift state, track, role, tier, kind)", "status": "blocked", "dependsOn": ["7DR.6"], "milestone": "M7", "notes": "", "assignee": ""}, {"id": "7DR.8", "description": "Multi-select and bulk apply across a filtered set", "status": "blocked", "dependsOn": ["7DR.7"], "milestone": "M7", "notes": "Bulk writes are how redundant authored values get mass-produced, which the data.test.ts redundancy checks reject. A bulk write must surface which targets would gain a value matching the inference before it applies.", "assignee": ""}, {"id": "8DE.1", "description": "Spike: investigate enhancements to the procedural OG card generation, and record the options with a recommendation", "status": "blocked", "dependsOn": ["M4", "M5"], "milestone": "M8", "notes": "Supersedes the parked \"Generative OG variants per theme\" idea, which was one avenue among several. src/lib/og/card.ts derives each card from project data, but keys its motif on runtime alone via runtimeArchetype(), so 23 of 33 projects collapse into two archetypes (bun 12, node 11) and 5 fall through to the generic dot. Avenues to weigh: widening the archetype signal beyond runtime; theme-driven variants (themes currently feed nothing in card.ts); using signal the card already receives and ignores (kind, track, role, tags, lineage); and the motif mechanics themselves (one fixed 132px tiling, hash-seeded rotation and phase). Output is a written comparison with a recommendation, not an implementation; follow-up tasks land after it is read.", "assignee": ""}], "ready": {"phase": "MVP", "candidates": [{"id": "5DR.22", "description": "drift enrich verb: opt-in gh-backed enrichment writing GitHub's own archived repo flag and homepageUrl into a schema-extended sources.json section, while drift sync stays offline", "milestone": "M5", "milestoneName": "Drift Decoupling: Engine & Verbs", "milestoneDonePct": 87, "directDependents": 7, "transitiveUnblocks": 13, "isMilestoneSink": false, "notes": "", "assignee": ""}, {"id": "5DR.25", "description": "Surface the intra-span activity metrics (spanMonthsActive, spanMonthsAll, spanGapMaxDays) so the sustained-vs-bursty signal reaches the site", "milestone": "M5", "milestoneName": "Drift Decoupling: Engine & Verbs", "milestoneDonePct": 87, "directDependents": 6, "transitiveUnblocks": 12, "isMilestoneSink": true, "notes": "Finding F6 of the property census (docs/design/property-census.md). All three are measured by check-drift.js on every sync and persisted for all 33 repos, but nothing in src/ reads them: they are absent from SyncedMetricKey and from every inference function. spanMonthsActive/spanMonthsAll is the sustained-vs-bursty ratio, spanGapMaxDays the longest silence inside the span; together they distinguish a repo worked steadily for eight months from one with two commits eight months apart, which the commitAnyRoot/commitAnyLast endpoint dates cannot. Since F4 the data-layer half is adding the three keys to SyncedMetricKey and the withSyncedMetrics gate; the rest is choosing a presentation (a MetricsPanel row, or a timeline visual).", "assignee": "Jason"}, {"id": "4QU.5", "description": "Component / interaction test coverage for the connection views", "milestone": "M4", "milestoneName": "Quality & Reach", "milestoneDonePct": 17, "directDependents": 2, "transitiveUnblocks": 4, "isMilestoneSink": false, "notes": "", "assignee": ""}, {"id": "4QU.4", "description": "Confirm OG image coverage for every route and project", "milestone": "M4", "milestoneName": "Quality & Reach", "milestoneDonePct": 17, "directDependents": 1, "transitiveUnblocks": 1, "isMilestoneSink": true, "notes": "", "assignee": ""}, {"id": "7DR.5", "description": "Reach audit: confirm every field in every data file has a menu path, and fill the gaps", "milestone": "M7", "milestoneName": "Drift: Total Data Control", "milestoneDonePct": 0, "directDependents": 0, "transitiveUnblocks": 0, "isMilestoneSink": true, "notes": "Only meaningful once 5DR.24 has settled the field set. Covers all eight configured data paths: sources, topology, local, overrides, excluded, cache, projects, in-progress.", "assignee": ""}]}, "mermaid": "graph TD\n\tclassDef todo fill:var(--color-todo-bg),stroke:var(--color-todo),color:var(--color-todo)\n\tclassDef blocked fill:var(--color-blocked-bg),stroke:var(--color-blocked),color:var(--color-blocked),stroke-width:2px\n\tclassDef paused fill:var(--color-paused-bg),stroke:var(--color-paused),color:var(--color-paused),stroke-dasharray:4 3\n\tclassDef deferred fill:var(--color-deferred-bg),stroke:var(--color-deferred),color:var(--color-deferred),stroke-dasharray:2 4,font-style:italic\n\tclassDef done fill:var(--color-done-bg),stroke:var(--color-done),color:var(--color-done)\n\tclassDef outOfScope fill:var(--color-out-of-scope-bg),stroke:var(--color-out-of-scope),color:var(--color-out-of-scope),stroke-dasharray:2 2\n\tclassDef mile fill:var(--color-milestone-bg),stroke:var(--color-milestone),color:var(--color-milestone),font-weight:bold\n\tclassDef external fill:var(--color-gate-bg),stroke:var(--color-gate),color:var(--color-gate),stroke-dasharray:4 3,font-style:italic\n\t4QU.4[\"4QU.4: Confirm OG image coverage for every rout…\"]\n\t4QU.5[\"4QU.5: Component / interaction test coverage fo…\"]\n\t4QU.1[\"4QU.1: Accessibility audit: keyboard nav, ARIA,…\"]\n\t4QU.3[\"4QU.3: SEO pass: structured data, meta complete…\"]\n\t4QU.7[\"4QU.7: a11y regression pass on the tech-stack c…\"]\n\tM4[\"M4: Quality & Reach\"]:::mile\n\t5DR.22[\"5DR.22: drift enrich verb: opt-in gh-backed enr…\"]\n\t5DR.23[\"5DR.23: Derive the site's retired and deployed…\"]\n\t5DR.25[\"5DR.25: Surface the intra-span activity metrics…\"]\n\tM5[\"M5: Drift Decoupling: Engine & Verbs\"]:::mile\n\t5DR.8[\"5DR.8: Engine test suite: config resolution, fi…\"]\n\t5DR.9[\"5DR.9: Drift docs: config reference, data model…\"]\n\t5DR.10[\"5DR.10: Authoring guide: which fields Drift pop…\"]\n\tM6[\"M6: Drift: Tests & Docs\"]:::mile\n\t7DR.1[\"7DR.1: Per-field provenance resolver: value, or…\"]\n\t7DR.2[\"7DR.2: Project detail view: every field for one…\"]\n\t7DR.3[\"7DR.3: Tech, tag and theme detail views on the…\"]\n\t7DR.4[\"7DR.4: Act in context: invoke the relevant verb…\"]\n\t7DR.5[\"7DR.5: Reach audit: confirm every field in ever…\"]\n\t7DR.6[\"7DR.6: Search across projects, tech, tags and t…\"]\n\t7DR.7[\"7DR.7: Filter and sort the browse lists (drift…\"]\n\t7DR.8[\"7DR.8: Multi-select and bulk apply across a fil…\"]\n\tM7[\"M7: Drift: Total Data Control\"]:::mile\n\t8DE.1[\"8DE.1: Spike: investigate enhancements to the p…\"]\n\tM8[\"M8: Aesthetics: Ongoing\"]:::mile\n\t4QU.4 --\u003e M4\n\t4QU.5 --\u003e 4QU.1\n\t4QU.1 --\u003e 4QU.3\n\t4QU.1 --\u003e 4QU.7\n\t4QU.3 --\u003e M4\n\t4QU.7 --\u003e M4\n\tM4 --\u003e 8DE.1\n\t5DR.22 --\u003e 5DR.23\n\t5DR.23 --\u003e M5\n\t5DR.25 --\u003e M5\n\tM5 --\u003e 5DR.8\n\tM5 --\u003e 5DR.9\n\tM5 --\u003e 5DR.10\n\tM5 --\u003e 7DR.1\n\tM5 --\u003e 8DE.1\n\t5DR.8 --\u003e M6\n\t5DR.9 --\u003e M6\n\t5DR.10 --\u003e M6\n\t7DR.1 --\u003e 7DR.2\n\t7DR.1 --\u003e 7DR.3\n\t7DR.2 --\u003e 7DR.4\n\t7DR.2 --\u003e 7DR.6\n\t7DR.3 --\u003e 7DR.4\n\t7DR.3 --\u003e 7DR.6\n\t7DR.4 --\u003e M7\n\t7DR.5 --\u003e M7\n\t7DR.6 --\u003e 7DR.7\n\t7DR.7 --\u003e 7DR.8\n\t7DR.8 --\u003e M7\n\t8DE.1 --\u003e M8\n\tclass 4QU.4,4QU.5,5DR.22,5DR.25,7DR.5 todo\n\tclass 4QU.1,4QU.3,4QU.7,5DR.10,5DR.23,5DR.8,5DR.9,7DR.1,7DR.2,7DR.3,7DR.4,7DR.6,7DR.7,7DR.8,8DE.1 blocked", "validation": []}</script>
+<script id="roadmap-data" type="application/json">{"project": "drift", "phase": "MVP", "generated": "2026-08-26T22:16:38", "stats": {"phase": "MVP", "total": 66, "byStatus": {"done": 46, "todo": 8, "blocked": 12, "paused": 0, "deferred": 0, "out_of_scope": 0}, "invalid": [], "donePct": 70, "milestonesTotal": 8, "milestonesDone": 3, "milestones": [{"id": "M1", "name": "Content Depth & Polish", "total": 10, "done": 10, "byStatus": {"done": 10, "todo": 0, "blocked": 0, "paused": 0, "deferred": 0, "out_of_scope": 0}, "donePct": 100, "state": "done"}, {"id": "M2", "name": "Exploration & New Features", "total": 8, "done": 8, "byStatus": {"done": 8, "todo": 0, "blocked": 0, "paused": 0, "deferred": 0, "out_of_scope": 0}, "donePct": 100, "state": "done"}, {"id": "M3", "name": "Design & Interaction Polish", "total": 7, "done": 7, "byStatus": {"done": 7, "todo": 0, "blocked": 0, "paused": 0, "deferred": 0, "out_of_scope": 0}, "donePct": 100, "state": "done"}, {"id": "M4", "name": "Quality & Reach", "total": 6, "done": 1, "byStatus": {"done": 1, "todo": 2, "blocked": 3, "paused": 0, "deferred": 0, "out_of_scope": 0}, "donePct": 17, "state": "blocked"}, {"id": "M5", "name": "Drift Decoupling: Engine & Verbs", "total": 23, "done": 20, "byStatus": {"done": 20, "todo": 2, "blocked": 1, "paused": 0, "deferred": 0, "out_of_scope": 0}, "donePct": 87, "state": "blocked"}, {"id": "M6", "name": "Drift: Tests & Docs", "total": 3, "done": 0, "byStatus": {"done": 0, "todo": 3, "blocked": 0, "paused": 0, "deferred": 0, "out_of_scope": 0}, "donePct": 0, "state": "todo"}, {"id": "M7", "name": "Drift: Total Data Control", "total": 8, "done": 0, "byStatus": {"done": 0, "todo": 1, "blocked": 7, "paused": 0, "deferred": 0, "out_of_scope": 0}, "donePct": 0, "state": "blocked"}, {"id": "M8", "name": "Aesthetics: Ongoing", "total": 1, "done": 0, "byStatus": {"done": 0, "todo": 0, "blocked": 1, "paused": 0, "deferred": 0, "out_of_scope": 0}, "donePct": 0, "state": "blocked"}]}, "tasks": [{"id": "1CO.1", "description": "Audit every project entry for depth; output in docs/audits/content-depth.md", "status": "done", "dependsOn": [], "milestone": "M1", "notes": "", "assignee": ""}, {"id": "1CO.2", "description": "Bring every project entry to flagship-ready depth (worklist in docs/audits/content-depth.md)", "status": "done", "dependsOn": ["1CO.1"], "milestone": "M1", "notes": "", "assignee": ""}, {"id": "1CO.3", "description": "Strengthen contributionNote copy across all team projects", "status": "done", "dependsOn": [], "milestone": "M1", "notes": "", "assignee": ""}, {"id": "1CO.4", "description": "Rewrite About page narrative (positioning, voice)", "status": "done", "dependsOn": [], "milestone": "M1", "notes": "", "assignee": ""}, {"id": "1CO.5", "description": "Expand the Colophon into the drift-engine deep-dive: the build, the data model and the Drift tooling story", "status": "done", "dependsOn": ["M5"], "milestone": "M1", "notes": "", "assignee": ""}, {"id": "1CO.6", "description": "Review theme groupings and theme copy for coherence", "status": "done", "dependsOn": ["1CO.1"], "milestone": "M1", "notes": "", "assignee": ""}, {"id": "1CO.7", "description": "Review engine-extraction thread narratives for clarity", "status": "done", "dependsOn": ["1CO.4"], "milestone": "M1", "notes": "", "assignee": ""}, {"id": "1CO.8", "description": "Pass all copy through the writing-style guide (British spelling, voice)", "status": "done", "dependsOn": ["1CO.2", "1CO.3", "1CO.7", "1CO.9"], "milestone": "M1", "notes": "", "assignee": ""}, {"id": "1CO.9", "description": "CV / hire-me positioning copy on a new /hire route", "status": "done", "dependsOn": ["1CO.4"], "milestone": "M1", "notes": "", "assignee": ""}, {"id": "1CO.10", "description": "Surfaced-project rotation: fully derived hero scoring and map hub selection", "status": "done", "dependsOn": ["1CO.2"], "milestone": "M1", "notes": "", "assignee": ""}, {"id": "2FE.1", "description": "Client-side search across projects (title, tags, description)", "status": "done", "dependsOn": [], "milestone": "M2", "notes": "", "assignee": ""}, {"id": "2FE.2", "description": "Deep-link map / timeline / toolkit selections via shared URL params", "status": "done", "dependsOn": [], "milestone": "M2", "notes": "", "assignee": ""}, {"id": "2FE.3", "description": "Polish existing interactions: keyboard and ARIA parity, shared dim tokens, cross-view link fixes", "status": "done", "dependsOn": [], "milestone": "M2", "notes": "", "assignee": ""}, {"id": "2FE.4", "description": "Multi-select filters: OR within a dimension, AND across dimensions", "status": "done", "dependsOn": [], "milestone": "M2", "notes": "", "assignee": ""}, {"id": "2FE.5", "description": "Cross-view continuity: shared pin helpers and view-to-view links", "status": "done", "dependsOn": ["2FE.2"], "milestone": "M2", "notes": "", "assignee": ""}, {"id": "2FE.6", "description": "Tech-stack constellation visualisation (technologies mode on the map)", "status": "done", "dependsOn": [], "milestone": "M2", "notes": "", "assignee": ""}, {"id": "2FE.7", "description": "Technology lineage edges (leads-to / replaced-by) on the map and adoption chart", "status": "done", "dependsOn": [], "milestone": "M2", "notes": "", "assignee": ""}, {"id": "2FE.8", "description": "Robust filter-toggle relayout: deterministic best-of-N reheat", "status": "done", "dependsOn": [], "milestone": "M2", "notes": "", "assignee": ""}, {"id": "3DE.0", "description": "Define visual direction / signature: mood, type pairing, motion language, graph styling principles", "status": "done", "dependsOn": ["M2"], "milestone": "M3", "notes": "", "assignee": ""}, {"id": "3DE.1", "description": "Typography pass (scale, rhythm, measure) across all routes", "status": "done", "dependsOn": ["3DE.0"], "milestone": "M3", "notes": "", "assignee": ""}, {"id": "3DE.2", "description": "Responsive audit: map / timeline / grids on small viewports", "status": "done", "dependsOn": ["3DE.3", "3DE.4"], "milestone": "M3", "notes": "", "assignee": ""}, {"id": "3DE.3", "description": "Motion pass: meaningful transitions, respect prefers-reduced-motion", "status": "done", "dependsOn": ["3DE.1"], "milestone": "M3", "notes": "", "assignee": ""}, {"id": "3DE.4", "description": "Refine graph aesthetics (edge styling, clustering legibility, constellation view)", "status": "done", "dependsOn": ["3DE.5", "3DE.6"], "milestone": "M3", "notes": "", "assignee": ""}, {"id": "3DE.5", "description": "Consistency sweep of semantic colour aliases vs Reasonable Colors usage", "status": "done", "dependsOn": ["3DE.0"], "milestone": "M3", "notes": "", "assignee": ""}, {"id": "3DE.6", "description": "Drastically improve the /map graph layout for legibility", "status": "done", "dependsOn": ["3DE.0"], "milestone": "M3", "notes": "", "assignee": ""}, {"id": "4QU.1", "description": "Accessibility audit: keyboard nav, ARIA, contrast, SVG view semantics", "status": "blocked", "dependsOn": ["4QU.5"], "milestone": "M4", "notes": "", "assignee": ""}, {"id": "4QU.3", "description": "SEO pass: structured data, meta completeness, sitemap; light perf sanity-check", "status": "blocked", "dependsOn": ["4QU.1"], "milestone": "M4", "notes": "", "assignee": ""}, {"id": "4QU.4", "description": "Confirm OG image coverage for every route and project", "status": "todo", "dependsOn": ["M3"], "milestone": "M4", "notes": "", "assignee": ""}, {"id": "4QU.5", "description": "Component / interaction test coverage for the connection views", "status": "todo", "dependsOn": ["M3"], "milestone": "M4", "notes": "", "assignee": ""}, {"id": "4QU.7", "description": "a11y regression pass on the tech-stack constellation", "status": "blocked", "dependsOn": ["4QU.1"], "milestone": "M4", "notes": "", "assignee": ""}, {"id": "4QU.8", "description": "Analyse and reconcile where the map's Technologies mode and the Toolkit get their data: overlapping tech vocabularies from different sources should agree", "status": "done", "dependsOn": [], "milestone": "M4", "notes": "", "assignee": ""}, {"id": "5DR.0", "description": "Drift CLI foundation: dispatcher, fingerprinting, cache, manifest registry, core verbs", "status": "done", "dependsOn": [], "milestone": "M5", "notes": "", "assignee": ""}, {"id": "5DR.1", "description": "Boundary doc: the core-engine vs Svelte-integration contract", "status": "done", "dependsOn": ["5DR.0"], "milestone": "M5", "notes": "", "assignee": ""}, {"id": "5DR.2", "description": "Coupling inventory: annotate the six couplings in check-drift.js", "status": "done", "dependsOn": ["5DR.12"], "milestone": "M5", "notes": "", "assignee": ""}, {"id": "5DR.3", "description": "Config layer: paths, author pattern, scan root, excludes, gum theme", "status": "done", "dependsOn": ["5DR.1", "5DR.2"], "milestone": "M5", "notes": "", "assignee": ""}, {"id": "5DR.4", "description": "Relocate the tag taxonomy to the engine boundary", "status": "done", "dependsOn": ["5DR.3"], "milestone": "M5", "notes": "", "assignee": ""}, {"id": "5DR.5", "description": "Define the engine's public data schema (the sources.schema.json contract)", "status": "done", "dependsOn": ["5DR.1"], "milestone": "M5", "notes": "", "assignee": ""}, {"id": "5DR.6", "description": "Split the core engine from the Svelte integration", "status": "done", "dependsOn": ["5DR.4", "5DR.14"], "milestone": "M5", "notes": "", "assignee": ""}, {"id": "5DR.7", "description": "Branch awareness plus the in-progress.json staging pipeline", "status": "done", "dependsOn": ["5DR.6"], "milestone": "M5", "notes": "", "assignee": ""}, {"id": "5DR.11", "description": "drift audit verb: mechanical-proxy tier scoring across authored overlays", "status": "done", "dependsOn": ["5DR.5", "5DR.6"], "milestone": "M5", "notes": "", "assignee": ""}, {"id": "5DR.12", "description": "Migrate the repo package manager from npm to Bun", "status": "done", "dependsOn": [], "milestone": "M5", "notes": "", "assignee": ""}, {"id": "5DR.13", "description": "drift init scaffold verb", "status": "done", "dependsOn": ["5DR.7"], "milestone": "M5", "notes": "", "assignee": ""}, {"id": "5DR.14", "description": "Rename Drift verbs for clearer intent (update to sync, accept to keep, exclude to hide)", "status": "done", "dependsOn": ["5DR.0"], "milestone": "M5", "notes": "", "assignee": ""}, {"id": "5DR.15", "description": "drift author verb: scaffold and open a project overlay", "status": "done", "dependsOn": ["5DR.6"], "milestone": "M5", "notes": "", "assignee": ""}, {"id": "5DR.16", "description": "drift pin verb: set pin in a project overlay", "status": "done", "dependsOn": ["5DR.6"], "milestone": "M5", "notes": "", "assignee": ""}, {"id": "5DR.17", "description": "drift flag verb: the pin and hide overlay flags under one verb", "status": "done", "dependsOn": ["5DR.16"], "milestone": "M5", "notes": "", "assignee": ""}, {"id": "5DR.18", "description": "drift relate verb: write a ProjectRelationship into a project overlay", "status": "done", "dependsOn": ["5DR.6"], "milestone": "M5", "notes": "", "assignee": ""}, {"id": "5DR.19", "description": "drift link verb: write a TechRelationship into tech-relationships.ts", "status": "done", "dependsOn": ["5DR.6"], "milestone": "M5", "notes": "", "assignee": ""}, {"id": "5DR.20", "description": "Intra-span dormancy signal: sample commit dates so activity gaps become detectable", "status": "done", "dependsOn": ["5DR.7"], "milestone": "M5", "notes": "", "assignee": ""}, {"id": "5DR.21", "description": "Improve role detection: richer signals than commit share for the solo/lead/collaborator inference", "status": "done", "dependsOn": ["5DR.6"], "milestone": "M5", "notes": "", "assignee": ""}, {"id": "5DR.22", "description": "drift enrich verb: opt-in gh-backed enrichment writing GitHub's own archived repo flag and homepageUrl into a schema-extended sources.json section, while drift sync stays offline", "status": "todo", "dependsOn": ["5DR.5", "5DR.6"], "milestone": "M5", "notes": "", "assignee": ""}, {"id": "5DR.23", "description": "Derive the site's retired and deployed axes from enriched manifest data, replacing the authored placeholders", "status": "blocked", "dependsOn": ["5DR.22"], "milestone": "M5", "notes": "", "assignee": ""}, {"id": "5DR.24", "description": "Audit the Project property surface: no two fields claim the same fact, and every fact worth storing has exactly one home", "status": "done", "dependsOn": [], "milestone": "M5", "notes": "Covers SyncedSource, AuthoredProject, Project, ProjectMetrics and the nested Contribution/TechTag/ProjectRelationship shapes. Overlap precedent: deployed is derived from liveUrl presence; progress and released were split because one field made two claims; retired and hide both carried the hero-pool exclusion. Coverage gap already known: activeMonths, spanMonths and maxGapDays are synced but reach no Project field.", "assignee": "Jason"}, {"id": "5DR.25", "description": "Surface the intra-span activity metrics (spanMonthsActive, spanMonthsAll, spanGapMaxDays) so the sustained-vs-bursty signal reaches the site", "status": "todo", "dependsOn": ["5DR.24"], "milestone": "M5", "notes": "Finding F6 of the property census (docs/design/property-census.md). All three are measured by check-drift.js on every sync and persisted for all 33 repos, but nothing in src/ reads them: they are absent from SyncedMetricKey and from every inference function. spanMonthsActive/spanMonthsAll is the sustained-vs-bursty ratio, spanGapMaxDays the longest silence inside the span; together they distinguish a repo worked steadily for eight months from one with two commits eight months apart, which the commitAnyRoot/commitAnyLast endpoint dates cannot. Since F4 the data-layer half is adding the three keys to SyncedMetricKey and the withSyncedMetrics gate; the rest is choosing a presentation (a MetricsPanel row, or a timeline visual).", "assignee": "Jason"}, {"id": "5DR.8", "description": "Engine test suite: config resolution, fingerprinting, drift computation", "status": "todo", "dependsOn": ["M3", "5DR.6"], "milestone": "M6", "notes": "", "assignee": ""}, {"id": "5DR.9", "description": "Drift docs: config reference, data model, metric-precedence lifecycle diagram", "status": "todo", "dependsOn": ["M3", "5DR.6"], "milestone": "M6", "notes": "", "assignee": ""}, {"id": "5DR.10", "description": "Authoring guide: which fields Drift populates vs hand-authored, and where overrides live", "status": "todo", "dependsOn": ["M3", "5DR.6"], "milestone": "M6", "notes": "", "assignee": ""}, {"id": "7DR.1", "description": "Per-field provenance resolver: value, origin (synced / inferred / authored / overridden), and the inference an authored value agrees or disagrees with", "status": "todo", "dependsOn": ["5DR.6", "5DR.24"], "milestone": "M7", "notes": "Provenance is currently spread across sources.json, overrides.json, the project overlay and defaults.ts. One resolver so the detail views and the existing redundancy tests read the same answer.", "assignee": ""}, {"id": "7DR.2", "description": "Project detail view: every field for one project on a single screen, each with its provenance", "status": "blocked", "dependsOn": ["7DR.1"], "milestone": "M7", "notes": "", "assignee": ""}, {"id": "7DR.3", "description": "Tech, tag and theme detail views on the same pattern as the project view", "status": "blocked", "dependsOn": ["7DR.1"], "milestone": "M7", "notes": "", "assignee": ""}, {"id": "7DR.4", "description": "Act in context: invoke the relevant verbs from a detail view without re-picking the target", "status": "blocked", "dependsOn": ["7DR.2", "7DR.3"], "milestone": "M7", "notes": "The menu is verb-first (pick a verb, then a target). This inverts it for the browse path; the verb-first sections stay for anyone who already knows what they want.", "assignee": ""}, {"id": "7DR.5", "description": "Reach audit: confirm every field in every data file has a menu path, and fill the gaps", "status": "blocked", "dependsOn": ["5DR.24", "7DR.4"], "milestone": "M7", "notes": "Only meaningful once 5DR.24 has settled the field set and 7DR.4's detail-view menu paths exist to audit. Covers all eight configured data paths: sources, topology, local, overrides, excluded, cache, projects, in-progress.", "assignee": ""}, {"id": "7DR.6", "description": "Search across projects, tech, tags and themes from one entry point", "status": "blocked", "dependsOn": ["7DR.2", "7DR.3"], "milestone": "M7", "notes": "", "assignee": ""}, {"id": "7DR.7", "description": "Filter and sort the browse lists (drift state, track, role, tier, kind)", "status": "blocked", "dependsOn": ["7DR.2", "7DR.3"], "milestone": "M7", "notes": "", "assignee": ""}, {"id": "7DR.8", "description": "Multi-select and bulk apply across a filtered set", "status": "blocked", "dependsOn": ["7DR.7"], "milestone": "M7", "notes": "Bulk writes are how redundant authored values get mass-produced, which the data.test.ts redundancy checks reject. A bulk write must surface which targets would gain a value matching the inference before it applies.", "assignee": ""}, {"id": "8DE.1", "description": "Spike: investigate enhancements to the procedural OG card generation, and record the options with a recommendation", "status": "blocked", "dependsOn": ["4QU.4"], "milestone": "M8", "notes": "Supersedes the parked \"Generative OG variants per theme\" idea, which was one avenue among several. src/lib/og/card.ts derives each card from project data, but keys its motif on runtime alone via runtimeArchetype(), so 23 of 33 projects collapse into two archetypes (bun 12, node 11) and 5 fall through to the generic dot. Avenues to weigh: widening the archetype signal beyond runtime; theme-driven variants (themes currently feed nothing in card.ts); using signal the card already receives and ignores (kind, track, role, tags, lineage); and the motif mechanics themselves (one fixed 132px tiling, hash-seeded rotation and phase). Output is a written comparison with a recommendation, not an implementation; follow-up tasks land after it is read.", "assignee": ""}], "ready": {"phase": "MVP", "candidates": [{"id": "7DR.1", "description": "Per-field provenance resolver: value, origin (synced / inferred / authored / overridden), and the inference an authored value agrees or disagrees with", "milestone": "M7", "milestoneName": "Drift: Total Data Control", "milestoneDonePct": 0, "directDependents": 2, "transitiveUnblocks": 7, "isMilestoneSink": false, "notes": "Provenance is currently spread across sources.json, overrides.json, the project overlay and defaults.ts. One resolver so the detail views and the existing redundancy tests read the same answer.", "assignee": ""}, {"id": "4QU.5", "description": "Component / interaction test coverage for the connection views", "milestone": "M4", "milestoneName": "Quality & Reach", "milestoneDonePct": 17, "directDependents": 1, "transitiveUnblocks": 3, "isMilestoneSink": false, "notes": "", "assignee": ""}, {"id": "5DR.22", "description": "drift enrich verb: opt-in gh-backed enrichment writing GitHub's own archived repo flag and homepageUrl into a schema-extended sources.json section, while drift sync stays offline", "milestone": "M5", "milestoneName": "Drift Decoupling: Engine & Verbs", "milestoneDonePct": 87, "directDependents": 2, "transitiveUnblocks": 2, "isMilestoneSink": false, "notes": "", "assignee": ""}, {"id": "5DR.25", "description": "Surface the intra-span activity metrics (spanMonthsActive, spanMonthsAll, spanGapMaxDays) so the sustained-vs-bursty signal reaches the site", "milestone": "M5", "milestoneName": "Drift Decoupling: Engine & Verbs", "milestoneDonePct": 87, "directDependents": 1, "transitiveUnblocks": 1, "isMilestoneSink": true, "notes": "Finding F6 of the property census (docs/design/property-census.md). All three are measured by check-drift.js on every sync and persisted for all 33 repos, but nothing in src/ reads them: they are absent from SyncedMetricKey and from every inference function. spanMonthsActive/spanMonthsAll is the sustained-vs-bursty ratio, spanGapMaxDays the longest silence inside the span; together they distinguish a repo worked steadily for eight months from one with two commits eight months apart, which the commitAnyRoot/commitAnyLast endpoint dates cannot. Since F4 the data-layer half is adding the three keys to SyncedMetricKey and the withSyncedMetrics gate; the rest is choosing a presentation (a MetricsPanel row, or a timeline visual).", "assignee": "Jason"}, {"id": "4QU.4", "description": "Confirm OG image coverage for every route and project", "milestone": "M4", "milestoneName": "Quality & Reach", "milestoneDonePct": 17, "directDependents": 1, "transitiveUnblocks": 1, "isMilestoneSink": true, "notes": "", "assignee": ""}, {"id": "5DR.10", "description": "Authoring guide: which fields Drift populates vs hand-authored, and where overrides live", "milestone": "M6", "milestoneName": "Drift: Tests & Docs", "milestoneDonePct": 0, "directDependents": 0, "transitiveUnblocks": 0, "isMilestoneSink": true, "notes": "", "assignee": ""}, {"id": "5DR.8", "description": "Engine test suite: config resolution, fingerprinting, drift computation", "milestone": "M6", "milestoneName": "Drift: Tests & Docs", "milestoneDonePct": 0, "directDependents": 0, "transitiveUnblocks": 0, "isMilestoneSink": true, "notes": "", "assignee": ""}, {"id": "5DR.9", "description": "Drift docs: config reference, data model, metric-precedence lifecycle diagram", "milestone": "M6", "milestoneName": "Drift: Tests & Docs", "milestoneDonePct": 0, "directDependents": 0, "transitiveUnblocks": 0, "isMilestoneSink": true, "notes": "", "assignee": ""}]}, "mermaid": "graph TD\n\tclassDef todo fill:var(--color-todo-bg),stroke:var(--color-todo),color:var(--color-todo)\n\tclassDef blocked fill:var(--color-blocked-bg),stroke:var(--color-blocked),color:var(--color-blocked),stroke-width:2px\n\tclassDef paused fill:var(--color-paused-bg),stroke:var(--color-paused),color:var(--color-paused),stroke-dasharray:4 3\n\tclassDef deferred fill:var(--color-deferred-bg),stroke:var(--color-deferred),color:var(--color-deferred),stroke-dasharray:2 4,font-style:italic\n\tclassDef done fill:var(--color-done-bg),stroke:var(--color-done),color:var(--color-done)\n\tclassDef outOfScope fill:var(--color-out-of-scope-bg),stroke:var(--color-out-of-scope),color:var(--color-out-of-scope),stroke-dasharray:2 2\n\tclassDef mile fill:var(--color-milestone-bg),stroke:var(--color-milestone),color:var(--color-milestone),font-weight:bold\n\tclassDef external fill:var(--color-gate-bg),stroke:var(--color-gate),color:var(--color-gate),stroke-dasharray:4 3,font-style:italic\n\t4QU.4[\"4QU.4: Confirm OG image coverage for every rout…\"]\n\t4QU.5[\"4QU.5: Component / interaction test coverage fo…\"]\n\t4QU.1[\"4QU.1: Accessibility audit: keyboard nav, ARIA,…\"]\n\t4QU.3[\"4QU.3: SEO pass: structured data, meta complete…\"]\n\t4QU.7[\"4QU.7: a11y regression pass on the tech-stack c…\"]\n\tM4[\"M4: Quality & Reach\"]:::mile\n\t5DR.22[\"5DR.22: drift enrich verb: opt-in gh-backed enr…\"]\n\t5DR.23[\"5DR.23: Derive the site's retired and deployed…\"]\n\t5DR.25[\"5DR.25: Surface the intra-span activity metrics…\"]\n\tM5[\"M5: Drift Decoupling: Engine & Verbs\"]:::mile\n\t5DR.8[\"5DR.8: Engine test suite: config resolution, fi…\"]\n\t5DR.9[\"5DR.9: Drift docs: config reference, data model…\"]\n\t5DR.10[\"5DR.10: Authoring guide: which fields Drift pop…\"]\n\tM6[\"M6: Drift: Tests & Docs\"]:::mile\n\t7DR.1[\"7DR.1: Per-field provenance resolver: value, or…\"]\n\t7DR.2[\"7DR.2: Project detail view: every field for one…\"]\n\t7DR.3[\"7DR.3: Tech, tag and theme detail views on the…\"]\n\t7DR.4[\"7DR.4: Act in context: invoke the relevant verb…\"]\n\t7DR.5[\"7DR.5: Reach audit: confirm every field in ever…\"]\n\t7DR.6[\"7DR.6: Search across projects, tech, tags and t…\"]\n\t7DR.7[\"7DR.7: Filter and sort the browse lists (drift…\"]\n\t7DR.8[\"7DR.8: Multi-select and bulk apply across a fil…\"]\n\tM7[\"M7: Drift: Total Data Control\"]:::mile\n\t8DE.1[\"8DE.1: Spike: investigate enhancements to the p…\"]\n\tM8[\"M8: Aesthetics: Ongoing\"]:::mile\n\t4QU.4 --\u003e M4\n\t4QU.4 --\u003e 8DE.1\n\t4QU.5 --\u003e 4QU.1\n\t4QU.1 --\u003e 4QU.3\n\t4QU.1 --\u003e 4QU.7\n\t4QU.3 --\u003e M4\n\t4QU.7 --\u003e M4\n\t5DR.22 --\u003e 5DR.23\n\t5DR.23 --\u003e M5\n\t5DR.25 --\u003e M5\n\t5DR.8 --\u003e M6\n\t5DR.9 --\u003e M6\n\t5DR.10 --\u003e M6\n\t7DR.1 --\u003e 7DR.2\n\t7DR.1 --\u003e 7DR.3\n\t7DR.2 --\u003e 7DR.4\n\t7DR.2 --\u003e 7DR.6\n\t7DR.2 --\u003e 7DR.7\n\t7DR.3 --\u003e 7DR.4\n\t7DR.3 --\u003e 7DR.6\n\t7DR.3 --\u003e 7DR.7\n\t7DR.4 --\u003e 7DR.5\n\t7DR.5 --\u003e M7\n\t7DR.6 --\u003e M7\n\t7DR.7 --\u003e 7DR.8\n\t7DR.8 --\u003e M7\n\t8DE.1 --\u003e M8\n\tclass 4QU.4,4QU.5,5DR.10,5DR.22,5DR.25,5DR.8,5DR.9,7DR.1 todo\n\tclass 4QU.1,4QU.3,4QU.7,5DR.23,7DR.2,7DR.3,7DR.4,7DR.5,7DR.6,7DR.7,7DR.8,8DE.1 blocked", "validation": [], "devColours": {"Jason": "lime"}, "depKinds": {"1CO.1": {"kind": "task", "status": "done"}, "1CO.2": {"kind": "task", "status": "done"}, "1CO.3": {"kind": "task", "status": "done"}, "1CO.4": {"kind": "task", "status": "done"}, "1CO.5": {"kind": "task", "status": "done"}, "1CO.6": {"kind": "task", "status": "done"}, "1CO.7": {"kind": "task", "status": "done"}, "1CO.8": {"kind": "task", "status": "done"}, "1CO.9": {"kind": "task", "status": "done"}, "1CO.10": {"kind": "task", "status": "done"}, "2FE.1": {"kind": "task", "status": "done"}, "2FE.2": {"kind": "task", "status": "done"}, "2FE.3": {"kind": "task", "status": "done"}, "2FE.4": {"kind": "task", "status": "done"}, "2FE.5": {"kind": "task", "status": "done"}, "2FE.6": {"kind": "task", "status": "done"}, "2FE.7": {"kind": "task", "status": "done"}, "2FE.8": {"kind": "task", "status": "done"}, "3DE.0": {"kind": "task", "status": "done"}, "3DE.1": {"kind": "task", "status": "done"}, "3DE.2": {"kind": "task", "status": "done"}, "3DE.3": {"kind": "task", "status": "done"}, "3DE.4": {"kind": "task", "status": "done"}, "3DE.5": {"kind": "task", "status": "done"}, "3DE.6": {"kind": "task", "status": "done"}, "4QU.1": {"kind": "task", "status": "blocked"}, "4QU.3": {"kind": "task", "status": "blocked"}, "4QU.4": {"kind": "task", "status": "todo"}, "4QU.5": {"kind": "task", "status": "todo"}, "4QU.7": {"kind": "task", "status": "blocked"}, "4QU.8": {"kind": "task", "status": "done"}, "5DR.0": {"kind": "task", "status": "done"}, "5DR.1": {"kind": "task", "status": "done"}, "5DR.2": {"kind": "task", "status": "done"}, "5DR.3": {"kind": "task", "status": "done"}, "5DR.4": {"kind": "task", "status": "done"}, "5DR.5": {"kind": "task", "status": "done"}, "5DR.6": {"kind": "task", "status": "done"}, "5DR.7": {"kind": "task", "status": "done"}, "5DR.11": {"kind": "task", "status": "done"}, "5DR.12": {"kind": "task", "status": "done"}, "5DR.13": {"kind": "task", "status": "done"}, "5DR.14": {"kind": "task", "status": "done"}, "5DR.15": {"kind": "task", "status": "done"}, "5DR.16": {"kind": "task", "status": "done"}, "5DR.17": {"kind": "task", "status": "done"}, "5DR.18": {"kind": "task", "status": "done"}, "5DR.19": {"kind": "task", "status": "done"}, "5DR.20": {"kind": "task", "status": "done"}, "5DR.21": {"kind": "task", "status": "done"}, "5DR.22": {"kind": "task", "status": "todo"}, "5DR.23": {"kind": "task", "status": "blocked"}, "5DR.24": {"kind": "task", "status": "done"}, "5DR.25": {"kind": "task", "status": "todo"}, "5DR.8": {"kind": "task", "status": "todo"}, "5DR.9": {"kind": "task", "status": "todo"}, "5DR.10": {"kind": "task", "status": "todo"}, "7DR.1": {"kind": "task", "status": "todo"}, "7DR.2": {"kind": "task", "status": "blocked"}, "7DR.3": {"kind": "task", "status": "blocked"}, "7DR.4": {"kind": "task", "status": "blocked"}, "7DR.5": {"kind": "task", "status": "blocked"}, "7DR.6": {"kind": "task", "status": "blocked"}, "7DR.7": {"kind": "task", "status": "blocked"}, "7DR.8": {"kind": "task", "status": "blocked"}, "8DE.1": {"kind": "task", "status": "blocked"}, "M1": {"kind": "milestone"}, "M2": {"kind": "milestone"}, "M3": {"kind": "milestone"}, "M4": {"kind": "milestone"}, "M5": {"kind": "milestone"}, "M6": {"kind": "milestone"}, "M7": {"kind": "milestone"}, "M8": {"kind": "milestone"}}}</script>
 <script type="module">
 import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
 
@@ -266,6 +425,8 @@ const DATA = JSON.parse(document.getElementById("roadmap-data").textContent);
 const esc = s => String(s ?? "").replace(/[&<>"']/g,
 	c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 
+document.getElementById("pageTitle").textContent =
+	DATA.project ? `${DATA.project}: ${DATA.phase}` : DATA.phase;
 document.getElementById("meta").textContent =
 	`generated ${DATA.generated} · source .claude/roadmaps.json`;
 
@@ -273,33 +434,62 @@ document.getElementById("meta").textContent =
 if (DATA.validation && DATA.validation.length) {
 	document.getElementById("validation").innerHTML =
 		`<div class="validation"><strong>${DATA.validation.length} validation ` +
-		`discrepancy(ies)</strong> — the numbers below reflect the file as-is.` +
+		`discrepancy(ies):</strong> the numbers below reflect the file as-is.` +
 		`<ul>${DATA.validation.map(v => `<li>${esc(v)}</li>`).join("")}</ul></div>`;
 }
+
+/* Milestone-level state (distinct from task status): computed server-side by
+   roadmap.py's milestone_state() and carried as m.state, so the artefact
+   never re-derives it and cannot disagree with the CLI's own stats/render
+   paths. States: deferred, done, inProgress, todo, blocked, paused. */
+const STATE_VAR = {
+	deferred: "deferred", done: "done", inProgress: "in-progress",
+	todo: "todo", blocked: "blocked", paused: "paused",
+};
+const STATE_RANK = { inProgress: 0, todo: 1, done: 2, blocked: 3, paused: 4, deferred: 5 };
+/* Overview cards and Milestones details share this one ordering, computed
+   once here rather than in Python, since build_stats' milestones[] stays in
+   roadmap order for other consumers (_human_stats, next-task-*). */
+const sortedMilestones = [...DATA.stats.milestones].sort((a, b) =>
+	(STATE_RANK[a.state] - STATE_RANK[b.state])
+	|| (b.donePct - a.donePct)
+	|| a.name.localeCompare(b.name));
+
+/* A dev-chip helper: colour + label for an assignee, empty string when unset. */
+const devChip = assignee => {
+	const varName = DATA.devColours?.[assignee];
+	if (!assignee || !varName) return "";
+	return `<span class="chip" style="--chip-fg:var(--color-dev-${varName});--chip-bg:var(--color-dev-${varName}-bg)">${esc(assignee)}</span>`;
+};
+/* A dependency-id chip: colour by what the id resolves to (task status,
+   milestone sky, or gate yellow), using the server-computed depKinds map
+   so the artefact never re-derives the graph. */
+const depChip = id => {
+	const k = DATA.depKinds?.[id];
+	if (!k) return `<span class="chip">${esc(id)}</span>`;
+	const varName = k.kind === "task" ? STATE_VAR[k.status] ?? "todo"
+		: k.kind === "milestone" ? "milestone" : "gate";
+	return `<span class="chip" style="--chip-fg:var(--color-${varName});--chip-bg:var(--color-${varName}-bg)">${esc(id)}</span>`;
+};
 
 /* Section 1 — Overview */
 const st = DATA.stats;
 document.getElementById("hero").innerHTML =
-	`${st.byStatus.done}/${st.total} tasks<small>${st.donePct}% complete</small>`;
+	`${st.byStatus.done}/${st.total} tasks<small>${st.donePct}% complete</small>` +
+	`<small>${st.milestonesDone}/${st.milestonesTotal} milestones</small>`;
 
-const health = m => {
-	const s = m.byStatus;
-	if (m.donePct === 100) return "done";
-	if (s.todo > 0) return "todo";
-	if (s.blocked > 0) return "blocked";
-	if (s.paused > 0) return "paused";
-	if (s.deferred > 0) return "deferred";
-	return "done";
-};
-document.getElementById("milestone-cards").innerHTML = st.milestones.map(m => `
-	<div class="card mini">
+document.getElementById("milestone-cards").innerHTML = sortedMilestones.map(m => `
+	<div class="card mini" style="--m-colour:var(--color-${STATE_VAR[m.state]})">
 		<h3>${esc(m.id)}: ${esc(m.name)}</h3>
 		<span class="count">${m.done}/${m.total} done · ${m.donePct}%</span>
 		<div class="progress-bar"><div class="progress-fill"
-			style="width:${m.donePct}%;background:var(--color-${health(m)})"></div></div>
+			style="width:${m.donePct}%;background:var(--color-${STATE_VAR[m.state]})"></div></div>
 	</div>`).join("");
 
-/* Section 2 — Milestones. Groups lead with actionable work. */
+/* Section 2 — Milestones. Groups lead with actionable work; milestones
+   themselves follow the same order as the Overview cards above (A3), so a
+   reader scanning top-to-bottom sees the same priority twice, not two
+   different orderings of the same data. */
 const GROUPS = [
 	["todo",        "○ To Do",        "todo"],
 	["blocked",     "✗ Blocked",      "blocked"],
@@ -312,24 +502,23 @@ const readyIds = new Set(DATA.ready.candidates.map(c => c.id));
 const tasksByMilestone = {};
 for (const t of DATA.tasks) (tasksByMilestone[t.milestone] ??= []).push(t);
 
-document.getElementById("milestone-details").innerHTML = st.milestones.map((m, i) => {
+document.getElementById("milestone-details").innerHTML = sortedMilestones.map(m => {
 	const tasks = tasksByMilestone[m.id] || [];
 	const groups = GROUPS.map(([status, label, varName]) => {
 		const members = tasks.filter(t => t.status === status);
 		if (!members.length) return "";
 		const items = members.map(t => {
-			const dep = (t.dependsOn && t.dependsOn.length)
-				? `<span class="depnote">depends on ${esc(t.dependsOn.join(", "))}</span>` : "";
-			const who = t.assignee ? `<span class="pill">${esc(t.assignee)}</span>` : "";
-			return `<li class="${status === "out_of_scope" ? "oos" : ""}"
-				style="--g-colour:var(--color-${varName})">
-				<span class="tid">${esc(t.id)}</span>${esc(t.description)} ${dep}${who}</li>`;
+			const deps = (t.dependsOn && t.dependsOn.length)
+				? `<span class="deps">${t.dependsOn.map(depChip).join("")}</span>` : "";
+			return `<li class="${status === "out_of_scope" ? "oos" : ""}">
+				<span class="tid">${esc(t.id)}</span>${devChip(t.assignee)}
+				<span class="tasktext">${esc(t.description)}</span>${deps}</li>`;
 		}).join("");
-		return `<div class="group" style="--g-colour:var(--color-${varName})">
+		return `<div class="group">
 			<h4 style="color:var(--color-${varName})">${label}</h4><ul>${items}</ul></div>`;
 	}).join("");
-	const open = tasks.some(t => readyIds.has(t.id)) || i === 0 ? " open" : "";
-	return `<details class="milestone"${open}>
+	// All milestones render collapsed; the reader chooses what to expand
+	return `<details class="milestone" style="--m-colour:var(--color-${STATE_VAR[m.state]})">
 		<summary><span class="mid">${esc(m.id)}</span>${esc(m.name)}
 			<span class="count">${m.done}/${m.total}</span></summary>
 		<div class="body">${groups || "<p class='depnote'>No tasks.</p>"}</div>
@@ -345,20 +534,23 @@ try {
 	mermaid.registerLayoutLoaders(elkLayouts);
 	layout = "elk";
 } catch { /* CDN unreachable — fall back */ }
-mermaid.initialize({
-	startOnLoad: false,
-	theme: "base",
-	layout,
-	themeVariables: {
-		fontSize: "16px",
-		fontFamily: '"IBM Plex Mono", monospace',
-	},
-});
 /* Mermaid 11's classDef parser rejects var(--x), so the semantic variables
    are resolved to concrete colours before rendering, and the graph re-renders
    when the colour scheme flips so it keeps tracking the page theme. A render
    failure is contained to the diagram shell — the sections after it must
-   still populate. */
+   still populate.
+
+   Node fills/strokes come entirely from the classDefs above (resolved via
+   the var() replace below), but mermaid's "base" theme still supplies its
+   own defaults for everything a classDef doesn't touch — edge stroke,
+   arrowhead fill, edge-label background. Those defaults assume a white
+   canvas, so left alone they render near-black on the dark surface. Fixing
+   that means passing --diagram-line/--diagram-edge-label-bg/--diagram-text
+   through as themeVariables — and critically, mermaid.initialize() must be
+   called again on every render (not once at module load) reading the
+   *currently resolved* values, or a colour-scheme flip silently keeps the
+   load-time edge colours and the explicit data-theme toggle below never
+   takes effect at all (matchMedia doesn't fire for it). */
 const wrap = document.getElementById("wrap");
 const shell = document.getElementById("shell");
 const diagram = document.getElementById("diagram");
@@ -367,8 +559,21 @@ let scale = 1, tx = 0, ty = 0;
 const apply = () => { if (svgEl) svgEl.style.transform = `translate(${tx}px,${ty}px) scale(${scale})`; };
 const renderGraph = async () => {
 	const rootStyle = getComputedStyle(document.documentElement);
-	const src = DATA.mermaid.replace(/var\((--[\w-]+)\)/g,
-		(_, name) => rootStyle.getPropertyValue(name).trim() || "#888888");
+	const cssVar = name => rootStyle.getPropertyValue(name).trim() || "#888888";
+	mermaid.initialize({
+		startOnLoad: false,
+		theme: "base",
+		layout,
+		themeVariables: {
+			fontSize: "16px",
+			fontFamily: '"IBM Plex Mono", monospace',
+			background: cssVar("--surface"),
+			lineColor: cssVar("--diagram-line"),
+			edgeLabelBackground: cssVar("--diagram-edge-label-bg"),
+			textColor: cssVar("--diagram-text"),
+		},
+	});
+	const src = DATA.mermaid.replace(/var\((--[\w-]+)\)/g, (_, name) => cssVar(name));
 	try {
 		const { svg } = await mermaid.render("roadmap-graph", src);
 		diagram.innerHTML = svg;
@@ -383,6 +588,12 @@ const renderGraph = async () => {
 };
 await renderGraph();
 matchMedia("(prefers-color-scheme: dark)").addEventListener("change", renderGraph);
+/* Covers the explicit data-theme toggle (no UI ships today, but the
+   three-state contract says a future one must just work — see the CSS
+   comment above :root[data-theme="dark"]). matchMedia only fires for the OS
+   preference, so the attribute needs its own watcher. */
+new MutationObserver(renderGraph).observe(document.documentElement,
+	{ attributes: true, attributeFilter: ["data-theme"] });
 
 /* Zoom/pan: buttons, ctrl+wheel, drag; expand toggles a fixed overlay */
 const zoom = f => { scale = Math.min(4, Math.max(0.25, scale * f)); apply(); };
@@ -403,16 +614,32 @@ wrap.addEventListener("pointerdown", e => { drag = { x: e.clientX - tx, y: e.cli
 wrap.addEventListener("pointermove", e => { if (drag) { tx = e.clientX - drag.x; ty = e.clientY - drag.y; apply(); } });
 wrap.addEventListener("pointerup", () => { drag = null; });
 
-/* Section 4 — Next Up (pre-vetted by roadmap.py ready) */
-document.getElementById("ready").innerHTML = DATA.ready.candidates.length
-	? DATA.ready.candidates.map(c => `
-		<li style="--g-colour:var(--color-todo)">
-			<span class="tid">${esc(c.id)}</span>${esc(c.description)}
-			<span class="pill">${esc(c.milestone)}: ${esc(c.milestoneName)}</span>
-			${c.assignee ? `<span class="pill">${esc(c.assignee)}</span>` : ""}
-			<span class="signal">unblocks ${c.transitiveUnblocks}${c.isMilestoneSink ? " · completes milestone" : ""}</span>
-		</li>`).join("")
-	: "<li>No unblocked tasks — clear a blocker or a gate.</li>";
+/* Section 4 — Next Up (pre-vetted by roadmap.py ready). Same chip structure
+   as the Milestones section (A5); grouped by dev only when the READY SET
+   (the candidates actually shown here, not the whole phase) has more than
+   one distinct assignee, so a solo project (or a phase where only one dev's
+   work happens to be unblocked right now) stays flat rather than gaining a
+   pointless single-group heading. */
+const candidateLi = c => `
+	<li>
+		<span class="tid">${esc(c.id)}</span>${devChip(c.assignee)}
+		<span class="tasktext">${esc(c.description)}</span>
+		<span class="deps"><span class="chip" style="--chip-fg:var(--color-milestone);--chip-bg:var(--color-milestone-bg)">${esc(c.milestone)}: ${esc(c.milestoneName)}</span></span>
+		<span class="signal">unblocks ${c.transitiveUnblocks}${c.isMilestoneSink ? " · completes milestone" : ""}</span>
+	</li>`;
+const readyAssignees = new Set(DATA.ready.candidates.map(c => c.assignee).filter(Boolean));
+document.getElementById("ready").innerHTML = !DATA.ready.candidates.length
+	? "<li>No unblocked tasks: clear a blocker or a gate.</li>"
+	: readyAssignees.size > 1
+	? [...readyAssignees].sort().map(dev => `
+		<li class="nextup-devgroup"><h4>${devChip(dev)}</h4>
+			<ul style="list-style:none;margin:0;padding:0">${DATA.ready.candidates.filter(c => c.assignee === dev).map(candidateLi).join("")}</ul>
+		</li>`).join("") +
+		(DATA.ready.candidates.some(c => !c.assignee)
+			? `<li class="nextup-devgroup"><h4>Unassigned</h4>
+				<ul style="list-style:none;margin:0;padding:0">${DATA.ready.candidates.filter(c => !c.assignee).map(candidateLi).join("")}</ul>
+			</li>` : "")
+	: DATA.ready.candidates.map(candidateLi).join("");
 
 /* Nav highlight */
 const links = [...document.querySelectorAll("nav a")];

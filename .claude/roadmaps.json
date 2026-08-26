@@ -465,28 +465,28 @@
 					{
 						"id": "5DR.8",
 						"description": "Engine test suite: config resolution, fingerprinting, drift computation",
-						"status": "blocked",
+						"status": "todo",
 						"dependsOn": [
 							"M3",
-							"M5"
+							"5DR.6"
 						]
 					},
 					{
 						"id": "5DR.9",
 						"description": "Drift docs: config reference, data model, metric-precedence lifecycle diagram",
-						"status": "blocked",
+						"status": "todo",
 						"dependsOn": [
 							"M3",
-							"M5"
+							"5DR.6"
 						]
 					},
 					{
 						"id": "5DR.10",
 						"description": "Authoring guide: which fields Drift populates vs hand-authored, and where overrides live",
-						"status": "blocked",
+						"status": "todo",
 						"dependsOn": [
 							"M3",
-							"M5"
+							"5DR.6"
 						]
 					}
 				]
@@ -499,9 +499,10 @@
 					{
 						"id": "7DR.1",
 						"description": "Per-field provenance resolver: value, origin (synced / inferred / authored / overridden), and the inference an authored value agrees or disagrees with",
-						"status": "blocked",
+						"status": "todo",
 						"dependsOn": [
-							"M5"
+							"5DR.6",
+							"5DR.24"
 						],
 						"notes": "Provenance is currently spread across sources.json, overrides.json, the project overlay and defaults.ts. One resolver so the detail views and the existing redundancy tests read the same answer."
 					},
@@ -534,11 +535,12 @@
 					{
 						"id": "7DR.5",
 						"description": "Reach audit: confirm every field in every data file has a menu path, and fill the gaps",
-						"status": "todo",
+						"status": "blocked",
 						"dependsOn": [
-							"5DR.24"
+							"5DR.24",
+							"7DR.4"
 						],
-						"notes": "Only meaningful once 5DR.24 has settled the field set. Covers all eight configured data paths: sources, topology, local, overrides, excluded, cache, projects, in-progress."
+						"notes": "Only meaningful once 5DR.24 has settled the field set and 7DR.4's detail-view menu paths exist to audit. Covers all eight configured data paths: sources, topology, local, overrides, excluded, cache, projects, in-progress."
 					},
 					{
 						"id": "7DR.6",
@@ -554,7 +556,8 @@
 						"description": "Filter and sort the browse lists (drift state, track, role, tier, kind)",
 						"status": "blocked",
 						"dependsOn": [
-							"7DR.6"
+							"7DR.2",
+							"7DR.3"
 						]
 					},
 					{
@@ -578,8 +581,7 @@
 						"description": "Spike: investigate enhancements to the procedural OG card generation, and record the options with a recommendation",
 						"status": "blocked",
 						"dependsOn": [
-							"M4",
-							"M5"
+							"4QU.4"
 						],
 						"notes": "Supersedes the parked \"Generative OG variants per theme\" idea, which was one avenue among several. src/lib/og/card.ts derives each card from project data, but keys its motif on runtime alone via runtimeArchetype(), so 23 of 33 projects collapse into two archetypes (bun 12, node 11) and 5 fall through to the generic dot. Avenues to weigh: widening the archetype signal beyond runtime; theme-driven variants (themes currently feed nothing in card.ts); using signal the card already receives and ignores (kind, track, role, tags, lineage); and the motif mechanics themselves (one fixed 132px tiling, hash-seeded rotation and phase). Output is a written comparison with a recommendation, not an implementation; follow-up tasks land after it is read."
 					}

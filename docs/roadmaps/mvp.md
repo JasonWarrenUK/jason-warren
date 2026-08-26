@@ -100,9 +100,9 @@ The site is live and substantially built: full routes, the graph/timeline/map/to
 
 **Goal:** Once the engine is stable, lock it down with a test suite and document it for future maintainers.
 
-- [ ] **5DR.8** — Engine test suite: config resolution, fingerprinting, drift computation _(blocked — depends on M3, M5)_
-- [ ] **5DR.9** — Drift docs: config reference, data model, metric-precedence lifecycle diagram _(blocked — depends on M3, M5)_
-- [ ] **5DR.10** — Authoring guide: which fields Drift populates vs hand-authored, and where overrides live _(blocked — depends on M3, M5)_
+- [ ] **5DR.8** — Engine test suite: config resolution, fingerprinting, drift computation _(depends on M3, 5DR.6)_
+- [ ] **5DR.9** — Drift docs: config reference, data model, metric-precedence lifecycle diagram _(depends on M3, 5DR.6)_
+- [ ] **5DR.10** — Authoring guide: which fields Drift populates vs hand-authored, and where overrides live _(depends on M3, 5DR.6)_
 
 ---
 
@@ -110,16 +110,16 @@ The site is live and substantially built: full routes, the graph/timeline/map/to
 
 **Goal:** A drift portfolio's entire data state can be seen, controlled and manipulated through the drift CLI menu.
 
-- [ ] **7DR.1** — Per-field provenance resolver: value, origin (synced / inferred / authored / overridden), and the inference an authored value agrees or disagrees with _(blocked — depends on M5)_
+- [ ] **7DR.1** — Per-field provenance resolver: value, origin (synced / inferred / authored / overridden), and the inference an authored value agrees or disagrees with _(depends on 5DR.6, 5DR.24)_
   - Note: Provenance is currently spread across sources.json, overrides.json, the project overlay and defaults.ts. One resolver so the detail views and the existing redundancy tests read the same answer.
 - [ ] **7DR.2** — Project detail view: every field for one project on a single screen, each with its provenance _(blocked — depends on 7DR.1)_
 - [ ] **7DR.3** — Tech, tag and theme detail views on the same pattern as the project view _(blocked — depends on 7DR.1)_
 - [ ] **7DR.4** — Act in context: invoke the relevant verbs from a detail view without re-picking the target _(blocked — depends on 7DR.2, 7DR.3)_
   - Note: The menu is verb-first (pick a verb, then a target). This inverts it for the browse path; the verb-first sections stay for anyone who already knows what they want.
-- [ ] **7DR.5** — Reach audit: confirm every field in every data file has a menu path, and fill the gaps _(depends on 5DR.24)_
-  - Note: Only meaningful once 5DR.24 has settled the field set. Covers all eight configured data paths: sources, topology, local, overrides, excluded, cache, projects, in-progress.
+- [ ] **7DR.5** — Reach audit: confirm every field in every data file has a menu path, and fill the gaps _(blocked — depends on 5DR.24, 7DR.4)_
+  - Note: Only meaningful once 5DR.24 has settled the field set and 7DR.4's detail-view menu paths exist to audit. Covers all eight configured data paths: sources, topology, local, overrides, excluded, cache, projects, in-progress.
 - [ ] **7DR.6** — Search across projects, tech, tags and themes from one entry point _(blocked — depends on 7DR.2, 7DR.3)_
-- [ ] **7DR.7** — Filter and sort the browse lists (drift state, track, role, tier, kind) _(blocked — depends on 7DR.6)_
+- [ ] **7DR.7** — Filter and sort the browse lists (drift state, track, role, tier, kind) _(blocked — depends on 7DR.2, 7DR.3)_
 - [ ] **7DR.8** — Multi-select and bulk apply across a filtered set _(blocked — depends on 7DR.7)_
   - Note: Bulk writes are how redundant authored values get mass-produced, which the data.test.ts redundancy checks reject. A bulk write must surface which targets would gain a value matching the inference before it applies.
 
@@ -129,7 +129,7 @@ The site is live and substantially built: full routes, the graph/timeline/map/to
 
 **Goal:** The standing home for aesthetic work after the visual direction settled in M3: refinements to how the site and its generated artefacts look, taken up once the functional milestones they depend on have landed.
 
-- [ ] **8DE.1** — Spike: investigate enhancements to the procedural OG card generation, and record the options with a recommendation _(blocked — depends on M4, M5)_
+- [ ] **8DE.1** — Spike: investigate enhancements to the procedural OG card generation, and record the options with a recommendation _(blocked — depends on 4QU.4)_
   - Note: Supersedes the parked "Generative OG variants per theme" idea, which was one avenue among several. src/lib/og/card.ts derives each card from project data, but keys its motif on runtime alone via runtimeArchetype(), so 23 of 33 projects collapse into two archetypes (bun 12, node 11) and 5 fall through to the generic dot. Avenues to weigh: widening the archetype signal beyond runtime; theme-driven variants (themes currently feed nothing in card.ts); using signal the card already receives and ignores (kind, track, role, tags, lineage); and the motif mechanics themselves (one fixed 132px tiling, hash-seeded rotation and phase). Output is a written comparison with a recommendation, not an implementation; follow-up tasks land after it is read.
 
 ---
@@ -256,13 +256,13 @@ graph LR
 	M3 --> 5DR.9
 	M3 --> 5DR.10
 	4QU.4 --> M4
+	4QU.4 --> 8DE.1
 	4QU.5 --> 4QU.1
 	4QU.1 --> 4QU.3
 	4QU.1 --> 4QU.7
 	4QU.3 --> M4
 	4QU.7 --> M4
 	4QU.8 --> M4
-	M4 --> 8DE.1
 	5DR.0 --> 5DR.1
 	5DR.0 --> 5DR.14
 	5DR.1 --> 5DR.5
@@ -282,6 +282,10 @@ graph LR
 	5DR.6 --> 5DR.19
 	5DR.6 --> 5DR.21
 	5DR.6 --> 5DR.22
+	5DR.6 --> 5DR.8
+	5DR.6 --> 5DR.9
+	5DR.6 --> 5DR.10
+	5DR.6 --> 7DR.1
 	5DR.7 --> 5DR.13
 	5DR.7 --> 5DR.20
 	5DR.11 --> M5
@@ -296,14 +300,10 @@ graph LR
 	5DR.22 --> 5DR.23
 	5DR.23 --> M5
 	5DR.24 --> 5DR.25
+	5DR.24 --> 7DR.1
 	5DR.24 --> 7DR.5
 	5DR.25 --> M5
 	M5 --> 1CO.5
-	M5 --> 5DR.8
-	M5 --> 5DR.9
-	M5 --> 5DR.10
-	M5 --> 7DR.1
-	M5 --> 8DE.1
 	1CO.5 --> M1
 	5DR.8 --> M6
 	5DR.9 --> M6
@@ -312,15 +312,17 @@ graph LR
 	7DR.1 --> 7DR.3
 	7DR.2 --> 7DR.4
 	7DR.2 --> 7DR.6
+	7DR.2 --> 7DR.7
 	7DR.3 --> 7DR.4
 	7DR.3 --> 7DR.6
-	7DR.4 --> M7
+	7DR.3 --> 7DR.7
+	7DR.4 --> 7DR.5
 	7DR.5 --> M7
-	7DR.6 --> 7DR.7
+	7DR.6 --> M7
 	7DR.7 --> 7DR.8
 	7DR.8 --> M7
 	8DE.1 --> M8
-	class 4QU.4,4QU.5,5DR.22,5DR.25,7DR.5 todo
-	class 4QU.1,4QU.3,4QU.7,5DR.10,5DR.23,5DR.8,5DR.9,7DR.1,7DR.2,7DR.3,7DR.4,7DR.6,7DR.7,7DR.8,8DE.1 blocked
+	class 4QU.4,4QU.5,5DR.10,5DR.22,5DR.25,5DR.8,5DR.9,7DR.1 todo
+	class 4QU.1,4QU.3,4QU.7,5DR.23,7DR.2,7DR.3,7DR.4,7DR.5,7DR.6,7DR.7,7DR.8,8DE.1 blocked
 	class 1CO.1,1CO.10,1CO.2,1CO.3,1CO.4,1CO.5,1CO.6,1CO.7,1CO.8,1CO.9,2FE.1,2FE.2,2FE.3,2FE.4,2FE.5,2FE.6,2FE.7,2FE.8,3DE.0,3DE.1,3DE.2,3DE.3,3DE.4,3DE.5,3DE.6,4QU.8,5DR.0,5DR.1,5DR.11,5DR.12,5DR.13,5DR.14,5DR.15,5DR.16,5DR.17,5DR.18,5DR.19,5DR.2,5DR.20,5DR.21,5DR.24,5DR.3,5DR.4,5DR.5,5DR.6,5DR.7 done
 ```
