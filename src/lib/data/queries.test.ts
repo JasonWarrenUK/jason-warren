@@ -5,6 +5,7 @@
 
 import { describe, expect, it } from 'vitest';
 import {
+	plainContext,
 	getHeroPool,
 	HERO_COUNT,
 	filterProjects,
@@ -399,5 +400,47 @@ describe('filterProjects — query search', () => {
 		const result = filterProjects({ query: 'svelte', kinds: new Set<ProjectKind>(['app']) });
 		expect(result.every((p) => p.kind === 'app')).toBe(true);
 		expect(result.every((p) => searchHaystack(p).includes('svelte'))).toBe(true);
+	});
+});
+
+// ---------------------------------------------------------------------------
+// plainContext
+// ---------------------------------------------------------------------------
+
+describe('plainContext', () => {
+	function withCollaboration(collaboration: {
+		team: string;
+		employer?: string;
+		client?: string;
+	}): Project {
+		const project = makeProject('ctx');
+		return {
+			...project,
+			contribution: { ...project.contribution, collaboration }
+		} as Project;
+	}
+
+	it('labels solo work as personal', () => {
+		expect(plainContext(withCollaboration({ team: 'Solo (Jason)' }))).toBe('Personal project');
+	});
+
+	it('labels cohort work as training even under an employer', () => {
+		expect(
+			plainContext(withCollaboration({ team: 'FAC-30 cohort', employer: 'Founders and Coders' }))
+		).toBe('Training project');
+	});
+
+	it('labels employer work as work', () => {
+		expect(
+			plainContext(withCollaboration({ team: 'Solo (Jason)', employer: 'Founders and Coders' }))
+		).toBe('Work project');
+	});
+
+	it('lets a client outrank the employer', () => {
+		expect(
+			plainContext(
+				withCollaboration({ team: 'Tandem', employer: 'Tandem Creative Dev', client: 'Zig Zag AI' })
+			)
+		).toBe('Client work');
 	});
 });

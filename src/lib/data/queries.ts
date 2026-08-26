@@ -230,3 +230,54 @@ export function getAllRoles(): ProjectRole[] {
 export function anyProjectHasFlag(flag: ProjectFlag): boolean {
 	return projects.some((p) => (flag === 'deployed' ? p.deployed : p.retired));
 }
+
+// ---------------------------------------------------------------------------
+// Plain-English projects (the "for everyone else" home page)
+// ---------------------------------------------------------------------------
+
+/** Who a project was made for, in words that need no industry context. */
+export type PlainContext = 'Personal project' | 'Training project' | 'Work project' | 'Client work';
+
+export interface PlainProject {
+	slug: string;
+	name: string;
+	/** The authored plainBlurb. */
+	what: string;
+	context: PlainContext;
+	/** Where the finished thing can be used, when it is deployed. */
+	liveUrl?: string;
+}
+
+/**
+ * Collapse the contribution record into one of four plain labels. Order
+ * matters: a client outranks the employer it was delivered through, and a
+ * cohort project is training even though it was done under an employer.
+ */
+export function plainContext(project: Project): PlainContext {
+	const { team, employer, client } = project.contribution.collaboration;
+	if (client) return 'Client work';
+	if (/cohort/i.test(team)) return 'Training project';
+	if (employer) return 'Work project';
+	return 'Personal project';
+}
+
+/**
+ * Every project with a plain-English blurb that has not opted out, in
+ * registry order. A project without a blurb is skipped rather than shown with
+ * developer copy.
+ */
+export function getPlainProjects(): PlainProject[] {
+	return projects.flatMap((project) =>
+		project.plainBlurb && !project.hideFromPlainIntro
+			? [
+					{
+						slug: project.slug,
+						name: project.name,
+						what: project.plainBlurb,
+						context: plainContext(project),
+						liveUrl: project.deployed ? project.liveUrl : undefined
+					}
+				]
+			: []
+	);
+}
