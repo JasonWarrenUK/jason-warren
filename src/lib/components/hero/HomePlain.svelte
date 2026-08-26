@@ -351,6 +351,14 @@
 		display: none;
 	}
 
+	/* The claim fills the space above the cue and centres within it, so a
+	   one-line claim sits level with a three-line neighbour. */
+	.plain__summary > span:first-child {
+		flex: 1;
+		display: flex;
+		align-items: center;
+	}
+
 	.plain__summary-cue {
 		display: inline-flex;
 		align-items: center;
