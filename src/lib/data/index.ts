@@ -10,15 +10,19 @@
  *                       + optional .ts overlay (mergeAuthored)
  *                       + live metrics/dates (withSyncedMetrics)
  *
- * To add a project to the public site: add it to sources.json via drift update.
- * To exclude a repo: use `drift exclude <slug>` (writes to excluded.json).
- * To author rich content: create src/lib/data/projects/<slug>.ts.
+ * To add a project to the public site: add it to sources.json via drift sync.
+ * To exclude a repo: use `drift hide <slug>` (writes to excluded.json).
+ * To author rich content: create src/lib/data/projects/<slug>.ts, or run
+ * `drift author <slug>` to scaffold it.
  *
  * WRITE-ISOLATION CONTRACT (enforced by check-drift.js):
- *   drift update          -> writes ONLY sources.json
- *   drift accept/accept-all -> writes ONLY overrides.json
- *   drift exclude         -> writes ONLY excluded.json
- *   NOTHING auto-writes   -> projects/*.ts
+ *   drift sync             -> writes ONLY sources.json
+ *   drift keep/keep-all    -> writes ONLY overrides.json
+ *   drift hide             -> writes ONLY excluded.json
+ *   drift author/flag/tag/relate project
+ *                           -> writes ONLY projects/<slug>.ts, by inserting
+ *                              or flipping named properties (TS-compiler
+ *                              splice); no verb rewrites editorial content
  */
 
 import sourcesManifest from './sources.json';

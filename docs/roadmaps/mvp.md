@@ -93,6 +93,8 @@ The site is live and substantially built: full routes, the graph/timeline/map/to
 - [x] **5DR.24** — Audit the Project property surface: no two fields claim the same fact, and every fact worth storing has exactly one home
 - [ ] **5DR.25** — Surface the intra-span activity metrics (spanMonthsActive, spanMonthsAll, spanGapMaxDays) so the sustained-vs-bursty signal reaches the site _(depends on 5DR.24)_
   - Note: Covers SyncedSource, AuthoredProject, Project, ProjectMetrics and the nested Contribution/TechTag/ProjectRelationship shapes. Overlap precedent: deployed is derived from liveUrl presence; progress and released were split because one field made two claims; retired and hide both carried the hero-pool exclusion. Coverage gap already known: activeMonths, spanMonths and maxGapDays are synced but reach no Project field.
+- [ ] **5DR.26** — drift init doesn't scaffold author.botPattern, so a fresh config silently inherits Jason's personal AI-agent bot pattern as the default _(depends on 5DR.3, 5DR.13)_
+  - Note: buildDriftConfigSource (scripts/check-drift.js) scaffolds author.pattern and author.recentWindow but never author.botPattern. A fresh drift.config.ts therefore silently inherits DEFAULTS.author.botPattern from scripts/drift-config.js, which hardcodes Jason's own bot/AI-agent identity pattern (includes noreply@anthropic.com) as the default for excluding non-human commits from the all-authors count. Correct for Jason's own machines; wrong default for anyone else running drift init without realising the field exists to override. Needs a design decision before a fix: what a fresh botPattern should default to (empty string, a generic bot-only pattern with no AI-agent-specific entries, or the current default scaffolded with a comment flagging it as Jason-specific). Found and documented (not fixed) during 5DR.9.
 
 ---
 
@@ -202,6 +204,7 @@ graph LR
 	5DR.23["5DR.23: Derive the site's retired and deployed…"]
 	5DR.24["5DR.24: Audit the Project property surface: no…"]
 	5DR.25["5DR.25: Surface the intra-span activity metrics…"]
+	5DR.26["5DR.26: drift init doesn't scaffold author.botP…"]
 	M5["M5: Drift Decoupling: Engine & Verbs"]:::mile
 	1CO.5["1CO.5: Expand the Colophon into the drift-engin…"]
 	M1["M1: Content Depth & Polish"]:::mile
@@ -272,6 +275,7 @@ graph LR
 	5DR.12 --> 5DR.2
 	5DR.2 --> 5DR.3
 	5DR.3 --> 5DR.4
+	5DR.3 --> 5DR.26
 	5DR.4 --> 5DR.6
 	5DR.14 --> 5DR.6
 	5DR.6 --> 5DR.7
@@ -289,7 +293,7 @@ graph LR
 	5DR.7 --> 5DR.13
 	5DR.7 --> 5DR.20
 	5DR.11 --> M5
-	5DR.13 --> M5
+	5DR.13 --> 5DR.26
 	5DR.15 --> M5
 	5DR.16 --> 5DR.17
 	5DR.17 --> M5
@@ -303,6 +307,7 @@ graph LR
 	5DR.24 --> 7DR.1
 	5DR.24 --> 7DR.5
 	5DR.25 --> M5
+	5DR.26 --> M5
 	M5 --> 1CO.5
 	1CO.5 --> M1
 	5DR.8 --> M6
@@ -322,7 +327,7 @@ graph LR
 	7DR.7 --> 7DR.8
 	7DR.8 --> M7
 	8DE.1 --> M8
-	class 4QU.4,4QU.5,5DR.10,5DR.22,5DR.25,5DR.8,5DR.9,7DR.1 todo
+	class 4QU.4,4QU.5,5DR.10,5DR.22,5DR.25,5DR.26,5DR.8,5DR.9,7DR.1 todo
 	class 4QU.1,4QU.3,4QU.7,5DR.23,7DR.2,7DR.3,7DR.4,7DR.5,7DR.6,7DR.7,7DR.8,8DE.1 blocked
 	class 1CO.1,1CO.10,1CO.2,1CO.3,1CO.4,1CO.5,1CO.6,1CO.7,1CO.8,1CO.9,2FE.1,2FE.2,2FE.3,2FE.4,2FE.5,2FE.6,2FE.7,2FE.8,3DE.0,3DE.1,3DE.2,3DE.3,3DE.4,3DE.5,3DE.6,4QU.8,5DR.0,5DR.1,5DR.11,5DR.12,5DR.13,5DR.14,5DR.15,5DR.16,5DR.17,5DR.18,5DR.19,5DR.2,5DR.20,5DR.21,5DR.24,5DR.3,5DR.4,5DR.5,5DR.6,5DR.7 done
 ```

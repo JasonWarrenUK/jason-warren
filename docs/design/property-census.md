@@ -73,7 +73,7 @@ restated.
 | `linesAnyAddedRecent` / `linesAnyRemovedRecent` | S     | all-authors |                                                                                           |
 | `linesAny`                                      | S     | all-authors |                                                                                           |
 
-## 3. AuthoredProject (`types.ts:265`)
+## 3. AuthoredProject (`types.ts:387`)
 
 All-authored by definition. Every field optional except `slug`.
 
@@ -96,7 +96,7 @@ All-authored by definition. Every field optional except `slug`.
 Note: dates and metrics are deliberately **absent** here, so overlays cannot
 carry stale copies of synced values.
 
-## 4. Project (`types.ts:313`) — merged output
+## 4. Project (`types.ts:442`) — merged output
 
 | Field                               | Prov  | Source of truth                                                     |
 | ----------------------------------- | ----- | ------------------------------------------------------------------- |
@@ -112,8 +112,8 @@ carry stale copies of synced values.
 | `deployed`                          | **D** | Exactly `mergedLiveUrl !== undefined`                               |
 | `released`                          | A     | Authored-only                                                       |
 | `retired`                           | A     | Authored-only                                                       |
-| `repoUrl`                           | S/D   | `manifest.remote`, else constructed GitHub URL                      |
-| `companionRepoUrls`                 | S     | `manifest.companionRemotes ?? []`                                   |
+| `repoUrl`                           | S/D   | `manifest.urlRepo`, else constructed GitHub URL                     |
+| `companionRepoUrls`                 | S     | `manifest.urlsRepoCompanion ?? []`                                  |
 | `commitAnyLast` / `commitAnyRoot`   | S     | Via `withSyncedMetrics`                                             |
 | `detectedTechFirstSeen`             | **D** | Manifest `detectedTechFirstSeen` re-keyed from identity → tag label |
 | `liveUrl`                           | A     | Authored, else base                                                 |
@@ -127,9 +127,9 @@ carry stale copies of synced values.
 (authored overlay vs `inferTags`). `TechOverlay.kind` overrides `kind`
 everywhere tags are assembled.
 
-**ProjectRelationship** (`types.ts:137`) — `kind`, `target`, `note?`. All A.
+**ProjectRelationship** (`types.ts:259`) — `kind`, `target`, `note?`. All A.
 
-**Contribution** (`types.ts:235`) — discriminated on `role`.
+**Contribution** (`types.ts:357`) — discriminated on `role`.
 `role` A/D, `collaboration.team` A/D (always present on merged output),
 `collaboration.employer?` / `collaboration.client?` A,
 `contributionNote?` A (team variants only).

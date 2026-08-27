@@ -8,7 +8,10 @@
  * Set the DRIFT_CONFIG env variable to an alternative path if you want to keep
  * the config somewhere other than the repository root.
  *
- * This is the exact shape `drift init` (task 5DR.13) will generate.
+ * `drift init` scaffolds a narrower version of this shape: it omits
+ * `author.botPattern` and `files` entirely, so a fresh config silently
+ * inherits their built-in defaults from drift-config.js until you add them
+ * by hand (copying from this file, or from the keys documented below).
  */
 
 /** @type {import('./scripts/drift-config.js').DriftUserConfig} */
@@ -22,7 +25,8 @@ export default {
 	/**
 	 * Optional per-file path overrides, keyed by logical name.
 	 * Use when one file lives outside the data directory.
-	 * Logical names: sources, local, overrides, excluded, cache, projects.
+	 * Logical names: sources, topology, local, overrides, excluded, cache,
+	 * projects, inProgress.
 	 * Paths may be absolute or relative to the repo root.
 	 */
 	// files: {

@@ -141,9 +141,11 @@ Run `drift help <verb>` for verb-specific help.
 
 ### Adding a project
 
-1. Create `src/lib/data/projects/<slug>.ts` exporting a `Project`, or run `drift author <slug>` to scaffold it from a template.
-2. Add its slug to the `ProjectSlug` union in `types.ts` and register it in `index.ts`.
+1. Ensure the slug exists as an entry in `sources.json` (run `drift sync` once the repo is registered locally, via `sources.local.json`).
+2. Run `drift author <slug>` to scaffold `src/lib/data/projects/<slug>.ts` from a full commented template and open it in `$EDITOR`. `ProjectSlug` is a plain `string` and overlay discovery is automatic via `import.meta.glob`, so there is no union to update and nothing to register.
 3. Run `bun run test`; the data-integrity tests will tell you if anything (a dangling relationship, a missing note) is off.
+
+See [`docs/drift-authoring.md`](./docs/drift-authoring.md) for the full per-field guide: which fields Drift populates, which you author, and where overrides live.
 
 ---
 
@@ -183,6 +185,8 @@ British English throughout, tabs for indentation, Conventional Commits. See [`CL
 ### Documentation
 
 - [`docs/drift-boundary.md`](./docs/drift-boundary.md): the engine/integration contract
+- [`docs/drift-authoring.md`](./docs/drift-authoring.md): per-field authoring guide, where overrides live
+- [`docs/drift-engine-reference.md`](./docs/drift-engine-reference.md): config reference, data model, metric-precedence lifecycle
 - [`docs/design/`](./docs/design/): visual direction and colour system
 - [`docs/roadmaps/mvp.md`](./docs/roadmaps/mvp.md): task list and dependency diagram
 - [`docs/reports/ROADMAP_OVERVIEW.md`](./docs/reports/ROADMAP_OVERVIEW.md): roadmap prose

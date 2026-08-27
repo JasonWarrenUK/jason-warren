@@ -3,7 +3,9 @@
  *
  * Design principles:
  * - Discriminated unions enforce required fields per variant at compile time.
- * - ProjectSlug is a string-literal union so cross-link targets are type-checked.
+ * - ProjectSlug is a plain string; cross-link safety comes from a prerender
+ *   throw on dangling targets plus a data test, not a closed union (see the
+ *   ProjectSlug doc-comment below for why the union was retired).
  * - RelationshipKind models the engine-extraction story as first-class data.
  */
 
@@ -88,7 +90,7 @@ export interface TechTag {
  *
  * `ProjectMetrics` derives its synced half from this interface via `Pick`, so
  * the two shapes cannot drift apart: adding a metric here and to
- * `SYNCED_METRIC_KEYS` is all it takes to surface it.
+ * `SyncedMetricKey` is all it takes to surface it.
  */
 export interface SyncedSource {
 	commitHead?: string;
@@ -113,7 +115,7 @@ export interface SyncedSource {
 	// Inference-only inputs.
 	//
 	// These never reach `Project`: they are deliberately absent from
-	// SYNCED_METRIC_KEYS, so nothing portfolio-facing can read them. Each is
+	// SyncedMetricKey, so nothing portfolio-facing can read them. Each is
 	// consumed at build time in defaults.ts to derive a field that IS surfaced.
 	// Promoting one into ProjectMetrics would expose a raw signal the site has
 	// no vocabulary for; derive from it instead.
@@ -155,7 +157,7 @@ export interface SyncedSource {
 	 * sustained-vs-bursty ratio, spanGapMaxDays the longest silence inside the span.
 	 *
 	 * Measured and persisted, but not yet surfaced on the site: absent from
-	 * SYNCED_METRIC_KEYS and from every inference function.
+	 * SyncedMetricKey and from every inference function.
 	 */
 	spanMonthsActive?: number;
 	spanMonthsAll?: number;

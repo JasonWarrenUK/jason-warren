@@ -34,7 +34,7 @@
 				? { label: 'Lines removed', value: `−${metrics.linesMeRemoved.toLocaleString()}` }
 				: null,
 			metrics.linesAny != null
-				? { label: 'Source files', value: metrics.linesAny.toLocaleString() }
+				? { label: 'Lines of code', value: metrics.linesAny.toLocaleString() }
 				: null
 		].filter((m): m is Metric => m !== null)
 	);
