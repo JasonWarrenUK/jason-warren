@@ -138,7 +138,7 @@ interface SyncedSource {
 	commitsAnyRecent?: number;
 	commitsMe?: number;
 	commitsMeRecent?: number;
-	// inference-only inputs — never reach Project; consumed in defaults.ts
+	// inference-only inputs: never reach Project; consumed in defaults.ts
 	commitsHuman?: number;
 	authorsDistinct?: number;
 	authorsDistinctHuman?: number;
@@ -148,7 +148,7 @@ interface SyncedSource {
 	// dates
 	commitAnyLast?: string;
 	commitAnyRoot?: string;
-	// intra-span activity shape — measured, not yet surfaced on the site
+	// intra-span activity shape: measured, not yet surfaced on the site
 	spanMonthsActive?: number;
 	spanMonthsAll?: number;
 	spanGapMaxDays?: number;
@@ -234,7 +234,7 @@ The engine enforces single-file writes per verb. No verb touches more than one d
 
 The integration layer never writes any of these files. Every verb above that touches
 `projects/<slug>.ts` inserts or flips named properties via a TypeScript-compiler splice
-(or, for `drift author`, creates the file from a template) — none rewrites editorial
+(or, for `drift author`, creates the file from a template); none rewrites editorial
 content wholesale. See `docs/drift-authoring.md#what-will-overwrite-me` for the
 per-verb table this one summarises.
 

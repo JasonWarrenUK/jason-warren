@@ -105,7 +105,7 @@
 				},
 				"syncedField": {
 					"type": "string",
-					"description": "The underlying synced field to compare against (defaults to this field's name). Only `commitsHeadline` ever needs this — set to 'commitsMe' for team projects, 'commitsAny' for solo."
+					"description": "The underlying synced field to compare against (defaults to this field's name). Only `commitsHeadline` ever needs this: set to 'commitsMe' for team projects, 'commitsAny' for solo."
 				},
 				"_setNote": {
 					"type": "string",
