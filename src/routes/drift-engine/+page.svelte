@@ -602,10 +602,6 @@
 					<span class="stage-tiers__name">provisional</span>
 					<span class="stage-tiers__note">in-progress.json</span>
 				</div>
-				<div class="stage-tiers__tier">
-					<span class="stage-tiers__name">authored</span>
-					<span class="stage-tiers__note">floor / default</span>
-				</div>
 			</div>
 		{/snippet}
 
