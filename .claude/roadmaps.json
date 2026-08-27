@@ -484,7 +484,7 @@
 					{
 						"id": "5DR.9",
 						"description": "Drift docs: config reference, data model, metric-precedence lifecycle diagram",
-						"status": "todo",
+						"status": "done",
 						"dependsOn": [
 							"M3",
 							"5DR.6"
@@ -493,7 +493,7 @@
 					{
 						"id": "5DR.10",
 						"description": "Authoring guide: which fields Drift populates vs hand-authored, and where overrides live",
-						"status": "todo",
+						"status": "done",
 						"dependsOn": [
 							"M3",
 							"5DR.6"

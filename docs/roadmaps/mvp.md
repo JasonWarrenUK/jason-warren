@@ -103,8 +103,8 @@ The site is live and substantially built: full routes, the graph/timeline/map/to
 **Goal:** Once the engine is stable, lock it down with a test suite and document it for future maintainers.
 
 - [ ] **5DR.8** — Engine test suite: config resolution, fingerprinting, drift computation _(depends on M3, 5DR.6)_
-- [ ] **5DR.9** — Drift docs: config reference, data model, metric-precedence lifecycle diagram _(depends on M3, 5DR.6)_
-- [ ] **5DR.10** — Authoring guide: which fields Drift populates vs hand-authored, and where overrides live _(depends on M3, 5DR.6)_
+- [x] **5DR.9** — Drift docs: config reference, data model, metric-precedence lifecycle diagram
+- [x] **5DR.10** — Authoring guide: which fields Drift populates vs hand-authored, and where overrides live
 
 ---
 
@@ -327,7 +327,7 @@ graph LR
 	7DR.7 --> 7DR.8
 	7DR.8 --> M7
 	8DE.1 --> M8
-	class 4QU.4,4QU.5,5DR.10,5DR.22,5DR.25,5DR.26,5DR.8,5DR.9,7DR.1 todo
+	class 4QU.4,4QU.5,5DR.22,5DR.25,5DR.26,5DR.8,7DR.1 todo
 	class 4QU.1,4QU.3,4QU.7,5DR.23,7DR.2,7DR.3,7DR.4,7DR.5,7DR.6,7DR.7,7DR.8,8DE.1 blocked
-	class 1CO.1,1CO.10,1CO.2,1CO.3,1CO.4,1CO.5,1CO.6,1CO.7,1CO.8,1CO.9,2FE.1,2FE.2,2FE.3,2FE.4,2FE.5,2FE.6,2FE.7,2FE.8,3DE.0,3DE.1,3DE.2,3DE.3,3DE.4,3DE.5,3DE.6,4QU.8,5DR.0,5DR.1,5DR.11,5DR.12,5DR.13,5DR.14,5DR.15,5DR.16,5DR.17,5DR.18,5DR.19,5DR.2,5DR.20,5DR.21,5DR.24,5DR.3,5DR.4,5DR.5,5DR.6,5DR.7 done
+	class 1CO.1,1CO.10,1CO.2,1CO.3,1CO.4,1CO.5,1CO.6,1CO.7,1CO.8,1CO.9,2FE.1,2FE.2,2FE.3,2FE.4,2FE.5,2FE.6,2FE.7,2FE.8,3DE.0,3DE.1,3DE.2,3DE.3,3DE.4,3DE.5,3DE.6,4QU.8,5DR.0,5DR.1,5DR.10,5DR.11,5DR.12,5DR.13,5DR.14,5DR.15,5DR.16,5DR.17,5DR.18,5DR.19,5DR.2,5DR.20,5DR.21,5DR.24,5DR.3,5DR.4,5DR.5,5DR.6,5DR.7,5DR.9 done
 ```
