@@ -454,6 +454,16 @@
 						],
 						"notes": "Finding F6 of the property census (docs/design/property-census.md). All three are measured by check-drift.js on every sync and persisted for all 33 repos, but nothing in src/ reads them: they are absent from SyncedMetricKey and from every inference function. spanMonthsActive/spanMonthsAll is the sustained-vs-bursty ratio, spanGapMaxDays the longest silence inside the span; together they distinguish a repo worked steadily for eight months from one with two commits eight months apart, which the commitAnyRoot/commitAnyLast endpoint dates cannot. Since F4 the data-layer half is adding the three keys to SyncedMetricKey and the withSyncedMetrics gate; the rest is choosing a presentation (a MetricsPanel row, or a timeline visual).",
 						"assignee": "Jason"
+					},
+					{
+						"id": "5DR.26",
+						"description": "drift init doesn't scaffold author.botPattern, so a fresh config silently inherits Jason's personal AI-agent bot pattern as the default",
+						"status": "todo",
+						"dependsOn": [
+							"5DR.3",
+							"5DR.13"
+						],
+						"notes": "buildDriftConfigSource (scripts/check-drift.js) scaffolds author.pattern and author.recentWindow but never author.botPattern. A fresh drift.config.ts therefore silently inherits DEFAULTS.author.botPattern from scripts/drift-config.js, which hardcodes Jason's own bot/AI-agent identity pattern (includes noreply@anthropic.com) as the default for excluding non-human commits from the all-authors count. Correct for Jason's own machines; wrong default for anyone else running drift init without realising the field exists to override. Needs a design decision before a fix: what a fresh botPattern should default to (empty string, a generic bot-only pattern with no AI-agent-specific entries, or the current default scaffolded with a comment flagging it as Jason-specific). Found and documented (not fixed) during 5DR.9."
 					}
 				]
 			},
