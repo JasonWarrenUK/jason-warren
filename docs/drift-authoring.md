@@ -2,7 +2,8 @@
 
 > Answers one question: I want field X to say Y. Where do I type it, and what
 > will overwrite me? For the mechanism this all runs on (config, data model,
-> the precedence lifecycle diagram), see 5DR.9 once it lands, and
+> the precedence lifecycle diagram), see
+> [`docs/drift-engine-reference.md`](./drift-engine-reference.md), and
 > [`docs/drift-boundary.md`](./drift-boundary.md) for layer ownership. For the
 > complete type-level provenance map, see
 > [`docs/design/property-census.md`](./design/property-census.md).

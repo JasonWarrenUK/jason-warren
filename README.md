@@ -186,6 +186,7 @@ British English throughout, tabs for indentation, Conventional Commits. See [`CL
 
 - [`docs/drift-boundary.md`](./docs/drift-boundary.md): the engine/integration contract
 - [`docs/drift-authoring.md`](./docs/drift-authoring.md): per-field authoring guide, where overrides live
+- [`docs/drift-engine-reference.md`](./docs/drift-engine-reference.md): config reference, data model, metric-precedence lifecycle
 - [`docs/design/`](./docs/design/): visual direction and colour system
 - [`docs/roadmaps/mvp.md`](./docs/roadmaps/mvp.md): task list and dependency diagram
 - [`docs/reports/ROADMAP_OVERVIEW.md`](./docs/reports/ROADMAP_OVERVIEW.md): roadmap prose
