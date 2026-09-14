@@ -458,12 +458,12 @@
 					{
 						"id": "5DR.26",
 						"description": "drift init doesn't scaffold author.botPattern, so a fresh config silently inherits Jason's personal AI-agent bot pattern as the default",
-						"status": "todo",
+						"status": "done",
 						"dependsOn": [
 							"5DR.3",
 							"5DR.13"
 						],
-						"notes": "buildDriftConfigSource (scripts/check-drift.js) scaffolds author.pattern and author.recentWindow but never author.botPattern. A fresh drift.config.ts therefore silently inherits DEFAULTS.author.botPattern from scripts/drift-config.js, which hardcodes Jason's own bot/AI-agent identity pattern (includes noreply@anthropic.com) as the default for excluding non-human commits from the all-authors count. Correct for Jason's own machines; wrong default for anyone else running drift init without realising the field exists to override. Needs a design decision before a fix: what a fresh botPattern should default to (empty string, a generic bot-only pattern with no AI-agent-specific entries, or the current default scaffolded with a comment flagging it as Jason-specific). Found and documented (not fixed) during 5DR.9."
+						"notes": "Fixed. drift init now scaffolds author.botPattern with a generic default (\\[bot\\]|github-actions), narrowed from Jason's personal AI-agent identity pattern in DEFAULTS (scripts/drift-config.js). A comment in the scaffolded config shows how to extend it with AI-agent identities. Design decision: empty string was ruled out (an empty botPattern silently zeroes commitsHuman/authorsDistinctHuman via an always-failing PCRE negative lookahead, verified against this repo's own history). DEFAULTS was narrowed to match (breaking change, v8.0.0) since Jason's own drift.config.ts sets botPattern explicitly and is unaffected."
 					}
 				]
 			},
