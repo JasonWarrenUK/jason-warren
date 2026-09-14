@@ -68,18 +68,20 @@ const DEFAULTS = {
 		recentWindow: '4 weeks ago',
 
 		/**
-		 * Extended-regexp alternation matching non-human commit authors: CI bots,
-		 * GitHub Actions, and AI agents committing under their own identity.
+		 * Extended-regexp alternation matching non-human commit authors: CI bots
+		 * and GitHub Actions by default. Excluded from the all-authors commit
+		 * count so "co-authorship" means a human collaborator.
 		 *
-		 * These are excluded from the all-authors commit count so "co-authorship"
-		 * means a human collaborator. Without this a repo where an AI agent
-		 * authored most commits reads as a team project (see 5DR.21): flyt is 63%
-		 * agent-authored, kitchen-gremlin 64%, and both are solo work.
+		 * Extend this with AI-agent identities if agents commit under their own
+		 * identity in your repos (see 5DR.21): without that, a repo where an
+		 * agent authored most commits reads as a team project. This portfolio's
+		 * own drift.config.ts appends `|noreply@anthropic\.com` for that reason;
+		 * flyt is 63% agent-authored, kitchen-gremlin 64%, and both are solo work.
 		 *
 		 * Bots are excluded from the denominator only. Lines-of-code and churn
 		 * totals still count every commit, because the code exists either way.
 		 */
-		botPattern: '\\[bot\\]|github-actions|noreply@anthropic\\.com'
+		botPattern: '\\[bot\\]|github-actions'
 	},
 
 	/**
