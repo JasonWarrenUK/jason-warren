@@ -8,10 +8,10 @@
  * Set the DRIFT_CONFIG env variable to an alternative path if you want to keep
  * the config somewhere other than the repository root.
  *
- * `drift init` scaffolds a narrower version of this shape: it omits
- * `author.botPattern` and `files` entirely, so a fresh config silently
- * inherits their built-in defaults from drift-config.js until you add them
- * by hand (copying from this file, or from the keys documented below).
+ * `drift init` scaffolds a narrower version of this shape: it omits `files`
+ * entirely, so a fresh config silently inherits its built-in default from
+ * drift-config.js until you add it by hand (copying from this file, or from
+ * the keys documented below).
  */
 
 /** @type {import('./scripts/drift-config.js').DriftUserConfig} */
@@ -62,13 +62,14 @@ export default {
 		recentWindow: '4 weeks ago',
 
 		/**
-		 * Extended-regexp alternation matching non-human commit authors: CI bots,
-		 * GitHub Actions, and AI agents committing under their own identity. These
-		 * are excluded from the all-authors commit count so co-authorship means a
-		 * human collaborator, not a bot.
-		 * Default: '\\[bot\\]|github-actions|noreply@anthropic\\.com'
+		 * Extended-regexp alternation matching non-human commit authors: CI bots
+		 * and GitHub Actions by default. Excluded from the all-authors commit
+		 * count so co-authorship means a human collaborator, not a bot.
+		 * Extend with AI-agent identities if agents commit under their own
+		 * identity in your repos, e.g. append |noreply@anthropic\\.com.
+		 * Default: '\\[bot\\]|github-actions'
 		 */
-		botPattern: '\\[bot\\]|github-actions|noreply@anthropic\\.com'
+		botPattern: '\\[bot\\]|github-actions'
 	},
 
 	/**
