@@ -156,8 +156,9 @@ export interface SyncedSource {
 	 * difference detectable. spanMonthsActive/spanMonthsAll is the
 	 * sustained-vs-bursty ratio, spanGapMaxDays the longest silence inside the span.
 	 *
-	 * Measured and persisted, but not yet surfaced on the site: absent from
-	 * SyncedMetricKey and from every inference function.
+	 * Surfaced as raw counts via SyncedMetricKey (5DR.25) for visualisation
+	 * consumers (the timeline, future graphs); deliberately not reduced to a
+	 * displayed percentage, since active/total is confounded by project age.
 	 */
 	spanMonthsActive?: number;
 	spanMonthsAll?: number;
@@ -216,7 +217,10 @@ export type SyncedMetricKey =
 	| 'linesMeAddedRecent'
 	| 'linesMeRemovedRecent'
 	| 'linesAnyAddedRecent'
-	| 'linesAnyRemovedRecent';
+	| 'linesAnyRemovedRecent'
+	| 'spanMonthsActive'
+	| 'spanMonthsAll'
+	| 'spanGapMaxDays';
 
 /**
  * Metrics as the site sees them: every synced measurement that is surfaced,

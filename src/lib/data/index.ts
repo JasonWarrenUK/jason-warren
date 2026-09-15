@@ -234,7 +234,11 @@ function withSyncedMetrics(project: Project): Project {
 		linesAnyRemovedRecent:
 			ov?.linesAnyRemovedRecent?.value ??
 			synced?.linesAnyRemovedRecent ??
-			prov('linesAnyRemovedRecent')
+			prov('linesAnyRemovedRecent'),
+		spanMonthsActive:
+			ov?.spanMonthsActive?.value ?? synced?.spanMonthsActive ?? prov('spanMonthsActive'),
+		spanMonthsAll: ov?.spanMonthsAll?.value ?? synced?.spanMonthsAll ?? prov('spanMonthsAll'),
+		spanGapMaxDays: ov?.spanGapMaxDays?.value ?? synced?.spanGapMaxDays ?? prov('spanGapMaxDays')
 	};
 
 	for (const key of Object.keys(merged) as (keyof ProjectMetrics)[]) {

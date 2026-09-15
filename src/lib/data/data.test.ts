@@ -454,6 +454,9 @@ describe('synced metrics from sources.json', () => {
 			commitsMe?: number;
 			commitAnyLast?: string;
 			commitAnyRoot?: string;
+			spanMonthsActive?: number;
+			spanMonthsAll?: number;
+			spanGapMaxDays?: number;
 		}
 	>;
 
@@ -515,6 +518,31 @@ describe('synced metrics from sources.json', () => {
 			}
 		}
 		expect(offenders, `commitsAny is not all-authors:\n${offenders.join('\n')}`).toHaveLength(0);
+	});
+
+	it('overlays the intra-span activity metrics onto each project (5DR.25)', () => {
+		// Same gate-passthrough shape as commitsAny above: every synced value for
+		// a non-overridden slug must reach project.metrics unchanged. All three
+		// fields are written atomically by the engine (check-drift.js spreads
+		// them behind one `!== null` guard), so no partial-presence case exists.
+		const offenders: string[] = [];
+		for (const project of projects) {
+			const source = synced[project.slug];
+			if (!source || source.spanMonthsActive === undefined) continue;
+
+			for (const field of ['spanMonthsActive', 'spanMonthsAll', 'spanGapMaxDays'] as const) {
+				if (isOverridden(project.slug, field)) continue;
+				if (project.metrics?.[field] !== source[field]) {
+					offenders.push(
+						`${project.slug} ${field} ${project.metrics?.[field]} != synced.${field} ${source[field]}`
+					);
+				}
+			}
+		}
+		expect(
+			offenders,
+			`Synced intra-span activity metrics not applied:\n${offenders.join('\n')}`
+		).toHaveLength(0);
 	});
 
 	it('applies the role-keyed commit headline (solo: all-authors; team: Jason-scoped)', () => {
@@ -652,6 +680,9 @@ describe('manual overrides', () => {
 		'linesMeRemovedRecent',
 		'linesAnyAddedRecent',
 		'linesAnyRemovedRecent',
+		'spanMonthsActive',
+		'spanMonthsAll',
+		'spanGapMaxDays',
 		'commitAnyLast',
 		'commitAnyRoot'
 	]);
