@@ -6,6 +6,16 @@ All notable changes to this project are documented here. Format follows [Keep a 
 
 ## [Unreleased]
 
+## [8.0.0] - 2026-09-15
+
+### Breaking
+
+- The built-in default bot pattern no longer matches `noreply@anthropic.com`; it now only matches generic CI bots (`[bot]`, `github-actions`). A config that omits `botPattern` will count AI-agent commits as human unless the pattern is set explicitly.
+
+### Fixed
+
+- `drift init` now scaffolds `author.botPattern` in the generated config, with a comment showing how to add AI-agent identities, instead of silently inheriting the hidden default.
+
 ## [7.2.1] - 2026-08-27
 
 ### Fixed
