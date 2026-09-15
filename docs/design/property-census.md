@@ -210,16 +210,24 @@ them for an omission and promoting one. They now sit under a named
 "inference-only inputs" heading in `SyncedSource` saying exactly that, and their
 absence from `SyncedMetricKey` is what keeps them off the site.
 
-**F6. `spanMonthsActive` / `spanMonthsAll` / `spanGapMaxDays` have zero
-consumers. SCHEDULED.** Synced with a clear purpose (sustained-vs-bursty shape)
-but absent from `SyncedMetricKey` and from every inference function. Re-verified
-after the rename: no reads anywhere in `src/` outside the interface declaration
-and the engine that writes them.
+**F6. `spanMonthsActive` / `spanMonthsAll` / `spanGapMaxDays` had zero
+consumers. FIXED (5DR.25).** Synced with a clear purpose (sustained-vs-bursty
+shape) but absent from `SyncedMetricKey` and from every inference function.
+Re-verified before the fix: no reads anywhere in `src/` outside the interface
+declaration and the engine that writes them.
 
 Resolved as "surface them", not "stop measuring them": the measurement is the
 expensive part and it already works, and the signal distinguishes a repo worked
 steadily for eight months from one with two commits eight months apart, which
-the endpoint dates cannot. Tracked as its own roadmap task.
+the endpoint dates cannot. Added to `SyncedMetricKey`; `ProjectMetrics` picks
+them up via the `Pick` derived from F4's fix, no second declaration needed.
+
+Surfaced as raw counts for visualisation consumers, not as a displayed
+percentage: active/total is confounded by project age (a project that
+sustains work across three years scores lower than one that has simply not
+yet had time to go quiet), so a chart showing the span as an axis is honest
+where a bare ratio would not be. A follow-up roadmap task covers using the
+data in the timeline and future graphs.
 
 **F7. Scope was encoded in field names, not in the type. FIXED.** The
 all-authors vs Jason-only distinction was carried by a `…All` / `…Mine` suffix

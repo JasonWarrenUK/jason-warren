@@ -201,8 +201,8 @@ export interface SyncedSource {
  * The SyncedSource fields that reach the site as metrics.
  *
  * This list is the single place that decides which measurements are
- * portfolio-facing. Everything absent from it is either an inference-only input
- * or not yet surfaced (see the comments on SyncedSource).
+ * portfolio-facing. Everything absent from it is an inference-only input
+ * (see the comments on SyncedSource).
  */
 export type SyncedMetricKey =
 	| 'commitsAny'

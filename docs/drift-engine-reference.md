@@ -136,14 +136,12 @@ for the full per-field table, see `docs/design/property-census.md`
 **`SyncedSource`**: everything `drift sync` measures for one repo. 32 fields:
 a commit grid (4, all surfaced), 6 inference-only inputs that never reach
 `Project` (consumed only inside `defaults.ts`), 2 dates, 3 span-shape fields
-(measured but not yet surfaced anywhere), codebase size, an 8-field churn
-grid, and repo identity / dependency-detection fields. Canonical contract:
-`scripts/sources.schema.json`.
+(surfaced, 5DR.25), codebase size, an 8-field churn grid, and repo identity /
+dependency-detection fields. Canonical contract: `scripts/sources.schema.json`.
 
-**`SyncedMetricKey`**: the 13-member string union deciding which
+**`SyncedMetricKey`**: the 16-member string union deciding which
 `SyncedSource` fields reach the site as metrics. The single place that
-decides portfolio-facing status; everything absent from it is either
-inference-only or measured-not-surfaced.
+decides portfolio-facing status; everything absent from it is inference-only.
 
 **`ProjectMetrics`**: `extends Pick<SyncedSource, SyncedMetricKey>`, plus two
 gate-produced fields, `commitsHeadline` and `commitsHeadlineScope`, populated
