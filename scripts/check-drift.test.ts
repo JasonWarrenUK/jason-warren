@@ -351,6 +351,24 @@ describe('drift init', () => {
 		expect(source).toContain('DriftUserConfig');
 	});
 
+	it('scaffolds a generic author.botPattern, not a personal AI-agent identity', () => {
+		const result = runInitInDir(dir);
+		expect(result.status, result.stderr).toBe(0);
+
+		const configPath = join(dir, 'drift.config.ts');
+		const source = readFileSync(configPath, 'utf8');
+		expect(source).toContain('botPattern');
+		// A blank pattern silently zeroes commitsHuman/authorsDistinctHuman via an
+		// always-failing negative lookahead (see 5DR.26) rather than erroring, so
+		// the scaffolded value must be non-empty.
+		const match = source.match(/botPattern:\s*["'](.*)["']/);
+		expect(match?.[1]).toBeTruthy();
+		// The 5DR.26 fix: no fresh checkout should inherit Jason's own
+		// AI-agent identity as the scaffolded value (the comment above it may
+		// still mention it as an example of how to extend the pattern).
+		expect(match?.[1]).not.toMatch(/anthropic/i);
+	});
+
 	it('reports "created" for each new file in stdout', () => {
 		const result = runInitInDir(dir);
 		expect(result.status, result.stderr).toBe(0);

@@ -3104,7 +3104,7 @@ function gumInput(prompt, def) {
 /**
  * Generates the text content of drift.config.ts from the given values.
  *
- * @param {{ scanRoot: string, scanDepth: number, authorPattern: string, recentWindow: string, excludedRepoNames: string[], primary: string, accent: string, markdownTheme: string }} v
+ * @param {{ scanRoot: string, scanDepth: number, authorPattern: string, recentWindow: string, botPattern: string, excludedRepoNames: string[], primary: string, accent: string, markdownTheme: string }} v
  * @returns {string}
  */
 function buildDriftConfigSource(v) {
@@ -3155,7 +3155,17 @@ export default {
 \t\t * Trailing window for "recent" metrics. Accepts git --since values.
 \t\t * Default: '4 weeks ago'
 \t\t */
-\t\trecentWindow: ${JSON.stringify(v.recentWindow)}
+\t\trecentWindow: ${JSON.stringify(v.recentWindow)},
+
+\t\t/**
+\t\t * Extended-regexp alternation matching non-human commit authors: CI bots
+\t\t * and GitHub Actions by default. Excluded from the all-authors commit
+\t\t * count so "co-authorship" means a human collaborator.
+\t\t * Extend with AI-agent identities if agents commit under their own
+\t\t * identity in your repos, e.g. append |noreply@anthropic\\\\.com.
+\t\t * Default: '\\\\[bot\\\\]|github-actions'
+\t\t */
+\t\tbotPattern: ${JSON.stringify(v.botPattern)}
 \t},
 
 \t/**
@@ -3212,6 +3222,7 @@ function runInit({ palette, useGum }) {
 	const defScanDepth = DEFAULTS.scanDepth;
 	const defAuthorPattern = DEFAULTS.author.pattern;
 	const defRecentWindow = DEFAULTS.author.recentWindow;
+	const defBotPattern = DEFAULTS.author.botPattern;
 	const defExcludes = DEFAULTS.excludedRepoNames;
 	const defPrimary = DEFAULTS.theme.primary;
 	const defAccent = DEFAULTS.theme.accent;
@@ -3222,6 +3233,7 @@ function runInit({ palette, useGum }) {
 	let scanDepth = defScanDepth;
 	let authorPattern = defAuthorPattern;
 	let recentWindow = defRecentWindow;
+	let botPattern = defBotPattern;
 	let excludedRepoNames = defExcludes;
 	let primary = defPrimary;
 	let accent = defAccent;
@@ -3242,6 +3254,10 @@ function runInit({ palette, useGum }) {
 			defAuthorPattern
 		);
 		recentWindow = gumInput('Recent window (git --since value)', defRecentWindow);
+		botPattern = gumInput(
+			'Bot pattern (git --author alternation, non-human authors to exclude)',
+			defBotPattern
+		);
 		excludedRepoNames = gumInput('Excluded repo names (comma-separated)', defExcludes.join(','))
 			.split(',')
 			.map((s) => s.trim())
@@ -3277,6 +3293,7 @@ function runInit({ palette, useGum }) {
 			scanDepth,
 			authorPattern,
 			recentWindow,
+			botPattern,
 			excludedRepoNames,
 			primary,
 			accent,
