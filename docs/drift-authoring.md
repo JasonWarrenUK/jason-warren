@@ -280,7 +280,8 @@ from each verb's own `Write-isolation` declaration in `check-drift.js`
 
 | Verb                            | Writes                                 | Behaviour                                              |
 | ------------------------------- | -------------------------------------- | ------------------------------------------------------ |
-| `drift sync`                    | `sources.json` only                    | Never touches an overlay                               |
+| `drift sync`                    | `sources.json` `sources` section only  | Never touches an overlay, never touches `enriched`     |
+| `drift enrich`                  | `sources.json` `enriched` section only | Opt-in, `gh`-backed (5DR.22); never touches `sources`  |
 | `drift keep` / `keep-all`       | `overrides.json` only                  | Never touches an overlay                               |
 | `drift hide`                    | `excluded.json` only                   | Never touches an overlay                               |
 | `drift promote`                 | `in-progress.json` only                | Never touches an overlay                               |
