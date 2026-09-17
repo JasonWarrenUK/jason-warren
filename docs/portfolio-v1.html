@@ -1,0 +1,635 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Jason Warren — Software Developer</title>
+		<link rel="preconnect" href="https://fonts.googleapis.com" />
+		<link
+			href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+			rel="stylesheet"
+		/>
+		<style>
+			* {
+				margin: 0;
+				padding: 0;
+				box-sizing: border-box;
+			}
+			:root {
+				--bg: #0a0a0a;
+				--bg-card: #111;
+				--bg-hover: #1a1a1a;
+				--text: #e5e5e5;
+				--text-muted: #888;
+				--text-dim: #555;
+				--accent: #d4a843;
+				--accent-dim: #a07830;
+				--border: #222;
+				--border-hover: #333;
+				--green: #4a9;
+				--blue: #68b;
+				--rose: #a68;
+				--purple: #86a;
+				--font-sans: 'Inter', system-ui, sans-serif;
+				--font-mono: 'JetBrains Mono', monospace;
+			}
+			html {
+				scroll-behavior: smooth;
+			}
+			body {
+				background: var(--bg);
+				color: var(--text);
+				font-family: var(--font-sans);
+				line-height: 1.6;
+				-webkit-font-smoothing: antialiased;
+			}
+
+			/* Layout */
+			.container {
+				max-width: 900px;
+				margin: 0 auto;
+				padding: 0 24px;
+			}
+			section {
+				padding: 80px 0;
+			}
+			section + section {
+				border-top: 1px solid var(--border);
+			}
+
+			/* Header */
+			.hero {
+				padding: 120px 0 80px;
+				position: relative;
+			}
+			.hero::before {
+				content: '';
+				position: absolute;
+				top: 0;
+				left: 50%;
+				transform: translateX(-50%);
+				width: 1px;
+				height: 60px;
+				background: linear-gradient(transparent, var(--border));
+			}
+			.hero h1 {
+				font-size: 2.4em;
+				font-weight: 700;
+				letter-spacing: -0.03em;
+				margin-bottom: 4px;
+			}
+			.hero .role {
+				font-size: 1.1em;
+				color: var(--text-muted);
+				font-weight: 400;
+				margin-bottom: 24px;
+			}
+			.hero .intro {
+				max-width: 640px;
+				color: var(--text-muted);
+				font-size: 1.02em;
+				line-height: 1.7;
+			}
+			.hero .intro strong {
+				color: var(--text);
+				font-weight: 500;
+			}
+			.hero .contact {
+				margin-top: 24px;
+				display: flex;
+				gap: 20px;
+				flex-wrap: wrap;
+			}
+			.hero .contact a {
+				font-family: var(--font-mono);
+				font-size: 0.85em;
+				color: var(--accent-dim);
+				text-decoration: none;
+				transition: color 0.2s;
+			}
+			.hero .contact a:hover {
+				color: var(--accent);
+			}
+
+			/* Section headers */
+			.section-label {
+				font-family: var(--font-mono);
+				font-size: 0.75em;
+				color: var(--text-dim);
+				text-transform: uppercase;
+				letter-spacing: 0.15em;
+				margin-bottom: 32px;
+			}
+
+			/* Thread cards (the three themes) */
+			.threads {
+				display: grid;
+				grid-template-columns: repeat(3, 1fr);
+				gap: 16px;
+				margin-bottom: 0;
+			}
+			@media (max-width: 700px) {
+				.threads {
+					grid-template-columns: 1fr;
+				}
+			}
+			.thread {
+				padding: 20px;
+				border: 1px solid var(--border);
+				transition: border-color 0.2s;
+			}
+			.thread:hover {
+				border-color: var(--border-hover);
+			}
+			.thread h3 {
+				font-size: 0.95em;
+				font-weight: 600;
+				margin-bottom: 6px;
+			}
+			.thread p {
+				font-size: 0.85em;
+				color: var(--text-muted);
+				line-height: 1.6;
+			}
+
+			/* Project cards */
+			.project {
+				margin-bottom: 48px;
+				padding-bottom: 48px;
+				border-bottom: 1px solid var(--border);
+			}
+			.project:last-child {
+				border-bottom: none;
+				margin-bottom: 0;
+				padding-bottom: 0;
+			}
+			.project-header {
+				display: flex;
+				justify-content: space-between;
+				align-items: baseline;
+				flex-wrap: wrap;
+				gap: 8px;
+				margin-bottom: 8px;
+			}
+			.project h3 {
+				font-size: 1.3em;
+				font-weight: 600;
+				letter-spacing: -0.02em;
+			}
+			.project-meta {
+				font-family: var(--font-mono);
+				font-size: 0.75em;
+				color: var(--text-dim);
+			}
+			.project .tagline {
+				color: var(--text-muted);
+				margin-bottom: 16px;
+				font-size: 0.95em;
+			}
+			.project .detail {
+				color: var(--text-muted);
+				font-size: 0.9em;
+				line-height: 1.7;
+				margin-bottom: 16px;
+			}
+			.project .detail strong {
+				color: var(--text);
+				font-weight: 500;
+			}
+			.project .highlights {
+				display: flex;
+				flex-wrap: wrap;
+				gap: 8px;
+				margin-bottom: 16px;
+			}
+			.tag {
+				font-family: var(--font-mono);
+				font-size: 0.7em;
+				padding: 3px 10px;
+				border: 1px solid var(--border);
+				color: var(--text-muted);
+				white-space: nowrap;
+			}
+			.tag.lang-go {
+				border-color: #2a4a5a;
+				color: var(--blue);
+			}
+			.tag.lang-ts {
+				border-color: #2a3a5a;
+				color: #79b;
+			}
+			.tag.lang-py {
+				border-color: #3a3a2a;
+				color: #aa8;
+			}
+			.tag.lang-svelte {
+				border-color: #4a2a1a;
+				color: #c84;
+			}
+			.tag.lang-react {
+				border-color: #1a3a4a;
+				color: #6ac;
+			}
+			.tag.feat {
+				border-color: #2a2a2a;
+				color: var(--text-dim);
+			}
+			.contrib {
+				font-family: var(--font-mono);
+				font-size: 0.75em;
+				color: var(--text-dim);
+			}
+
+			/* AI section */
+			.ai-workflow {
+				background: var(--bg-card);
+				border: 1px solid var(--border);
+				padding: 32px;
+				margin-top: 0;
+			}
+			.ai-workflow h3 {
+				font-size: 1.1em;
+				font-weight: 600;
+				margin-bottom: 12px;
+			}
+			.ai-workflow p {
+				font-size: 0.9em;
+				color: var(--text-muted);
+				line-height: 1.7;
+			}
+			.ai-workflow code {
+				font-family: var(--font-mono);
+				font-size: 0.85em;
+				background: var(--bg);
+				padding: 1px 6px;
+				border: 1px solid var(--border);
+				color: var(--accent-dim);
+			}
+
+			/* Skills grid */
+			.skills-grid {
+				display: grid;
+				grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+				gap: 16px;
+			}
+			.skill-group h4 {
+				font-family: var(--font-mono);
+				font-size: 0.7em;
+				text-transform: uppercase;
+				letter-spacing: 0.12em;
+				color: var(--text-dim);
+				margin-bottom: 8px;
+			}
+			.skill-group p {
+				font-size: 0.88em;
+				color: var(--text-muted);
+				line-height: 1.6;
+			}
+
+			/* Footer */
+			.footer {
+				padding: 40px 0;
+				border-top: 1px solid var(--border);
+				text-align: center;
+			}
+			.footer p {
+				font-family: var(--font-mono);
+				font-size: 0.75em;
+				color: var(--text-dim);
+			}
+		</style>
+	</head>
+	<body>
+		<div class="container">
+			<!-- HERO -->
+			<section class="hero">
+				<h1>Jason Warren</h1>
+				<div class="role">Software Developer</div>
+				<div class="intro">
+					I build tools that make complex knowledge usable. My work sits at the intersection of
+					<strong>knowledge structuring</strong>, <strong>education systems</strong>, and
+					<strong>AI-augmented workflows</strong>. I write Go, TypeScript, and Python; I think in
+					graphs, ontologies, and domain models. I've spent the last two and a half years at
+					<strong>Founders and Coders</strong> building curriculum tools, production APIs, and the
+					kind of systems that make institutional knowledge survive the people who created it.
+				</div>
+				<div class="contact">
+					<a href="mailto:jason@foundersandcoders.com">jason@foundersandcoders.com</a>
+					<a href="https://github.com/jasonwarren">github.com</a>
+				</div>
+			</section>
+
+			<!-- THREADS -->
+			<section>
+				<div class="section-label">What I Do</div>
+				<div class="threads">
+					<div class="thread">
+						<h3 style="color: var(--green)">Knowledge Structuring</h3>
+						<p>
+							Property graph stores, Cypher query engines, document parsing pipelines, ontological
+							modelling. The work that comes before the AI: figuring out what an organisation knows,
+							where it lives, and how it connects.
+						</p>
+					</div>
+					<div class="thread">
+						<h3 style="color: var(--blue)">Education &amp; Curriculum</h3>
+						<p>
+							AI-powered curriculum generation, spaced repetition (FSRS v5), cohort management,
+							peer-led learning infrastructure. Tools built for real institutions serving real
+							learners.
+						</p>
+					</div>
+					<div class="thread">
+						<h3 style="color: var(--rose)">Systems &amp; NLP</h3>
+						<p>
+							Multi-service architectures, PII detection with Presidio and Flair NER, maritime
+							document classification, production FastAPI backends. The plumbing that makes things
+							work at scale.
+						</p>
+					</div>
+				</div>
+			</section>
+
+			<!-- FEATURED PROJECTS -->
+			<section>
+				<div class="section-label">Featured Work</div>
+
+				<div class="project">
+					<div class="project-header">
+						<h3>wyrd-tui</h3>
+						<span class="project-meta">32K lines &middot; 51 test files &middot; Solo</span>
+					</div>
+					<div class="tagline">
+						A property graph store with a hand-written Cypher query engine, Git sync, and a full
+						terminal UI. In Go, a language I'd never used before starting this project.
+					</div>
+					<div class="highlights">
+						<span class="tag lang-go">Go 1.25</span>
+						<span class="tag feat">Bubble Tea v2</span>
+						<span class="tag feat">Cypher parser</span>
+						<span class="tag feat">graph store</span>
+						<span class="tag feat">custom merge driver</span>
+						<span class="tag feat">plugin protocol</span>
+					</div>
+					<div class="detail">
+						Tasks, notes, habits, journal entries, and budget envelopes are all nodes in a flat-file
+						property graph, connected by typed edges. The query engine supports
+						<strong>MATCH, WHERE, RETURN, ORDER BY, LIMIT, UNION</strong>, aggregation functions,
+						variable-length path traversal, and date arithmetic; all via a hand-written lexer and
+						recursive-descent parser. Individual JSONC files per node/edge, loaded into an in-memory
+						index at startup with O(1) edge lookups, kept live via filesystem watcher. Git-based
+						sync includes a <strong>custom three-way JSONC merge driver</strong> (a separate
+						binary). Plugins communicate over JSON-lines via stdin/stdout; any language can extend
+						the system.
+					</div>
+					<div class="detail">
+						The theme system is built from Reasonable Colors (LCH colour space, WCAG AA contrast)
+						and degrades gracefully to 16-colour terminals. The schedule view uses time
+						displacement: overruns visibly compress remaining tasks rather than hiding them.
+					</div>
+					<div class="contrib">
+						12,700 lines of tests &middot; Interface-driven DI (Clock, StoreFS, GraphIndex,
+						QueryRunner) &middot; Mar–Jun 2026
+					</div>
+				</div>
+
+				<div class="project">
+					<div class="project-header">
+						<h3>Rhea</h3>
+						<span class="project-meta">42K lines &middot; SvelteKit &middot; Solo</span>
+					</div>
+					<div class="tagline">
+						An AI-powered curriculum generation tool for peer-led learning cohorts, built for
+						Founders and Coders.
+					</div>
+					<div class="highlights">
+						<span class="tag lang-ts">TypeScript</span>
+						<span class="tag lang-svelte">SvelteKit / Svelte 5</span>
+						<span class="tag feat">Claude API</span>
+						<span class="tag feat">LangChain</span>
+						<span class="tag feat">SSE streaming</span>
+						<span class="tag feat">Zod validation</span>
+					</div>
+					<div class="detail">
+						Rotating volunteer councils each review one module intensively while automation
+						propagates updates to downstream modules (<strong>cascade pattern maintenance</strong>).
+						Four named workflows with factory patterns for both agents and prompts. Real-time
+						generation progress via SSE streaming. Module validation with automatic retry on
+						failure. Web research integration via LangChain tool calling with curated domain
+						allowlists. Hierarchical research configuration at course, arc, and module level.
+					</div>
+					<div class="contrib">
+						Production tool with real users &middot; 2 CI workflows &middot; Sep 2025–Mar 2026
+					</div>
+				</div>
+
+				<div class="project">
+					<div class="project-header">
+						<h3>NarraTiseDB (CHIRPdb)</h3>
+						<span class="project-meta">483 tests &middot; FastAPI &middot; 4 contributors</span>
+					</div>
+					<div class="tagline">
+						A production API for CHIRP's maritime incident reporting system. Ingests MAIB reports
+						from GOV.UK, parses them into structured data, stores in Supabase with vector
+						embeddings.
+					</div>
+					<div class="highlights">
+						<span class="tag lang-py">Python 3.12</span>
+						<span class="tag feat">FastAPI</span>
+						<span class="tag feat">spaCy NLP</span>
+						<span class="tag feat">Pydantic v2</span>
+						<span class="tag feat">pgvector</span>
+						<span class="tag feat">Supabase</span>
+					</div>
+					<div class="detail">
+						Clean 4-layer architecture: <strong>schemas → routes → controllers → services</strong>.
+						Consistent naming conventions across 14 database tables with RLS policies. NLP pipeline
+						for sentence splitting, classification by text type, glossary parsing, and section
+						inference from heading sentences. SHA-256 duplicate detection. Shield code taxonomy for
+						safety classification. Built for a real client (Zig Zag AI via Tandem Creative Dev).
+					</div>
+					<div class="contrib">
+						483 tests across 20 files &middot; CI with lint, audit, Docker, coverage &middot;
+						Feb–Jun 2026
+					</div>
+				</div>
+
+				<div class="project">
+					<div class="project-header">
+						<h3>Guardrails</h3>
+						<span class="project-meta"
+							>5 services &middot; Multi-language &middot; 6 contributors</span
+						>
+					</div>
+					<div class="tagline">
+						An AI-powered PII detection and redaction platform. Five services: React frontend,
+						Express API, Chrome extension, admin panel, and a Python NLP microservice.
+					</div>
+					<div class="highlights">
+						<span class="tag lang-ts">TypeScript</span>
+						<span class="tag lang-py">Python</span>
+						<span class="tag lang-react">React 18</span>
+						<span class="tag feat">Presidio</span>
+						<span class="tag feat">Flair NER</span>
+						<span class="tag feat">Chrome extension</span>
+						<span class="tag feat">Docker Compose</span>
+					</div>
+					<div class="detail">
+						Custom FlairRecognizer wrapping <strong>flair/ner-english-large</strong> for person,
+						location, and organisation detection. UK postcode recogniser with article false-positive
+						filtering. Chrome extension with sidebar panel. Five-service architecture orchestrated
+						by Docker Compose with clear service boundaries.
+					</div>
+					<div class="contrib">
+						6 contributors &middot; CI via GitHub Actions &middot; Dec 2025–May 2026
+					</div>
+				</div>
+			</section>
+
+			<!-- ADDITIONAL WORK -->
+			<section>
+				<div class="section-label">Other Projects</div>
+
+				<div class="project">
+					<div class="project-header">
+						<h3>Arcana of Code</h3>
+						<span class="project-meta">SvelteKit &middot; Deployed &middot; Solo</span>
+					</div>
+					<div class="tagline">
+						All 78 tarot cards reimagined as programming philosophy. Deterministic Joy
+						Division-style SVG illustrations generated from card IDs via seeded PRNG. Post-punk
+						minimalist design. Deployed on Deno.
+					</div>
+					<div class="highlights">
+						<span class="tag lang-svelte">Svelte 4</span>
+						<span class="tag feat">procedural SVG</span>
+						<span class="tag feat">seeded PRNG</span>
+						<span class="tag feat">Deno Deploy</span>
+					</div>
+				</div>
+
+				<div class="project">
+					<div class="project-header">
+						<h3>Cogni</h3>
+						<span class="project-meta">SvelteKit &middot; 7.3K lines &middot; Solo</span>
+					</div>
+					<div class="tagline">
+						Developer Cognition Profile tool. Cross-compass constraint networks evaluate developers
+						against established methodologies, generating cognitive identity narratives. Deep domain
+						modelling with an 87KB method evaluator.
+					</div>
+					<div class="highlights">
+						<span class="tag lang-svelte">Svelte 5</span>
+						<span class="tag feat">constraint networks</span>
+						<span class="tag feat">method evaluation</span>
+					</div>
+				</div>
+
+				<div class="project">
+					<div class="project-header">
+						<h3>Founders and Coders Platform</h3>
+						<span class="project-meta"
+							>React / Express / Prisma &middot; 13 contributors &middot; 2.5 years</span
+						>
+					</div>
+					<div class="tagline">
+						Internal platform for the apprenticeship programme. Includes Bloom: spaced repetition
+						via FSRS v5, AI tutoring with SSE streaming, voice tutor, Anki import, Stripe
+						subscriptions, Kubernetes deployment.
+					</div>
+					<div class="highlights">
+						<span class="tag lang-react">React</span>
+						<span class="tag lang-ts">TypeScript</span>
+						<span class="tag feat">FSRS v5</span>
+						<span class="tag feat">Stripe</span>
+						<span class="tag feat">Kubernetes</span>
+					</div>
+				</div>
+
+				<div class="project">
+					<div class="project-header">
+						<h3>Lyra Rose</h3>
+						<span class="project-meta">SvelteKit &middot; Deployed on Vercel &middot; Solo</span>
+					</div>
+					<div class="tagline">
+						A wordless website: a drifting field of shards. GSAP parallax at varied depths,
+						day-night sky synced to local time, Web Audio proximity, performance-conscious rendering
+						with CSS containment and GPU compositing. prefers-reduced-motion support throughout.
+					</div>
+					<div class="highlights">
+						<span class="tag lang-svelte">Svelte 5</span>
+						<span class="tag feat">GSAP</span>
+						<span class="tag feat">Web Audio</span>
+						<span class="tag feat">a11y</span>
+					</div>
+				</div>
+			</section>
+
+			<!-- AI WORKFLOW -->
+			<section>
+				<div class="section-label">How I Work with AI</div>
+				<div class="ai-workflow">
+					<h3>AI as collaborator, not autocomplete</h3>
+					<p>
+						Claude appears as a git contributor across my projects. Every significant codebase
+						includes a <code>CLAUDE.md</code> onboarding document that gives the AI the same context
+						a new team member would need: architecture decisions, naming conventions, known
+						constraints, what to avoid. These aren't templates; they're project-specific, often
+						running to hundreds of lines, and maintained alongside the code.
+					</p>
+					<p style="margin-top: 12px">
+						Rhea is itself an AI-powered curriculum tool. I use structured XML prompt templates for
+						complex multi-step workflows. The pattern is consistent: I do the architectural thinking
+						and domain modelling; AI handles the implementation volume and catches what I miss. The
+						spec-first approach (detailed design docs before code) works particularly well with this
+						workflow; the spec becomes shared context that both human and AI can reason against.
+					</p>
+				</div>
+			</section>
+
+			<!-- SKILLS -->
+			<section>
+				<div class="section-label">Technical Skills</div>
+				<div class="skills-grid">
+					<div class="skill-group">
+						<h4>Languages</h4>
+						<p>TypeScript, Go, Python, JavaScript, SQL, HTML/CSS</p>
+					</div>
+					<div class="skill-group">
+						<h4>Frontend</h4>
+						<p>SvelteKit (Svelte 5), React 18, Tailwind CSS, GSAP, D3, PixiJS, MapLibre GL</p>
+					</div>
+					<div class="skill-group">
+						<h4>Backend</h4>
+						<p>FastAPI, Express, Prisma, Supabase, PostgreSQL, pgvector, SQLite</p>
+					</div>
+					<div class="skill-group">
+						<h4>AI &amp; NLP</h4>
+						<p>
+							Claude API, LangChain, Presidio, Flair NER, spaCy, SSE streaming, prompt engineering
+						</p>
+					</div>
+					<div class="skill-group">
+						<h4>Systems</h4>
+						<p>
+							Graph stores, Cypher, Git internals, custom merge drivers, plugin protocols, Docker
+							Compose, Kubernetes (Helm)
+						</p>
+					</div>
+					<div class="skill-group">
+						<h4>Testing &amp; CI</h4>
+						<p>
+							Vitest, Go testing, pytest, GitHub Actions, Pydantic validation, interface-driven DI
+						</p>
+					</div>
+				</div>
+			</section>
+		</div>
+
+		<div class="container">
+			<div class="footer">
+				<p>jason@foundersandcoders.com</p>
+			</div>
+		</div>
+	</body>
+</html>
