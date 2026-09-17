@@ -156,8 +156,9 @@ export interface SyncedSource {
 	 * difference detectable. spanMonthsActive/spanMonthsAll is the
 	 * sustained-vs-bursty ratio, spanGapMaxDays the longest silence inside the span.
 	 *
-	 * Measured and persisted, but not yet surfaced on the site: absent from
-	 * SyncedMetricKey and from every inference function.
+	 * Surfaced as raw counts via SyncedMetricKey (5DR.25) for visualisation
+	 * consumers (the timeline, future graphs); deliberately not reduced to a
+	 * displayed percentage, since active/total is confounded by project age.
 	 */
 	spanMonthsActive?: number;
 	spanMonthsAll?: number;
@@ -200,8 +201,8 @@ export interface SyncedSource {
  * The SyncedSource fields that reach the site as metrics.
  *
  * This list is the single place that decides which measurements are
- * portfolio-facing. Everything absent from it is either an inference-only input
- * or not yet surfaced (see the comments on SyncedSource).
+ * portfolio-facing. Everything absent from it is an inference-only input
+ * (see the comments on SyncedSource).
  */
 export type SyncedMetricKey =
 	| 'commitsAny'
@@ -216,7 +217,10 @@ export type SyncedMetricKey =
 	| 'linesMeAddedRecent'
 	| 'linesMeRemovedRecent'
 	| 'linesAnyAddedRecent'
-	| 'linesAnyRemovedRecent';
+	| 'linesAnyRemovedRecent'
+	| 'spanMonthsActive'
+	| 'spanMonthsAll'
+	| 'spanGapMaxDays';
 
 /**
  * Metrics as the site sees them: every synced measurement that is surfaced,

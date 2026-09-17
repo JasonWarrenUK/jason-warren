@@ -1,6 +1,6 @@
 # Portfolio MVP Roadmap
 
-The site is live and substantially built: full routes, the graph/timeline/map/toolkit views, 30+ typed projects and the Drift CLI. This phase deepens the site as an artefact and decouples Drift's engine from its portfolio-specific couplings. Content (M1), features (M2) and design (M3) are done, and the Drift engine work (M5) is complete bar its enrichment verbs and surfacing the intra-span activity metrics; quality (M4), Drift's tests-and-docs (M6), total data control from the CLI menu (M7) and ongoing aesthetics (M8) remain.
+The site is live and substantially built: full routes, the graph/timeline/map/toolkit views, 30+ typed projects and the Drift CLI. This phase deepens the site as an artefact and decouples Drift's engine from its portfolio-specific couplings. Content (M1), features (M2) and design (M3) are done, and the Drift engine work (M5) is complete bar its enrichment verbs; quality (M4), Drift's tests-and-docs (M6), total data control from the CLI menu (M7) and ongoing aesthetics (M8) remain.
 
 **Critical path:** `4QU.5 → 4QU.1 → 4QU.3` — with M3 complete, the accessibility audit chain is the longest remaining run, and 4QU.5 is the one task gating it. M6 and M7 both wait on M5 rather than on design, so they run in parallel with each other and with M4.
 
@@ -91,10 +91,13 @@ The site is live and substantially built: full routes, the graph/timeline/map/to
 - [ ] **5DR.22** — drift enrich verb: opt-in gh-backed enrichment writing GitHub's own archived repo flag and homepageUrl into a schema-extended sources.json section, while drift sync stays offline _(depends on 5DR.5, 5DR.6)_
 - [ ] **5DR.23** — Derive the site's retired and deployed axes from enriched manifest data, replacing the authored placeholders _(blocked — depends on 5DR.22)_
 - [x] **5DR.24** — Audit the Project property surface: no two fields claim the same fact, and every fact worth storing has exactly one home
-- [ ] **5DR.25** — Surface the intra-span activity metrics (spanMonthsActive, spanMonthsAll, spanGapMaxDays) so the sustained-vs-bursty signal reaches the site _(depends on 5DR.24)_
-  - Note: Covers SyncedSource, AuthoredProject, Project, ProjectMetrics and the nested Contribution/TechTag/ProjectRelationship shapes. Overlap precedent: deployed is derived from liveUrl presence; progress and released were split because one field made two claims; retired and hide both carried the hero-pool exclusion. Coverage gap already known: activeMonths, spanMonths and maxGapDays are synced but reach no Project field.
+  - Note: Covers SyncedSource, AuthoredProject, Project, ProjectMetrics and the nested Contribution/TechTag/ProjectRelationship shapes. Overlap precedent: deployed is derived from liveUrl presence; progress and released were split because one field made two claims; retired and hide both carried the hero-pool exclusion. Coverage gap already known: spanMonthsActive, spanMonthsAll and spanGapMaxDays are synced but reach no Project field (resolved by 5DR.25).
+- [x] **5DR.25** — Surface the intra-span activity metrics (spanMonthsActive, spanMonthsAll, spanGapMaxDays) so the sustained-vs-bursty signal reaches the site _(depends on 5DR.24)_
+  - Note: Finding F6 of the property census (docs/design/property-census.md), now FIXED. All three were measured by check-drift.js on every sync and persisted for all 33 repos, but nothing in src/ read them. Added to SyncedMetricKey and the withSyncedMetrics gate; ProjectMetrics picked them up via the Pick derived from F4's fix, no second declaration needed. Deliberately data-layer only: these are visualisation inputs (the timeline's rail currently renders regardless of how work was distributed across a project's span), not a MetricsPanel row: the active/total ratio is confounded by project age, so a displayed percentage was rejected in favour of raw counts reaching Project.metrics for chart consumers to draw honestly (span as an axis, not a score). Presentation work is a follow-up task.
 - [x] **5DR.26** — drift init doesn't scaffold author.botPattern, so a fresh config silently inherits Jason's personal AI-agent bot pattern as the default _(depends on 5DR.3, 5DR.13)_
   - Note: Fixed. drift init now scaffolds author.botPattern with a generic default (\[bot\]|github-actions), narrowed from Jason's personal AI-agent identity pattern in DEFAULTS (scripts/drift-config.js). A comment in the scaffolded config shows how to extend it with AI-agent identities. Design decision: empty string was ruled out (an empty botPattern silently zeroes commitsHuman/authorsDistinctHuman via an always-failing PCRE negative lookahead, verified against this repo's own history). DEFAULTS was narrowed to match (breaking change, v8.0.0) since Jason's own drift.config.ts sets botPattern explicitly and is unaffected.
+- [ ] **5DR.27** — Use the intra-span activity metrics in the timeline and/or graph visuals so a sparse multi-year project no longer renders identically to one sustained continuously _(depends on 5DR.25)_
+  - Note: spanMonthsActive, spanMonthsAll and spanGapMaxDays reached Project.metrics via 5DR.25 as raw counts, deliberately without a display rule. The timeline's rail currently runs solid from commitAnyRoot to commitAnyLast regardless of how work was distributed across the span (src/routes/timeline/+page.ts, TimelineChart.svelte / timeline-layout.ts), so a repo touched three times across three years reads identically to one worked continuously for six months. What today's persisted data supports: rail density or opacity keyed to the active/total relationship, and a marker or break at spanGapMaxDays. What it does not: positioning individual active months along the rail; check-drift.js:595 computes the month-bucket Set and keeps only its .size, discarding which months were active. A true histogram needs the engine to persist the bucket array (a SyncedSource schema change plus a full re-sync of all 33 repos); flag as a possible prerequisite engine sub-task rather than assuming it's needed. Design caveat: active/total is confounded by project age, and those-who-came-before has the most active months of any project (15) yet reads as the least sustained by ratio, purely for having run three years instead of six months. Any visual should treat span as an axis, not reduce it to a percentage. Touches timeline-layout.ts's determinism discipline (byte-stable output, no Date()/Intl/Math.random) and its existing test suite.
 
 ---
 
@@ -205,6 +208,7 @@ graph LR
 	5DR.24["5DR.24: Audit the Project property surface: no…"]
 	5DR.25["5DR.25: Surface the intra-span activity metrics…"]
 	5DR.26["5DR.26: drift init doesn't scaffold author.botP…"]
+	5DR.27["5DR.27: Use the intra-span activity metrics in…"]
 	M5["M5: Drift Decoupling: Engine & Verbs"]:::mile
 	1CO.5["1CO.5: Expand the Colophon into the drift-engin…"]
 	M1["M1: Content Depth & Polish"]:::mile
@@ -306,8 +310,9 @@ graph LR
 	5DR.24 --> 5DR.25
 	5DR.24 --> 7DR.1
 	5DR.24 --> 7DR.5
-	5DR.25 --> M5
+	5DR.25 --> 5DR.27
 	5DR.26 --> M5
+	5DR.27 --> M5
 	M5 --> 1CO.5
 	1CO.5 --> M1
 	5DR.8 --> M6
@@ -327,7 +332,7 @@ graph LR
 	7DR.7 --> 7DR.8
 	7DR.8 --> M7
 	8DE.1 --> M8
-	class 4QU.4,4QU.5,5DR.22,5DR.25,5DR.8,7DR.1 todo
+	class 4QU.4,4QU.5,5DR.22,5DR.27,5DR.8,7DR.1 todo
 	class 4QU.1,4QU.3,4QU.7,5DR.23,7DR.2,7DR.3,7DR.4,7DR.5,7DR.6,7DR.7,7DR.8,8DE.1 blocked
-	class 1CO.1,1CO.10,1CO.2,1CO.3,1CO.4,1CO.5,1CO.6,1CO.7,1CO.8,1CO.9,2FE.1,2FE.2,2FE.3,2FE.4,2FE.5,2FE.6,2FE.7,2FE.8,3DE.0,3DE.1,3DE.2,3DE.3,3DE.4,3DE.5,3DE.6,4QU.8,5DR.0,5DR.1,5DR.10,5DR.11,5DR.12,5DR.13,5DR.14,5DR.15,5DR.16,5DR.17,5DR.18,5DR.19,5DR.2,5DR.20,5DR.21,5DR.24,5DR.26,5DR.3,5DR.4,5DR.5,5DR.6,5DR.7,5DR.9 done
+	class 1CO.1,1CO.10,1CO.2,1CO.3,1CO.4,1CO.5,1CO.6,1CO.7,1CO.8,1CO.9,2FE.1,2FE.2,2FE.3,2FE.4,2FE.5,2FE.6,2FE.7,2FE.8,3DE.0,3DE.1,3DE.2,3DE.3,3DE.4,3DE.5,3DE.6,4QU.8,5DR.0,5DR.1,5DR.10,5DR.11,5DR.12,5DR.13,5DR.14,5DR.15,5DR.16,5DR.17,5DR.18,5DR.19,5DR.2,5DR.20,5DR.21,5DR.24,5DR.25,5DR.26,5DR.3,5DR.4,5DR.5,5DR.6,5DR.7,5DR.9 done
 ```

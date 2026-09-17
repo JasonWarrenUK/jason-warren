@@ -82,6 +82,18 @@
 					"$ref": "#/$defs/NumericOverride",
 					"description": "Lines removed by all authors, trailing 4 weeks."
 				},
+				"spanMonthsActive": {
+					"$ref": "#/$defs/NumericOverride",
+					"description": "Distinct calendar months containing at least one Jason-authored commit."
+				},
+				"spanMonthsAll": {
+					"$ref": "#/$defs/NumericOverride",
+					"description": "Calendar months from Jason's first to last commit, inclusive."
+				},
+				"spanGapMaxDays": {
+					"$ref": "#/$defs/NumericOverride",
+					"description": "Longest run of consecutive days with no Jason-authored commit inside the span."
+				},
 				"commitAnyLast": {
 					"$ref": "#/$defs/DateOverride",
 					"description": "ISO date of the most recent commit."
