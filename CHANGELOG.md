@@ -6,6 +6,10 @@ All notable changes to this project are documented here. Format follows [Keep a 
 
 ## [Unreleased]
 
+### Added
+
+- New `drift enrich` verb: opt-in, `gh`-backed enrichment that fetches GitHub's own archived flag and homepage URL for every tracked repo and writes them into a new `enriched` section of `sources.json`. Requires the GitHub CLI, authenticated. `drift sync` never reads or writes this section and stays fully offline; `enrich` is the engine's only network-touching verb, and it never runs automatically.
+
 ## [8.1.0] - 2026-09-17
 
 ### Added
