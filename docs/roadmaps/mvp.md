@@ -141,6 +141,14 @@ The site is live and substantially built: full routes, the graph/timeline/map/to
 
 ---
 
+## Milestone 9 — Drift: Extended Features
+
+**Goal:** Extend Drift past the engine/verb split into follow-on workflow improvements once every existing Drift milestone has landed.
+
+- [ ] **5DR.29** — Spike whether sync+enrich should be chainable into a single onboarding step: a drift onboard-style verb, a documented shell one-liner, or docs-only guidance; drift enrich only ever sees slugs already registered in sources.json's sources section (the same registered-only scope as drift sync's own backfill), so a brand-new project needs a sync first before enrich can see it at all, and that second step is easy to forget _(blocked — depends on M5, M6, M7)_
+
+---
+
 ## Dependency Diagram
 
 ```mermaid
@@ -230,6 +238,8 @@ graph LR
 	5DR.23["5DR.23: Derive the site's retired and deployed…"]
 	5DR.27["5DR.27: Use the intra-span activity metrics in…"]
 	M8["M8: Aesthetics: Ongoing"]:::mile
+	5DR.29["5DR.29: Spike whether sync+enrich should be cha…"]
+	M9["M9: Drift: Extended Features"]:::mile
 	1CO.1 --> 1CO.2
 	1CO.1 --> 1CO.6
 	1CO.2 --> 1CO.8
@@ -318,10 +328,12 @@ graph LR
 	5DR.25 --> 5DR.27
 	5DR.26 --> M5
 	M5 --> 1CO.5
+	M5 --> 5DR.29
 	1CO.5 --> M1
 	5DR.8 --> M6
 	5DR.9 --> M6
 	5DR.10 --> M6
+	M6 --> 5DR.29
 	7DR.1 --> 7DR.2
 	7DR.1 --> 7DR.3
 	7DR.2 --> 7DR.4
@@ -335,10 +347,12 @@ graph LR
 	7DR.6 --> M7
 	7DR.7 --> 7DR.8
 	7DR.8 --> M7
+	M7 --> 5DR.29
 	8DE.1 --> M8
 	5DR.23 --> M8
 	5DR.27 --> M8
+	5DR.29 --> M9
 	class 4QU.4,4QU.5,5DR.23,5DR.27,5DR.28,5DR.8,7DR.1 todo
-	class 4QU.1,4QU.3,4QU.7,7DR.2,7DR.3,7DR.4,7DR.5,7DR.6,7DR.7,7DR.8,8DE.1 blocked
+	class 4QU.1,4QU.3,4QU.7,5DR.29,7DR.2,7DR.3,7DR.4,7DR.5,7DR.6,7DR.7,7DR.8,8DE.1 blocked
 	class 1CO.1,1CO.10,1CO.2,1CO.3,1CO.4,1CO.5,1CO.6,1CO.7,1CO.8,1CO.9,2FE.1,2FE.2,2FE.3,2FE.4,2FE.5,2FE.6,2FE.7,2FE.8,3DE.0,3DE.1,3DE.2,3DE.3,3DE.4,3DE.5,3DE.6,4QU.8,5DR.0,5DR.1,5DR.10,5DR.11,5DR.12,5DR.13,5DR.14,5DR.15,5DR.16,5DR.17,5DR.18,5DR.19,5DR.2,5DR.20,5DR.21,5DR.22,5DR.24,5DR.25,5DR.26,5DR.3,5DR.4,5DR.5,5DR.6,5DR.7,5DR.9 done
 ```

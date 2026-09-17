@@ -615,6 +615,23 @@
 						"assignee": "Jason"
 					}
 				]
+			},
+			{
+				"id": "M9",
+				"name": "Drift: Extended Features",
+				"goal": "Extend Drift past the engine/verb split into follow-on workflow improvements once every existing Drift milestone has landed.",
+				"tasks": [
+					{
+						"id": "5DR.29",
+						"description": "Spike whether sync+enrich should be chainable into a single onboarding step: a drift onboard-style verb, a documented shell one-liner, or docs-only guidance; drift enrich only ever sees slugs already registered in sources.json's sources section (the same registered-only scope as drift sync's own backfill), so a brand-new project needs a sync first before enrich can see it at all, and that second step is easy to forget",
+						"status": "blocked",
+						"dependsOn": [
+							"M5",
+							"M6",
+							"M7"
+						]
+					}
+				]
 			}
 		]
 	}
