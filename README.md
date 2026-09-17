@@ -122,6 +122,7 @@ drift [report]     # compare synced fingerprints to current git state (default)
 drift snapshot     # show ALL current metrics, changed vs unchanged
 drift authored     # show every authored field per overlay, absent fields marked
 drift sync         # rewrite sources.json with current fingerprints
+drift enrich       # opt-in, gh-backed: fetch GitHub's archived flag and homepage URL
 drift keep         # keep a manual override, refreshing its baseline
 drift hide         # remove a slug from the public site
 drift promote      # graduate a landed in-progress entry

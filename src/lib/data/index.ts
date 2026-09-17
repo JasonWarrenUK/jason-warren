@@ -16,7 +16,12 @@
  * `drift author <slug>` to scaffold it.
  *
  * WRITE-ISOLATION CONTRACT (enforced by check-drift.js):
- *   drift sync             -> writes ONLY sources.json
+ *   drift sync             -> writes ONLY the `sources` section of sources.json
+ *   drift enrich           -> writes ONLY the `enriched` section of sources.json
+ *                              (opt-in, gh-backed, 5DR.22 — the engine's one
+ *                              network-touching verb; sync never reads or
+ *                              writes this section, which is what keeps sync
+ *                              itself offline)
  *   drift keep/keep-all    -> writes ONLY overrides.json
  *   drift hide             -> writes ONLY excluded.json
  *   drift author/flag/tag/relate project

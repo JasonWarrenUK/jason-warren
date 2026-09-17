@@ -430,6 +430,15 @@
 						]
 					},
 					{
+						"id": "5DR.28",
+						"description": "Parallelise the per-repo `gh repo view` calls in drift enrich (currently sequential via fetchGhRepoView)",
+						"status": "blocked",
+						"dependsOn": [
+							"5DR.22"
+						],
+						"notes": "Raised as a deliberately out-of-scope follow-up during PR 45 review. Both ways out named in review were sequential; concurrency is a larger change than that PR's fix warranted."
+					},
+					{
 						"id": "5DR.24",
 						"description": "Audit the Project property surface: no two fields claim the same fact, and every fact worth storing has exactly one home",
 						"status": "done",

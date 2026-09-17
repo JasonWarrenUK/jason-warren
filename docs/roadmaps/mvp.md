@@ -89,6 +89,8 @@ The site is live and substantially built: full routes, the graph/timeline/map/to
 - [x] **5DR.20** — Intra-span dormancy signal: sample commit dates so activity gaps become detectable _(depends on 5DR.7)_
 - [x] **5DR.21** — Improve role detection: richer signals than commit share for the solo/lead/collaborator inference _(depends on 5DR.6)_
 - [ ] **5DR.22** — drift enrich verb: opt-in gh-backed enrichment writing GitHub's own archived repo flag and homepageUrl into a schema-extended sources.json section, while drift sync stays offline _(depends on 5DR.5, 5DR.6)_
+- [ ] **5DR.28** — Parallelise the per-repo `gh repo view` calls in drift enrich (currently sequential via fetchGhRepoView) _(blocked — depends on 5DR.22)_
+  - Note: Raised as a deliberately out-of-scope follow-up during PR 45 review. Both ways out named in review were sequential; concurrency is a larger change than that PR's fix warranted.
 - [x] **5DR.24** — Audit the Project property surface: no two fields claim the same fact, and every fact worth storing has exactly one home
   - Note: Covers SyncedSource, AuthoredProject, Project, ProjectMetrics and the nested Contribution/TechTag/ProjectRelationship shapes. Overlap precedent: deployed is derived from liveUrl presence; progress and released were split because one field made two claims; retired and hide both carried the hero-pool exclusion. Coverage gap already known: spanMonthsActive, spanMonthsAll and spanGapMaxDays are synced but reach no Project field (resolved by 5DR.25).
 - [x] **5DR.25** — Surface the intra-span activity metrics (spanMonthsActive, spanMonthsAll, spanGapMaxDays) so the sustained-vs-bursty signal reaches the site _(depends on 5DR.24)_
@@ -204,6 +206,7 @@ graph LR
 	5DR.20["5DR.20: Intra-span dormancy signal: sample comm…"]
 	5DR.21["5DR.21: Improve role detection: richer signals…"]
 	5DR.22["5DR.22: drift enrich verb: opt-in gh-backed enr…"]
+	5DR.28["5DR.28: Parallelise the per-repo `gh repo view`…"]
 	5DR.24["5DR.24: Audit the Project property surface: no…"]
 	5DR.25["5DR.25: Surface the intra-span activity metrics…"]
 	5DR.26["5DR.26: drift init doesn't scaffold author.botP…"]
@@ -305,8 +308,9 @@ graph LR
 	5DR.19 --> M5
 	5DR.20 --> M5
 	5DR.21 --> M5
-	5DR.22 --> M5
+	5DR.22 --> 5DR.28
 	5DR.22 --> 5DR.23
+	5DR.28 --> M5
 	5DR.24 --> 5DR.25
 	5DR.24 --> 7DR.1
 	5DR.24 --> 7DR.5
@@ -335,6 +339,6 @@ graph LR
 	5DR.23 --> M8
 	5DR.27 --> M8
 	class 4QU.4,4QU.5,5DR.22,5DR.27,5DR.8,7DR.1 todo
-	class 4QU.1,4QU.3,4QU.7,5DR.23,7DR.2,7DR.3,7DR.4,7DR.5,7DR.6,7DR.7,7DR.8,8DE.1 blocked
+	class 4QU.1,4QU.3,4QU.7,5DR.23,5DR.28,7DR.2,7DR.3,7DR.4,7DR.5,7DR.6,7DR.7,7DR.8,8DE.1 blocked
 	class 1CO.1,1CO.10,1CO.2,1CO.3,1CO.4,1CO.5,1CO.6,1CO.7,1CO.8,1CO.9,2FE.1,2FE.2,2FE.3,2FE.4,2FE.5,2FE.6,2FE.7,2FE.8,3DE.0,3DE.1,3DE.2,3DE.3,3DE.4,3DE.5,3DE.6,4QU.8,5DR.0,5DR.1,5DR.10,5DR.11,5DR.12,5DR.13,5DR.14,5DR.15,5DR.16,5DR.17,5DR.18,5DR.19,5DR.2,5DR.20,5DR.21,5DR.24,5DR.25,5DR.26,5DR.3,5DR.4,5DR.5,5DR.6,5DR.7,5DR.9 done
 ```
