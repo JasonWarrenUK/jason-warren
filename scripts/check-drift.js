@@ -3012,19 +3012,32 @@ function runEnrich({ manifest, args = [], values, palette, useGum }) {
 	}
 
 	const today = new Date().toISOString().slice(0, 10);
-	const results = resolvable.map(({ slug, ownerRepo }) => ({
-		slug,
-		ownerRepo,
-		ghResult: fetchGhRepoView(ownerRepo)
-	}));
 
+	// Progress counter on stderr — gated on stderr TTY and not --json so that
+	// `drift enrich --json` and `drift enrich | cat` and CI produce zero progress
+	// noise. Matches the shape computeDrift's own onProgress callers use.
 	const onProgress =
 		process.stderr.isTTY && !values.json
-			? (index, total, slug) => process.stderr.write(`\r[${index}/${total}] ${slug}`.padEnd(60))
+			? ({ index, total, slug }) => process.stderr.write(`\r[${index}/${total}] ${slug}`.padEnd(60))
 			: null;
-	if (onProgress) process.stderr.write('\r' + ' '.repeat(60) + '\r');
+	const clearProgress = () => {
+		if (onProgress) process.stderr.write('\r' + ' '.repeat(60) + '\r');
+	};
+
+	// Fetches every resolved repo, reporting progress as it goes. Shared by the
+	// dry-run preview and the real write so the gum gate (below) can sit before
+	// this cost on the write path without duplicating the loop.
+	const fetchAllWithProgress = () => {
+		const fetched = resolvable.map(({ slug, ownerRepo }, index) => {
+			onProgress?.({ index: index + 1, total: resolvable.length, slug });
+			return { slug, ownerRepo, ghResult: fetchGhRepoView(ownerRepo) };
+		});
+		clearProgress();
+		return fetched;
+	};
 
 	if (values['dry-run']) {
+		const results = fetchAllWithProgress();
 		console.log(
 			`${DIM}Dry run — showing what ${results.length} repo${results.length === 1 ? '' : 's'} would change. Nothing will be written.${RESET}\n`
 		);
@@ -3041,9 +3054,11 @@ function runEnrich({ manifest, args = [], values, palette, useGum }) {
 		return;
 	}
 
-	// gum confirm gate — only when interactive. Writes nothing on cancel.
+	// gum confirm gate — only when interactive, and before any gh call, so
+	// cancelling here has not yet paid the cost of fetching every repo.
+	// Writes nothing on cancel.
 	if (useGum && process.stdout.isTTY) {
-		const n = results.length;
+		const n = resolvable.length;
 		const scope = isScoped ? `${n} scoped repo${n === 1 ? '' : 's'}` : `${n} repos`;
 		const res = spawnSync(
 			'gum',
@@ -3058,6 +3073,7 @@ function runEnrich({ manifest, args = [], values, palette, useGum }) {
 		}
 	}
 
+	const results = fetchAllWithProgress();
 	console.log("Enriching sources.json's enriched section from GitHub...");
 	manifest.enriched = manifest.enriched ?? {};
 	let errorCount = 0;
