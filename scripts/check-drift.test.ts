@@ -3331,3 +3331,289 @@ describe('drift sync', () => {
 		expect(dryResult.stdout).not.toContain('sources.json synced.');
 	});
 });
+
+// ---------------------------------------------------------------------------
+// drift enrich (5DR.22)
+//
+// check-drift.js has no exports and shells out to `gh` via `which gh` /
+// `spawnSync('gh', ...)`, so the only seam available to a subprocess-driven
+// test is PATH itself: a fake `gh` executable placed ahead of the real one.
+// This mirrors the engine's own `which gum`/`which gh` capability-probe idiom
+// and, as a side effect, gets the "gh absent" case for free (an empty PATH
+// entry) and the "repo unresolved" / "gh unauthenticated" cases for free (the
+// fake script's own exit code and stderr).
+// ---------------------------------------------------------------------------
+
+/**
+ * Patches the sandbox's sources.json to set urlRepo on one slug's saved
+ * entry. makeSyncSandbox's fixture repo has no git remote (computeDrift
+ * never needs one to resolve a working tree), so urlRepo never populates
+ * from a real sync the way it does for the 33 real tracked repos — enrich
+ * needs it seeded directly to have anything to join `gh repo view` on.
+ *
+ * @param {string} dir - sandbox dataDir (as returned by makeSyncSandbox)
+ * @param {string} slug
+ * @param {string} urlRepo
+ */
+function seedUrlRepo(dir: string, slug: string, urlRepo: string): void {
+	const sourcesPath = join(dir, 'sources.json');
+	const parsed = JSON.parse(readFileSync(sourcesPath, 'utf8'));
+	parsed.sources[slug] = { ...parsed.sources[slug], urlRepo };
+	writeFileSync(sourcesPath, JSON.stringify(parsed, null, '\t'));
+}
+
+/**
+ * Writes a fake `gh` executable into `binDir` and returns a PATH string with
+ * `binDir` prepended, so `which gh` and `spawnSync('gh', ...)` both resolve
+ * to the fake rather than (or absence of) the real GitHub CLI.
+ *
+ * Behaviour, driven entirely by argv so no env var threading through
+ * spawnSync is needed:
+ *   gh auth status                                    -> exit 0 (authenticated)
+ *   gh repo view unresolvable/repo --json ...          -> exit 1, GraphQL-shaped stderr
+ *   gh repo view <anything else> --json isArchived,homepageUrl
+ *                                                       -> exit 0, canned JSON keyed by repo
+ *
+ * @param {string} dir - sandbox root; the fake bin lives at <dir>/bin/gh
+ * @param {{ authenticated?: boolean, repos?: Record<string, { isArchived: boolean, homepageUrl: string }> }} options
+ * @returns {string} PATH value with the fake gh's directory prepended
+ */
+function makeFakeGh(
+	dir: string,
+	options: {
+		authenticated?: boolean;
+		repos?: Record<string, { isArchived: boolean; homepageUrl: string }>;
+	} = {}
+): string {
+	const { authenticated = true, repos = {} } = options;
+	const binDir = join(dir, 'bin');
+	mkdirSync(binDir, { recursive: true });
+	const ghScriptPath = join(binDir, 'gh');
+
+	const reposTable = JSON.stringify(repos);
+	// A tiny Node script rather than a shell script: portable across the CI
+	// runner and local machines without depending on /bin/sh JSON handling.
+	const script = `#!/usr/bin/env node
+const repos = ${reposTable};
+const authenticated = ${authenticated ? 'true' : 'false'};
+const args = process.argv.slice(2);
+
+if (args[0] === 'auth' && args[1] === 'status') {
+	process.exit(authenticated ? 0 : 1);
+}
+
+if (args[0] === 'repo' && args[1] === 'view') {
+	const ownerRepo = args[2];
+	const entry = repos[ownerRepo];
+	if (!entry) {
+		process.stderr.write(
+			\`GraphQL: Could not resolve to a Repository with the name '\${ownerRepo}'. (repository)\\n\`
+		);
+		process.exit(1);
+	}
+	process.stdout.write(JSON.stringify(entry) + '\\n');
+	process.exit(0);
+}
+
+process.stderr.write('fake gh: unhandled invocation: ' + args.join(' ') + '\\n');
+process.exit(1);
+`;
+	writeFileSync(ghScriptPath, script, { mode: 0o755 });
+	return `${binDir}:${process.env.PATH}`;
+}
+
+/** Run `drift enrich` (plus any extra args) with a DRIFT_CONFIG pointing at dir and a fake `gh` on PATH. */
+function runEnrichWithConfig(dir: string, extraArgs: string[], ghPath: string) {
+	const configPath = makeDriftConfig(dir);
+	return spawnSync('bun', ['run', checkDriftPath, 'enrich', ...extraArgs, '--no-color'], {
+		cwd: repoRoot,
+		env: { ...process.env, DRIFT_CONFIG: configPath, PATH: ghPath },
+		encoding: 'utf8',
+		timeout: 15_000
+	});
+}
+
+describe('drift enrich', () => {
+	let dir: string;
+	let slug: string;
+
+	beforeEach(() => {
+		({ dir, slug } = makeSyncSandbox('enrich-test-repo'));
+		// makeSyncSandbox's fixture repo has no git remote, so urlRepo never
+		// populates the way it does for a real tracked repo — seed it directly.
+		seedUrlRepo(dir, slug, 'https://github.com/JasonWarrenUK/enrich-test-repo');
+	});
+
+	afterEach(() => {
+		rmSync(dir, { recursive: true, force: true });
+	});
+
+	it('gh absent on PATH: reports clearly and exits non-zero', () => {
+		const configPath = makeDriftConfig(dir);
+		// PATH with every directory containing a real `gh` binary stripped out,
+		// but bun/node/git/which still resolvable — otherwise the subprocess
+		// itself fails to launch rather than exercising the ghPath() gate.
+		const ghDirs = new Set(
+			(process.env.PATH ?? '').split(':').filter((p) => {
+				const found = spawnSync('test', ['-x', join(p, 'gh')]);
+				return found.status === 0;
+			})
+		);
+		const pathWithoutGh = (process.env.PATH ?? '')
+			.split(':')
+			.filter((p) => !ghDirs.has(p))
+			.join(':');
+
+		const result = spawnSync('bun', ['run', checkDriftPath, 'enrich', '--no-color'], {
+			cwd: repoRoot,
+			env: { ...process.env, DRIFT_CONFIG: configPath, PATH: pathWithoutGh },
+			encoding: 'utf8',
+			timeout: 15_000
+		});
+		expect(result.status).not.toBe(0);
+		expect(result.stderr).toMatch(/gh/i);
+
+		// Nothing written on this failure path.
+		const parsed = JSON.parse(readFileSync(join(dir, 'sources.json'), 'utf8'));
+		expect(parsed.enriched).toBeUndefined();
+	});
+
+	it('gh unauthenticated: reports clearly and exits non-zero, writes nothing', () => {
+		const ghPath = makeFakeGh(dir, { authenticated: false });
+		const result = runEnrichWithConfig(dir, [], ghPath);
+
+		expect(result.status).not.toBe(0);
+		expect(result.stderr).toMatch(/auth/i);
+
+		const parsed = JSON.parse(readFileSync(join(dir, 'sources.json'), 'utf8'));
+		expect(parsed.enriched).toBeUndefined();
+	});
+
+	it('--dry-run writes nothing (sources.json byte-identical)', () => {
+		const ghPath = makeFakeGh(dir, {
+			repos: { 'JasonWarrenUK/enrich-test-repo': { isArchived: false, homepageUrl: '' } }
+		});
+		const before = readFileSync(join(dir, 'sources.json'), 'utf8');
+
+		const result = runEnrichWithConfig(dir, ['--dry-run'], ghPath);
+
+		expect(result.status, result.stderr).toBe(0);
+		expect(result.stdout).toMatch(/dry run/i);
+
+		const after = readFileSync(join(dir, 'sources.json'), 'utf8');
+		expect(after).toBe(before);
+	});
+
+	it('writes githubArchived (including false) and enrichedAt, omits an empty homepage', () => {
+		const ghPath = makeFakeGh(dir, {
+			repos: { 'JasonWarrenUK/enrich-test-repo': { isArchived: false, homepageUrl: '' } }
+		});
+
+		const result = runEnrichWithConfig(dir, [], ghPath);
+		expect(result.status, result.stderr).toBe(0);
+
+		const parsed = JSON.parse(readFileSync(join(dir, 'sources.json'), 'utf8'));
+		const entry = parsed.enriched[slug];
+		expect(entry.githubArchived).toBe(false);
+		expect(entry.enrichedAt).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+		expect(entry).not.toHaveProperty('githubHomepageUrl');
+	});
+
+	it('stores a non-empty homepage URL', () => {
+		const ghPath = makeFakeGh(dir, {
+			repos: {
+				'JasonWarrenUK/enrich-test-repo': {
+					isArchived: false,
+					homepageUrl: 'https://example.com'
+				}
+			}
+		});
+
+		const result = runEnrichWithConfig(dir, [], ghPath);
+		expect(result.status, result.stderr).toBe(0);
+
+		const parsed = JSON.parse(readFileSync(join(dir, 'sources.json'), 'utf8'));
+		expect(parsed.enriched[slug].githubHomepageUrl).toBe('https://example.com');
+	});
+
+	it('an unresolvable repo records enrichError and does not sink the run', () => {
+		// The sandbox's urlRepo won't match any entry in the fake gh's table,
+		// so it resolves to the "unresolvable" branch of the fake script.
+		const ghPath = makeFakeGh(dir, { repos: {} });
+
+		const result = runEnrichWithConfig(dir, [], ghPath);
+		expect(result.status, result.stderr).toBe(0);
+
+		const parsed = JSON.parse(readFileSync(join(dir, 'sources.json'), 'utf8'));
+		const entry = parsed.enriched[slug];
+		expect(entry.enrichError).toMatch(/could not resolve/i);
+		expect(entry.enrichedAt).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+		expect(entry).not.toHaveProperty('githubArchived');
+		expect(entry).not.toHaveProperty('githubHomepageUrl');
+	});
+
+	it('the assembled manifest passes schema validation', () => {
+		const ghPath = makeFakeGh(dir, {
+			repos: {
+				'JasonWarrenUK/enrich-test-repo': { isArchived: true, homepageUrl: 'https://x.example' }
+			}
+		});
+		const result = runEnrichWithConfig(dir, [], ghPath);
+		expect(result.status, result.stderr).toBe(0);
+		// A schema violation would have thrown inside runEnrich and exited
+		// non-zero before ever reaching "sources.json enriched:" — this
+		// assertion is a second, explicit check on top of that exit code.
+		expect(result.stdout).toMatch(/sources\.json enriched/);
+	});
+
+	it('idempotent: a second identical run leaves the file unchanged', () => {
+		const ghPath = makeFakeGh(dir, {
+			repos: {
+				'JasonWarrenUK/enrich-test-repo': { isArchived: false, homepageUrl: 'https://x.example' }
+			}
+		});
+
+		const first = runEnrichWithConfig(dir, [], ghPath);
+		expect(first.status, first.stderr).toBe(0);
+		const after1 = readFileSync(join(dir, 'sources.json'), 'utf8');
+
+		const second = runEnrichWithConfig(dir, [], ghPath);
+		expect(second.status, second.stderr).toBe(0);
+		const after2 = readFileSync(join(dir, 'sources.json'), 'utf8');
+
+		// enrichedAt is a date (YYYY-MM-DD), stable across same-day runs, so a
+		// same-day repeat is genuinely byte-identical, not just field-equal.
+		expect(after2).toBe(after1);
+	});
+
+	it('write-isolation: drift sync leaves an existing enriched section untouched', () => {
+		const ghPath = makeFakeGh(dir, {
+			repos: {
+				'JasonWarrenUK/enrich-test-repo': { isArchived: true, homepageUrl: 'https://x.example' }
+			}
+		});
+
+		const enrichResult = runEnrichWithConfig(dir, [], ghPath);
+		expect(enrichResult.status, enrichResult.stderr).toBe(0);
+		const enrichedBefore = JSON.parse(readFileSync(join(dir, 'sources.json'), 'utf8')).enriched;
+
+		// Real sync, not dry-run: the regression this suite most cares about.
+		const syncResult = runSyncWithConfig(dir, []);
+		expect(syncResult.status, syncResult.stderr).toBe(0);
+
+		const parsed = JSON.parse(readFileSync(join(dir, 'sources.json'), 'utf8'));
+		expect(parsed.enriched).toEqual(enrichedBefore);
+		// And sync did do its own job, so this isn't a no-op comparison.
+		expect(parsed.sources[slug].commitsAny).toBe(1);
+	});
+
+	it('scoping to an unknown slug warns and does not fail the run', () => {
+		const ghPath = makeFakeGh(dir, {
+			repos: { 'JasonWarrenUK/enrich-test-repo': { isArchived: false, homepageUrl: '' } }
+		});
+
+		const result = runEnrichWithConfig(dir, ['not-a-tracked-slug'], ghPath);
+		expect(result.status, result.stderr).toBe(0);
+		expect(result.stdout).toMatch(/not a tracked source/i);
+	});
+});

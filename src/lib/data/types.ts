@@ -194,6 +194,42 @@ export interface SyncedSource {
 }
 
 // ---------------------------------------------------------------------------
+// Enriched source — GitHub-sourced facts git cannot see
+// ---------------------------------------------------------------------------
+
+/**
+ * GitHub-sourced facts for one repo, from `gh repo view`. Populated by
+ * `drift enrich` only (5DR.22) — never by `drift sync`, which stays offline.
+ * Lives in the `enriched` section of sources.json, a sibling of `sources`;
+ * the two sections are written by different verbs and neither touches the
+ * other's data.
+ *
+ * Canonical contract: `scripts/sources.schema.json` (`$defs/EnrichedSource`).
+ *
+ * Not yet wired into `Project` — that merge is 5DR.23's scope.
+ */
+export interface EnrichedSource {
+	/**
+	 * GitHub's own isArchived flag. Present on every successfully-enriched
+	 * record, including `false` — a real observed answer, distinct from
+	 * "never checked" (see enrichedAt).
+	 */
+	githubArchived?: boolean;
+	/**
+	 * GitHub's homepage URL for the repo. Absent when GitHub has none set;
+	 * an empty string from `gh` is never stored, only omission.
+	 */
+	githubHomepageUrl?: string;
+	/** ISO date (YYYY-MM-DD) this record was last checked against GitHub. */
+	enrichedAt: string;
+	/**
+	 * Set instead of githubArchived/githubHomepageUrl when the repo could not
+	 * be resolved on GitHub (deleted, renamed or private).
+	 */
+	enrichError?: string;
+}
+
+// ---------------------------------------------------------------------------
 // Metrics — all optional; fill in what's known
 // ---------------------------------------------------------------------------
 

@@ -1194,5 +1194,150 @@
 			"spanMonthsAll": 1,
 			"spanGapMaxDays": 0
 		}
+	},
+	"enriched": {
+		"baby-names": {
+			"githubArchived": false,
+			"enrichedAt": "2026-09-17"
+		},
+		"chirpdb": {
+			"githubArchived": false,
+			"enrichedAt": "2026-09-17"
+		},
+		"code-arcana": {
+			"githubArchived": false,
+			"enrichedAt": "2026-09-17"
+		},
+		"cogni": {
+			"githubArchived": false,
+			"enrichedAt": "2026-09-17"
+		},
+		"commons-traybake": {
+			"githubArchived": false,
+			"enrichedAt": "2026-09-17"
+		},
+		"epoch": {
+			"githubArchived": false,
+			"enrichedAt": "2026-09-17",
+			"githubHomepageUrl": "https://epoch-tau.vercel.app"
+		},
+		"fac-cra": {
+			"enrichError": "GraphQL: Could not resolve to a Repository with the name 'izaakrogan/fac-cra'. (repository)",
+			"enrichedAt": "2026-09-17"
+		},
+		"flyt": {
+			"githubArchived": false,
+			"enrichedAt": "2026-09-17",
+			"githubHomepageUrl": "https://flyt-delta.vercel.app"
+		},
+		"grumble": {
+			"githubArchived": false,
+			"enrichedAt": "2026-09-17",
+			"githubHomepageUrl": "https://grumble-azure.vercel.app"
+		},
+		"guardrails": {
+			"githubArchived": false,
+			"enrichedAt": "2026-09-17"
+		},
+		"historia": {
+			"githubArchived": false,
+			"enrichedAt": "2026-09-17",
+			"githubHomepageUrl": "https://historia-opal.vercel.app"
+		},
+		"iris": {
+			"githubArchived": false,
+			"enrichedAt": "2026-09-17"
+		},
+		"kamino": {
+			"githubArchived": false,
+			"enrichedAt": "2026-09-17"
+		},
+		"kitchen-gremlin": {
+			"githubArchived": false,
+			"enrichedAt": "2026-09-17"
+		},
+		"lyra-rose": {
+			"githubArchived": false,
+			"enrichedAt": "2026-09-17",
+			"githubHomepageUrl": "https://the-world-id-build-you.vercel.app"
+		},
+		"nib": {
+			"githubArchived": false,
+			"enrichedAt": "2026-09-17"
+		},
+		"psyche": {
+			"githubArchived": false,
+			"enrichedAt": "2026-09-17"
+		},
+		"redot": {
+			"githubArchived": false,
+			"enrichedAt": "2026-09-17"
+		},
+		"rhea": {
+			"githubArchived": false,
+			"enrichedAt": "2026-09-17",
+			"githubHomepageUrl": "https://rhea.jasonwarrenuk.deno.net"
+		},
+		"riffle": {
+			"githubArchived": false,
+			"enrichedAt": "2026-09-17"
+		},
+		"schema-forge": {
+			"githubArchived": false,
+			"enrichedAt": "2026-09-17"
+		},
+		"sparker": {
+			"githubArchived": false,
+			"enrichedAt": "2026-09-17"
+		},
+		"the-tongue": {
+			"githubArchived": false,
+			"enrichedAt": "2026-09-17",
+			"githubHomepageUrl": "https://the-tongue.vercel.app"
+		},
+		"the-work": {
+			"githubArchived": false,
+			"enrichedAt": "2026-09-17"
+		},
+		"things-we-do": {
+			"githubArchived": false,
+			"enrichedAt": "2026-09-17",
+			"githubHomepageUrl": "https://things-we-do.netlify.app"
+		},
+		"those-who-came-before": {
+			"githubArchived": false,
+			"enrichedAt": "2026-09-17",
+			"githubHomepageUrl": "https://jasonwarrenuk.github.io/those-who-came-before/"
+		},
+		"top-girls": {
+			"githubArchived": false,
+			"enrichedAt": "2026-09-17",
+			"githubHomepageUrl": "https://top-girls.vercel.app"
+		},
+		"workwise": {
+			"githubArchived": false,
+			"enrichedAt": "2026-09-17",
+			"githubHomepageUrl": "https://lift02.vercel.app/"
+		},
+		"wyrd-tui": {
+			"githubArchived": false,
+			"enrichedAt": "2026-09-17"
+		},
+		"beacons": {
+			"githubArchived": false,
+			"enrichedAt": "2026-09-17"
+		},
+		"craft-and-graft": {
+			"githubArchived": false,
+			"enrichedAt": "2026-09-17"
+		},
+		"sakura": {
+			"githubArchived": false,
+			"enrichedAt": "2026-09-17"
+		},
+		"rimewarden": {
+			"githubArchived": false,
+			"enrichedAt": "2026-09-17"
+		}
 	}
 }

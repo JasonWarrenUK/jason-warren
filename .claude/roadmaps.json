@@ -423,11 +423,20 @@
 					{
 						"id": "5DR.22",
 						"description": "drift enrich verb: opt-in gh-backed enrichment writing GitHub's own archived repo flag and homepageUrl into a schema-extended sources.json section, while drift sync stays offline",
-						"status": "todo",
+						"status": "done",
 						"dependsOn": [
 							"5DR.5",
 							"5DR.6"
 						]
+					},
+					{
+						"id": "5DR.28",
+						"description": "Parallelise the per-repo `gh repo view` calls in drift enrich (currently sequential via fetchGhRepoView)",
+						"status": "todo",
+						"dependsOn": [
+							"5DR.22"
+						],
+						"notes": "Raised as a deliberately out-of-scope follow-up during PR 45 review. Both ways out named in review were sequential; concurrency is a larger change than that PR's fix warranted."
 					},
 					{
 						"id": "5DR.24",
@@ -590,7 +599,7 @@
 					{
 						"id": "5DR.23",
 						"description": "Derive the site's retired and deployed axes from enriched manifest data, replacing the authored placeholders",
-						"status": "blocked",
+						"status": "todo",
 						"dependsOn": [
 							"5DR.22"
 						]
@@ -613,8 +622,8 @@
 				"goal": "Extend Drift past the engine/verb split into follow-on workflow improvements once every existing Drift milestone has landed.",
 				"tasks": [
 					{
-						"id": "5DR.28",
-						"description": "Spike whether sync+enrich should be chainable into a single onboarding step: a drift onboard-style verb, a documented shell one-liner, or docs-only guidance -- drift enrich only ever sees slugs already registered in sources.json's sources section (the same registered-only scope as drift sync's own backfill), so a brand-new project needs a sync first before enrich can see it at all, and that second step is easy to forget",
+						"id": "5DR.29",
+						"description": "Spike whether sync+enrich should be chainable into a single onboarding step: a drift onboard-style verb, a documented shell one-liner, or docs-only guidance; drift enrich only ever sees slugs already registered in sources.json's sources section (the same registered-only scope as drift sync's own backfill), so a brand-new project needs a sync first before enrich can see it at all, and that second step is easy to forget",
 						"status": "blocked",
 						"dependsOn": [
 							"M5",
