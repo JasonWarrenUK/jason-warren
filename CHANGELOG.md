@@ -6,6 +6,12 @@ All notable changes to this project are documented here. Format follows [Keep a 
 
 ## [Unreleased]
 
+## [8.1.0] - 2026-09-17
+
+### Added
+
+- Project data now carries three intra-span activity metrics (`spanMonthsActive`, `spanMonthsAll`, `spanGapMaxDays`), showing how work was distributed across a project's lifetime rather than just its start and end. Data-layer only for now: no visual reads them yet, and a manual override on any of the three is validated the same way as the existing synced fields.
+
 ## [8.0.0] - 2026-09-15
 
 ### Breaking
