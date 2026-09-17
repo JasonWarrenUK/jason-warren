@@ -30,9 +30,41 @@
 			"additionalProperties": {
 				"$ref": "#/$defs/SyncedSource"
 			}
+		},
+		"enriched": {
+			"type": "object",
+			"description": "Keyed by project slug. GitHub-sourced facts git cannot see (archived state, homepage URL). Written by `drift enrich` only; `drift sync` never touches this section and stays offline.",
+			"additionalProperties": {
+				"$ref": "#/$defs/EnrichedSource"
+			}
 		}
 	},
 	"$defs": {
+		"EnrichedSource": {
+			"type": "object",
+			"additionalProperties": false,
+			"description": "GitHub-sourced facts for one source repo, from `gh repo view`. All fields optional except enrichedAt — populated by `drift enrich`, never by `drift sync`.",
+			"properties": {
+				"githubArchived": {
+					"type": "boolean",
+					"description": "GitHub's own isArchived flag. Written on every successfully-enriched record, including false — false is a real observed answer, distinct from never having checked (see enrichedAt)."
+				},
+				"githubHomepageUrl": {
+					"type": "string",
+					"description": "GitHub's homepage URL for the repo. Key is omitted entirely when gh reports an empty string — an empty string is not a URL and is never stored."
+				},
+				"enrichedAt": {
+					"type": "string",
+					"format": "date",
+					"description": "ISO date (YYYY-MM-DD) this record was last checked against GitHub. Distinguishes \"checked, nothing found\" from \"never checked\"."
+				},
+				"enrichError": {
+					"type": "string",
+					"description": "Set instead of githubArchived/githubHomepageUrl when the repo could not be resolved on GitHub (deleted, renamed or private). Recorded as data rather than silently omitted."
+				}
+			},
+			"required": ["enrichedAt"]
+		},
 		"SyncedSource": {
 			"type": "object",
 			"additionalProperties": false,

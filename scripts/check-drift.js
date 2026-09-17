@@ -42,6 +42,7 @@ function findManifests(repoPath, fileNames, maxDepth = 3) {
  * Usage:
  *   drift [report]                    # compare synced state to current git state (default)
  *   drift sync                        # rewrite sources.json with current fingerprints
+ *   drift enrich                      # opt-in: fetch GitHub archived flag + homepage via gh
  *   drift keep <slug> <field>         # keep your override value, refresh its baseline
  *   drift keep --all-projects <field> # refresh one field's baseline across all projects
  *   drift keep-all                    # refresh every flagged override baseline
@@ -1435,27 +1436,39 @@ async function getFingerprint(repoPath, resolvedRef, slug) {
 
 // ---------------------------------------------------------------------------
 // Schema validation helpers.
-// validateSource / validateManifest validate the assembled manifest against
+// validateRecord / validateManifest validate the assembled manifest against
 // the engine's public output schema (scripts/sources.schema.json) before the
 // single sanctioned write to sources.json. A violation means the engine emitted
 // something off-contract — a programming error, not user data — so we throw
 // rather than warn, and write nothing (fail-closed).
+//
+// Understood schema keywords: type (string/integer/array/boolean/object),
+// minimum, items.type, required. Anything else (format, nested object shape)
+// is on trust — this is a hand-rolled subset check, not a full JSON Schema
+// validator.
 // ---------------------------------------------------------------------------
 
 /**
- * Validate one SyncedSource record against the schema's $defs/SyncedSource.
+ * Validate one record against a named $defs entry in the schema.
  * Returns a list of human-readable violation strings, empty when the record is valid.
  *
  * @param {string} slug
  * @param {Record<string, unknown>} record
+ * @param {string} defName - key into SCHEMA.$defs (e.g. 'SyncedSource', 'EnrichedSource')
  * @returns {string[]}
  */
-function validateSource(slug, record) {
-	const props = SCHEMA.$defs.SyncedSource.properties;
+function validateRecord(slug, record, defName) {
+	const def = SCHEMA.$defs[defName];
+	const props = def.properties;
 	const violations = [];
+	for (const key of def.required ?? []) {
+		if (!(key in record)) {
+			violations.push(`${slug}.${key} — missing required field (${defName})`);
+		}
+	}
 	for (const [key, value] of Object.entries(record)) {
 		if (!(key in props)) {
-			violations.push(`${slug}.${key} — unknown field (not in SyncedSource schema)`);
+			violations.push(`${slug}.${key} — unknown field (not in ${defName} schema)`);
 			continue;
 		}
 		const spec = props[key];
@@ -1494,7 +1507,8 @@ function validateSource(slug, record) {
 
 /**
  * Validate the full manifest object against sources.schema.json.
- * Checks top-level keys and each SyncedSource entry in manifest.sources.
+ * Checks top-level keys, each SyncedSource entry in manifest.sources, and
+ * each EnrichedSource entry in manifest.enriched.
  *
  * @param {Record<string, unknown>} manifest
  * @returns {string[]}
@@ -1508,7 +1522,10 @@ function validateManifest(manifest) {
 		}
 	}
 	for (const [slug, record] of Object.entries(manifest.sources ?? {})) {
-		violations.push(...validateSource(slug, record));
+		violations.push(...validateRecord(slug, record, 'SyncedSource'));
+	}
+	for (const [slug, record] of Object.entries(manifest.enriched ?? {})) {
+		violations.push(...validateRecord(slug, record, 'EnrichedSource'));
 	}
 	return violations;
 }
@@ -2716,7 +2733,10 @@ function runReport({ result, manifest, palette, json, full, useGum }) {
 
 // ---------------------------------------------------------------------------
 // Sync: rewrite sources.json with current fingerprints.
-// The ONE sanctioned write to sources.json. Never touches overrides.json.
+// The sanctioned writer of the `sources` section of sources.json. Never
+// touches overrides.json. The sibling `enriched` section belongs to
+// `drift enrich` alone (5DR.22) — sync never reads or writes it, which is
+// what keeps sync itself offline.
 // --full is accepted for symmetry but is a no-op: sync already backfills
 // every resolvable repo regardless of HEAD movement.
 // ---------------------------------------------------------------------------
@@ -2831,6 +2851,239 @@ function runUpdate({ result, manifest, palette, useGum, args = [], dryRun = fals
 
 	writeJson(sourcesPath, manifest);
 	console.log(`${GREEN}sources.json synced.${RESET}`);
+}
+
+// ---------------------------------------------------------------------------
+// enrich verb (5DR.22)
+//
+// Opt-in, gh-backed enrichment: reads GitHub's own archived flag and
+// homepage URL for each tracked repo and writes them into the `enriched`
+// section of sources.json — a sibling of `sources`, never touched by
+// `drift sync`. This is the engine's only network-touching verb; the
+// core scan (getFingerprint, drift sync, drift report) stays offline.
+//
+// Write-isolation: writes ONLY the `enriched` section of sources.json.
+// Never touches the `sources` section sync owns.
+// ---------------------------------------------------------------------------
+
+/**
+ * Probes for a `gh` binary on PATH, the same idiom as gumPath().
+ * Computed inside the verb, not at module level, so test imports never
+ * shell out.
+ *
+ * @returns {string | null}
+ */
+function ghPath() {
+	const out = spawnSync('which', ['gh'], { encoding: 'utf8' });
+	return out.status === 0 ? out.stdout.trim() : null;
+}
+
+/**
+ * True when `gh` is authenticated against github.com.
+ *
+ * @returns {boolean}
+ */
+function ghAuthenticated() {
+	const out = spawnSync('gh', ['auth', 'status'], { encoding: 'utf8' });
+	return out.status === 0;
+}
+
+/**
+ * Parses an `owner/repo` slug from a normalised HTTPS GitHub remote URL
+ * (the same urlRepo form normaliseRemote produces), tolerating a trailing
+ * slash. Returns null when the URL is not a github.com repo URL.
+ *
+ * @param {string} urlRepo
+ * @returns {string | null}
+ */
+function parseOwnerRepo(urlRepo) {
+	if (!urlRepo) return null;
+	const match = urlRepo.match(/^https:\/\/github\.com\/([^/]+)\/([^/]+?)\/?$/);
+	return match ? `${match[1]}/${match[2]}` : null;
+}
+
+/**
+ * Fetches isArchived/homepageUrl for one owner/repo via `gh repo view`.
+ * Never throws: a resolution failure (deleted, renamed, private, gh not
+ * authenticated) is reported back as { error } so one bad repo cannot sink
+ * a whole enrich run.
+ *
+ * @param {string} ownerRepo
+ * @returns {{ isArchived: boolean, homepageUrl: string } | { error: string }}
+ */
+function fetchGhRepoView(ownerRepo) {
+	const out = spawnSync('gh', ['repo', 'view', ownerRepo, '--json', 'isArchived,homepageUrl'], {
+		encoding: 'utf8'
+	});
+	if (out.status !== 0) {
+		return { error: (out.stderr || out.stdout || 'unknown gh error').trim() };
+	}
+	try {
+		const parsed = JSON.parse(out.stdout);
+		return { isArchived: !!parsed.isArchived, homepageUrl: parsed.homepageUrl ?? '' };
+	} catch (err) {
+		return { error: `could not parse gh output: ${err.message}` };
+	}
+}
+
+/**
+ * Pure merge of one gh-repo-view result into an EnrichedSource record.
+ * githubHomepageUrl is omitted entirely when gh reports an empty string —
+ * an empty string is not a URL and is never stored. On error, only
+ * enrichError + enrichedAt are written; a stale githubArchived/
+ * githubHomepageUrl from a previous successful run is intentionally
+ * cleared rather than left to imply a check that did not happen this time.
+ *
+ * @param {{ isArchived: boolean, homepageUrl: string } | { error: string }} ghResult
+ * @param {string} today - ISO date (YYYY-MM-DD)
+ * @returns {Record<string, unknown>}
+ */
+function buildEnrichedRecord(ghResult, today) {
+	if ('error' in ghResult) {
+		return { enrichError: ghResult.error, enrichedAt: today };
+	}
+	const record = { githubArchived: ghResult.isArchived, enrichedAt: today };
+	if (ghResult.homepageUrl) record.githubHomepageUrl = ghResult.homepageUrl;
+	return record;
+}
+
+/**
+ * drift enrich: opt-in gh-backed enrichment of the `enriched` section of
+ * sources.json. Needs the manifest (for urlRepo) but no git scan, so it
+ * dispatches alongside hide/promote — after loadManifests(), before
+ * computeDrift().
+ *
+ * @param {{ manifest: object, args: string[], values: object, palette: object, useGum: boolean }} options
+ */
+function runEnrich({ manifest, args = [], values, palette, useGum }) {
+	const { GREEN, YELLOW, RED, RESET, DIM, BOLD } = palette;
+
+	const gh = ghPath();
+	if (!gh) {
+		process.stderr.write(
+			`${RED}drift enrich requires the GitHub CLI ('gh'), which was not found on PATH.${RESET}\n` +
+				`Install: https://cli.github.com\n`
+		);
+		process.exit(1);
+	}
+	if (!ghAuthenticated()) {
+		process.stderr.write(
+			`${RED}drift enrich requires an authenticated 'gh'. Run \`gh auth login\` first.${RESET}\n`
+		);
+		process.exit(1);
+	}
+
+	// Per-repo scoping: if slug args were provided, restrict to those slugs
+	// only. Unknown slugs get a soft warning (not an abort), mirroring sync.
+	const allSlugs = Object.keys(manifest.sources ?? {});
+	const isScoped = args.length > 0;
+	let slugs = allSlugs;
+	if (isScoped) {
+		for (const slug of args) {
+			if (!manifest.sources[slug]) {
+				process.stdout.write(
+					`${YELLOW}Warning: '${slug}' is not a tracked source — skipped.${RESET}\n`
+				);
+			}
+		}
+		slugs = args.filter((slug) => manifest.sources[slug]);
+		if (slugs.length === 0) {
+			console.log('No tracked slugs in the provided arguments — nothing to enrich.');
+			return;
+		}
+	}
+
+	// Resolve owner/repo for every scoped slug up front; a slug whose urlRepo
+	// isn't a github.com URL cannot be enriched at all.
+	const resolvable = [];
+	for (const slug of slugs) {
+		const ownerRepo = parseOwnerRepo(manifest.sources[slug]?.urlRepo);
+		if (ownerRepo) {
+			resolvable.push({ slug, ownerRepo });
+		} else {
+			process.stdout.write(
+				`${YELLOW}Warning: '${slug}' has no github.com urlRepo — skipped.${RESET}\n`
+			);
+		}
+	}
+	if (resolvable.length === 0) {
+		console.log('No github.com-resolvable repos — nothing to enrich.');
+		return;
+	}
+
+	const today = new Date().toISOString().slice(0, 10);
+	const results = resolvable.map(({ slug, ownerRepo }) => ({
+		slug,
+		ownerRepo,
+		ghResult: fetchGhRepoView(ownerRepo)
+	}));
+
+	const onProgress =
+		process.stderr.isTTY && !values.json
+			? (index, total, slug) => process.stderr.write(`\r[${index}/${total}] ${slug}`.padEnd(60))
+			: null;
+	if (onProgress) process.stderr.write('\r' + ' '.repeat(60) + '\r');
+
+	if (values['dry-run']) {
+		console.log(
+			`${DIM}Dry run — showing what ${results.length} repo${results.length === 1 ? '' : 's'} would change. Nothing will be written.${RESET}\n`
+		);
+		for (const { slug, ownerRepo, ghResult } of results) {
+			if ('error' in ghResult) {
+				console.log(`${RED}${slug}${RESET} (${ownerRepo}) — ${ghResult.error}`);
+				continue;
+			}
+			const homepage = ghResult.homepageUrl ? ghResult.homepageUrl : `${DIM}(none)${RESET}`;
+			console.log(
+				`${BOLD}${slug}${RESET} (${ownerRepo}) — archived: ${ghResult.isArchived}, homepage: ${homepage}`
+			);
+		}
+		return;
+	}
+
+	// gum confirm gate — only when interactive. Writes nothing on cancel.
+	if (useGum && process.stdout.isTTY) {
+		const n = results.length;
+		const scope = isScoped ? `${n} scoped repo${n === 1 ? '' : 's'}` : `${n} repos`;
+		const res = spawnSync(
+			'gum',
+			['confirm', `Enrich sources.json's enriched section for ${scope}?`],
+			{
+				stdio: 'inherit'
+			}
+		);
+		if (res.status !== 0) {
+			console.log('Enrich cancelled.');
+			return;
+		}
+	}
+
+	console.log("Enriching sources.json's enriched section from GitHub...");
+	manifest.enriched = manifest.enriched ?? {};
+	let errorCount = 0;
+	for (const { slug, ownerRepo, ghResult } of results) {
+		if ('error' in ghResult) {
+			errorCount++;
+			console.log(`${YELLOW}${slug}: could not resolve ${ownerRepo} — ${ghResult.error}${RESET}`);
+		}
+		manifest.enriched[slug] = buildEnrichedRecord(ghResult, today);
+	}
+
+	const violations = validateManifest(manifest);
+	if (violations.length > 0) {
+		for (const v of violations) {
+			process.stderr.write(`${RED}drift: schema violation — ${v}${RESET}\n`);
+		}
+		throw new Error(
+			`sources.json failed schema validation (${violations.length} violation(s)); nothing written.`
+		);
+	}
+
+	writeJson(sourcesPath, manifest);
+	const okCount = results.length - errorCount;
+	console.log(
+		`${GREEN}sources.json enriched: ${okCount} resolved${errorCount > 0 ? `, ${errorCount} failed` : ''}.${RESET}`
+	);
 }
 
 // ---------------------------------------------------------------------------
@@ -6442,6 +6695,7 @@ Compare synced fingerprints against current git state and surface new repos.
 - \`drift snapshot [--json] [--no-color]\`
 - \`drift authored [<slug>] [--json] [--no-color]\`
 - \`drift sync [<slug>...] [--dry-run]\`
+- \`drift enrich [<slug>...] [--dry-run]\`
 - \`drift keep <slug> <field>\`
 - \`drift keep --all-projects <field>\`
 - \`drift keep-all\`
@@ -6463,6 +6717,7 @@ Compare synced fingerprints against current git state and surface new repos.
 - \`snapshot\` · show ALL current metrics for every project, colourised changed vs unchanged
 - \`authored\` · show every authored field for every overlay, absent fields marked
 - \`sync\` · rewrite sources.json with current fingerprints
+- \`enrich\` · opt-in, gh-backed: fetch GitHub's archived flag and homepage URL into sources.json's enriched section (requires \`gh\`)
 - \`keep\` · keep your manual override value, refreshing its synced baseline to dismiss the flag
 - \`keep-all\` · refresh every flagged override baseline at once
 - \`hide\` · append a slug to excluded.json, removing it from the public site
@@ -6512,6 +6767,40 @@ drift sync <slug>              # scope to one repo
 drift sync <slug> <slug2>      # scope to several repos
 drift sync --dry-run           # preview only, writes nothing
 drift sync --full              # accepted; no-op
+\`\`\``,
+
+	enrich: `# drift enrich · fetch GitHub's archived flag and homepage URL
+
+Opt-in, \`gh\`-backed enrichment (5DR.22). Reads GitHub's own \`isArchived\`
+flag and homepage URL for each tracked repo and writes them into the
+\`enriched\` section of sources.json — a sibling of \`sources\`, never touched
+by \`drift sync\`. This is the engine's only network-touching verb; the core
+scan and \`drift sync\` stay fully offline whether or not \`gh\` is installed.
+
+Requires the GitHub CLI (\`gh\`), authenticated (\`gh auth login\`). Joins on
+each repo's \`urlRepo\`, so it works across every owner a tracked repo lives
+under, not only your own account.
+
+An empty homepage from GitHub is never stored — the key is omitted entirely
+rather than written as an empty string. A repo GitHub cannot resolve
+(deleted, renamed or private) is recorded with \`enrichError\` instead of
+silently skipped, and does not stop the rest of the run.
+
+Pass one or more slugs to restrict enrichment to those repos only.
+
+\`--dry-run\` shows what would change for each resolvable repo and writes
+nothing.
+
+In an interactive terminal with gum installed, drift will ask for
+confirmation before writing.
+
+## Usage
+
+\`\`\`
+drift enrich
+drift enrich <slug>             # scope to one repo
+drift enrich <slug> <slug2>     # scope to several repos
+drift enrich --dry-run          # preview only, writes nothing
 \`\`\``,
 
 	keep: `# drift keep · dismiss override-drift flags
@@ -6916,6 +7205,7 @@ ${BOLD}Usage:${RESET}
   drift snapshot [--json] [--no-color]
   drift authored [<slug>] [--json] [--no-color]
   drift sync [<slug>...] [--dry-run]
+  drift enrich [<slug>...] [--dry-run]
   drift keep <slug> <field>
   drift keep --all-projects <field>
   drift keep-all
@@ -6936,6 +7226,7 @@ ${BOLD}Verbs:${RESET}
   snapshot    Show ALL current metrics for every project, colourised changed vs unchanged.
   authored    Show every authored field for every overlay, absent fields marked.
   sync        Rewrite sources.json with current fingerprints.
+  enrich      Opt-in, gh-backed: fetch GitHub's archived flag and homepage URL (requires gh).
   keep        Keep your manual override value, refreshing its baseline to dismiss the flag.
   keep-all    Refresh every flagged override baseline at once.
   hide        Append a slug to excluded.json, removing it from the public site.
@@ -6973,6 +7264,23 @@ resolvable repos. In an interactive terminal with gum, drift asks for
 confirmation before writing.${RESET}
 
   Usage: drift sync [<slug>...] [--dry-run]`,
+
+		enrich: `${BOLD}drift enrich${RESET} - fetch GitHub's archived flag and homepage URL
+
+Opt-in, gh-backed enrichment (5DR.22). Writes GitHub's isArchived flag and
+homepage URL into the enriched section of sources.json — a sibling of
+sources, never touched by drift sync. The engine's only network-touching
+verb; drift sync and the core scan stay fully offline regardless.
+
+${DIM}Requires the GitHub CLI (gh), authenticated. Joins on each repo's urlRepo,
+so it works across every owner a tracked repo lives under. An empty
+homepage from gh is never stored as an empty string — the key is omitted.
+A repo gh cannot resolve is recorded with enrichError, not silently
+skipped. Pass one or more slugs to restrict scope. Pass --dry-run to
+preview without writing. In an interactive terminal with gum, drift asks
+for confirmation before writing.${RESET}
+
+  Usage: drift enrich [<slug>...] [--dry-run]`,
 
 		keep: `${BOLD}drift keep <slug> <field>${RESET} - dismiss one override-drift flag
 
@@ -7384,7 +7692,9 @@ async function runInteractiveMenu({ manifests, palette, useGum, onProgress, clea
 	};
 
 	// Menu rows grouped by theme so no single gum choose list is ever long
-	// enough to need scrolling (max 5 items per section, 6 sections). Each
+	// enough to need scrolling (max 6 items per section, 6 sections — gum
+	// choose defaults to --height=10 and no override is passed here, so 6
+	// rows still renders without scrolling). Each
 	// row is [visible name, description, return value]; descriptions must be
 	// colon-free (label-delimiter splits on ':'). Sections are a presentation
 	// grouping only — the dispatch switch below is still keyed on the flat
@@ -7410,6 +7720,7 @@ async function runInteractiveMenu({ manifests, palette, useGum, onProgress, clea
 			header: 'DRIFT · Reconcile',
 			rows: [
 				['Sync', 'Rewrite sources.json with current git fingerprints', 'sync'],
+				['Enrich', "Fetch GitHub's archived flag and homepage URL (requires gh)", 'enrich'],
 				['Promote', 'Graduate a landed in-progress entry out of in-progress.json', 'promote'],
 				['Keep override', 'Keep your pinned value, dismiss one drift flag', 'keep'],
 				[
@@ -7558,6 +7869,15 @@ async function runInteractiveMenu({ manifests, palette, useGum, onProgress, clea
 					useGum,
 					args: [],
 					dryRun: false
+				});
+				break;
+			case 'enrich':
+				runEnrich({
+					manifest: manifests.manifest,
+					args: [],
+					values: { json: false, 'dry-run': false },
+					palette,
+					useGum
 				});
 				break;
 			case 'keep-all':
@@ -8256,6 +8576,7 @@ async function main() {
 		'keep-all',
 		'hide',
 		'promote',
+		'enrich',
 		'author',
 		'flag',
 		'relate',
@@ -8357,13 +8678,20 @@ async function main() {
 		return;
 	}
 
-	// hide/promote do not need a drift scan; run them immediately and return.
+	// hide/promote/enrich do not need a drift scan; run them immediately and
+	// return. enrich needs the manifest (for urlRepo) but not computeDrift's
+	// git scan, so it dispatches here rather than in the pre-manifest tier
+	// above with init/author/etc.
 	if (verb === 'hide') {
 		runExclude({ args, manifest: manifests.manifest, palette });
 		return;
 	}
 	if (verb === 'promote') {
 		runPromote({ args, palette });
+		return;
+	}
+	if (verb === 'enrich') {
+		runEnrich({ manifest: manifests.manifest, args, values, palette, useGum });
 		return;
 	}
 
