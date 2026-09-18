@@ -153,7 +153,7 @@ The site is live and substantially built: full routes, the graph/timeline/map/to
 
 **Goal:** Make the core engine genuinely consumable by a different app, not just internally boundaried, correcting the boundary doc's unverified extraction claim and closing the three mechanical gaps a real host would hit.
 
-- [ ] **10EX.1** — Spike: decide the extraction shape for the 8 portfolio-shaped verbs (author, flag, tag, relate project, tech, relate tech, theme, audit) — a core+portfolio-adapter package split, or generalising them behind a host-declared overlay schema contract _(blocked — depends on M5)_
+- [ ] **10EX.1** — Spike: decide the extraction shape for the 8 portfolio-shaped verbs (author, flag, tag, relate project, tech, relate tech, theme, audit) — a core+portfolio-adapter package split, or generalising them behind a host-declared overlay schema contract
 - [ ] **10EX.2** — Inject repoRoot instead of deriving it from the engine's own script location, so a package consumer's host repo resolves correctly _(blocked: depends on 10EX.1)_
   - Note: scripts/drift-config.js:31, resolve(scriptDir, '..') — installed at node_modules/drift/scripts/ this currently resolves to the package directory, not the host repo. DRIFT_CONFIG (drift-config.js:209) resolves relative to repoRoot too, so it is not an escape hatch.
 - [ ] **10EX.3** — Add config.paths entries for tech-relationships.ts, tech-overlays.ts and themes.ts, currently derived as undeclared siblings of projectsDir _(blocked: depends on 10EX.1)_
@@ -246,25 +246,25 @@ graph LR
 	7DR.1["7DR.1: Per-field provenance resolver: value, or…"]
 	7DR.2["7DR.2: Project detail view: every field for one…"]
 	7DR.3["7DR.3: Tech, tag and theme detail views on the…"]
-	7DR.4["7DR.4: Act in context: invoke the relevant verb…"]
-	7DR.5["7DR.5: Reach audit: confirm every field in ever…"]
 	7DR.6["7DR.6: Search across projects, tech, tags and t…"]
 	7DR.7["7DR.7: Filter and sort the browse lists (drift…"]
 	7DR.8["7DR.8: Multi-select and bulk apply across a fil…"]
-	M7["M7: Drift: Total Data Control"]:::mile
 	8DE.1["8DE.1: Spike: investigate enhancements to the p…"]
 	5DR.23["5DR.23: Derive the site's retired and deployed…"]
 	5DR.27["5DR.27: Use the intra-span activity metrics in…"]
 	M8["M8: Aesthetics: Ongoing"]:::mile
-	5DR.29["5DR.29: Spike whether sync+enrich should be cha…"]
-	M9["M9: Drift: Extended Features"]:::mile
 	10EX.1["10EX.1: Spike: decide the extraction shape for…"]
+	7DR.4["7DR.4: Act in context: invoke the relevant verb…"]
+	7DR.5["7DR.5: Reach audit: confirm every field in ever…"]
+	M7["M7: Drift: Total Data Control"]:::mile
 	10EX.2["10EX.2: Inject repoRoot instead of deriving it…"]
 	10EX.3["10EX.3: Add config.paths entries for tech-relat…"]
 	10EX.4["10EX.4: Stop the engine emitting `import type {…"]
 	10EX.5["10EX.5: Declare typescript and prettier as real…"]
 	10EX.6["10EX.6: Correct docs/drift-boundary.md's claim…"]
 	M10["M10: Drift Extraction"]:::mile
+	5DR.29["5DR.29: Spike whether sync+enrich should be cha…"]
+	M9["M9: Drift: Extended Features"]:::mile
 	1CO.1 --> 1CO.2
 	1CO.1 --> 1CO.6
 	1CO.2 --> 1CO.8
@@ -353,42 +353,45 @@ graph LR
 	5DR.25 --> 5DR.27
 	5DR.26 --> M5
 	M5 --> 1CO.5
+	M5 -.-> 10EX.1
 	M5 --> 5DR.29
-	M5 --> 10EX.1
 	1CO.5 --> M1
 	5DR.8 --> M6
+	5DR.8 --> 10EX.2
 	5DR.9 --> M6
 	5DR.10 --> M6
 	M6 --> 5DR.29
 	7DR.1 --> 7DR.2
 	7DR.1 --> 7DR.3
-	7DR.2 --> 7DR.4
 	7DR.2 --> 7DR.6
 	7DR.2 --> 7DR.7
-	7DR.3 --> 7DR.4
+	7DR.2 --> 7DR.4
 	7DR.3 --> 7DR.6
 	7DR.3 --> 7DR.7
-	7DR.4 --> 7DR.5
-	7DR.5 --> M7
+	7DR.3 --> 7DR.4
 	7DR.6 --> M7
 	7DR.7 --> 7DR.8
 	7DR.8 --> M7
-	M7 --> 5DR.29
 	8DE.1 --> M8
 	5DR.23 --> M8
 	5DR.27 --> M8
-	5DR.29 --> M9
+	10EX.1 --> 7DR.4
 	10EX.1 --> 10EX.2
 	10EX.1 --> 10EX.3
 	10EX.1 --> 10EX.4
 	10EX.1 --> 10EX.5
 	10EX.1 --> 10EX.6
+	7DR.4 --> 7DR.5
+	7DR.5 --> M7
+	M7 --> 5DR.29
 	10EX.2 --> M10
 	10EX.3 --> M10
 	10EX.4 --> M10
 	10EX.5 --> M10
 	10EX.6 --> M10
-	class 4QU.4,4QU.5,5DR.23,5DR.27,5DR.28,5DR.8,7DR.1 todo
-	class 10EX.1,10EX.2,10EX.3,10EX.4,10EX.5,10EX.6,4QU.1,4QU.3,4QU.7,5DR.29,7DR.2,7DR.3,7DR.4,7DR.5,7DR.6,7DR.7,7DR.8,8DE.1 blocked
+	M10 --> 5DR.29
+	5DR.29 --> M9
+	class 10EX.1,4QU.4,4QU.5,5DR.23,5DR.27,5DR.28,5DR.8,7DR.1 todo
+	class 10EX.2,10EX.3,10EX.4,10EX.5,10EX.6,4QU.1,4QU.3,4QU.7,5DR.29,7DR.2,7DR.3,7DR.4,7DR.5,7DR.6,7DR.7,7DR.8,8DE.1 blocked
 	class 1CO.1,1CO.10,1CO.2,1CO.3,1CO.4,1CO.5,1CO.6,1CO.7,1CO.8,1CO.9,2FE.1,2FE.2,2FE.3,2FE.4,2FE.5,2FE.6,2FE.7,2FE.8,3DE.0,3DE.1,3DE.2,3DE.3,3DE.4,3DE.5,3DE.6,4QU.8,5DR.0,5DR.1,5DR.10,5DR.11,5DR.12,5DR.13,5DR.14,5DR.15,5DR.16,5DR.17,5DR.18,5DR.19,5DR.2,5DR.20,5DR.21,5DR.22,5DR.24,5DR.25,5DR.26,5DR.3,5DR.4,5DR.5,5DR.6,5DR.7,5DR.9 done
 ```

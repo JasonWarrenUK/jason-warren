@@ -539,9 +539,10 @@
 						"status": "blocked",
 						"dependsOn": [
 							"7DR.2",
-							"7DR.3"
+							"7DR.3",
+							"10EX.1"
 						],
-						"notes": "The menu is verb-first (pick a verb, then a target). This inverts it for the browse path; the verb-first sections stay for anyone who already knows what they want."
+						"notes": "The menu is verb-first (pick a verb, then a target). This inverts it for the browse path; the verb-first sections stay for anyone who already knows what they want. Gated on 10EX.1 because that spike settles the extraction shape for the portfolio-shaped verbs this task grows; decided extraction-first in the roadmap-review session that scoped M10 against M7."
 					},
 					{
 						"id": "7DR.5",
@@ -628,7 +629,8 @@
 						"dependsOn": [
 							"M5",
 							"M6",
-							"M7"
+							"M7",
+							"M10"
 						]
 					}
 				]
@@ -641,19 +643,22 @@
 					{
 						"id": "10EX.1",
 						"description": "Spike: decide the extraction shape for the 8 portfolio-shaped verbs (author, flag, tag, relate project, tech, relate tech, theme, audit) — a core+portfolio-adapter package split, or generalising them behind a host-declared overlay schema contract",
-						"status": "blocked",
-						"dependsOn": [
+						"status": "todo",
+						"dependsOn": [],
+						"softDependsOn": [
 							"M5"
-						]
+						],
+						"notes": "M5 gate demoted from hard to soft: M5's only open task (5DR.28, parallelise gh repo view calls) has no bearing on extraction. The 'after decoupling settles' intent is real but not an artefact dependency, so it's recorded here rather than blocking the spike. Decided in the roadmap-review session that scoped M10 against M7."
 					},
 					{
 						"id": "10EX.2",
 						"description": "Inject repoRoot instead of deriving it from the engine's own script location, so a package consumer's host repo resolves correctly",
 						"status": "blocked",
 						"dependsOn": [
-							"10EX.1"
+							"10EX.1",
+							"5DR.8"
 						],
-						"notes": "scripts/drift-config.js:31, resolve(scriptDir, '..') — installed at node_modules/drift/scripts/ this currently resolves to the package directory, not the host repo. DRIFT_CONFIG (drift-config.js:209) resolves relative to repoRoot too, so it is not an escape hatch."
+						"notes": "scripts/drift-config.js:31, resolve(scriptDir, '..') — installed at node_modules/drift/scripts/ this currently resolves to the package directory, not the host repo. DRIFT_CONFIG (drift-config.js:209) resolves relative to repoRoot too, so it is not an escape hatch. Gated on 5DR.8 (engine test suite: config resolution) because this refactors config resolution without a test suite covering config resolution otherwise."
 					},
 					{
 						"id": "10EX.3",
