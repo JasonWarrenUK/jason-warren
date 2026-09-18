@@ -8767,3 +8767,16 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
 		process.exit(1);
 	});
 }
+
+// Exported for scripts/drift-engine.test.ts (5DR.8). Deliberately in place rather
+// than split into a sibling module: 10EX.1 is the open spike deciding the
+// extraction shape for these portfolio-shaped verbs, and moving fingerprint
+// internals now would prejudge that decision under an unrelated task.
+export {
+	diffFingerprint,
+	mergeFingerprint,
+	mergeCompanionFingerprints,
+	FINGERPRINT_FIELDS,
+	ARRAY_FINGERPRINT_FIELDS,
+	DRIFT_SKIP_FIELDS
+};
