@@ -1,6 +1,6 @@
 # Portfolio MVP: Roadmap Overview
 
-**70 tasks across 9 milestones.** Files: `.claude/roadmaps.json` (machine-readable), `docs/roadmaps/mvp.md` (full task list with Mermaid dependency diagram).
+**76 tasks across 10 milestones.** Files: `.claude/roadmaps.json` (machine-readable), `docs/roadmaps/mvp.md` (full task list with Mermaid dependency diagram).
 
 > Migrated from the old single-file roadmap format on 17 July 2026. The narrative sections below are synthesised from the milestone goals in the source; they are stubs for fleshing out, not authored rationale.
 

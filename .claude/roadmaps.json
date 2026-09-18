@@ -632,6 +632,66 @@
 						]
 					}
 				]
+			},
+			{
+				"id": "M10",
+				"name": "Drift Extraction",
+				"goal": "Make the core engine genuinely consumable by a different app, not just internally boundaried, correcting the boundary doc's unverified extraction claim and closing the three mechanical gaps a real host would hit.",
+				"tasks": [
+					{
+						"id": "10EX.1",
+						"description": "Spike: decide the extraction shape for the 8 portfolio-shaped verbs (author, flag, tag, relate project, tech, relate tech, theme, audit) — a core+portfolio-adapter package split, or generalising them behind a host-declared overlay schema contract",
+						"status": "blocked",
+						"dependsOn": [
+							"M5"
+						]
+					},
+					{
+						"id": "10EX.2",
+						"description": "Inject repoRoot instead of deriving it from the engine's own script location, so a package consumer's host repo resolves correctly",
+						"status": "blocked",
+						"dependsOn": [
+							"10EX.1"
+						],
+						"notes": "scripts/drift-config.js:31, resolve(scriptDir, '..') — installed at node_modules/drift/scripts/ this currently resolves to the package directory, not the host repo. DRIFT_CONFIG (drift-config.js:209) resolves relative to repoRoot too, so it is not an escape hatch."
+					},
+					{
+						"id": "10EX.3",
+						"description": "Add config.paths entries for tech-relationships.ts, tech-overlays.ts and themes.ts, currently derived as undeclared siblings of projectsDir",
+						"status": "blocked",
+						"dependsOn": [
+							"10EX.1"
+						],
+						"notes": "check-drift.js:111-115. A comment there already admits these three have no dedicated config.paths entry."
+					},
+					{
+						"id": "10EX.4",
+						"description": "Stop the engine emitting `import type { AuthoredProject } from '../types.js'` into scaffolded overlays; replace with whatever type contract the spike (10EX.1) settles on",
+						"status": "blocked",
+						"dependsOn": [
+							"10EX.1"
+						],
+						"notes": "check-drift.js:3603. The engine generates source code typed by a module the boundary doc's own ownership table assigns to the integration layer."
+					},
+					{
+						"id": "10EX.5",
+						"description": "Declare typescript and prettier as real package dependencies; degrade gracefully when gum is absent rather than failing the interactive surface outright",
+						"status": "blocked",
+						"dependsOn": [
+							"10EX.1"
+						],
+						"notes": "gum has 108 references in check-drift.js. drift audit also relies on Bun's native ESM loader, worth documenting as a runtime prerequisite alongside this."
+					},
+					{
+						"id": "10EX.6",
+						"description": "Correct docs/drift-boundary.md's claim that the engine \"can in principle be extracted into a standalone package\"; replace with the honest blocker list as the extraction spec",
+						"status": "blocked",
+						"dependsOn": [
+							"10EX.1"
+						],
+						"notes": "Boundary doc line 270. Verified false on three counts: repoRoot (10EX.2), the three unconfigured .ts paths (10EX.3), and the emitted AuthoredProject import (10EX.4). Raised in the roadmap-review session that scoped M5 against the decoupling question."
+					}
+				]
 			}
 		]
 	}

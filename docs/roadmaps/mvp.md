@@ -149,6 +149,24 @@ The site is live and substantially built: full routes, the graph/timeline/map/to
 
 ---
 
+## Milestone 10 — Drift Extraction
+
+**Goal:** Make the core engine genuinely consumable by a different app, not just internally boundaried, correcting the boundary doc's unverified extraction claim and closing the three mechanical gaps a real host would hit.
+
+- [ ] **10EX.1** — Spike: decide the extraction shape for the 8 portfolio-shaped verbs (author, flag, tag, relate project, tech, relate tech, theme, audit) — a core+portfolio-adapter package split, or generalising them behind a host-declared overlay schema contract _(blocked — depends on M5)_
+- [ ] **10EX.2** — Inject repoRoot instead of deriving it from the engine's own script location, so a package consumer's host repo resolves correctly _(blocked: depends on 10EX.1)_
+  - Note: scripts/drift-config.js:31, resolve(scriptDir, '..') — installed at node_modules/drift/scripts/ this currently resolves to the package directory, not the host repo. DRIFT_CONFIG (drift-config.js:209) resolves relative to repoRoot too, so it is not an escape hatch.
+- [ ] **10EX.3** — Add config.paths entries for tech-relationships.ts, tech-overlays.ts and themes.ts, currently derived as undeclared siblings of projectsDir _(blocked: depends on 10EX.1)_
+  - Note: check-drift.js:111-115. A comment there already admits these three have no dedicated config.paths entry.
+- [ ] **10EX.4** — Stop the engine emitting `import type { AuthoredProject } from '../types.js'` into scaffolded overlays; replace with whatever type contract the spike (10EX.1) settles on _(blocked: depends on 10EX.1)_
+  - Note: check-drift.js:3603. The engine generates source code typed by a module the boundary doc's own ownership table assigns to the integration layer.
+- [ ] **10EX.5** — Declare typescript and prettier as real package dependencies; degrade gracefully when gum is absent rather than failing the interactive surface outright _(blocked: depends on 10EX.1)_
+  - Note: gum has 108 references in check-drift.js. drift audit also relies on Bun's native ESM loader, worth documenting as a runtime prerequisite alongside this.
+- [ ] **10EX.6** — Correct docs/drift-boundary.md's claim that the engine "can in principle be extracted into a standalone package"; replace with the honest blocker list as the extraction spec _(blocked: depends on 10EX.1)_
+  - Note: Boundary doc line 270. Verified false on three counts: repoRoot (10EX.2), the three unconfigured .ts paths (10EX.3), and the emitted AuthoredProject import (10EX.4). Raised in the roadmap-review session that scoped M5 against the decoupling question.
+
+---
+
 ## Dependency Diagram
 
 ```mermaid
@@ -240,6 +258,13 @@ graph LR
 	M8["M8: Aesthetics: Ongoing"]:::mile
 	5DR.29["5DR.29: Spike whether sync+enrich should be cha…"]
 	M9["M9: Drift: Extended Features"]:::mile
+	10EX.1["10EX.1: Spike: decide the extraction shape for…"]
+	10EX.2["10EX.2: Inject repoRoot instead of deriving it…"]
+	10EX.3["10EX.3: Add config.paths entries for tech-relat…"]
+	10EX.4["10EX.4: Stop the engine emitting `import type {…"]
+	10EX.5["10EX.5: Declare typescript and prettier as real…"]
+	10EX.6["10EX.6: Correct docs/drift-boundary.md's claim…"]
+	M10["M10: Drift Extraction"]:::mile
 	1CO.1 --> 1CO.2
 	1CO.1 --> 1CO.6
 	1CO.2 --> 1CO.8
@@ -329,6 +354,7 @@ graph LR
 	5DR.26 --> M5
 	M5 --> 1CO.5
 	M5 --> 5DR.29
+	M5 --> 10EX.1
 	1CO.5 --> M1
 	5DR.8 --> M6
 	5DR.9 --> M6
@@ -352,7 +378,17 @@ graph LR
 	5DR.23 --> M8
 	5DR.27 --> M8
 	5DR.29 --> M9
+	10EX.1 --> 10EX.2
+	10EX.1 --> 10EX.3
+	10EX.1 --> 10EX.4
+	10EX.1 --> 10EX.5
+	10EX.1 --> 10EX.6
+	10EX.2 --> M10
+	10EX.3 --> M10
+	10EX.4 --> M10
+	10EX.5 --> M10
+	10EX.6 --> M10
 	class 4QU.4,4QU.5,5DR.23,5DR.27,5DR.28,5DR.8,7DR.1 todo
-	class 4QU.1,4QU.3,4QU.7,5DR.29,7DR.2,7DR.3,7DR.4,7DR.5,7DR.6,7DR.7,7DR.8,8DE.1 blocked
+	class 10EX.1,10EX.2,10EX.3,10EX.4,10EX.5,10EX.6,4QU.1,4QU.3,4QU.7,5DR.29,7DR.2,7DR.3,7DR.4,7DR.5,7DR.6,7DR.7,7DR.8,8DE.1 blocked
 	class 1CO.1,1CO.10,1CO.2,1CO.3,1CO.4,1CO.5,1CO.6,1CO.7,1CO.8,1CO.9,2FE.1,2FE.2,2FE.3,2FE.4,2FE.5,2FE.6,2FE.7,2FE.8,3DE.0,3DE.1,3DE.2,3DE.3,3DE.4,3DE.5,3DE.6,4QU.8,5DR.0,5DR.1,5DR.10,5DR.11,5DR.12,5DR.13,5DR.14,5DR.15,5DR.16,5DR.17,5DR.18,5DR.19,5DR.2,5DR.20,5DR.21,5DR.22,5DR.24,5DR.25,5DR.26,5DR.3,5DR.4,5DR.5,5DR.6,5DR.7,5DR.9 done
 ```
