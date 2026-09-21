@@ -38,6 +38,7 @@ import {
 	DRIFT_SKIP_FIELDS
 } from './check-drift.js';
 import { loadConfig, DEFAULTS, repoRoot } from './drift-config.js';
+import exampleConfig from '../drift.config.example.ts';
 
 const scriptDir = fileURLToPath(new URL('.', import.meta.url));
 
@@ -90,9 +91,11 @@ describe('loadConfig resolution order', () => {
 		vi.stubEnv('DRIFT_CONFIG', 'drift.config.example.ts');
 
 		const cfg = await loadConfig();
-		// drift.config.example.ts sets a custom scanRoot; confirms the file
-		// actually loaded rather than silently falling back to DEFAULTS.
-		expect(cfg.scanRoot).not.toBe(DEFAULTS.scanRoot);
+		// Asserted against the example file's own value, not a hardcoded literal
+		// or a bare "not DEFAULTS" check — either would keep passing if the file
+		// changed scanRoot to something else, or would fail uninformatively if
+		// the key were dropped. This ties the test to the file it's meant to prove loaded.
+		expect(cfg.scanRoot).toBe(exampleConfig.scanRoot);
 	});
 
 	it('falls back to DEFAULTS when no DRIFT_CONFIG and no drift.config.ts is reachable', async () => {
@@ -401,18 +404,48 @@ describe('mergeCompanionFingerprints', () => {
 // ---------------------------------------------------------------------------
 
 describe('fingerprint field constants match the schema', () => {
-	it('ARRAY_FINGERPRINT_FIELDS matches every SyncedSource property of type array', () => {
-		const schemaPath = join(scriptDir, 'sources.schema.json');
-		const schema = JSON.parse(readFileSync(schemaPath, 'utf8'));
-		const props = schema.$defs.SyncedSource.properties as Record<string, { type: string }>;
-		const expected = Object.keys(props).filter((key) => props[key].type === 'array');
-		expect([...ARRAY_FINGERPRINT_FIELDS].sort()).toEqual(expected.sort());
+	// Anchored on literals rather than re-derived from the schema. Both constants
+	// are computed from sources.schema.json at check-drift.js:231, so an expected
+	// value read back from that same file moves with it: deleting a property
+	// would leave a re-derived assertion green while the field silently drops
+	// out of drift detection. These lists are the contract; a deliberate schema
+	// change updates them in the same commit.
+	const EXPECTED_ARRAY_FIELDS = [
+		'detectedLanguages',
+		'urlsRepoCompanion',
+		'detectedRuntime',
+		'detectedDatabase',
+		'detectedFramework'
+	];
+
+	// Fields the engine's comparison logic depends on by name. Not the full
+	// property list: that grows as metrics are added, and pinning all of it
+	// here would make every schema addition a two-file edit for no extra safety.
+	const LOAD_BEARING_FIELDS = [
+		'commitHead',
+		'measuredRef',
+		'commitsAny',
+		'commitsMe',
+		'detectedLanguages',
+		'detectedTechFirstSeen'
+	];
+
+	it('ARRAY_FINGERPRINT_FIELDS matches the schema array properties exactly', () => {
+		expect([...ARRAY_FINGERPRINT_FIELDS].sort()).toEqual([...EXPECTED_ARRAY_FIELDS].sort());
 	});
 
-	it('FINGERPRINT_FIELDS matches the full SyncedSource property list, in schema order', () => {
+	it('FINGERPRINT_FIELDS contains every load-bearing field', () => {
+		for (const field of LOAD_BEARING_FIELDS) {
+			expect(FINGERPRINT_FIELDS).toContain(field);
+		}
+	});
+
+	it('FINGERPRINT_FIELDS preserves schema property order', () => {
 		const schemaPath = join(scriptDir, 'sources.schema.json');
 		const schema = JSON.parse(readFileSync(schemaPath, 'utf8'));
 		const props = schema.$defs.SyncedSource.properties as Record<string, unknown>;
+		// Order is display order for field drift, so it is worth pinning even
+		// though the membership assertions above carry the regression cover.
 		expect(FINGERPRINT_FIELDS).toEqual(Object.keys(props));
 	});
 });
