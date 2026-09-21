@@ -476,7 +476,7 @@
 					{
 						"id": "5DR.8",
 						"description": "Engine test suite: config resolution, fingerprinting, drift computation",
-						"status": "todo",
+						"status": "done",
 						"dependsOn": [
 							"M3",
 							"5DR.6"
