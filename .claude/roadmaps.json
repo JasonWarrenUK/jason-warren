@@ -472,6 +472,22 @@
 						"status": "todo",
 						"dependsOn": [],
 						"notes": "New-repo discovery already exists inside the default `drift report`/`--check` path (check-drift.js:2068-2105, 2193, 3190, 7263); this exposes that subset as its own filtered output rather than building discovery from scratch."
+					},
+					{
+						"id": "5DR.31",
+						"description": "Adoption history is append-only in the engine: drift sync keeps a detectedTechFirstSeen entry for an identity that leaves detection and records lastSeen, so a major migration retires the old identity instead of erasing it",
+						"status": "todo",
+						"dependsOn": [],
+						"notes": "code-arcana's Svelte 4 to 5 migration in the 2026-09-17 sync dropped svelte-4 from detectedFramework and from detectedTechFirstSeen (sources.json, code-arcana), leaving no synced record it was ever used, even though check-drift.js:811 dates that exact migration with a per-major regex pickaxe. detectedTechFirstSeen is already skipped by the drift comparison (DRIFT_SKIP_FIELDS, check-drift.js:247), so a ratchet there adds no drift noise. Shape: keep the firstSeen date, add lastSeen (the commit that removed the identity, from the same pickaxe run in reverse, or the sync date as a fallback) and extend sources.schema.json (5DR.5) to match. Present-tense fields (detectedFramework et al.) stay as they are; only the history object ratchets."
+					},
+					{
+						"id": "5DR.32",
+						"description": "Tech universe for lineage and the timeline is present tags plus retired history: tech overlays may declare labels no project carries, with firstUsed and lastUsed; the timeline renders retired tech with an end date; the lineage tests removed in 780a817 return against the union",
+						"status": "blocked",
+						"dependsOn": [
+							"5DR.31"
+						],
+						"notes": "Lineage edges are statements about history (replaced-by Svelte 4 to Svelte 5, tech-relationships.ts:87), yet tech-relationships.test.ts validated every endpoint against the tags projects carry today, so the edge became invalid the moment the migration it describes happened. Three tests were removed in 780a817 rather than left red: every source and target is a real tag label, every edge resolves on at least one surface, and surface-vocabulary's dropped-map-edge check. Reinstate them against the union of present tags, ratcheted history (5DR.31) and overlay-declared historical labels, with a retired endpoint as a second legitimate reason for a map edge to drop. Present-tense surfaces (toolkit, stack, constellation) keep reading project tags only; hiddenFrom already exists for keeping a label off them. The Svelte 4 firstUsed floor (tech-overlays.ts:35, 2024-11-01) predates every synced date and becomes the first overlay to gain a lastUsed."
 					}
 				]
 			},
@@ -522,14 +538,15 @@
 							"5DR.6",
 							"5DR.24"
 						],
-						"notes": "Provenance is currently spread across sources.json, overrides.json, the project overlay and defaults.ts. One resolver so the detail views and the existing redundancy tests read the same answer."
+						"notes": "Provenance is currently spread across sources.json, overrides.json, the project overlay and defaults.ts. One resolver so the detail views and the redundancy report (7DR.11) read the same answer; the redundancy tests that used to live in data.test.ts were removed in 780a817 because they asserted content state and went red on every sync."
 					},
 					{
 						"id": "7DR.2",
 						"description": "Project detail view: every field for one project on a single screen, each with its provenance",
 						"status": "blocked",
 						"dependsOn": [
-							"7DR.1"
+							"7DR.1",
+							"11LC.7"
 						]
 					},
 					{
@@ -547,7 +564,8 @@
 						"dependsOn": [
 							"7DR.2",
 							"7DR.3",
-							"10EX.1"
+							"10EX.1",
+							"11LC.8"
 						],
 						"notes": "The menu is verb-first (pick a verb, then a target). This inverts it for the browse path; the verb-first sections stay for anyone who already knows what they want. Gated on 10EX.1 because that spike settles the extraction shape for the portfolio-shaped verbs this task grows; decided extraction-first in the roadmap-review session that scoped M10 against M7."
 					},
@@ -557,7 +575,8 @@
 						"status": "blocked",
 						"dependsOn": [
 							"5DR.24",
-							"7DR.4"
+							"7DR.4",
+							"11LC.2"
 						],
 						"notes": "Only meaningful once 5DR.24 has settled the field set and 7DR.4's detail-view menu paths exist to audit. Covers all eight configured data paths: sources, topology, local, overrides, excluded, cache, projects, in-progress."
 					},
@@ -576,7 +595,8 @@
 						"status": "blocked",
 						"dependsOn": [
 							"7DR.2",
-							"7DR.3"
+							"7DR.3",
+							"11LC.4"
 						]
 					},
 					{
@@ -587,6 +607,34 @@
 							"7DR.7"
 						],
 						"notes": "Bulk writes are how redundant authored values get mass-produced, which the data.test.ts redundancy checks reject. A bulk write must surface which targets would gain a value matching the inference before it applies."
+					},
+					{
+						"id": "7DR.9",
+						"description": "drift config verb: show every effective engine setting with its source (built-in default, drift.config.ts, DRIFT_CONFIG, committed policy) and set one from the CLI, so defaults are viewable and editable without opening a file",
+						"status": "blocked",
+						"dependsOn": [
+							"7DR.10"
+						],
+						"notes": "Resolution order is DRIFT_CONFIG env, then <repoRoot>/drift.config.ts, then DEFAULTS in scripts/drift-config.js (docs/drift/02-cli.md, Configuration); nothing today prints the merged result, so a user cannot tell which layer a value came from. Writing a key uses the TypeScript-compiler splice the overlay verbs already use (the config is a .ts module), the route 11LC.6 takes for excludedRepoNames; a committed policy key (7DR.10) is a JSON write instead. Examples the user named: auto-publication and whether archived repos are hidden, both of which 7DR.10 introduces, which is why this waits on it rather than shipping with only paths and the gum theme to show."
+					},
+					{
+						"id": "7DR.10",
+						"description": "Policy defaults with a committed home: publishOnSync (when false the registry admits only approved or authored slugs) and hideArchived (an enriched archived flag removes the repo from the site), each with a documented default",
+						"status": "blocked",
+						"dependsOn": [
+							"11LC.11",
+							"5DR.23"
+						],
+						"notes": "Two policy switches the lifecycle work makes meaningful. publishOnSync defaults to true (today's behaviour: every non-excluded manifest slug is on the site, index.ts:313); false turns drift approve (11LC.11) into a publication gate by filtering the registry to approved-or-authored slugs, which is why this waits on the approve verb. hideArchived reads the enriched section's archived flag (5DR.22) and waits on 5DR.23, which decides how archived reaches the site's retired axis; the switch chooses between shading (retired) and removal (hidden). First decision of the task: drift.config.ts is gitignored and per-machine (.gitignore:30), so a policy that changes what the site renders cannot live there or the Vercel build would silently fall back to the default. Policy needs a committed home both the CLI and index.ts read (a drift.policy.json beside sources.json, or a policy section in an existing committed data file), distinct from machine config."
+					},
+					{
+						"id": "7DR.11",
+						"description": "Redundancy report: surface authored values that match the current inference (track, contribution.role) as a drift report warning with a one-step delete, replacing the test-suite assertion",
+						"status": "blocked",
+						"dependsOn": [
+							"7DR.1"
+						],
+						"notes": "Two assertions in data.test.ts (removed in 780a817) failed CI whenever a sync moved inferTrack or the role heuristic onto an authored value; three repos crossing the product line-count threshold did exactly that. Agreement between an authored value and a heuristic is content state, not a code invariant, so it belongs in report output: cogni.track = product matches the inference, delete to render as provisional or keep to pin it. 7DR.1's resolver is what answers agrees or disagrees per field, so this waits on it; the resolver's own tests cover the logic against fixtures rather than the live manifest. Keep the rationale the tests carried: trackAuthored drives the dotted-provisional convention, so a redundant authored value silently upgrades a guess into a claim."
 					}
 				]
 			},
@@ -637,7 +685,8 @@
 							"M5",
 							"M6",
 							"M7",
-							"M10"
+							"M10",
+							"M11"
 						]
 					}
 				]
@@ -702,6 +751,149 @@
 							"10EX.1"
 						],
 						"notes": "Boundary doc line 270. Verified false on three counts: repoRoot (10EX.2), the three unconfigured .ts paths (10EX.3), and the emitted AuthoredProject import (10EX.4). Raised in the roadmap-review session that scoped M5 against the decoupling question."
+					}
+				]
+			},
+			{
+				"id": "M11",
+				"name": "Drift: Project Lifecycle",
+				"goal": "Every repo Drift can see moves through one legible lifecycle from the CLI alone: discovered under scanRoot, registered, synced onto the site, then approved, authored or hidden. Acceptance is five scenarios: (1) discover a new repo, register it and see it appear as a project; (2) list repos registered with Drift but neither deliberately hidden nor on the site; (3) see and edit the content of a project card; (4) a readable workbench for projects that exist by sync alone, neither authored nor approved; (5) a repo that moved, was deleted locally or lost its remote is triaged from the report in one step instead of nagging every run.",
+				"tasks": [
+					{
+						"id": "11LC.1",
+						"description": "Project lifecycle resolver: classify every repo Drift can see into exactly one state (discovered, ignored, registered, companion, synced-only, approved, authored, hidden) from the scan, sources.local.json, source-topology.json, sources.json, approved.json, projects/ and excluded.json",
+						"status": "todo",
+						"dependsOn": [],
+						"notes": "Today the CLI answers \"what state is this repo in\" from six places that nothing reconciles: the scan under scanRoot (check-drift.js:2069-2105), sources.local.json, source-topology.json, sources.json, the projects/ directory and excluded.json; approved.json (11LC.11) makes seven. Precedence to settle and test: hidden beats authored (kamino has an overlay and sits in excluded.json); authored beats approved (an overlay supersedes a standing approval); a companion source is never a project (beacons-frontend-v2, craft-and-graft-api and sakura-front are registered today yet correctly absent from the site). Two per-machine overlays sit on top of any manifest state rather than being states themselves: broken path (configured in sources.local.json, not found on disk) and not on this machine (no path configured); 11LC.12 gives each its own report heading. Engine-side and framework-agnostic: it reads JSON and a directory listing only, so it stays in the portable core."
+					},
+					{
+						"id": "11LC.2",
+						"description": "drift register verb: add a discovered repo to sources.local.json by path or folder name, with --as <slug> and --companion-of <slug>, from the CLI and the menu",
+						"status": "todo",
+						"dependsOn": [],
+						"notes": "Urgent: the working assumption so far was that drift report --full registers new repos; it never has. The report only lists discovered repos (filteredNew, check-drift.js:2105), and no verb writes sources.local.json after drift init, so every repo added since the manifest was seeded got there by hand edit. Pulled off the resolver dependency so it can ship now: the collision check it needs (slug already in sources.json, source-topology.json or sources.local.json) is three lookups, not the full classifier. The slug derives from the folder name through the same normalisation the scan uses (lowercase, underscores and spaces to hyphens), overridable with --as; --companion-of <slug> records the source under an existing project in source-topology.json instead of creating a new slug. Add the verb to the write-isolation contract in docs/drift-boundary.md and to the menu (Reconcile section, beside Sync). Register without 11LC.3 still leaves the repo off the site; the two ship back to back."
+					},
+					{
+						"id": "11LC.3",
+						"description": "drift sync admits registered slugs: fingerprint every primary source in sources.local.json, not only slugs already in sources.json, so a registered repo enters the manifest and the site on the next sync",
+						"status": "blocked",
+						"dependsOn": [
+							"11LC.2"
+						],
+						"notes": "computeDrift iterates Object.entries(manifest.sources) (check-drift.js:1869), so a slug present in sources.local.json but absent from sources.json is never fingerprinted, and drift sync <slug> reports it as not resolvable. docs/drift-authoring.md (\"Adding a new project, end to end\", step 1) says sync picks a registered repo up; it does not, and that sentence needs correcting when this lands. Depends on 11LC.2 rather than the resolver: \"registered and awaiting admission\" is one set difference (sources.local.json primaries minus manifest slugs minus topology companions). Admission is publication under today's default: index.ts puts every non-excluded manifest slug on the site, so the confirm prompt must say so (\"admits N registered repos to the site\"); 7DR.10's publishOnSync switch is what would later change that. Decide and record whether --check treats a registered-but-unsynced repo as drift (recommended: yes, it is exactly the state the gate exists to catch)."
+					},
+					{
+						"id": "11LC.4",
+						"description": "drift projects list verb: every repo Drift can see, one row per repo, grouped by lifecycle state, with --state filter and --json",
+						"status": "blocked",
+						"dependsOn": [
+							"11LC.1"
+						],
+						"softDependsOn": [
+							"5DR.30"
+						],
+						"notes": "One row per repo, grouped by lifecycle state, --state <state> to filter and --json for scripts. The registered group is acceptance scenario 2 (registered, neither hidden nor on the site); synced-only is scenario 4's population, with approved (11LC.11) beside it as the reviewed counterpart. drift new (5DR.30) becomes the discovered-state filter of this list once both exist, hence the soft edge. 7DR.7 later adds the track, role, tier and kind facets on top of the state grouping, which is why it now depends on this task."
+					},
+					{
+						"id": "11LC.5",
+						"description": "Lifecycle summary in the default report and menu: counts per state, each naming the exact next command (register, sync, author or hide)",
+						"status": "blocked",
+						"dependsOn": [
+							"11LC.2",
+							"11LC.3",
+							"11LC.4"
+						],
+						"notes": "Replaces the report's bare \"New repos not yet in portfolio\" list. Each state line names the command that moves a repo forward, the same pattern as the drift keep line the override-drift flag already prints. Extend buildCoverageStats (check-drift.js:2343) so the coverage line counts registered-awaiting-sync alongside excluded and manifest-only."
+					},
+					{
+						"id": "11LC.6",
+						"description": "drift ignore verb: dismiss a discovered repo at scan level by writing excludedRepoNames, so deliberate hiding is reachable from the CLI before registration as well as after sync",
+						"status": "blocked",
+						"dependsOn": [
+							"11LC.2"
+						],
+						"notes": "Scan-level hiding lives in drift.config.ts excludedRepoNames (moved out of excluded.json when it was paired to scanRoot), which only a hand edit reaches today. Write it with the TypeScript-compiler splice the overlay verbs already use, since the config is a .ts module; the alternative is a gitignored JSON sidecar beside sources.local.json, which avoids writing config but splits the ignore list across two files. Offer the action from the same discovered-repo picker as drift register, so every discovered repo has two exits: register or ignore."
+					},
+					{
+						"id": "11LC.7",
+						"description": "drift card <slug>: render the fields the site's ProjectCard shows, resolved through the same manifest-plus-overlay merge as the site, so a synced-only project's derived card is visible before anyone authors it",
+						"status": "todo",
+						"dependsOn": [],
+						"softDependsOn": [
+							"10EX.1"
+						],
+						"notes": "ProjectCard.svelte shows name, the role badge, tagline, blurb (expanded), the first four tags, the live link and the stage badge. Rendering those for a synced-only project needs the manifest-to-Project defaults merge in src/lib/data/defaults.ts, which is integration-layer code, so this verb is portfolio-shaped in the same way drift audit is (Bun's native ESM import of .ts) and its extraction shape is decided by the 10EX.1 spike; hence the soft edge. drift authored <slug> is not this view: it shows authored fields only and exits non-zero when no overlay exists, which is precisely the case scenario 4 needs to see. 7DR.2 later wraps this card in the full per-field provenance view."
+					},
+					{
+						"id": "11LC.8",
+						"description": "Edit every card-visible field from the CLI: extend author-edit to contribution role and note, highlights, released, retired, track and hideFromPlainIntro, with multi-line prose via gum write or $EDITOR and the redundancy guard applied on write",
+						"status": "todo",
+						"dependsOn": [
+							"5DR.24"
+						],
+						"notes": "AUTHOR_EDITABLE_FIELDS (check-drift.js:3691) covers name, tagline, blurb, plainBlurb, description, kind and liveUrl. Card-visible fields with no CLI edit path today: contribution.role and contribution.note, highlights, released, retired, track and hideFromPlainIntro; tags and pin/hide already have drift tag and drift flag. Multi-line prose goes through gum write or $EDITOR on the single field, never a whole-file rewrite (docs/drift-authoring.md, \"What will overwrite me\"). Every write must run the same redundancy check data.test.ts applies, refusing an authored value that merely restates the inference, otherwise this verb becomes the fastest way to fail the test suite."
+					},
+					{
+						"id": "11LC.9",
+						"description": "Synced-only workbench: browse the projects that exist by sync alone, each with its derived card and four exits in place (author, approve, hide, leave)",
+						"status": "blocked",
+						"dependsOn": [
+							"11LC.4",
+							"11LC.7",
+							"11LC.11"
+						],
+						"notes": "The synced-only queue is what scenario 4 calls projects that exist by direct sync alone. Each entry shows its derived card (11LC.7) and four exits in place: author (drift author), approve (drift approve, 11LC.11), hide (drift hide) or leave for later. Approved projects drop out of this queue and into the approved group of drift projects, so the queue is always exactly the unreviewed set."
+					},
+					{
+						"id": "11LC.11",
+						"description": "drift approve <slug>: record that a synced-only project has been checked and may stand on its derived defaults, so the projects list and workbench distinguish reviewed from unreviewed without requiring an overlay",
+						"status": "blocked",
+						"dependsOn": [
+							"11LC.1"
+						],
+						"notes": "Approval is a verdict, not content, so it should not live in the overlay: an overlay's existence is what \"authored\" means, and a file holding only { slug, approved: true } would blur that line. Recommended home: a committed approved.json beside excluded.json, same shape ({ slugs: [] }), written by this verb alone under the write-isolation contract; hide and approve are then the two curatorial verdicts on a synced repo, stored symmetrically. Alternative considered: an approvals section in overrides.json, rejected because overrides pin metric values against a synced baseline and approval has neither. Approval carries no publication effect in this milestone: it changes state (synced-only becomes approved) and nothing on the site; the publishOnSync policy that would gate the registry on approved-or-authored is 7DR.10. Include the reverse (approve --revoke) and decide whether drift hide removes a standing approval; an author edit supersedes it naturally, since the slug becomes authored."
+					},
+					{
+						"id": "11LC.12",
+						"description": "Split the report's \"Repos without local paths\" into two headings: configured path broken (moved or deleted, actionable) and no path on this machine (offloaded, quiet)",
+						"status": "blocked",
+						"dependsOn": [
+							"11LC.1"
+						],
+						"notes": "Today both cases land in missing with one reason string (resolveProjectSources, check-drift.js:1778-1795; computeDrift's missing branch at 1892). Real case from the report of 22 September 2026: fac-cra and iris had moved from Code/apps to Code/client, sparker had been deleted locally while its remote remains owned, and all three read identically. The rule needing no new file: a path present in sources.local.json but not found on disk is broken and actionable (moved or deleted); a slug absent from sources.local.json altogether is deliberately not on this machine, listed once under a quiet heading and never counted by --check (missing is already excluded from the gate, applyCheckExit at check-drift.js:3197). The manifest entry and the site are untouched in both cases: last-synced fingerprints stand until a machine that has the repo syncs again."
+					},
+					{
+						"id": "11LC.13",
+						"description": "drift relocate and drift unregister: repoint a moved repo's path (with a move hint pairing a broken path to a discovered repo of the same folder name or remote) and drop a deleted repo's path so it reads as not on this machine",
+						"status": "blocked",
+						"dependsOn": [
+							"11LC.2",
+							"11LC.12"
+						],
+						"notes": "The move hint is the rename/move correlation the original improvement plan listed under Phase 4 (docs/drift-improvement-plan.md): a broken path whose folder name, or whose remote URL when the discovered repo's origin can be read, matches a discovered repo is offered as \"fac-cra looks like it moved to Code/client/fac-cra, relink?\". relocate rewrites the one path in sources.local.json; unregister removes it, which by 11LC.12's rule turns the nag into a quiet \"not on this machine\" line while sources.json and the site keep the last sync. Both write sources.local.json only, the file drift register (11LC.2) already owns, so they extend that verb's write-isolation entry rather than adding one. Companion sources in source-topology.json need the same two operations."
+					},
+					{
+						"id": "11LC.14",
+						"description": "Remote reachability: drift enrich records whether each slug's urlRepo is still reachable, and its visibility, in the enriched section, so a repo whose remote access was lost is surfaced in the projects list and the site can stop linking to it",
+						"status": "todo",
+						"dependsOn": [
+							"5DR.22"
+						],
+						"notes": "fac-cra: the local moved and access to the remote is gone, yet sources.json still carries its urlRepo (read from the local's origin at sync time, which sync will keep re-reading) and the site still links to it. Sync stays offline by contract, so the check belongs in drift enrich, which already calls gh repo view per slug (5DR.22): a 404 or 403 becomes reachable: false in the enriched section beside archived and homepageUrl (schema extension in scripts/sources.schema.json), and visibility (public or private) is worth recording in the same call since a private repo is equally unlinkable for visitors. Site consumer: suppress or annotate the repo link when reachable is false; a small integration-layer change that can ship with this task or as its follow-up. Coordinate with 5DR.28, which parallelises the same gh calls, so the two do not rewrite fetchGhRepoView at once."
+					},
+					{
+						"id": "11LC.10",
+						"description": "Scenario acceptance: scripted end-to-end walkthrough of the five lifecycle scenarios against a fixture scanRoot, plus the CLI, authoring and boundary docs brought into line",
+						"status": "blocked",
+						"dependsOn": [
+							"11LC.5",
+							"11LC.6",
+							"11LC.8",
+							"11LC.9",
+							"11LC.13",
+							"11LC.14"
+						],
+						"notes": "Milestone sink. A scripted walkthrough against a temporary scanRoot fixture (two fresh repos, one companion, one to ignore, one that moves mid-walkthrough and one deleted locally) driving drift register, drift sync, drift projects, drift card, drift author <field>, drift approve, drift hide, drift relocate and drift unregister in sequence, asserting the lifecycle state after each step and that the admitted slug reaches the registry. Docs to bring into line: docs/drift/02-cli.md (bootstrap steps 2 and 3 and the verb tables), docs/drift-authoring.md (\"Adding a new project, end to end\", and \"Four ways to hide something\" gaining the scan-level ignore and approval) and the write-isolation contract in docs/drift-boundary.md."
 					}
 				]
 			}

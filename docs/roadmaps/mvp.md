@@ -1,8 +1,8 @@
 # Portfolio MVP Roadmap
 
-The site is live and substantially built: full routes, the graph/timeline/map/toolkit views, 30+ typed projects and the Drift CLI. This phase deepens the site as an artefact and decouples Drift's engine from its portfolio-specific couplings. Content (M1), features (M2) and design (M3) are done, and the Drift engine work (M5) is complete bar one follow-up verb; quality (M4), Drift's tests-and-docs (M6), total data control from the CLI menu (M7) and ongoing aesthetics (M8) remain.
+The site is live and substantially built: full routes, the graph/timeline/map/toolkit views, 30+ typed projects and the Drift CLI. This phase deepens the site as an artefact and decouples Drift's engine from its portfolio-specific couplings. Content (M1), features (M2), design (M3) and Drift's tests-and-docs (M6) are done, and the Drift engine work (M5) is complete bar two follow-up verbs; quality (M4), total data control from the CLI menu (M7), ongoing aesthetics (M8), extraction (M10) and the project lifecycle chain (M11) remain.
 
-**Critical path:** `4QU.5 → 4QU.1 → 4QU.3` — with M3 complete, the accessibility audit chain is the longest remaining run, and 4QU.5 is the one task gating it. M6 and M7 both wait on M5 rather than on design, so they run in parallel with each other and with M4.
+**Critical path:** on the site side `4QU.5 → 4QU.1 → 4QU.3` still gates M4. On the Drift side the urgent run is `11LC.2 → 11LC.3`: `drift register` then sync admission, both standing outside the resolver so they can ship first, because the assumption that `drift report --full` registered repos was never true. The longest run is `11LC.1 → 11LC.12 → 11LC.13 → 11LC.10`: the lifecycle resolver, the missing-path split, relocate and unregister, then M11's sink, the scripted acceptance of its five scenarios. M7's browse, act-in-context and config work now waits on M11's card view, field editing, list and approve verbs.
 
 ---
 
@@ -98,6 +98,10 @@ The site is live and substantially built: full routes, the graph/timeline/map/to
 - [x] **5DR.26** — drift init doesn't scaffold author.botPattern, so a fresh config silently inherits Jason's personal AI-agent bot pattern as the default _(depends on 5DR.3, 5DR.13)_
   - Note: Fixed. drift init now scaffolds author.botPattern with a generic default (\[bot\]|github-actions), narrowed from Jason's personal AI-agent identity pattern in DEFAULTS (scripts/drift-config.js). A comment in the scaffolded config shows how to extend it with AI-agent identities. Design decision: empty string was ruled out (an empty botPattern silently zeroes commitsHuman/authorsDistinctHuman via an always-failing PCRE negative lookahead, verified against this repo's own history). DEFAULTS was narrowed to match (breaking change, v8.0.0) since Jason's own drift.config.ts sets botPattern explicitly and is unaffected.
 - [ ] **5DR.30** — drift CLI: filtered "new repos only" verb (e.g. `drift new` or `--new-only`) that reports newly-discovered repos under scanRoot without the full drift/conflict report
+- [ ] **5DR.31**: Adoption history is append-only in the engine: drift sync keeps a detectedTechFirstSeen entry for an identity that leaves detection and records lastSeen, so a major migration retires the old identity instead of erasing it
+  - Note: code-arcana's Svelte 4 to 5 migration in the 2026-09-17 sync dropped svelte-4 from detectedFramework and from detectedTechFirstSeen (sources.json, code-arcana), leaving no synced record it was ever used, even though check-drift.js:811 dates that exact migration with a per-major regex pickaxe. detectedTechFirstSeen is already skipped by the drift comparison (DRIFT_SKIP_FIELDS, check-drift.js:247), so a ratchet there adds no drift noise. Shape: keep the firstSeen date, add lastSeen (the commit that removed the identity, from the same pickaxe run in reverse, or the sync date as a fallback) and extend sources.schema.json (5DR.5) to match. Present-tense fields (detectedFramework et al.) stay as they are; only the history object ratchets.
+- [ ] **5DR.32**: Tech universe for lineage and the timeline is present tags plus retired history: tech overlays may declare labels no project carries, with firstUsed and lastUsed; the timeline renders retired tech with an end date; the lineage tests removed in 780a817 return against the union _(blocked: depends on 5DR.31)_
+  - Note: Lineage edges are statements about history (replaced-by Svelte 4 to Svelte 5, tech-relationships.ts:87), yet tech-relationships.test.ts validated every endpoint against the tags projects carry today, so the edge became invalid the moment the migration it describes happened. Three tests were removed in 780a817 rather than left red: every source and target is a real tag label, every edge resolves on at least one surface, and surface-vocabulary's dropped-map-edge check. Reinstate them against the union of present tags, ratcheted history (5DR.31) and overlay-declared historical labels, with a retired endpoint as a second legitimate reason for a map edge to drop. Present-tense surfaces (toolkit, stack, constellation) keep reading project tags only; hiddenFrom already exists for keeping a label off them. The Svelte 4 firstUsed floor (tech-overlays.ts:35, 2024-11-01) predates every synced date and becomes the first overlay to gain a lastUsed.
   - Note: New-repo discovery already exists inside the default `drift report`/`--check` path (check-drift.js:2068-2105, 2193, 3190, 7263); this exposes that subset as its own filtered output rather than building discovery from scratch.
 
 ---
@@ -117,17 +121,23 @@ The site is live and substantially built: full routes, the graph/timeline/map/to
 **Goal:** A drift portfolio's entire data state can be seen, controlled and manipulated through the drift CLI menu.
 
 - [ ] **7DR.1** — Per-field provenance resolver: value, origin (synced / inferred / authored / overridden), and the inference an authored value agrees or disagrees with _(depends on 5DR.6, 5DR.24)_
-  - Note: Provenance is currently spread across sources.json, overrides.json, the project overlay and defaults.ts. One resolver so the detail views and the existing redundancy tests read the same answer.
-- [ ] **7DR.2** — Project detail view: every field for one project on a single screen, each with its provenance _(blocked — depends on 7DR.1)_
+  - Note: Provenance is currently spread across sources.json, overrides.json, the project overlay and defaults.ts. One resolver so the detail views and the redundancy report (7DR.11) read the same answer; the redundancy tests that used to live in data.test.ts were removed in 780a817 because they asserted content state and went red on every sync.
+- [ ] **7DR.2** — Project detail view: every field for one project on a single screen, each with its provenance _(blocked: depends on 7DR.1, 11LC.7)_
 - [ ] **7DR.3** — Tech, tag and theme detail views on the same pattern as the project view _(blocked — depends on 7DR.1)_
-- [ ] **7DR.4** — Act in context: invoke the relevant verbs from a detail view without re-picking the target _(blocked — depends on 7DR.2, 7DR.3)_
-  - Note: The menu is verb-first (pick a verb, then a target). This inverts it for the browse path; the verb-first sections stay for anyone who already knows what they want.
-- [ ] **7DR.5** — Reach audit: confirm every field in every data file has a menu path, and fill the gaps _(blocked — depends on 5DR.24, 7DR.4)_
+- [ ] **7DR.4** — Act in context: invoke the relevant verbs from a detail view without re-picking the target _(blocked: depends on 7DR.2, 7DR.3, 10EX.1, 11LC.8)_
+  - Note: The menu is verb-first (pick a verb, then a target). This inverts it for the browse path; the verb-first sections stay for anyone who already knows what they want. Gated on 10EX.1 because that spike settles the extraction shape for the portfolio-shaped verbs this task grows, and on 11LC.8 because acting in context needs a verb behind every card-visible field.
+- [ ] **7DR.5** — Reach audit: confirm every field in every data file has a menu path, and fill the gaps _(blocked: depends on 5DR.24, 7DR.4, 11LC.2)_
   - Note: Only meaningful once 5DR.24 has settled the field set and 7DR.4's detail-view menu paths exist to audit. Covers all eight configured data paths: sources, topology, local, overrides, excluded, cache, projects, in-progress.
 - [ ] **7DR.6** — Search across projects, tech, tags and themes from one entry point _(blocked — depends on 7DR.2, 7DR.3)_
-- [ ] **7DR.7** — Filter and sort the browse lists (drift state, track, role, tier, kind) _(blocked — depends on 7DR.2, 7DR.3)_
+- [ ] **7DR.7** — Filter and sort the browse lists (drift state, track, role, tier, kind) _(blocked: depends on 7DR.2, 7DR.3, 11LC.4)_
 - [ ] **7DR.8** — Multi-select and bulk apply across a filtered set _(blocked — depends on 7DR.7)_
   - Note: Bulk writes are how redundant authored values get mass-produced, which the data.test.ts redundancy checks reject. A bulk write must surface which targets would gain a value matching the inference before it applies.
+- [ ] **7DR.9**: drift config verb: show every effective engine setting with its source (built-in default, drift.config.ts, DRIFT*CONFIG, committed policy) and set one from the CLI, so defaults are viewable and editable without opening a file *(blocked: depends on 7DR.10)\_
+  - Note: Resolution order is DRIFT_CONFIG env, then <repoRoot>/drift.config.ts, then DEFAULTS in scripts/drift-config.js (docs/drift/02-cli.md, Configuration); nothing today prints the merged result, so a user cannot tell which layer a value came from. Writing a key uses the TypeScript-compiler splice the overlay verbs already use (the config is a .ts module), the route 11LC.6 takes for excludedRepoNames; a committed policy key (7DR.10) is a JSON write instead. Examples the user named: auto-publication and whether archived repos are hidden, both of which 7DR.10 introduces, which is why this waits on it rather than shipping with only paths and the gum theme to show.
+- [ ] **7DR.10**: Policy defaults with a committed home: publishOnSync (when false the registry admits only approved or authored slugs) and hideArchived (an enriched archived flag removes the repo from the site), each with a documented default _(blocked: depends on 11LC.11, 5DR.23)_
+  - Note: Two policy switches the lifecycle work makes meaningful. publishOnSync defaults to true (today's behaviour: every non-excluded manifest slug is on the site, index.ts:313); false turns drift approve (11LC.11) into a publication gate by filtering the registry to approved-or-authored slugs, which is why this waits on the approve verb. hideArchived reads the enriched section's archived flag (5DR.22) and waits on 5DR.23, which decides how archived reaches the site's retired axis; the switch chooses between shading (retired) and removal (hidden). First decision of the task: drift.config.ts is gitignored and per-machine (.gitignore:30), so a policy that changes what the site renders cannot live there or the Vercel build would silently fall back to the default. Policy needs a committed home both the CLI and index.ts read (a drift.policy.json beside sources.json, or a policy section in an existing committed data file), distinct from machine config.
+- [ ] **7DR.11**: Redundancy report: surface authored values that match the current inference (track, contribution.role) as a drift report warning with a one-step delete, replacing the test-suite assertion _(blocked: depends on 7DR.1)_
+  - Note: Two assertions in data.test.ts (removed in 780a817) failed CI whenever a sync moved inferTrack or the role heuristic onto an authored value; three repos crossing the product line-count threshold did exactly that. Agreement between an authored value and a heuristic is content state, not a code invariant, so it belongs in report output: cogni.track = product matches the inference, delete to render as provisional or keep to pin it. 7DR.1's resolver is what answers agrees or disagrees per field, so this waits on it; the resolver's own tests cover the logic against fixtures rather than the live manifest. Keep the rationale the tests carried: trackAuthored drives the dotted-provisional convention, so a redundant authored value silently upgrades a guess into a claim.
 
 ---
 
@@ -147,7 +157,7 @@ The site is live and substantially built: full routes, the graph/timeline/map/to
 
 **Goal:** Extend Drift past the engine/verb split into follow-on workflow improvements once every existing Drift milestone has landed.
 
-- [ ] **5DR.29** — Spike whether sync+enrich should be chainable into a single onboarding step: a drift onboard-style verb, a documented shell one-liner, or docs-only guidance; drift enrich only ever sees slugs already registered in sources.json's sources section (the same registered-only scope as drift sync's own backfill), so a brand-new project needs a sync first before enrich can see it at all, and that second step is easy to forget _(blocked — depends on M5, M6, M7)_
+- [ ] **5DR.29** — Spike whether sync+enrich should be chainable into a single onboarding step: a drift onboard-style verb, a documented shell one-liner, or docs-only guidance; drift enrich only ever sees slugs already registered in sources.json's sources section (the same registered-only scope as drift sync's own backfill), so a brand-new project needs a sync first before enrich can see it at all, and that second step is easy to forget _(blocked: depends on M5, M6, M7, M10, M11)_
 
 ---
 
@@ -166,6 +176,41 @@ The site is live and substantially built: full routes, the graph/timeline/map/to
   - Note: gum has 108 references in check-drift.js. drift audit also relies on Bun's native ESM loader, worth documenting as a runtime prerequisite alongside this.
 - [ ] **10EX.6** — Correct docs/drift-boundary.md's claim that the engine "can in principle be extracted into a standalone package"; replace with the honest blocker list as the extraction spec _(blocked: depends on 10EX.1)_
   - Note: Boundary doc line 270. Verified false on three counts: repoRoot (10EX.2), the three unconfigured .ts paths (10EX.3), and the emitted AuthoredProject import (10EX.4). Raised in the roadmap-review session that scoped M5 against the decoupling question.
+
+---
+
+## Milestone 11: Drift: Project Lifecycle
+
+**Goal:** Every repo Drift can see moves through one legible lifecycle from the CLI alone: discovered under scanRoot, registered, synced onto the site, then approved, authored or hidden. Acceptance is five scenarios: (1) discover a new repo, register it and see it appear as a project; (2) list repos registered with Drift but neither deliberately hidden nor on the site; (3) see and edit the content of a project card; (4) a readable workbench for projects that exist by sync alone, neither authored nor approved; (5) a repo that moved, was deleted locally or lost its remote is triaged from the report in one step instead of nagging every run.
+
+- [ ] **11LC.1**: Project lifecycle resolver: classify every repo Drift can see into exactly one state (discovered, ignored, registered, companion, synced-only, approved, authored, hidden) from the scan, sources.local.json, source-topology.json, sources.json, approved.json, projects/ and excluded.json
+  - Note: Today the CLI answers "what state is this repo in" from six places that nothing reconciles: the scan under scanRoot (check-drift.js:2069-2105), sources.local.json, source-topology.json, sources.json, the projects/ directory and excluded.json; approved.json (11LC.11) makes seven. Precedence to settle and test: hidden beats authored (kamino has an overlay and sits in excluded.json); authored beats approved (an overlay supersedes a standing approval); a companion source is never a project (beacons-frontend-v2, craft-and-graft-api and sakura-front are registered today yet correctly absent from the site). Two per-machine overlays sit on top of any manifest state rather than being states themselves: broken path (configured in sources.local.json, not found on disk) and not on this machine (no path configured); 11LC.12 gives each its own report heading. Engine-side and framework-agnostic: it reads JSON and a directory listing only, so it stays in the portable core.
+- [ ] **11LC.2**: drift register verb: add a discovered repo to sources.local.json by path or folder name, with --as <slug> and --companion-of <slug>, from the CLI and the menu
+  - Note: Urgent: the working assumption so far was that drift report --full registers new repos; it never has. The report only lists discovered repos (filteredNew, check-drift.js:2105), and no verb writes sources.local.json after drift init, so every repo added since the manifest was seeded got there by hand edit. Pulled off the resolver dependency so it can ship now: the collision check it needs (slug already in sources.json, source-topology.json or sources.local.json) is three lookups, not the full classifier. The slug derives from the folder name through the same normalisation the scan uses (lowercase, underscores and spaces to hyphens), overridable with --as; --companion-of <slug> records the source under an existing project in source-topology.json instead of creating a new slug. Add the verb to the write-isolation contract in docs/drift-boundary.md and to the menu (Reconcile section, beside Sync). Register without 11LC.3 still leaves the repo off the site; the two ship back to back.
+- [ ] **11LC.3**: drift sync admits registered slugs: fingerprint every primary source in sources.local.json, not only slugs already in sources.json, so a registered repo enters the manifest and the site on the next sync _(blocked: depends on 11LC.2)_
+  - Note: computeDrift iterates Object.entries(manifest.sources) (check-drift.js:1869), so a slug present in sources.local.json but absent from sources.json is never fingerprinted, and drift sync <slug> reports it as not resolvable. docs/drift-authoring.md ("Adding a new project, end to end", step 1) says sync picks a registered repo up; it does not, and that sentence needs correcting when this lands. Depends on 11LC.2 rather than the resolver: "registered and awaiting admission" is one set difference (sources.local.json primaries minus manifest slugs minus topology companions). Admission is publication under today's default: index.ts puts every non-excluded manifest slug on the site, so the confirm prompt must say so ("admits N registered repos to the site"); 7DR.10's publishOnSync switch is what would later change that. Decide and record whether --check treats a registered-but-unsynced repo as drift (recommended: yes, it is exactly the state the gate exists to catch).
+- [ ] **11LC.4**: drift projects list verb: every repo Drift can see, one row per repo, grouped by lifecycle state, with --state filter and --json _(blocked: depends on 11LC.1)_
+  - Note: One row per repo, grouped by lifecycle state, --state <state> to filter and --json for scripts. The registered group is acceptance scenario 2 (registered, neither hidden nor on the site); synced-only is scenario 4's population, with approved (11LC.11) beside it as the reviewed counterpart. drift new (5DR.30) becomes the discovered-state filter of this list once both exist, hence the soft edge. 7DR.7 later adds the track, role, tier and kind facets on top of the state grouping, which is why it now depends on this task.
+- [ ] **11LC.5**: Lifecycle summary in the default report and menu: counts per state, each naming the exact next command (register, sync, author or hide) _(blocked: depends on 11LC.2, 11LC.3, 11LC.4)_
+  - Note: Replaces the report's bare "New repos not yet in portfolio" list. Each state line names the command that moves a repo forward, the same pattern as the drift keep line the override-drift flag already prints. Extend buildCoverageStats (check-drift.js:2343) so the coverage line counts registered-awaiting-sync alongside excluded and manifest-only.
+- [ ] **11LC.6**: drift ignore verb: dismiss a discovered repo at scan level by writing excludedRepoNames, so deliberate hiding is reachable from the CLI before registration as well as after sync _(blocked: depends on 11LC.2)_
+  - Note: Scan-level hiding lives in drift.config.ts excludedRepoNames (moved out of excluded.json when it was paired to scanRoot), which only a hand edit reaches today. Write it with the TypeScript-compiler splice the overlay verbs already use, since the config is a .ts module; the alternative is a gitignored JSON sidecar beside sources.local.json, which avoids writing config but splits the ignore list across two files. Offer the action from the same discovered-repo picker as drift register, so every discovered repo has two exits: register or ignore.
+- [ ] **11LC.7**: drift card <slug>: render the fields the site's ProjectCard shows, resolved through the same manifest-plus-overlay merge as the site, so a synced-only project's derived card is visible before anyone authors it
+  - Note: ProjectCard.svelte shows name, the role badge, tagline, blurb (expanded), the first four tags, the live link and the stage badge. Rendering those for a synced-only project needs the manifest-to-Project defaults merge in src/lib/data/defaults.ts, which is integration-layer code, so this verb is portfolio-shaped in the same way drift audit is (Bun's native ESM import of .ts) and its extraction shape is decided by the 10EX.1 spike; hence the soft edge. drift authored <slug> is not this view: it shows authored fields only and exits non-zero when no overlay exists, which is precisely the case scenario 4 needs to see. 7DR.2 later wraps this card in the full per-field provenance view.
+- [ ] **11LC.8**: Edit every card-visible field from the CLI: extend author-edit to contribution role and note, highlights, released, retired, track and hideFromPlainIntro, with multi-line prose via gum write or $EDITOR and the redundancy guard applied on write _(depends on 5DR.24)_
+  - Note: AUTHOR_EDITABLE_FIELDS (check-drift.js:3691) covers name, tagline, blurb, plainBlurb, description, kind and liveUrl. Card-visible fields with no CLI edit path today: contribution.role and contribution.note, highlights, released, retired, track and hideFromPlainIntro; tags and pin/hide already have drift tag and drift flag. Multi-line prose goes through gum write or $EDITOR on the single field, never a whole-file rewrite (docs/drift-authoring.md, "What will overwrite me"). Every write must run the same redundancy check data.test.ts applies, refusing an authored value that merely restates the inference, otherwise this verb becomes the fastest way to fail the test suite.
+- [ ] **11LC.9**: Synced-only workbench: browse the projects that exist by sync alone, each with its derived card and four exits in place (author, approve, hide, leave) _(blocked: depends on 11LC.4, 11LC.7, 11LC.11)_
+  - Note: The synced-only queue is what scenario 4 calls projects that exist by direct sync alone. Each entry shows its derived card (11LC.7) and four exits in place: author (drift author), approve (drift approve, 11LC.11), hide (drift hide) or leave for later. Approved projects drop out of this queue and into the approved group of drift projects, so the queue is always exactly the unreviewed set.
+- [ ] **11LC.11**: drift approve <slug>: record that a synced-only project has been checked and may stand on its derived defaults, so the projects list and workbench distinguish reviewed from unreviewed without requiring an overlay _(blocked: depends on 11LC.1)_
+  - Note: Approval is a verdict, not content, so it should not live in the overlay: an overlay's existence is what "authored" means, and a file holding only { slug, approved: true } would blur that line. Recommended home: a committed approved.json beside excluded.json, same shape ({ slugs: [] }), written by this verb alone under the write-isolation contract; hide and approve are then the two curatorial verdicts on a synced repo, stored symmetrically. Alternative considered: an approvals section in overrides.json, rejected because overrides pin metric values against a synced baseline and approval has neither. Approval carries no publication effect in this milestone: it changes state (synced-only becomes approved) and nothing on the site; the publishOnSync policy that would gate the registry on approved-or-authored is 7DR.10. Include the reverse (approve --revoke) and decide whether drift hide removes a standing approval; an author edit supersedes it naturally, since the slug becomes authored.
+- [ ] **11LC.12**: Split the report's "Repos without local paths" into two headings: configured path broken (moved or deleted, actionable) and no path on this machine (offloaded, quiet) _(blocked: depends on 11LC.1)_
+  - Note: Today both cases land in missing with one reason string (resolveProjectSources, check-drift.js:1778-1795; computeDrift's missing branch at 1892). Real case from the report of 22 September 2026: fac-cra and iris had moved from Code/apps to Code/client, sparker had been deleted locally while its remote remains owned, and all three read identically. The rule needing no new file: a path present in sources.local.json but not found on disk is broken and actionable (moved or deleted); a slug absent from sources.local.json altogether is deliberately not on this machine, listed once under a quiet heading and never counted by --check (missing is already excluded from the gate, applyCheckExit at check-drift.js:3197). The manifest entry and the site are untouched in both cases: last-synced fingerprints stand until a machine that has the repo syncs again.
+- [ ] **11LC.13**: drift relocate and drift unregister: repoint a moved repo's path (with a move hint pairing a broken path to a discovered repo of the same folder name or remote) and drop a deleted repo's path so it reads as not on this machine _(blocked: depends on 11LC.2, 11LC.12)_
+  - Note: The move hint is the rename/move correlation the original improvement plan listed under Phase 4 (docs/drift-improvement-plan.md): a broken path whose folder name, or whose remote URL when the discovered repo's origin can be read, matches a discovered repo is offered as "fac-cra looks like it moved to Code/client/fac-cra, relink?". relocate rewrites the one path in sources.local.json; unregister removes it, which by 11LC.12's rule turns the nag into a quiet "not on this machine" line while sources.json and the site keep the last sync. Both write sources.local.json only, the file drift register (11LC.2) already owns, so they extend that verb's write-isolation entry rather than adding one. Companion sources in source-topology.json need the same two operations.
+- [ ] **11LC.14**: Remote reachability: drift enrich records whether each slug's urlRepo is still reachable, and its visibility, in the enriched section, so a repo whose remote access was lost is surfaced in the projects list and the site can stop linking to it _(depends on 5DR.22)_
+  - Note: fac-cra: the local moved and access to the remote is gone, yet sources.json still carries its urlRepo (read from the local's origin at sync time, which sync will keep re-reading) and the site still links to it. Sync stays offline by contract, so the check belongs in drift enrich, which already calls gh repo view per slug (5DR.22): a 404 or 403 becomes reachable: false in the enriched section beside archived and homepageUrl (schema extension in scripts/sources.schema.json), and visibility (public or private) is worth recording in the same call since a private repo is equally unlinkable for visitors. Site consumer: suppress or annotate the repo link when reachable is false; a small integration-layer change that can ship with this task or as its follow-up. Coordinate with 5DR.28, which parallelises the same gh calls, so the two do not rewrite fetchGhRepoView at once.
+- [ ] **11LC.10**: Scenario acceptance: scripted end-to-end walkthrough of the five lifecycle scenarios against a fixture scanRoot, plus the CLI, authoring and boundary docs brought into line _(blocked: depends on 11LC.5, 11LC.6, 11LC.8, 11LC.9, 11LC.13, 11LC.14)_
+  - Note: Milestone sink. A scripted walkthrough against a temporary scanRoot fixture (two fresh repos, one companion, one to ignore, one that moves mid-walkthrough and one deleted locally) driving drift register, drift sync, drift projects, drift card, drift author <field>, drift approve, drift hide, drift relocate and drift unregister in sequence, asserting the lifecycle state after each step and that the admitted slug reaches the registry. Docs to bring into line: docs/drift/02-cli.md (bootstrap steps 2 and 3 and the verb tables), docs/drift-authoring.md ("Adding a new project, end to end", and "Four ways to hide something" gaining the scan-level ignore and approval) and the write-isolation contract in docs/drift-boundary.md.
 
 ---
 
@@ -239,6 +284,8 @@ graph LR
 	5DR.25["5DR.25: Surface the intra-span activity metrics…"]
 	5DR.26["5DR.26: drift init doesn't scaffold author.botP…"]
 	5DR.30["5DR.30: drift CLI: filtered #quot;new repos only#quot; ve…"]
+	5DR.31["5DR.31: Adoption history is append-only in the…"]
+	5DR.32["5DR.32: Tech universe for lineage and the timel…"]
 	M5["M5: Drift Decoupling: Engine & Verbs"]:::mile
 	1CO.5["1CO.5: Expand the Colophon into the drift-engin…"]
 	M1["M1: Content Depth & Polish"]:::mile
@@ -247,25 +294,43 @@ graph LR
 	5DR.10["5DR.10: Authoring guide: which fields Drift pop…"]
 	M6["M6: Drift: Tests & Docs"]:::mile
 	7DR.1["7DR.1: Per-field provenance resolver: value, or…"]
-	7DR.2["7DR.2: Project detail view: every field for one…"]
 	7DR.3["7DR.3: Tech, tag and theme detail views on the…"]
-	7DR.6["7DR.6: Search across projects, tech, tags and t…"]
-	7DR.7["7DR.7: Filter and sort the browse lists (drift…"]
-	7DR.8["7DR.8: Multi-select and bulk apply across a fil…"]
+	7DR.11["7DR.11: Redundancy report: surface authored val…"]
 	8DE.1["8DE.1: Spike: investigate enhancements to the p…"]
 	5DR.23["5DR.23: Derive the site's retired and deployed…"]
 	5DR.27["5DR.27: Use the intra-span activity metrics in…"]
 	M8["M8: Aesthetics: Ongoing"]:::mile
 	10EX.1["10EX.1: Spike: decide the extraction shape for…"]
-	7DR.4["7DR.4: Act in context: invoke the relevant verb…"]
-	7DR.5["7DR.5: Reach audit: confirm every field in ever…"]
-	M7["M7: Drift: Total Data Control"]:::mile
 	10EX.2["10EX.2: Inject repoRoot instead of deriving it…"]
 	10EX.3["10EX.3: Add config.paths entries for tech-relat…"]
 	10EX.4["10EX.4: Stop the engine emitting `import type {…"]
 	10EX.5["10EX.5: Declare typescript and prettier as real…"]
 	10EX.6["10EX.6: Correct docs/drift-boundary.md's claim…"]
 	M10["M10: Drift Extraction"]:::mile
+	11LC.1["11LC.1: Project lifecycle resolver: classify ev…"]
+	11LC.2["11LC.2: drift register verb: add a discovered r…"]
+	11LC.3["11LC.3: drift sync admits registered slugs: fin…"]
+	11LC.4["11LC.4: drift projects list verb: every repo Dr…"]
+	11LC.5["11LC.5: Lifecycle summary in the default report…"]
+	11LC.6["11LC.6: drift ignore verb: dismiss a discovered…"]
+	11LC.7["11LC.7: drift card <slug>: render the fields th…"]
+	7DR.2["7DR.2: Project detail view: every field for one…"]
+	7DR.6["7DR.6: Search across projects, tech, tags and t…"]
+	7DR.7["7DR.7: Filter and sort the browse lists (drift…"]
+	7DR.8["7DR.8: Multi-select and bulk apply across a fil…"]
+	11LC.8["11LC.8: Edit every card-visible field from the…"]
+	7DR.4["7DR.4: Act in context: invoke the relevant verb…"]
+	7DR.5["7DR.5: Reach audit: confirm every field in ever…"]
+	11LC.11["11LC.11: drift approve <slug>: record that a sy…"]
+	7DR.10["7DR.10: Policy defaults with a committed home:…"]
+	7DR.9["7DR.9: drift config verb: show every effective…"]
+	M7["M7: Drift: Total Data Control"]:::mile
+	11LC.9["11LC.9: Synced-only workbench: browse the proje…"]
+	11LC.12["11LC.12: Split the report's #quot;Repos without loca…"]
+	11LC.13["11LC.13: drift relocate and drift unregister: r…"]
+	11LC.14["11LC.14: Remote reachability: drift enrich reco…"]
+	11LC.10["11LC.10: Scenario acceptance: scripted end-to-e…"]
+	M11["M11: Drift: Project Lifecycle"]:::mile
 	5DR.29["5DR.29: Spike whether sync+enrich should be cha…"]
 	M9["M9: Drift: Extended Features"]:::mile
 	1CO.1 --> 1CO.2
@@ -348,14 +413,19 @@ graph LR
 	5DR.21 --> M5
 	5DR.22 --> 5DR.28
 	5DR.22 --> 5DR.23
+	5DR.22 --> 11LC.14
 	5DR.28 --> M5
 	5DR.24 --> 5DR.25
 	5DR.24 --> 7DR.1
+	5DR.24 --> 11LC.8
 	5DR.24 --> 7DR.5
 	5DR.25 --> M5
 	5DR.25 --> 5DR.27
 	5DR.26 --> M5
 	5DR.30 --> M5
+	5DR.30 -.-> 11LC.4
+	5DR.31 --> 5DR.32
+	5DR.32 --> M5
 	M5 --> 1CO.5
 	M5 -.-> 10EX.1
 	M5 --> 5DR.29
@@ -365,37 +435,69 @@ graph LR
 	5DR.9 --> M6
 	5DR.10 --> M6
 	M6 --> 5DR.29
-	7DR.1 --> 7DR.2
 	7DR.1 --> 7DR.3
-	7DR.2 --> 7DR.6
-	7DR.2 --> 7DR.7
-	7DR.2 --> 7DR.4
+	7DR.1 --> 7DR.11
+	7DR.1 --> 7DR.2
 	7DR.3 --> 7DR.6
 	7DR.3 --> 7DR.7
 	7DR.3 --> 7DR.4
-	7DR.6 --> M7
-	7DR.7 --> 7DR.8
-	7DR.8 --> M7
+	7DR.11 --> M7
 	8DE.1 --> M8
 	5DR.23 --> M8
+	5DR.23 --> 7DR.10
 	5DR.27 --> M8
-	10EX.1 --> 7DR.4
 	10EX.1 --> 10EX.2
 	10EX.1 --> 10EX.3
 	10EX.1 --> 10EX.4
 	10EX.1 --> 10EX.5
 	10EX.1 --> 10EX.6
-	7DR.4 --> 7DR.5
-	7DR.5 --> M7
-	M7 --> 5DR.29
+	10EX.1 -.-> 11LC.7
+	10EX.1 --> 7DR.4
 	10EX.2 --> M10
 	10EX.3 --> M10
 	10EX.4 --> M10
 	10EX.5 --> M10
 	10EX.6 --> M10
 	M10 --> 5DR.29
+	11LC.1 --> 11LC.4
+	11LC.1 --> 11LC.11
+	11LC.1 --> 11LC.12
+	11LC.2 --> 11LC.3
+	11LC.2 --> 11LC.5
+	11LC.2 --> 11LC.6
+	11LC.2 --> 7DR.5
+	11LC.2 --> 11LC.13
+	11LC.3 --> 11LC.5
+	11LC.4 --> 11LC.5
+	11LC.4 --> 7DR.7
+	11LC.4 --> 11LC.9
+	11LC.5 --> 11LC.10
+	11LC.6 --> 11LC.10
+	11LC.7 --> 7DR.2
+	11LC.7 --> 11LC.9
+	7DR.2 --> 7DR.6
+	7DR.2 --> 7DR.7
+	7DR.2 --> 7DR.4
+	7DR.6 --> M7
+	7DR.7 --> 7DR.8
+	7DR.8 --> M7
+	11LC.8 --> 7DR.4
+	11LC.8 --> 11LC.10
+	7DR.4 --> 7DR.5
+	7DR.5 --> M7
+	11LC.11 --> 7DR.10
+	11LC.11 --> 11LC.9
+	7DR.10 --> 7DR.9
+	7DR.9 --> M7
+	M7 --> 5DR.29
+	11LC.9 --> 11LC.10
+	11LC.12 --> 11LC.13
+	11LC.13 --> 11LC.10
+	11LC.14 --> 11LC.10
+	11LC.10 --> M11
+	M11 --> 5DR.29
 	5DR.29 --> M9
-	class 10EX.1,4QU.4,4QU.5,5DR.23,5DR.27,5DR.28,5DR.30,7DR.1 todo
-	class 10EX.2,10EX.3,10EX.4,10EX.5,10EX.6,4QU.1,4QU.3,4QU.7,5DR.29,7DR.2,7DR.3,7DR.4,7DR.5,7DR.6,7DR.7,7DR.8,8DE.1 blocked
+	class 10EX.1,11LC.1,11LC.14,11LC.2,11LC.7,11LC.8,4QU.4,4QU.5,5DR.23,5DR.27,5DR.28,5DR.30,5DR.31,7DR.1 todo
+	class 10EX.2,10EX.3,10EX.4,10EX.5,10EX.6,11LC.10,11LC.11,11LC.12,11LC.13,11LC.3,11LC.4,11LC.5,11LC.6,11LC.9,4QU.1,4QU.3,4QU.7,5DR.29,5DR.32,7DR.10,7DR.11,7DR.2,7DR.3,7DR.4,7DR.5,7DR.6,7DR.7,7DR.8,7DR.9,8DE.1 blocked
 	class 1CO.1,1CO.10,1CO.2,1CO.3,1CO.4,1CO.5,1CO.6,1CO.7,1CO.8,1CO.9,2FE.1,2FE.2,2FE.3,2FE.4,2FE.5,2FE.6,2FE.7,2FE.8,3DE.0,3DE.1,3DE.2,3DE.3,3DE.4,3DE.5,3DE.6,4QU.8,5DR.0,5DR.1,5DR.10,5DR.11,5DR.12,5DR.13,5DR.14,5DR.15,5DR.16,5DR.17,5DR.18,5DR.19,5DR.2,5DR.20,5DR.21,5DR.22,5DR.24,5DR.25,5DR.26,5DR.3,5DR.4,5DR.5,5DR.6,5DR.7,5DR.8,5DR.9 done
 ```
