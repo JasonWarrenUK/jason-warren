@@ -158,10 +158,22 @@ function makeTempDataDir(inProgressContent: object, sourcesContent?: object) {
 	return dir;
 }
 
-/** Returns the DRIFT_CONFIG env approach: write a temp config file. */
-function makeDriftConfig(dataDir: string): string {
+/**
+ * Returns the DRIFT_CONFIG env approach: write a temp config file.
+ *
+ * `scanRoot`/`scanDepth` are optional and default to today's behaviour
+ * (omitted, so loadConfig falls back to ~/Code): only `drift new` tests
+ * (5DR.30) opt into a sandboxed scan root, so the existing suite's
+ * dependence on the real home directory is unchanged for everyone else.
+ */
+function makeDriftConfig(dataDir: string, scan?: { scanRoot: string; scanDepth?: number }): string {
 	const configPath = join(dataDir, 'drift.config.mjs');
-	writeFileSync(configPath, `export default { dataDir: ${JSON.stringify(dataDir)} };\n`);
+	const config: Record<string, unknown> = { dataDir };
+	if (scan) {
+		config.scanRoot = scan.scanRoot;
+		config.scanDepth = scan.scanDepth ?? 3;
+	}
+	writeFileSync(configPath, `export default ${JSON.stringify(config)};\n`);
 	return configPath;
 }
 
@@ -3440,6 +3452,111 @@ process.exit(1);
 	writeFileSync(ghScriptPath, script, { mode: 0o755 });
 	return `${binDir}:${process.env.PATH}`;
 }
+
+// ---------------------------------------------------------------------------
+// drift new (5DR.30) tests
+// ---------------------------------------------------------------------------
+
+/**
+ * Builds a sandbox for `drift new`: a dataDir with a minimal manifest (no
+ * real git repos needed there, unlike makeSyncSandbox — drift new reads
+ * manifest.sources for knownSlugs only) plus a separate scanRoot temp tree
+ * containing fake `.git` directories to discover.
+ *
+ * Without a sandboxed scanRoot, drift new would fall back to the real
+ * ~/Code and every assertion would depend on whatever happens to be there.
+ */
+function makeNewVerbSandbox(): { dataDir: string; scanRoot: string; configPath: string } {
+	const dataDir = mkdtempSync(join(tmpdir(), 'drift-new-data-'));
+	const scanRoot = mkdtempSync(join(tmpdir(), 'drift-new-scan-'));
+
+	writeFileSync(
+		join(dataDir, 'sources.json'),
+		JSON.stringify(
+			{
+				$schema: '../../scripts/sources.schema.json',
+				sources: { 'already-tracked': { commitHead: 'deadbeef' } }
+			},
+			null,
+			'\t'
+		)
+	);
+	writeFileSync(join(dataDir, 'overrides.json'), JSON.stringify({ overrides: {} }, null, '\t'));
+	writeFileSync(
+		join(dataDir, 'excluded.json'),
+		JSON.stringify({ slugs: [], repoNames: ['excluded-repo'] }, null, '\t')
+	);
+	writeFileSync(join(dataDir, '.drift-cache.json'), JSON.stringify({}, null, '\t'));
+	writeFileSync(join(dataDir, 'in-progress.json'), JSON.stringify({ inProgress: {} }, null, '\t'));
+	const realSchema = join(repoRoot, 'src/lib/data/in-progress.schema.json');
+	cpSync(realSchema, join(dataDir, 'in-progress.schema.json'));
+
+	const configPath = makeDriftConfig(dataDir, { scanRoot });
+	return { dataDir, scanRoot, configPath };
+}
+
+/** Creates a fake git repo (a directory containing a .git subdirectory) under scanRoot. */
+function makeFakeRepo(scanRoot: string, name: string): void {
+	const repoPath = join(scanRoot, name);
+	mkdirSync(join(repoPath, '.git'), { recursive: true });
+}
+
+describe('drift new', () => {
+	let dataDir: string;
+	let scanRoot: string;
+	let configPath: string;
+
+	beforeEach(() => {
+		({ dataDir, scanRoot, configPath } = makeNewVerbSandbox());
+	});
+
+	afterEach(() => {
+		rmSync(dataDir, { recursive: true, force: true });
+		rmSync(scanRoot, { recursive: true, force: true });
+	});
+
+	it('reports a repo under scanRoot absent from the manifest', () => {
+		makeFakeRepo(scanRoot, 'fresh-repo');
+		const result = runVerbInSandbox(configPath, ['new', '--json']);
+		expect(result.status, result.stderr).toBe(0);
+		const payload = JSON.parse(result.stdout);
+		expect(payload.filteredNew).toEqual([
+			{ name: 'fresh-repo', path: join(scanRoot, 'fresh-repo'), normalised: 'fresh-repo' }
+		]);
+	});
+
+	it('omits a repo already tracked in manifest.sources', () => {
+		makeFakeRepo(scanRoot, 'already-tracked');
+		const result = runVerbInSandbox(configPath, ['new', '--json']);
+		expect(result.status, result.stderr).toBe(0);
+		expect(JSON.parse(result.stdout).filteredNew).toEqual([]);
+	});
+
+	it('omits a repo in excludedRepoNames', () => {
+		makeFakeRepo(scanRoot, 'excluded-repo');
+		const result = runVerbInSandbox(configPath, ['new', '--json']);
+		expect(result.status, result.stderr).toBe(0);
+		expect(JSON.parse(result.stdout).filteredNew).toEqual([]);
+	});
+
+	it('plain output lists the repo name and path', () => {
+		makeFakeRepo(scanRoot, 'fresh-repo');
+		const result = runVerbInSandbox(configPath, ['new']);
+		expect(result.status, result.stderr).toBe(0);
+		expect(result.stdout).toContain('New repos not yet in portfolio (1)');
+		expect(result.stdout).toContain('fresh-repo');
+		expect(result.stdout).toContain(join(scanRoot, 'fresh-repo'));
+	});
+
+	it('writes no files', () => {
+		makeFakeRepo(scanRoot, 'fresh-repo');
+		const before = readFileSync(join(dataDir, 'sources.json'), 'utf8');
+		const result = runVerbInSandbox(configPath, ['new']);
+		expect(result.status, result.stderr).toBe(0);
+		const after = readFileSync(join(dataDir, 'sources.json'), 'utf8');
+		expect(after).toBe(before);
+	});
+});
 
 /** Run `drift enrich` (plus any extra args) with a DRIFT_CONFIG pointing at dir and a fake `gh` on PATH. */
 function runEnrichWithConfig(dir: string, extraArgs: string[], ghPath: string) {

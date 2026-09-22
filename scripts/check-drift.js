@@ -1855,6 +1855,59 @@ function mergeCompanionFingerprints(primary, companions) {
 
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
 
+/**
+ * Recursively scans `scanRoot` for git repos not yet tracked in the
+ * manifest. A directory containing `.git` is treated as a repo and not
+ * recursed into further; anything else is walked up to `scanDepth`.
+ *
+ * Hoisted out of computeDrift (5DR.30) so `drift new` can call it directly
+ * without paying for a full fingerprint scan of every already-tracked repo.
+ * computeDrift calls it too, so the report's "new repos" section and
+ * `drift new` share one walk with identical filtering.
+ *
+ * @param {{ scanRoot: string, scanDepth: number, knownSlugs: Set<string>, excludedRepoNames: Set<string> }} options
+ * @returns {{ name: string, path: string, normalised: string }[]}
+ */
+function scanForNewRepos({ scanRoot, scanDepth, knownSlugs, excludedRepoNames }) {
+	const newRepos = [];
+
+	function walk(dir, depth = 0) {
+		if (depth > scanDepth) return;
+		let dirEntries;
+		try {
+			dirEntries = readdirSync(dir);
+		} catch {
+			return;
+		}
+		for (const dirEntry of dirEntries) {
+			if (dirEntry.startsWith('.')) continue;
+			const fullPath = join(dir, dirEntry);
+			try {
+				if (!statSync(fullPath).isDirectory()) continue;
+			} catch {
+				continue;
+			}
+			if (existsSync(join(fullPath, '.git'))) {
+				const name = dirEntry;
+				// Normalise: lowercase, convert to kebab-case (basic)
+				const normalised = name.toLowerCase().replace(/[_\s]+/g, '-');
+				if (!knownSlugs.has(normalised) && !knownSlugs.has(name)) {
+					newRepos.push({ name, path: fullPath, normalised });
+				}
+				// Don't recurse into git repos
+			} else {
+				walk(fullPath, depth + 1);
+			}
+		}
+	}
+
+	walk(scanRoot);
+
+	return newRepos.filter(
+		(r) => !excludedRepoNames.has(r.name) && !excludedRepoNames.has(r.normalised)
+	);
+}
+
 async function computeDrift(
 	{ manifest, overrideEntries, localPaths, sourceTopology = {}, cache, inProgress = {} },
 	{ full = false, onProgress = null, useCache = false } = {}
@@ -2066,45 +2119,15 @@ async function computeDrift(
 	// Scan for git repos not yet in the manifest.
 	// COUPLING [5DR.3]: resolved — scan root and depth now come from config.
 	// Configure via drift.config.ts → scanRoot / scanDepth.
+	// 5DR.30: the walk itself is hoisted to scanForNewRepos so `drift new` can
+	// call it without paying for the rest of this scan.
 	const knownSlugs = new Set(Object.keys(manifest.sources));
-	const codeRoot = config.scanRoot;
-	const newRepos = [];
-
-	function scanForGitRepos(dir, depth = 0) {
-		if (depth > config.scanDepth) return;
-		let dirEntries;
-		try {
-			dirEntries = readdirSync(dir);
-		} catch {
-			return;
-		}
-		for (const dirEntry of dirEntries) {
-			if (dirEntry.startsWith('.')) continue;
-			const fullPath = join(dir, dirEntry);
-			try {
-				if (!statSync(fullPath).isDirectory()) continue;
-			} catch {
-				continue;
-			}
-			if (existsSync(join(fullPath, '.git'))) {
-				const name = dirEntry;
-				// Normalise: lowercase, convert to kebab-case (basic)
-				const normalised = name.toLowerCase().replace(/[_\s]+/g, '-');
-				if (!knownSlugs.has(normalised) && !knownSlugs.has(name)) {
-					newRepos.push({ name, path: fullPath, normalised });
-				}
-				// Don't recurse into git repos
-			} else {
-				scanForGitRepos(fullPath, depth + 1);
-			}
-		}
-	}
-
-	scanForGitRepos(codeRoot);
-
-	const filteredNew = newRepos.filter(
-		(r) => !excludedRepoNames.has(r.name) && !excludedRepoNames.has(r.normalised)
-	);
+	const filteredNew = scanForNewRepos({
+		scanRoot: config.scanRoot,
+		scanDepth: config.scanDepth,
+		knownSlugs,
+		excludedRepoNames
+	});
 
 	// ---------------------------------------------------------------------------
 	// Graduation detection (Phase 6 staging pipeline).
@@ -2729,6 +2752,94 @@ function runReport({ result, manifest, palette, json, full, useGum }) {
 		}
 		console.log();
 	}
+}
+
+// ---------------------------------------------------------------------------
+// New: report newly-discovered repos under scanRoot without the full
+// drift/conflict report.
+//
+// Write-isolation: writes nothing. Read-only, same as `drift authored`.
+//
+// Needs manifest.sources (for knownSlugs) but not computeDrift's git scan,
+// so it dispatches alongside hide/promote/enrich rather than in the
+// post-scan switch. Shares scanForNewRepos (5DR.30) with computeDrift's own
+// "new repos" report section, so the two surfaces can never disagree.
+// ---------------------------------------------------------------------------
+
+/**
+ * Renders the `drift new` view as markdown (gum path).
+ *
+ * @param {{ name: string, path: string, normalised: string }[]} filteredNew
+ * @returns {string}
+ */
+function renderNewMarkdown(filteredNew) {
+	const lines = [];
+	if (filteredNew.length > 0) {
+		lines.push(`# New repos not yet in portfolio (${filteredNew.length})`);
+		lines.push('');
+		for (const r of filteredNew) {
+			lines.push(`- \`${r.name}\` · ${r.path}`);
+		}
+	} else {
+		lines.push(`No new repos found under \`${config.scanRoot}\`.`);
+	}
+	return lines.join('\n');
+}
+
+/**
+ * Plain ANSI fallback for the `drift new` view.
+ *
+ * @param {{ name: string, path: string, normalised: string }[]} filteredNew
+ * @param {object} palette
+ */
+function runNewPlain(filteredNew, palette) {
+	const { RESET, BOLD, GREEN, CYAN, DIM } = palette;
+	if (filteredNew.length > 0) {
+		console.log(`${GREEN}${BOLD}New repos not yet in portfolio (${filteredNew.length}):${RESET}`);
+		for (const r of filteredNew) {
+			console.log(`  ${CYAN}${r.name}${RESET}  ${DIM}${r.path}${RESET}`);
+		}
+		console.log();
+	} else {
+		console.log(`${DIM}No new repos found under ${config.scanRoot}.${RESET}`);
+	}
+}
+
+/**
+ * drift new: filtered view of newly-discovered repos under scanRoot,
+ * without the full drift/conflict report. Mirrors runAuthored's structure:
+ * --json first, then gum markdown, then plain ANSI.
+ *
+ * @param {{ manifest: object, palette: object, json: boolean, useGum: boolean }} options
+ */
+function runNew({ manifest, palette, json, useGum }) {
+	const { excludedRepoNames } = loadExcluded();
+	const knownSlugs = new Set(Object.keys(manifest.sources ?? {}));
+	const filteredNew = scanForNewRepos({
+		scanRoot: config.scanRoot,
+		scanDepth: config.scanDepth,
+		knownSlugs,
+		excludedRepoNames
+	});
+
+	if (json) {
+		process.stdout.write(JSON.stringify({ filteredNew }, null, 2) + '\n');
+		return;
+	}
+
+	if (useGum && process.stdout.isTTY) {
+		const md = renderNewMarkdown(filteredNew);
+		const out = spawnSync('gum', ['format', '--theme', config.theme.markdownTheme], {
+			input: md,
+			encoding: 'utf8'
+		});
+		if (out.status === 0 && out.stdout) {
+			process.stdout.write('\n' + out.stdout + '\n');
+			return;
+		}
+	}
+
+	runNewPlain(filteredNew, palette);
 }
 
 // ---------------------------------------------------------------------------
@@ -6754,6 +6865,7 @@ Compare synced fingerprints against current git state and surface new repos.
 - \`drift authored [<slug>] [--json] [--no-color]\`
 - \`drift sync [<slug>...] [--dry-run]\`
 - \`drift enrich [<slug>...] [--dry-run]\`
+- \`drift new [--json]\`
 - \`drift keep <slug> <field>\`
 - \`drift keep --all-projects <field>\`
 - \`drift keep-all\`
@@ -6776,6 +6888,7 @@ Compare synced fingerprints against current git state and surface new repos.
 - \`authored\` · show every authored field for every overlay, absent fields marked
 - \`sync\` · rewrite sources.json with current fingerprints
 - \`enrich\` · opt-in, gh-backed: fetch GitHub's archived flag and homepage URL into sources.json's enriched section (requires \`gh\`)
+- \`new\` · report newly-discovered repos under scanRoot without the full drift/conflict report; writes nothing
 - \`keep\` · keep your manual override value, refreshing its synced baseline to dismiss the flag
 - \`keep-all\` · refresh every flagged override baseline at once
 - \`hide\` · append a slug to excluded.json, removing it from the public site
@@ -6859,6 +6972,20 @@ drift enrich
 drift enrich <slug>             # scope to one repo
 drift enrich <slug> <slug2>     # scope to several repos
 drift enrich --dry-run          # preview only, writes nothing
+\`\`\``,
+
+	new: `# drift new · newly-discovered repos under scanRoot
+
+Reports git repos found under \`scanRoot\` that are not yet tracked in
+sources.json, without the full drift/conflict report. Read-only: writes
+nothing. Shares its scan with \`drift report\`'s own "new repos" section,
+so the two can never disagree.
+
+## Usage
+
+\`\`\`
+drift new
+drift new --json
 \`\`\``,
 
 	keep: `# drift keep · dismiss override-drift flags
@@ -7264,6 +7391,7 @@ ${BOLD}Usage:${RESET}
   drift authored [<slug>] [--json] [--no-color]
   drift sync [<slug>...] [--dry-run]
   drift enrich [<slug>...] [--dry-run]
+  drift new [--json]
   drift keep <slug> <field>
   drift keep --all-projects <field>
   drift keep-all
@@ -7285,6 +7413,7 @@ ${BOLD}Verbs:${RESET}
   authored    Show every authored field for every overlay, absent fields marked.
   sync        Rewrite sources.json with current fingerprints.
   enrich      Opt-in, gh-backed: fetch GitHub's archived flag and homepage URL (requires gh).
+  new         Report newly-discovered repos under scanRoot. Writes nothing.
   keep        Keep your manual override value, refreshing its baseline to dismiss the flag.
   keep-all    Refresh every flagged override baseline at once.
   hide        Append a slug to excluded.json, removing it from the public site.
@@ -7339,6 +7468,17 @@ preview without writing. In an interactive terminal with gum, drift asks
 for confirmation before writing.${RESET}
 
   Usage: drift enrich [<slug>...] [--dry-run]`,
+
+		new: `${BOLD}drift new${RESET} - newly-discovered repos under scanRoot
+
+Reports git repos found under scanRoot that are not yet tracked in
+sources.json, without the full drift/conflict report. Read-only: writes
+nothing.
+
+${DIM}Shares its scan with drift report's own "new repos" section, so the two
+can never disagree.${RESET}
+
+  Usage: drift new [--json]`,
 
 		keep: `${BOLD}drift keep <slug> <field>${RESET} - dismiss one override-drift flag
 
@@ -7770,7 +7910,8 @@ async function runInteractiveMenu({ manifests, palette, useGum, onProgress, clea
 				],
 				['Snapshot', 'Every current metric value, changed fields highlighted', 'snapshot'],
 				['Authored', 'Every authored field per overlay, absent fields marked', 'authored'],
-				['Audit', 'Score every authored overlay against the depth rubric', 'audit']
+				['Audit', 'Score every authored overlay against the depth rubric', 'audit'],
+				['New repos', 'Newly-discovered repos under scanRoot, writes nothing', 'new']
 			]
 		},
 		{
@@ -7918,6 +8059,9 @@ async function runInteractiveMenu({ manifests, palette, useGum, onProgress, clea
 				break;
 			case 'authored':
 				await runAuthored({ args: [], palette, useGum, json: false });
+				break;
+			case 'new':
+				runNew({ manifest: manifests.manifest, palette, json: false, useGum });
 				break;
 			case 'sync':
 				runUpdate({
@@ -8635,6 +8779,7 @@ async function main() {
 		'hide',
 		'promote',
 		'enrich',
+		'new',
 		'author',
 		'flag',
 		'relate',
@@ -8736,10 +8881,11 @@ async function main() {
 		return;
 	}
 
-	// hide/promote/enrich do not need a drift scan; run them immediately and
-	// return. enrich needs the manifest (for urlRepo) but not computeDrift's
-	// git scan, so it dispatches here rather than in the pre-manifest tier
-	// above with init/author/etc.
+	// hide/promote/enrich/new do not need a drift scan; run them immediately
+	// and return. enrich needs the manifest (for urlRepo) but not
+	// computeDrift's git scan, so it dispatches here rather than in the
+	// pre-manifest tier above with init/author/etc. new needs the manifest
+	// (for knownSlugs) for the same reason (5DR.30) — it writes nothing.
 	if (verb === 'hide') {
 		runExclude({ args, manifest: manifests.manifest, palette });
 		return;
@@ -8750,6 +8896,10 @@ async function main() {
 	}
 	if (verb === 'enrich') {
 		await runEnrich({ manifest: manifests.manifest, args, values, palette, useGum });
+		return;
+	}
+	if (verb === 'new') {
+		runNew({ manifest: manifests.manifest, palette, json: values.json, useGum });
 		return;
 	}
 
