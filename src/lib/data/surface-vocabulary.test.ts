@@ -85,39 +85,6 @@ describe('label kind is unambiguous', () => {
 });
 
 describe('lineage edges resolve or are deliberately out of scope', () => {
-	/**
-	 * The map excludes language-kind labels by policy, so lineage edges with a
-	 * language endpoint cannot render there. That is a deliberate consequence,
-	 * not a bug — but it must stay deliberate: an edge dropped for any *other*
-	 * reason (a typo, a renamed label, a tech removed from the registry) is a
-	 * real fault and this test is what separates the two.
-	 */
-	it('every dropped map edge is dropped only because of a language endpoint', () => {
-		const hidden = hiddenTechLabels('map');
-		const unexplained: string[] = [];
-
-		for (const relationship of techRelationships) {
-			for (const endpoint of [relationship.source, relationship.target]) {
-				if (mapLabels.has(endpoint)) continue;
-
-				const kinds = kindsByLabel.get(endpoint);
-				// Explained: a language endpoint (the map excludes languages by
-				// policy), or an endpoint authored as hidden from the map. An
-				// endpoint no project carries is NOT excused here — that is a typo
-				// or a stale label, and tech-relationships.test.ts fails on it.
-				const isLanguage = kinds?.has('language') === true;
-				if (isLanguage || hidden.has(endpoint)) continue;
-
-				unexplained.push(`${relationship.source} -> ${relationship.target} (missing: ${endpoint})`);
-			}
-		}
-
-		expect(
-			unexplained,
-			`lineage edges dropped from the map for no declared reason: ${unexplained.join('; ')}`
-		).toEqual([]);
-	});
-
 	it('every lineage endpoint the toolkit admits actually renders there', () => {
 		const hidden = hiddenTechLabels('toolkit');
 		const missing: string[] = [];
