@@ -97,6 +97,8 @@ The site is live and substantially built: full routes, the graph/timeline/map/to
   - Note: Finding F6 of the property census (docs/design/property-census.md), now FIXED. All three were measured by check-drift.js on every sync and persisted for all 33 repos, but nothing in src/ read them. Added to SyncedMetricKey and the withSyncedMetrics gate; ProjectMetrics picked them up via the Pick derived from F4's fix, no second declaration needed. Deliberately data-layer only: these are visualisation inputs (the timeline's rail currently renders regardless of how work was distributed across a project's span), not a MetricsPanel row: the active/total ratio is confounded by project age, so a displayed percentage was rejected in favour of raw counts reaching Project.metrics for chart consumers to draw honestly (span as an axis, not a score). Presentation work is a follow-up task.
 - [x] **5DR.26** — drift init doesn't scaffold author.botPattern, so a fresh config silently inherits Jason's personal AI-agent bot pattern as the default _(depends on 5DR.3, 5DR.13)_
   - Note: Fixed. drift init now scaffolds author.botPattern with a generic default (\[bot\]|github-actions), narrowed from Jason's personal AI-agent identity pattern in DEFAULTS (scripts/drift-config.js). A comment in the scaffolded config shows how to extend it with AI-agent identities. Design decision: empty string was ruled out (an empty botPattern silently zeroes commitsHuman/authorsDistinctHuman via an always-failing PCRE negative lookahead, verified against this repo's own history). DEFAULTS was narrowed to match (breaking change, v8.0.0) since Jason's own drift.config.ts sets botPattern explicitly and is unaffected.
+- [ ] **5DR.30** — drift CLI: filtered "new repos only" verb (e.g. `drift new` or `--new-only`) that reports newly-discovered repos under scanRoot without the full drift/conflict report
+  - Note: New-repo discovery already exists inside the default `drift report`/`--check` path (check-drift.js:2068-2105, 2193, 3190, 7263); this exposes that subset as its own filtered output rather than building discovery from scratch.
 
 ---
 
@@ -236,6 +238,7 @@ graph LR
 	5DR.24["5DR.24: Audit the Project property surface: no…"]
 	5DR.25["5DR.25: Surface the intra-span activity metrics…"]
 	5DR.26["5DR.26: drift init doesn't scaffold author.botP…"]
+	5DR.30["5DR.30: drift CLI: filtered #quot;new repos only#quot; ve…"]
 	M5["M5: Drift Decoupling: Engine & Verbs"]:::mile
 	1CO.5["1CO.5: Expand the Colophon into the drift-engin…"]
 	M1["M1: Content Depth & Polish"]:::mile
@@ -352,6 +355,7 @@ graph LR
 	5DR.25 --> M5
 	5DR.25 --> 5DR.27
 	5DR.26 --> M5
+	5DR.30 --> M5
 	M5 --> 1CO.5
 	M5 -.-> 10EX.1
 	M5 --> 5DR.29
@@ -391,7 +395,7 @@ graph LR
 	10EX.6 --> M10
 	M10 --> 5DR.29
 	5DR.29 --> M9
-	class 10EX.1,4QU.4,4QU.5,5DR.23,5DR.27,5DR.28,7DR.1 todo
+	class 10EX.1,4QU.4,4QU.5,5DR.23,5DR.27,5DR.28,5DR.30,7DR.1 todo
 	class 10EX.2,10EX.3,10EX.4,10EX.5,10EX.6,4QU.1,4QU.3,4QU.7,5DR.29,7DR.2,7DR.3,7DR.4,7DR.5,7DR.6,7DR.7,7DR.8,8DE.1 blocked
 	class 1CO.1,1CO.10,1CO.2,1CO.3,1CO.4,1CO.5,1CO.6,1CO.7,1CO.8,1CO.9,2FE.1,2FE.2,2FE.3,2FE.4,2FE.5,2FE.6,2FE.7,2FE.8,3DE.0,3DE.1,3DE.2,3DE.3,3DE.4,3DE.5,3DE.6,4QU.8,5DR.0,5DR.1,5DR.10,5DR.11,5DR.12,5DR.13,5DR.14,5DR.15,5DR.16,5DR.17,5DR.18,5DR.19,5DR.2,5DR.20,5DR.21,5DR.22,5DR.24,5DR.25,5DR.26,5DR.3,5DR.4,5DR.5,5DR.6,5DR.7,5DR.8,5DR.9 done
 ```
