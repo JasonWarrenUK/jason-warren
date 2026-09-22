@@ -278,21 +278,21 @@ in this repo and is **false**. Four verbs write overlay files, derived here
 from each verb's own `Write-isolation` declaration in `check-drift.js`
 (`grep -n "Write-isolation" scripts/check-drift.js` to re-verify):
 
-| Verb                            | Writes                                 | Behaviour                                              |
-| ------------------------------- | -------------------------------------- | ------------------------------------------------------ |
-| `drift sync`                    | `sources.json` `sources` section only  | Never touches an overlay, never touches `enriched`     |
-| `drift enrich`                  | `sources.json` `enriched` section only | Opt-in, `gh`-backed (5DR.22); never touches `sources`  |
-| `drift keep` / `keep-all`       | `overrides.json` only                  | Never touches an overlay                               |
-| `drift hide`                    | `excluded.json` only                   | Never touches an overlay                               |
-| `drift promote`                 | `in-progress.json` only                | Never touches an overlay                               |
-| `drift author`                  | `projects/<slug>.ts`, create-if-absent | Never overwrites an existing file                      |
-| `drift flag`                    | `projects/<slug>.ts`                   | TS-compiler splice: inserts or flips `pin`/`hide` only |
-| `drift tag`                     | `projects/<slug>.ts`                   | Splices `tags` / `suppressTags` only                   |
-| `drift relate project`          | `projects/<slug>.ts`                   | Appends to `relationships` only                        |
-| `drift tech`                    | `tech-overlays.ts` only                | Splices one entry                                      |
-| `drift theme`                   | `themes.ts` only                       | Splices membership                                     |
-| `drift relate tech`             | `tech-relationships.ts` only           | Appends an edge                                        |
-| `drift audit`, `drift authored` | nothing                                | Read-only                                              |
+| Verb                                         | Writes                                 | Behaviour                                              |
+| -------------------------------------------- | -------------------------------------- | ------------------------------------------------------ |
+| `drift sync`                                 | `sources.json` `sources` section only  | Never touches an overlay, never touches `enriched`     |
+| `drift enrich`                               | `sources.json` `enriched` section only | Opt-in, `gh`-backed (5DR.22); never touches `sources`  |
+| `drift keep` / `keep-all`                    | `overrides.json` only                  | Never touches an overlay                               |
+| `drift hide`                                 | `excluded.json` only                   | Never touches an overlay                               |
+| `drift promote`                              | `in-progress.json` only                | Never touches an overlay                               |
+| `drift author`                               | `projects/<slug>.ts`, create-if-absent | Never overwrites an existing file                      |
+| `drift flag`                                 | `projects/<slug>.ts`                   | TS-compiler splice: inserts or flips `pin`/`hide` only |
+| `drift tag`                                  | `projects/<slug>.ts`                   | Splices `tags` / `suppressTags` only                   |
+| `drift relate project`                       | `projects/<slug>.ts`                   | Appends to `relationships` only                        |
+| `drift tech`                                 | `tech-overlays.ts` only                | Splices one entry                                      |
+| `drift theme`                                | `themes.ts` only                       | Splices membership                                     |
+| `drift relate tech`                          | `tech-relationships.ts` only           | Appends an edge                                        |
+| `drift audit`, `drift authored`, `drift new` | nothing                                | Read-only (5DR.30 for `new`)                           |
 
 The accurate summary: **no verb ever rewrites your editorial content.** The
 splicing verbs insert or flip named properties precisely, using the
