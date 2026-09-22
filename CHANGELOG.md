@@ -6,6 +6,16 @@ All notable changes to this project are documented here. Format follows [Keep a 
 
 ## [Unreleased]
 
+## [8.2.1] - 2026-09-22
+
+### Added
+
+- Drift consumer documentation suite under `docs/drift/`: what Drift touches in a host repo and what it leaves alone, a CLI reference with the config resolution order, the data contracts it reads and writes, framework integration and a build guide. The root README is recentred on Drift adopters as the suite's entry point.
+
+### Changed
+
+- Project data refreshed from a full `drift sync`: code-arcana now reports Svelte 5, and commit, line and activity metrics across every tracked repo reflect current history.
+
 ## [8.2.0] - 2026-09-17
 
 ### Added
@@ -45,6 +55,10 @@ All notable changes to this project are documented here. Format follows [Keep a 
 
 - Graph edges are no longer dropped in a way that fragments the map into disconnected islands. The per-node edge cap now bridges back any cluster it would otherwise sever, so shared-tech, theme, and technology-landscape views stay one connected graph instead of splitting into isolated groups.
 
-[Unreleased]: https://github.com/JasonWarrenUK/jason-warren/compare/v7.2.1...HEAD
+[Unreleased]: https://github.com/JasonWarrenUK/jason-warren/compare/v8.2.1...HEAD
+[8.2.1]: https://github.com/JasonWarrenUK/jason-warren/compare/v8.2.0...v8.2.1
+[8.2.0]: https://github.com/JasonWarrenUK/jason-warren/compare/v8.1.0...v8.2.0
+[8.1.0]: https://github.com/JasonWarrenUK/jason-warren/compare/v8.0.0...v8.1.0
+[8.0.0]: https://github.com/JasonWarrenUK/jason-warren/compare/v7.2.1...v8.0.0
 [7.2.1]: https://github.com/JasonWarrenUK/jason-warren/compare/v7.2.0...v7.2.1
 [7.2.0]: https://github.com/JasonWarrenUK/jason-warren/compare/v7.1.0...v7.2.0
