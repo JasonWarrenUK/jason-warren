@@ -32,6 +32,7 @@ export const techOverlays: TechOverlay[] = [
 	{ label: 'Express', firstUsed: '2022-11-15' },
 	{ label: 'Tailwind CSS v4', firstUsed: '2025-01-15' },
 	{ label: 'Oak', firstUsed: '2025-07-15' },
+	{ label: 'Svelte 4', firstUsed: '2024-11-01' },
 	{ label: 'Tailwind CSS', hiddenFrom: ['toolkit', 'map', 'stack', 'relate'] },
 	{ label: '.NET', hiddenFrom: ['toolkit', 'map', 'stack', 'relate'] },
 	{ label: 'C', hiddenFrom: ['toolkit', 'map', 'stack', 'relate'] },
