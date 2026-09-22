@@ -185,6 +185,7 @@ British English throughout, tabs for indentation, Conventional Commits. See [`CL
 
 ### Documentation
 
+- [`docs/drift/`](./docs/drift/README.md): the consumer-facing Drift suite — CLI vs Framework, the coupling ledger, data contracts, the Framework API and a feature-parity build guide
 - [`docs/drift-boundary.md`](./docs/drift-boundary.md): the engine/integration contract
 - [`docs/drift-authoring.md`](./docs/drift-authoring.md): per-field authoring guide, where overrides live
 - [`docs/drift-engine-reference.md`](./docs/drift-engine-reference.md): config reference, data model, metric-precedence lifecycle
