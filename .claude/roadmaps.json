@@ -472,6 +472,22 @@
 						"status": "todo",
 						"dependsOn": [],
 						"notes": "New-repo discovery already exists inside the default `drift report`/`--check` path (check-drift.js:2068-2105, 2193, 3190, 7263); this exposes that subset as its own filtered output rather than building discovery from scratch."
+					},
+					{
+						"id": "5DR.31",
+						"description": "Adoption history is append-only in the engine: drift sync keeps a detectedTechFirstSeen entry for an identity that leaves detection and records lastSeen, so a major migration retires the old identity instead of erasing it",
+						"status": "todo",
+						"dependsOn": [],
+						"notes": "code-arcana's Svelte 4 to 5 migration in the 2026-09-17 sync dropped svelte-4 from detectedFramework and from detectedTechFirstSeen (sources.json, code-arcana), leaving no synced record it was ever used, even though check-drift.js:811 dates that exact migration with a per-major regex pickaxe. detectedTechFirstSeen is already skipped by the drift comparison (DRIFT_SKIP_FIELDS, check-drift.js:247), so a ratchet there adds no drift noise. Shape: keep the firstSeen date, add lastSeen (the commit that removed the identity, from the same pickaxe run in reverse, or the sync date as a fallback) and extend sources.schema.json (5DR.5) to match. Present-tense fields (detectedFramework et al.) stay as they are; only the history object ratchets."
+					},
+					{
+						"id": "5DR.32",
+						"description": "Tech universe for lineage and the timeline is present tags plus retired history: tech overlays may declare labels no project carries, with firstUsed and lastUsed; the timeline renders retired tech with an end date; the lineage tests removed in 780a817 return against the union",
+						"status": "blocked",
+						"dependsOn": [
+							"5DR.31"
+						],
+						"notes": "Lineage edges are statements about history (replaced-by Svelte 4 to Svelte 5, tech-relationships.ts:87), yet tech-relationships.test.ts validated every endpoint against the tags projects carry today, so the edge became invalid the moment the migration it describes happened. Three tests were removed in 780a817 rather than left red: every source and target is a real tag label, every edge resolves on at least one surface, and surface-vocabulary's dropped-map-edge check. Reinstate them against the union of present tags, ratcheted history (5DR.31) and overlay-declared historical labels, with a retired endpoint as a second legitimate reason for a map edge to drop. Present-tense surfaces (toolkit, stack, constellation) keep reading project tags only; hiddenFrom already exists for keeping a label off them. The Svelte 4 firstUsed floor (tech-overlays.ts:35, 2024-11-01) predates every synced date and becomes the first overlay to gain a lastUsed."
 					}
 				]
 			},
@@ -522,7 +538,7 @@
 							"5DR.6",
 							"5DR.24"
 						],
-						"notes": "Provenance is currently spread across sources.json, overrides.json, the project overlay and defaults.ts. One resolver so the detail views and the existing redundancy tests read the same answer."
+						"notes": "Provenance is currently spread across sources.json, overrides.json, the project overlay and defaults.ts. One resolver so the detail views and the redundancy report (7DR.11) read the same answer; the redundancy tests that used to live in data.test.ts were removed in 780a817 because they asserted content state and went red on every sync."
 					},
 					{
 						"id": "7DR.2",
@@ -610,6 +626,15 @@
 							"5DR.23"
 						],
 						"notes": "Two policy switches the lifecycle work makes meaningful. publishOnSync defaults to true (today's behaviour: every non-excluded manifest slug is on the site, index.ts:313); false turns drift approve (11LC.11) into a publication gate by filtering the registry to approved-or-authored slugs, which is why this waits on the approve verb. hideArchived reads the enriched section's archived flag (5DR.22) and waits on 5DR.23, which decides how archived reaches the site's retired axis; the switch chooses between shading (retired) and removal (hidden). First decision of the task: drift.config.ts is gitignored and per-machine (.gitignore:30), so a policy that changes what the site renders cannot live there or the Vercel build would silently fall back to the default. Policy needs a committed home both the CLI and index.ts read (a drift.policy.json beside sources.json, or a policy section in an existing committed data file), distinct from machine config."
+					},
+					{
+						"id": "7DR.11",
+						"description": "Redundancy report: surface authored values that match the current inference (track, contribution.role) as a drift report warning with a one-step delete, replacing the test-suite assertion",
+						"status": "blocked",
+						"dependsOn": [
+							"7DR.1"
+						],
+						"notes": "Two assertions in data.test.ts (removed in 780a817) failed CI whenever a sync moved inferTrack or the role heuristic onto an authored value; three repos crossing the product line-count threshold did exactly that. Agreement between an authored value and a heuristic is content state, not a code invariant, so it belongs in report output: cogni.track = product matches the inference, delete to render as provisional or keep to pin it. 7DR.1's resolver is what answers agrees or disagrees per field, so this waits on it; the resolver's own tests cover the logic against fixtures rather than the live manifest. Keep the rationale the tests carried: trackAuthored drives the dotted-provisional convention, so a redundant authored value silently upgrades a guess into a claim."
 					}
 				]
 			},

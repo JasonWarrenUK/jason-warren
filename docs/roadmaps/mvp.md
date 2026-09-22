@@ -98,6 +98,10 @@ The site is live and substantially built: full routes, the graph/timeline/map/to
 - [x] **5DR.26** — drift init doesn't scaffold author.botPattern, so a fresh config silently inherits Jason's personal AI-agent bot pattern as the default _(depends on 5DR.3, 5DR.13)_
   - Note: Fixed. drift init now scaffolds author.botPattern with a generic default (\[bot\]|github-actions), narrowed from Jason's personal AI-agent identity pattern in DEFAULTS (scripts/drift-config.js). A comment in the scaffolded config shows how to extend it with AI-agent identities. Design decision: empty string was ruled out (an empty botPattern silently zeroes commitsHuman/authorsDistinctHuman via an always-failing PCRE negative lookahead, verified against this repo's own history). DEFAULTS was narrowed to match (breaking change, v8.0.0) since Jason's own drift.config.ts sets botPattern explicitly and is unaffected.
 - [ ] **5DR.30** — drift CLI: filtered "new repos only" verb (e.g. `drift new` or `--new-only`) that reports newly-discovered repos under scanRoot without the full drift/conflict report
+- [ ] **5DR.31**: Adoption history is append-only in the engine: drift sync keeps a detectedTechFirstSeen entry for an identity that leaves detection and records lastSeen, so a major migration retires the old identity instead of erasing it
+  - Note: code-arcana's Svelte 4 to 5 migration in the 2026-09-17 sync dropped svelte-4 from detectedFramework and from detectedTechFirstSeen (sources.json, code-arcana), leaving no synced record it was ever used, even though check-drift.js:811 dates that exact migration with a per-major regex pickaxe. detectedTechFirstSeen is already skipped by the drift comparison (DRIFT_SKIP_FIELDS, check-drift.js:247), so a ratchet there adds no drift noise. Shape: keep the firstSeen date, add lastSeen (the commit that removed the identity, from the same pickaxe run in reverse, or the sync date as a fallback) and extend sources.schema.json (5DR.5) to match. Present-tense fields (detectedFramework et al.) stay as they are; only the history object ratchets.
+- [ ] **5DR.32**: Tech universe for lineage and the timeline is present tags plus retired history: tech overlays may declare labels no project carries, with firstUsed and lastUsed; the timeline renders retired tech with an end date; the lineage tests removed in 780a817 return against the union _(blocked: depends on 5DR.31)_
+  - Note: Lineage edges are statements about history (replaced-by Svelte 4 to Svelte 5, tech-relationships.ts:87), yet tech-relationships.test.ts validated every endpoint against the tags projects carry today, so the edge became invalid the moment the migration it describes happened. Three tests were removed in 780a817 rather than left red: every source and target is a real tag label, every edge resolves on at least one surface, and surface-vocabulary's dropped-map-edge check. Reinstate them against the union of present tags, ratcheted history (5DR.31) and overlay-declared historical labels, with a retired endpoint as a second legitimate reason for a map edge to drop. Present-tense surfaces (toolkit, stack, constellation) keep reading project tags only; hiddenFrom already exists for keeping a label off them. The Svelte 4 firstUsed floor (tech-overlays.ts:35, 2024-11-01) predates every synced date and becomes the first overlay to gain a lastUsed.
   - Note: New-repo discovery already exists inside the default `drift report`/`--check` path (check-drift.js:2068-2105, 2193, 3190, 7263); this exposes that subset as its own filtered output rather than building discovery from scratch.
 
 ---
@@ -117,7 +121,7 @@ The site is live and substantially built: full routes, the graph/timeline/map/to
 **Goal:** A drift portfolio's entire data state can be seen, controlled and manipulated through the drift CLI menu.
 
 - [ ] **7DR.1** — Per-field provenance resolver: value, origin (synced / inferred / authored / overridden), and the inference an authored value agrees or disagrees with _(depends on 5DR.6, 5DR.24)_
-  - Note: Provenance is currently spread across sources.json, overrides.json, the project overlay and defaults.ts. One resolver so the detail views and the existing redundancy tests read the same answer.
+  - Note: Provenance is currently spread across sources.json, overrides.json, the project overlay and defaults.ts. One resolver so the detail views and the redundancy report (7DR.11) read the same answer; the redundancy tests that used to live in data.test.ts were removed in 780a817 because they asserted content state and went red on every sync.
 - [ ] **7DR.2** — Project detail view: every field for one project on a single screen, each with its provenance _(blocked: depends on 7DR.1, 11LC.7)_
 - [ ] **7DR.3** — Tech, tag and theme detail views on the same pattern as the project view _(blocked — depends on 7DR.1)_
 - [ ] **7DR.4** — Act in context: invoke the relevant verbs from a detail view without re-picking the target _(blocked: depends on 7DR.2, 7DR.3, 10EX.1, 11LC.8)_
@@ -132,6 +136,8 @@ The site is live and substantially built: full routes, the graph/timeline/map/to
   - Note: Resolution order is DRIFT_CONFIG env, then <repoRoot>/drift.config.ts, then DEFAULTS in scripts/drift-config.js (docs/drift/02-cli.md, Configuration); nothing today prints the merged result, so a user cannot tell which layer a value came from. Writing a key uses the TypeScript-compiler splice the overlay verbs already use (the config is a .ts module), the route 11LC.6 takes for excludedRepoNames; a committed policy key (7DR.10) is a JSON write instead. Examples the user named: auto-publication and whether archived repos are hidden, both of which 7DR.10 introduces, which is why this waits on it rather than shipping with only paths and the gum theme to show.
 - [ ] **7DR.10**: Policy defaults with a committed home: publishOnSync (when false the registry admits only approved or authored slugs) and hideArchived (an enriched archived flag removes the repo from the site), each with a documented default _(blocked: depends on 11LC.11, 5DR.23)_
   - Note: Two policy switches the lifecycle work makes meaningful. publishOnSync defaults to true (today's behaviour: every non-excluded manifest slug is on the site, index.ts:313); false turns drift approve (11LC.11) into a publication gate by filtering the registry to approved-or-authored slugs, which is why this waits on the approve verb. hideArchived reads the enriched section's archived flag (5DR.22) and waits on 5DR.23, which decides how archived reaches the site's retired axis; the switch chooses between shading (retired) and removal (hidden). First decision of the task: drift.config.ts is gitignored and per-machine (.gitignore:30), so a policy that changes what the site renders cannot live there or the Vercel build would silently fall back to the default. Policy needs a committed home both the CLI and index.ts read (a drift.policy.json beside sources.json, or a policy section in an existing committed data file), distinct from machine config.
+- [ ] **7DR.11**: Redundancy report: surface authored values that match the current inference (track, contribution.role) as a drift report warning with a one-step delete, replacing the test-suite assertion _(blocked: depends on 7DR.1)_
+  - Note: Two assertions in data.test.ts (removed in 780a817) failed CI whenever a sync moved inferTrack or the role heuristic onto an authored value; three repos crossing the product line-count threshold did exactly that. Agreement between an authored value and a heuristic is content state, not a code invariant, so it belongs in report output: cogni.track = product matches the inference, delete to render as provisional or keep to pin it. 7DR.1's resolver is what answers agrees or disagrees per field, so this waits on it; the resolver's own tests cover the logic against fixtures rather than the live manifest. Keep the rationale the tests carried: trackAuthored drives the dotted-provisional convention, so a redundant authored value silently upgrades a guess into a claim.
 
 ---
 
@@ -278,6 +284,8 @@ graph LR
 	5DR.25["5DR.25: Surface the intra-span activity metrics…"]
 	5DR.26["5DR.26: drift init doesn't scaffold author.botP…"]
 	5DR.30["5DR.30: drift CLI: filtered #quot;new repos only#quot; ve…"]
+	5DR.31["5DR.31: Adoption history is append-only in the…"]
+	5DR.32["5DR.32: Tech universe for lineage and the timel…"]
 	M5["M5: Drift Decoupling: Engine & Verbs"]:::mile
 	1CO.5["1CO.5: Expand the Colophon into the drift-engin…"]
 	M1["M1: Content Depth & Polish"]:::mile
@@ -287,6 +295,7 @@ graph LR
 	M6["M6: Drift: Tests & Docs"]:::mile
 	7DR.1["7DR.1: Per-field provenance resolver: value, or…"]
 	7DR.3["7DR.3: Tech, tag and theme detail views on the…"]
+	7DR.11["7DR.11: Redundancy report: surface authored val…"]
 	8DE.1["8DE.1: Spike: investigate enhancements to the p…"]
 	5DR.23["5DR.23: Derive the site's retired and deployed…"]
 	5DR.27["5DR.27: Use the intra-span activity metrics in…"]
@@ -415,6 +424,8 @@ graph LR
 	5DR.26 --> M5
 	5DR.30 --> M5
 	5DR.30 -.-> 11LC.4
+	5DR.31 --> 5DR.32
+	5DR.32 --> M5
 	M5 --> 1CO.5
 	M5 -.-> 10EX.1
 	M5 --> 5DR.29
@@ -425,10 +436,12 @@ graph LR
 	5DR.10 --> M6
 	M6 --> 5DR.29
 	7DR.1 --> 7DR.3
+	7DR.1 --> 7DR.11
 	7DR.1 --> 7DR.2
 	7DR.3 --> 7DR.6
 	7DR.3 --> 7DR.7
 	7DR.3 --> 7DR.4
+	7DR.11 --> M7
 	8DE.1 --> M8
 	5DR.23 --> M8
 	5DR.23 --> 7DR.10
@@ -484,7 +497,7 @@ graph LR
 	11LC.10 --> M11
 	M11 --> 5DR.29
 	5DR.29 --> M9
-	class 10EX.1,11LC.1,11LC.14,11LC.2,11LC.7,11LC.8,4QU.4,4QU.5,5DR.23,5DR.27,5DR.28,5DR.30,7DR.1 todo
-	class 10EX.2,10EX.3,10EX.4,10EX.5,10EX.6,11LC.10,11LC.11,11LC.12,11LC.13,11LC.3,11LC.4,11LC.5,11LC.6,11LC.9,4QU.1,4QU.3,4QU.7,5DR.29,7DR.10,7DR.2,7DR.3,7DR.4,7DR.5,7DR.6,7DR.7,7DR.8,7DR.9,8DE.1 blocked
+	class 10EX.1,11LC.1,11LC.14,11LC.2,11LC.7,11LC.8,4QU.4,4QU.5,5DR.23,5DR.27,5DR.28,5DR.30,5DR.31,7DR.1 todo
+	class 10EX.2,10EX.3,10EX.4,10EX.5,10EX.6,11LC.10,11LC.11,11LC.12,11LC.13,11LC.3,11LC.4,11LC.5,11LC.6,11LC.9,4QU.1,4QU.3,4QU.7,5DR.29,5DR.32,7DR.10,7DR.11,7DR.2,7DR.3,7DR.4,7DR.5,7DR.6,7DR.7,7DR.8,7DR.9,8DE.1 blocked
 	class 1CO.1,1CO.10,1CO.2,1CO.3,1CO.4,1CO.5,1CO.6,1CO.7,1CO.8,1CO.9,2FE.1,2FE.2,2FE.3,2FE.4,2FE.5,2FE.6,2FE.7,2FE.8,3DE.0,3DE.1,3DE.2,3DE.3,3DE.4,3DE.5,3DE.6,4QU.8,5DR.0,5DR.1,5DR.10,5DR.11,5DR.12,5DR.13,5DR.14,5DR.15,5DR.16,5DR.17,5DR.18,5DR.19,5DR.2,5DR.20,5DR.21,5DR.22,5DR.24,5DR.25,5DR.26,5DR.3,5DR.4,5DR.5,5DR.6,5DR.7,5DR.8,5DR.9 done
 ```
