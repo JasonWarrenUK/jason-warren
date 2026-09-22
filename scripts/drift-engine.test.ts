@@ -427,7 +427,8 @@ describe('fingerprint field constants match the schema', () => {
 		'commitsAny',
 		'commitsMe',
 		'detectedLanguages',
-		'detectedTechFirstSeen'
+		'detectedTechFirstSeen',
+		'detectedTechLastSeen'
 	];
 
 	it('ARRAY_FINGERPRINT_FIELDS matches the schema array properties exactly', () => {

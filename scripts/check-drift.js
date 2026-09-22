@@ -240,11 +240,14 @@ const ARRAY_FINGERPRINT_FIELDS = new Set(
 // Fields excluded from drift comparison even though they live in the schema
 // and persist in sources.json. These are metadata / provenance fields; their
 // changes are surfaced via advisory report sections, not as field drift.
-// detectedTechFirstSeen is an object: the scalar `was !== now` comparison used for
-// non-array fields is always true for object identity, which would flag it
-// as drifted on every single sync. It is still fully persisted and written —
-// only excluded from the drift *report*, same treatment as measuredRef.
-const DRIFT_SKIP_FIELDS = new Set(['measuredRef', 'detectedTechFirstSeen']);
+// detectedTechFirstSeen and detectedTechLastSeen (5DR.31) are objects: the
+// scalar `was !== now` comparison used for non-array fields is always true
+// for object identity, which would flag them as drifted on every single
+// sync. Both are still fully persisted and written — only excluded from the
+// drift *report*, same treatment as measuredRef. This exclusion is report-only:
+// mergeFingerprint (the write-time merge) does not consult DRIFT_SKIP_FIELDS,
+// so the adoption-history ratchet below stays fully in effect.
+const DRIFT_SKIP_FIELDS = new Set(['measuredRef', 'detectedTechFirstSeen', 'detectedTechLastSeen']);
 
 // EXTENSION_LANGUAGE is imported from scripts/tag-taxonomy.js above.
 // That module is the single source of truth shared between the CLI and the app.

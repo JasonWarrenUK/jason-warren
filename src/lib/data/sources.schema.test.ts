@@ -116,4 +116,19 @@ describe('sources.json schema conformance', () => {
 			.map(([slug]) => slug);
 		expect(offenders, `Empty githubHomepageUrl stored for: ${offenders.join(', ')}`).toEqual([]);
 	});
+
+	// 5DR.31: detectedTechLastSeen is a sibling of detectedTechFirstSeen, not
+	// a replacement. checkRecord above has no 'object' branch (neither does
+	// validateRecord in check-drift.js), so a value shape mismatch inside
+	// either map would pass silently — out of scope to fix that validator
+	// gap here, but the field's presence in the schema is worth pinning so
+	// #86 (schema field set matches the live manifest) stays a meaningful
+	// completeness check rather than one that has quietly stopped covering
+	// history fields.
+	it('schema declares detectedTechFirstSeen and detectedTechLastSeen as objects', () => {
+		expect(allowedFields.has('detectedTechFirstSeen')).toBe(true);
+		expect(allowedFields.has('detectedTechLastSeen')).toBe(true);
+		expect(sourceProps.detectedTechFirstSeen.type).toBe('object');
+		expect(sourceProps.detectedTechLastSeen.type).toBe('object');
+	});
 });
