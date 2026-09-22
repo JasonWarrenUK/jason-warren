@@ -1,10 +1,16 @@
 ---
-name: verify
-description: Launch and drive this SvelteKit app to verify a change end-to-end
+name: 'Verify: Portfolio'
+description: 'Launch and drive the SvelteKit portfolio site end-to-end: dev server, routes, screenshots, console noise'
+when_to_use: 'When a change touches the portfolio site (src/, routes, components) and needs verifying in a real running browser, not just type-checked or unit-tested. Not for the Drift CLI engine — see verify-cli.'
+model: sonnet
+effort: low
 disable-model-invocation: true
 ---
 
-# Verifying changes in this app
+# Verifying changes in the portfolio site
+
+For the Drift CLI engine (`scripts/check-drift.js`), use `verify-cli` instead.
+For both surfaces in one pass, use `verify-all`.
 
 ## Launch
 
@@ -54,16 +60,19 @@ authentication.
   knows about (e.g. `<g>` with pointer handlers needing an ARIA role) that
   won't show up as a runtime error — cheap to run after any markup change,
   but it is not a substitute for actually looking at the rendered page.
-- `bun test <path>` for the drift CLI (`scripts/check-drift.js`) — it's a
-  subprocess-driven test suite (spawns the real CLI against temp fixture
-  dirs), which is itself a form of runtime verification for that surface;
-  see `scripts/check-drift.test.ts`'s `makeOverlaySandbox`/`runVerbInSandbox`
-  helpers for the pattern if verifying a new `drift` verb by hand in a
-  scratch directory (`DRIFT_CONFIG=<path-to-drift.config.mjs> bun run
-scripts/check-drift.js <verb> ...`).
+- `bun run lint` (`prettier --check .`) checks the whole repo, not just your
+  diff — run it before opening a PR even if your files pass a scoped check.
+- Verifying the Drift CLI itself (not this app) is a separate surface — see
+  `verify-cli`.
 
 ## Cleanup
 
-Kill the dev server (`pkill -f "vite dev"` or the backgrounded PID) and
-delete any screenshot/`.playwright-mcp/` artefacts written into the repo
-root when done — they're scratch output, not part of the project.
+Kill the dev server (`pkill -f "vite dev"` or the backgrounded PID).
+
+The Playwright MCP screenshot tool writes into the repo despite naming
+`.playwright-mcp/` as an allowed root in its error message: a bare filename
+(e.g. `page.png`) lands at **repo root**, not inside `.playwright-mcp/`.
+Writing to an absolute path outside the repo (e.g. the scratchpad) is
+rejected outright. Check both the repo root and `.playwright-mcp/` for
+stray screenshots and delete them when done — they're scratch output, not
+part of the project.
