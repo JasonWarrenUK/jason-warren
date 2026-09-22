@@ -2906,23 +2906,35 @@ function parseOwnerRepo(urlRepo) {
  * Fetches isArchived/homepageUrl for one owner/repo via `gh repo view`.
  * Never throws: a resolution failure (deleted, renamed, private, gh not
  * authenticated) is reported back as { error } so one bad repo cannot sink
- * a whole enrich run.
+ * a whole enrich run. Async via execFileAsync (5DR.28) so the enrich pool
+ * below can run several of these concurrently rather than blocking the
+ * event loop per repo.
  *
  * @param {string} ownerRepo
- * @returns {{ isArchived: boolean, homepageUrl: string } | { error: string }}
+ * @returns {Promise<{ isArchived: boolean, homepageUrl: string } | { error: string }>}
  */
-function fetchGhRepoView(ownerRepo) {
-	const out = spawnSync('gh', ['repo', 'view', ownerRepo, '--json', 'isArchived,homepageUrl'], {
-		encoding: 'utf8'
-	});
-	if (out.status !== 0) {
-		return { error: (out.stderr || out.stdout || 'unknown gh error').trim() };
-	}
+async function fetchGhRepoView(ownerRepo) {
 	try {
-		const parsed = JSON.parse(out.stdout);
+		const { stdout } = await execFileAsync('gh', [
+			'repo',
+			'view',
+			ownerRepo,
+			'--json',
+			'isArchived,homepageUrl'
+		]);
+		const parsed = JSON.parse(stdout);
 		return { isArchived: !!parsed.isArchived, homepageUrl: parsed.homepageUrl ?? '' };
-	} catch (err) {
-		return { error: `could not parse gh output: ${err.message}` };
+	} catch (error) {
+		if (error instanceof SyntaxError) {
+			return { error: `could not parse gh output: ${error.message}` };
+		}
+		const message = (
+			error.stderr?.toString() ||
+			error.stdout?.toString() ||
+			error.message ||
+			''
+		).trim();
+		return { error: message || 'unknown gh error' };
 	}
 }
 
@@ -2955,7 +2967,7 @@ function buildEnrichedRecord(ghResult, today) {
  *
  * @param {{ manifest: object, args: string[], values: object, palette: object, useGum: boolean }} options
  */
-function runEnrich({ manifest, args = [], values, palette, useGum }) {
+async function runEnrich({ manifest, args = [], values, palette, useGum }) {
 	const { GREEN, YELLOW, RED, RESET, DIM, BOLD } = palette;
 
 	const gh = ghPath();
@@ -3024,20 +3036,50 @@ function runEnrich({ manifest, args = [], values, palette, useGum }) {
 		if (onProgress) process.stderr.write('\r' + ' '.repeat(60) + '\r');
 	};
 
-	// Fetches every resolved repo, reporting progress as it goes. Shared by the
-	// dry-run preview and the real write so the gum gate (below) can sit before
-	// this cost on the write path without duplicating the loop.
-	const fetchAllWithProgress = () => {
-		const fetched = resolvable.map(({ slug, ownerRepo }, index) => {
-			onProgress?.({ index: index + 1, total: resolvable.length, slug });
-			return { slug, ownerRepo, ghResult: fetchGhRepoView(ownerRepo) };
-		});
+	// Fetches every resolved repo through a bounded-concurrency pool, reporting
+	// progress as it goes. Shared by the dry-run preview and the real write so
+	// the gum gate (below) can sit before this cost on the write path without
+	// duplicating the loop.
+	//
+	// Bounded-concurrency worker pool (5DR.28), the same shared-cursor shape
+	// computeDrift uses for its own git fan-out, but sized from
+	// config.enrichConcurrency (fixed, network-appropriate) rather than cpu
+	// count, since this pool crosses the network and a large concurrent burst
+	// risks GitHub's secondary rate limits. Results are collected index-keyed
+	// so ordering matches `resolvable` regardless of which worker finishes
+	// first; progress is a completion counter, not the loop index, for the
+	// same reason. fetchGhRepoView never throws, but the try/catch keeps one
+	// unexpected failure from taking down its sibling workers.
+	const fetchAllWithProgress = async () => {
+		const total = resolvable.length;
+		const fetched = new Array(total);
+		let completed = 0;
+		let cursor = 0;
+		const concurrency = Math.max(1, Math.min(config.enrichConcurrency, total));
+
+		async function worker() {
+			while (cursor < total) {
+				const i = cursor++;
+				const { slug, ownerRepo } = resolvable[i];
+				let ghResult;
+				try {
+					ghResult = await fetchGhRepoView(ownerRepo);
+				} catch (err) {
+					ghResult = { error: err.message || 'unexpected enrich failure' };
+				}
+				fetched[i] = { slug, ownerRepo, ghResult };
+				completed++;
+				onProgress?.({ index: completed, total, slug });
+			}
+		}
+
+		await Promise.all(Array.from({ length: concurrency }, worker));
 		clearProgress();
 		return fetched;
 	};
 
 	if (values['dry-run']) {
-		const results = fetchAllWithProgress();
+		const results = await fetchAllWithProgress();
 		console.log(
 			`${DIM}Dry run — showing what ${results.length} repo${results.length === 1 ? '' : 's'} would change. Nothing will be written.${RESET}\n`
 		);
@@ -3073,7 +3115,7 @@ function runEnrich({ manifest, args = [], values, palette, useGum }) {
 		}
 	}
 
-	const results = fetchAllWithProgress();
+	const results = await fetchAllWithProgress();
 	console.log("Enriching sources.json's enriched section from GitHub...");
 	manifest.enriched = manifest.enriched ?? {};
 	let errorCount = 0;
@@ -7888,7 +7930,7 @@ async function runInteractiveMenu({ manifests, palette, useGum, onProgress, clea
 				});
 				break;
 			case 'enrich':
-				runEnrich({
+				await runEnrich({
 					manifest: manifests.manifest,
 					args: [],
 					values: { json: false, 'dry-run': false },
@@ -8707,7 +8749,7 @@ async function main() {
 		return;
 	}
 	if (verb === 'enrich') {
-		runEnrich({ manifest: manifests.manifest, args, values, palette, useGum });
+		await runEnrich({ manifest: manifests.manifest, args, values, palette, useGum });
 		return;
 	}
 

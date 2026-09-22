@@ -55,6 +55,15 @@ const DEFAULTS = {
 	/** Maximum directory depth for the git-repo scan. */
 	scanDepth: 3,
 
+	/**
+	 * Bounded-concurrency pool size for `drift enrich`'s `gh repo view` fan-out.
+	 * Deliberately fixed and small rather than cpu-count-scaled (unlike
+	 * computeDrift's local git pool): this pool crosses the network, and
+	 * GitHub answers a large concurrent burst with secondary rate limits.
+	 * See 5DR.28.
+	 */
+	enrichConcurrency: 4,
+
 	author: {
 		/**
 		 * Extended-regexp alternation over the author's git identities.
@@ -182,6 +191,7 @@ function buildConfig(user) {
 		paths,
 		scanRoot: merged.scanRoot,
 		scanDepth: merged.scanDepth,
+		enrichConcurrency: merged.enrichConcurrency,
 		author: merged.author,
 		excludedRepoNames: merged.excludedRepoNames,
 		theme: merged.theme
@@ -261,6 +271,7 @@ export async function loadConfig() {
  * @property {Record<string,string>} [files] - Per-file path overrides (logical name → path). Logical names: sources, topology, local, overrides, excluded, cache, projects, inProgress.
  * @property {string} [scanRoot] - Root directory scanned for un-tracked git repos. Default: ~/Code.
  * @property {number} [scanDepth] - Maximum recursion depth for the scan. Default: 3.
+ * @property {number} [enrichConcurrency] - Bounded-concurrency pool size for `drift enrich`'s gh fan-out. Default: 4.
  * @property {DriftAuthorConfig} [author] - Git author identity config.
  * @property {string[]} [excludedRepoNames] - Folder names excluded from the scan (paired to scanRoot).
  * @property {DriftThemeConfig} [theme] - gum UI theme config.
@@ -274,6 +285,7 @@ export async function loadConfig() {
  * @property {{ sources: string, topology: string, local: string, overrides: string, excluded: string, cache: string, projects: string, inProgress: string }} paths - Absolute paths to each data file/directory.
  * @property {string} scanRoot - Absolute root for the git-repo scan.
  * @property {number} scanDepth - Maximum scan depth.
+ * @property {number} enrichConcurrency - Bounded-concurrency pool size for drift enrich.
  * @property {Required<DriftAuthorConfig>} author - Resolved author config.
  * @property {string[]} excludedRepoNames - Repo folder names to exclude from the scan.
  * @property {Required<DriftThemeConfig>} theme - Resolved theme config.

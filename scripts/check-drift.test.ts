@@ -3363,6 +3363,25 @@ function seedUrlRepo(dir: string, slug: string, urlRepo: string): void {
 }
 
 /**
+ * Seeds several additional tracked slugs onto the sandbox's sources.json,
+ * each with only a urlRepo (5DR.28's enrich pool never reads git state, so
+ * these need no real repo on disk, unlike makeSyncSandbox's original slug).
+ * Used to exercise the enrich pool at N > 1: makeSyncSandbox's single-slug
+ * fixture cannot distinguish sequential from concurrent behaviour.
+ *
+ * @param {string} dir - sandbox dataDir (as returned by makeSyncSandbox)
+ * @param {Record<string, string>} slugsToUrlRepo - slug -> urlRepo
+ */
+function seedExtraSlugs(dir: string, slugsToUrlRepo: Record<string, string>): void {
+	const sourcesPath = join(dir, 'sources.json');
+	const parsed = JSON.parse(readFileSync(sourcesPath, 'utf8'));
+	for (const [slug, urlRepo] of Object.entries(slugsToUrlRepo)) {
+		parsed.sources[slug] = { ...parsed.sources[slug], urlRepo };
+	}
+	writeFileSync(sourcesPath, JSON.stringify(parsed, null, '\t'));
+}
+
+/**
  * Writes a fake `gh` executable into `binDir` and returns a PATH string with
  * `binDir` prepended, so `which gh` and `spawnSync('gh', ...)` both resolve
  * to the fake rather than (or absence of) the real GitHub CLI.
@@ -3615,5 +3634,70 @@ describe('drift enrich', () => {
 		const result = runEnrichWithConfig(dir, ['not-a-tracked-slug'], ghPath);
 		expect(result.status, result.stderr).toBe(0);
 		expect(result.stdout).toMatch(/not a tracked source/i);
+	});
+
+	// 5DR.28: the pool below runs several repos concurrently. makeSyncSandbox's
+	// single-slug fixture (all ten cases above) cannot distinguish sequential
+	// from concurrent behaviour, so these two seed extra slugs to exercise the
+	// pool at N > 1.
+	it("concurrent pool: every scoped slug resolves to its own repo, not a neighbour's", () => {
+		seedExtraSlugs(dir, {
+			'enrich-test-repo-b': 'https://github.com/JasonWarrenUK/enrich-test-repo-b',
+			'enrich-test-repo-c': 'https://github.com/JasonWarrenUK/enrich-test-repo-c',
+			'enrich-test-repo-d': 'https://github.com/JasonWarrenUK/enrich-test-repo-d'
+		});
+		const ghPath = makeFakeGh(dir, {
+			repos: {
+				'JasonWarrenUK/enrich-test-repo': { isArchived: false, homepageUrl: 'https://a.example' },
+				'JasonWarrenUK/enrich-test-repo-b': { isArchived: true, homepageUrl: 'https://b.example' },
+				'JasonWarrenUK/enrich-test-repo-c': { isArchived: false, homepageUrl: 'https://c.example' },
+				'JasonWarrenUK/enrich-test-repo-d': { isArchived: true, homepageUrl: 'https://d.example' }
+			}
+		});
+
+		const result = runEnrichWithConfig(dir, [], ghPath);
+		expect(result.status, result.stderr).toBe(0);
+
+		const enriched = JSON.parse(readFileSync(join(dir, 'sources.json'), 'utf8')).enriched;
+		expect(enriched[slug]).toMatchObject({
+			githubArchived: false,
+			githubHomepageUrl: 'https://a.example'
+		});
+		expect(enriched['enrich-test-repo-b']).toMatchObject({
+			githubArchived: true,
+			githubHomepageUrl: 'https://b.example'
+		});
+		expect(enriched['enrich-test-repo-c']).toMatchObject({
+			githubArchived: false,
+			githubHomepageUrl: 'https://c.example'
+		});
+		expect(enriched['enrich-test-repo-d']).toMatchObject({
+			githubArchived: true,
+			githubHomepageUrl: 'https://d.example'
+		});
+	});
+
+	it('concurrent pool: a mid-list unresolvable repo still leaves its siblings enriched', () => {
+		seedExtraSlugs(dir, {
+			'enrich-test-repo-b': 'https://github.com/JasonWarrenUK/enrich-test-repo-b',
+			'enrich-test-repo-c': 'https://github.com/JasonWarrenUK/enrich-test-repo-c'
+		});
+		// enrich-test-repo-b is absent from the fake gh's table, so it resolves
+		// to the "unresolvable" branch while its siblings succeed.
+		const ghPath = makeFakeGh(dir, {
+			repos: {
+				'JasonWarrenUK/enrich-test-repo': { isArchived: false, homepageUrl: '' },
+				'JasonWarrenUK/enrich-test-repo-c': { isArchived: false, homepageUrl: '' }
+			}
+		});
+
+		const result = runEnrichWithConfig(dir, [], ghPath);
+		expect(result.status, result.stderr).toBe(0);
+
+		const enriched = JSON.parse(readFileSync(join(dir, 'sources.json'), 'utf8')).enriched;
+		expect(enriched[slug]).not.toHaveProperty('enrichError');
+		expect(enriched['enrich-test-repo-b'].enrichError).toMatch(/could not resolve/i);
+		expect(enriched['enrich-test-repo-c']).not.toHaveProperty('enrichError');
+		expect(result.stdout).toMatch(/2 resolved, 1 failed/);
 	});
 });
