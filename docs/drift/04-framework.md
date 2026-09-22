@@ -143,7 +143,11 @@ the policy point for surface visibility:
 
 ## Site-level helpers
 
-Framework-free, unit-tested, safe anywhere:
+Framework-free, unit-tested, safe anywhere. These are the non-component
+`$lib/` modules the reference site's routes and components actually import;
+copy them alongside `src/lib/data/` (Phase 0 in
+[`05-build-guide.md`](./05-build-guide.md#phase-0-repo-setup)) or reauthor
+their equivalents, since roster rows depend on them:
 
 - `url-state.ts`: canonical filter-state URL codecs. `parseSet` /
   `serialiseSet` (sorted, comma-joined, `null` means delete the param);
@@ -151,9 +155,33 @@ Framework-free, unit-tested, safe anywhere:
   cannot corrupt a neighbour); `encodeTechLabel` / `decodeTechLabel`
   (single-label deep link, validated against the labels actually present:
   a stale link must never dim a chart against nothing).
-- `audience.ts`: the home-page audience switch. `Audience` is
-  `'developer' | 'everyone'`, persisted under `AUDIENCE_STORAGE_KEY`
-  (`home-audience`), parsed defensively back to `DEFAULT_AUDIENCE`.
+- `selection.ts`: pure cross-view selection helpers built on `url-state.ts`.
+  `validatePin(raw, isKnown)` guards a `?project=`-style param the same way
+  `decodeTechLabel` guards `?tech=`: a stale or unknown value resolves to
+  `null` rather than pinning nothing visibly-wrong. `nextPinValue(current,
+clicked)` gives click-to-toggle semantics (clicking the pinned value
+  clears it). Underpins the map, timeline and toolkit's shared
+  pin-and-highlight interaction.
+- `url-write.ts`: `writeParam(key, value)`, the one place a URL param is
+  actually written. Uses `replaceState` (selection changes don't clutter
+  history) and preserves focus for keyboard users. Browser-only: never call
+  it during SSR or prerender.
+- `format-date.ts`: `formatMonthYear(iso)` renders an ISO date as
+  "June 2020". Deliberately a hardcoded month table rather than
+  `Intl.DateTimeFormat`, whose ICU data can disagree between the
+  prerendering Node runtime and the browser; string slicing keeps
+  server and client output byte-identical. Throws on a malformed ISO
+  string rather than rendering nonsense.
+- `audience.ts`: the pattern for a persisted, validated view preference.
+  A value is typed as a closed union, written to `localStorage` under a
+  named key on change, and parsed back defensively so an absent, cleared or
+  hand-edited stored value falls back to a stated default rather than
+  crashing or rendering blank. The reference site's `Audience` type
+  (`'developer' | 'everyone'`, under `AUDIENCE_STORAGE_KEY`,
+  `'home-audience'`) is one instance of this pattern for its own
+  developer/plain-English home page; a different audience taxonomy, or no
+  audience switch at all, is exactly the kind of divergence the parity
+  roster expects.
 
 ## Import constraints
 

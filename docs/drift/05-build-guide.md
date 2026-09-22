@@ -15,6 +15,7 @@
 - [Phase 3: authoring](#phase-3-authoring)
 - [Phase 4: surfaces](#phase-4-surfaces)
 - [The feature-parity roster](#the-feature-parity-roster)
+- [Roster completeness](#roster-completeness)
 - [Verification](#verification)
 
 ---
@@ -38,7 +39,12 @@
    Drift repo, preserving the relative path between them: the Framework
    imports `scripts/tag-taxonomy.js` by relative path
    ([`01-entanglement.md`](./01-entanglement.md#shared-boundary-code)).
-3. Copy `src/lib/url-state.ts` and `src/lib/audience.ts`.
+3. Copy the non-data `$lib/` helpers the roster depends on:
+   `url-state.ts`, `selection.ts`, `url-write.ts`, `format-date.ts` and
+   `og/card.ts` (feeds the OG-cards row); `audience.ts` only if you want
+   the audience-switch pattern; `code/highlight.ts` only if you build a
+   Drift deep-dive page. Full descriptions:
+   [`04-framework.md`](./04-framework.md#site-level-helpers).
 4. Empty the editorial content: `projects/` overlays, the arrays in
    `themes.ts`, `tech-overlays.ts`, `tech-relationships.ts`, and the
    slug data inside the JSON files. Keep the shapes and schemas.
@@ -179,14 +185,14 @@ is the acceptance test.
 
 ### Toolkit
 
-| Feature         | Data                                   | Behaviour                                                                                                                                   |
-| --------------- | -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| Adoption chart  | `getTechAdoption`                      | One dot per technology at the earlier of authored floor and derived first-seen date; weight = project count; `toolkit`-hidden labels absent |
-| Lineage rails   | `techRelationships`                    | `leads-to` / `replaced-by` routed forward-only through crossing-minimised lanes                                                             |
-| Provenance      | `dateSource`, `firstCommitProvisional` | Curated-floor dates distinguishable from repo-derived ones; a provisional-dates notice when the manifest says so                            |
-| Cross-highlight | `getThemes`                            | Selecting a territory highlights its members' technologies                                                                                  |
-| Deep link       | `encodeTechLabel` / `decodeTechLabel`  | `?tech=` pins one technology; a stale or unknown label pins nothing rather than dimming the chart                                           |
-| Tech detail     | `techOverlays.note`                    | Authored one-sentence note per technology on demand                                                                                         |
+| Feature         | Data                                                  | Behaviour                                                                                                                                   |
+| --------------- | ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| Adoption chart  | `getTechAdoption`                                     | One dot per technology at the earlier of authored floor and derived first-seen date; weight = project count; `toolkit`-hidden labels absent |
+| Lineage rails   | `techRelationships`                                   | `leads-to` / `replaced-by` routed forward-only through crossing-minimised lanes                                                             |
+| Provenance      | `dateSource`, `firstCommitProvisional`                | Curated-floor dates distinguishable from repo-derived ones; a provisional-dates notice when the manifest says so                            |
+| Cross-highlight | `getThemes`                                           | Selecting a territory highlights its members' technologies                                                                                  |
+| Deep link       | `encodeTechLabel` / `decodeTechLabel`, `selection.ts` | `?tech=` pins one technology; a stale or unknown label pins nothing rather than dimming the chart                                           |
+| Tech detail     | `techOverlays.note`                                   | Authored one-sentence note per technology on demand                                                                                         |
 
 ### Narrative pages
 
@@ -195,6 +201,36 @@ obligation. A Drift deep-dive page (the reference site's `/drift-engine`)
 is optional; if built, highlight snippets at build time and pull the
 manifest excerpt live from `sources.json` so the example can never go
 stale.
+
+## Roster completeness
+
+The roster claims to be complete; here is the check that backs the claim
+rather than asking you to trust it. Every file under `src/routes` and
+`src/lib/components` resolves to exactly one roster row above, or to a
+named exclusion below. Nothing is unaccounted for.
+
+**Resolves to a roster row:** every `+page.svelte`/`+page.ts`/`+server.ts`
+under `src/routes`, plus the component that renders each row's behaviour
+(`ProjectMap.svelte` for the map rows, `TimelineChart.svelte` for the
+timeline rows, `AdoptionTimeline.svelte` for the toolkit rows, and so on).
+Two components can implement one row: `RelatedProjects.svelte` and
+`NeighbourhoodGraph.svelte` are both the **Neighbourhood** row, a
+container plus the graph it renders, not two separate behaviours.
+
+**Not a parity behaviour** (generic UI chrome with no data dependency;
+build these to your own taste, or not at all):
+`FlipCard.svelte`, `ScrollStage.svelte`, `SelectionModal.svelte`,
+`ExternalLink.svelte`, `ThemeToggle.svelte` implements the site-wide
+**Theme** row and belongs there, not on this list.
+
+**Covered by a parent row, no separate row needed:** `TechTagList.svelte`,
+`RoleBadge.svelte`, `StageBadge.svelte` render fields already named in the
+row that owns their parent (project index Cards/Stage badges/Role badge,
+project detail Case study).
+
+If you add a route or component while rebuilding and it doesn't land in
+either list, the roster has a gap: file it as a correction rather than
+assuming the behaviour is optional.
 
 ## Verification
 

@@ -40,12 +40,13 @@ Each JSON file has a schema beside it; `sources.schema.json` (in
 
 ## sources.json
 
-Top-level shape:
+Top-level shape (`lastSyncedAt` shown here as of the last `drift sync`; it
+moves on every sync, so treat the value itself as illustrative):
 
 ```json
 {
 	"firstCommitProvisional": false,
-	"lastSyncedAt": "2026-08-26",
+	"lastSyncedAt": "2026-09-21",
 	"sources": { "<slug>": { "…": "SyncedSource" } },
 	"enriched": { "<slug>": { "…": "EnrichedSource" } }
 }
