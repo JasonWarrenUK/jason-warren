@@ -1,10 +1,10 @@
-# Jason Warren, portfolio
+# Drift Suite
 
-The source for [jason-warren.vercel.app](https://jason-warren.vercel.app): a developer portfolio where the code itself is part of the exhibit. Built with SvelteKit 2, Svelte 5 (runes) and TypeScript in strict mode.
+Drift keeps portfolio data honest. The suite is three things: a CLI engine that fingerprints the git repos behind every project, a SvelteKit framework layer that turns those fingerprints into typed data a site can render and a reference consumer, [jason-warren.vercel.app](https://jason-warren.vercel.app), Jason Warren's portfolio, where the code itself is part of the exhibit. Built with SvelteKit 2, Svelte 5 (runes) and TypeScript in strict mode.
 
 The site is fully prerendered and ships a no-JavaScript content baseline. Every interactive view (the project map, the timeline, the toolkit) renders as static SVG first; JavaScript only enhances it.
 
-Two things live in this repo: the **portfolio site**, and **Drift**, the CLI engine that keeps its data honest by fingerprinting the git repos behind every project.
+Adopting Drift rather than reading about it? Start at [`docs/drift/`](./docs/drift/README.md): the consumer-facing suite covering the CLI, the Framework, their current entanglement and a feature-parity build guide.
 
 ## Contents
 
