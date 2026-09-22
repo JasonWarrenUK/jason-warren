@@ -3082,6 +3082,82 @@ describe('drift sync', () => {
 		// (which only ever had svelte 4).
 		expect(parsed.sources[slug].commitAnyRoot).toBe('2022-01-01');
 		expect(parsed.sources[slug].detectedTechFirstSeen['svelte-5']).toBe('2025-05-01');
+		// svelte-4 is absent from this sync's live detection (the working
+		// tree is now on svelte 5), but this first-ever sync has no prior
+		// saved entry to ratchet against, so nothing has "left detection"
+		// yet from the engine's point of view — svelte-4 was never recorded
+		// as present in the first place. That is the exact bug 5DR.31 fixes:
+		// a second sync is what proves the ratchet, below.
+		expect(parsed.sources[slug].detectedTechFirstSeen['svelte-4']).toBeUndefined();
+	});
+
+	it('adoption-history ratchet (5DR.31): a second sync after a migration keeps the retired identity with a lastSeen date', () => {
+		// First sync: repo starts on svelte 4, exactly as code-arcana did.
+		const repoPath = join(dir, 'repo');
+		rmSync(join(repoPath, '.git'), { recursive: true, force: true });
+		const v4Env = {
+			...makeGitEnv(),
+			GIT_AUTHOR_DATE: '2022-01-01T00:00:00+00:00',
+			GIT_COMMITTER_DATE: '2022-01-01T00:00:00+00:00'
+		};
+		spawnSync('git', ['init', '-b', 'main'], { cwd: repoPath, env: v4Env, encoding: 'utf8' });
+		spawnSync('git', ['config', 'user.email', 'test@example.com'], {
+			cwd: repoPath,
+			env: v4Env,
+			encoding: 'utf8'
+		});
+		spawnSync('git', ['config', 'user.name', 'Test'], {
+			cwd: repoPath,
+			env: v4Env,
+			encoding: 'utf8'
+		});
+		writeFileSync(
+			join(repoPath, 'package.json'),
+			JSON.stringify({ devDependencies: { svelte: '^4.2.0' } })
+		);
+		spawnSync('git', ['add', '-A'], { cwd: repoPath, env: v4Env, encoding: 'utf8' });
+		spawnSync('git', ['commit', '-m', 'init on svelte 4', '--no-gpg-sign'], {
+			cwd: repoPath,
+			env: v4Env,
+			encoding: 'utf8'
+		});
+
+		const firstSync = runSyncWithConfig(dir, []);
+		expect(firstSync.status, firstSync.stderr).toBe(0);
+		const afterFirst = JSON.parse(readFileSync(join(dir, 'sources.json'), 'utf8'));
+		expect(afterFirst.sources[slug].detectedTechFirstSeen['svelte-4']).toBe('2022-01-01');
+		expect(afterFirst.sources[slug].detectedTechLastSeen).toBeUndefined();
+
+		// Second sync, after the Svelte 5 migration commit: svelte-4 leaves
+		// live detection entirely. Before 5DR.31, this is exactly where it
+		// silently vanished from detectedTechFirstSeen.
+		const v5Env = {
+			...makeGitEnv(),
+			GIT_AUTHOR_DATE: '2025-05-01T00:00:00+00:00',
+			GIT_COMMITTER_DATE: '2025-05-01T00:00:00+00:00'
+		};
+		writeFileSync(
+			join(repoPath, 'package.json'),
+			JSON.stringify({ devDependencies: { svelte: '^5.45.6' } })
+		);
+		spawnSync('git', ['add', '-A'], { cwd: repoPath, env: v5Env, encoding: 'utf8' });
+		spawnSync('git', ['commit', '-m', 'migrate to svelte 5', '--no-gpg-sign'], {
+			cwd: repoPath,
+			env: v5Env,
+			encoding: 'utf8'
+		});
+
+		const secondSync = runSyncWithConfig(dir, []);
+		expect(secondSync.status, secondSync.stderr).toBe(0);
+		const afterSecond = JSON.parse(readFileSync(join(dir, 'sources.json'), 'utf8'));
+		const entry = afterSecond.sources[slug];
+
+		// svelte-4 survives in detectedTechFirstSeen (still dated to its real
+		// introduction) and now carries a detectedTechLastSeen, rather than
+		// disappearing the way it did for code-arcana's real sources.json.
+		expect(entry.detectedTechFirstSeen['svelte-4']).toBe('2022-01-01');
+		expect(entry.detectedTechFirstSeen['svelte-5']).toBe('2025-05-01');
+		expect(entry.detectedTechLastSeen['svelte-4']).toMatch(/^\d{4}-\d{2}-\d{2}$/);
 	});
 
 	it('monorepo: takes the earliest date across workspaces for the same identity', () => {

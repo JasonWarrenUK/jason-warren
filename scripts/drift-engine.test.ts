@@ -350,6 +350,72 @@ describe('mergeFingerprint', () => {
 		expect(changedFields).toHaveLength(1);
 		expect(changedFields[0].field).toBe('commitsAny');
 	});
+
+	// 5DR.31: adoption-history ratchet. Without this, an identity absent from
+	// current.detectedTechFirstSeen simply vanishes from merged — the bug that
+	// dropped code-arcana's svelte-4 on its Svelte 5 migration.
+	describe('adoption-history ratchet (5DR.31)', () => {
+		it('retires an identity absent from current, recording detectedTechLastSeen', () => {
+			const saved = { detectedTechFirstSeen: { 'svelte-4': '2022-01-01' } };
+			const current = { detectedTechFirstSeen: { 'svelte-5': '2025-05-01' } };
+			const { merged } = mergeFingerprint(saved, current, '2025-05-01');
+			expect(merged.detectedTechFirstSeen).toEqual({
+				'svelte-4': '2022-01-01',
+				'svelte-5': '2025-05-01'
+			});
+			expect(merged.detectedTechLastSeen).toEqual({ 'svelte-4': '2025-05-01' });
+		});
+
+		it('does not re-date an identity already retired', () => {
+			const saved = {
+				detectedTechFirstSeen: { 'svelte-4': '2022-01-01' },
+				detectedTechLastSeen: { 'svelte-4': '2025-05-01' }
+			};
+			const current = { detectedTechFirstSeen: { 'svelte-5': '2025-05-01' } };
+			const { merged } = mergeFingerprint(saved, current, '2025-06-01');
+			// The first sync to notice the absence dates it; a later sync must
+			// not overwrite that date even though it runs the ratchet again.
+			expect(merged.detectedTechLastSeen).toEqual({ 'svelte-4': '2025-05-01' });
+		});
+
+		it('resurrection: an identity that returns to detection clears its lastSeen', () => {
+			const saved = {
+				detectedTechFirstSeen: { 'svelte-4': '2022-01-01' },
+				detectedTechLastSeen: { 'svelte-4': '2025-05-01' }
+			};
+			const current = { detectedTechFirstSeen: { 'svelte-4': '2022-01-01' } };
+			const { merged } = mergeFingerprint(saved, current, '2025-08-01');
+			expect(merged.detectedTechFirstSeen).toEqual({ 'svelte-4': '2022-01-01' });
+			expect(merged.detectedTechLastSeen).toBeUndefined();
+		});
+
+		it('retires nothing when current has no detectedTechFirstSeen key at all', () => {
+			// A failed or empty history walk must not read as "every tracked
+			// identity retired" — the one genuinely destructive failure mode.
+			const saved = { detectedTechFirstSeen: { 'svelte-4': '2022-01-01', bun: '2023-01-01' } };
+			const current = { commitsAny: 5 };
+			const { merged } = mergeFingerprint(saved, current, '2025-05-01');
+			expect(merged.detectedTechFirstSeen).toEqual(saved.detectedTechFirstSeen);
+			expect(merged.detectedTechLastSeen).toBeUndefined();
+		});
+
+		it('pushes a synthetic changedFields entry when a retirement fires, since detectedTechLastSeen is never a key of current', () => {
+			const saved = { detectedTechFirstSeen: { 'svelte-4': '2022-01-01' } };
+			const current = { detectedTechFirstSeen: { 'svelte-5': '2025-05-01' } };
+			const { changedFields } = mergeFingerprint(saved, current, '2025-05-01');
+			const entry = changedFields.find((c) => c.field === 'detectedTechLastSeen');
+			expect(entry).toBeDefined();
+			expect(entry?.was).toBeNull();
+			expect(entry?.now).toEqual({ 'svelte-4': '2025-05-01' });
+		});
+
+		it('records no changedFields entry when nothing retires', () => {
+			const saved = { detectedTechFirstSeen: { bun: '2023-01-01' } };
+			const current = { detectedTechFirstSeen: { bun: '2023-01-01' } };
+			const { changedFields } = mergeFingerprint(saved, current, '2025-05-01');
+			expect(changedFields.find((c) => c.field === 'detectedTechLastSeen')).toBeUndefined();
+		});
+	});
 });
 
 describe('mergeCompanionFingerprints', () => {
@@ -396,6 +462,31 @@ describe('mergeCompanionFingerprints', () => {
 		const merged = mergeCompanionFingerprints(primary, [{}]);
 		expect(merged).not.toHaveProperty('detectedLanguages');
 		expect(merged).not.toHaveProperty('detectedDatabase');
+	});
+
+	// 5DR.31: previously had no detectedTechFirstSeen branch at all, so a
+	// companion's adoption-history dates were dropped outright (only the
+	// primary's own dates survived, via ...primary).
+	it('unions detectedTechFirstSeen and detectedTechLastSeen across primary and companions, earliest date wins', () => {
+		const primary = {
+			detectedTechFirstSeen: { svelte: '2023-01-01' },
+			detectedTechLastSeen: { jquery: '2024-06-01' }
+		};
+		const companions = [
+			{ detectedTechFirstSeen: { svelte: '2023-06-01', bun: '2024-01-01' } },
+			{ detectedTechLastSeen: { jquery: '2024-01-01' } }
+		];
+		const merged = mergeCompanionFingerprints(primary, companions);
+		// svelte: primary's earlier date wins over the companion's later one.
+		expect(merged.detectedTechFirstSeen).toEqual({ svelte: '2023-01-01', bun: '2024-01-01' });
+		// jquery: the companion's earlier retirement date wins over primary's.
+		expect(merged.detectedTechLastSeen).toEqual({ jquery: '2024-01-01' });
+	});
+
+	it('omits detectedTechFirstSeen/detectedTechLastSeen entirely when neither primary nor any companion has entries', () => {
+		const merged = mergeCompanionFingerprints({}, [{}]);
+		expect(merged).not.toHaveProperty('detectedTechFirstSeen');
+		expect(merged).not.toHaveProperty('detectedTechLastSeen');
 	});
 });
 

@@ -1574,6 +1574,91 @@ function diffFingerprint(saved, current) {
 }
 
 /**
+ * Today's date as ISO YYYY-MM-DD, in the local timezone's UTC-normalised form
+ * already used elsewhere in the engine (runEnrich, runUpdate). Extracted here
+ * as mergeFingerprint's default syncDate, so a caller that does not thread
+ * one through explicitly still gets today rather than an unset value.
+ *
+ * @returns {string}
+ */
+function todayISO() {
+	return new Date().toISOString().slice(0, 10);
+}
+
+/**
+ * Adoption-history ratchet (5DR.31). detectedTechFirstSeen is otherwise
+ * clobbered wholesale by mergeFingerprint's per-field loop: any identity no
+ * longer in `current`'s detection set silently disappears from `merged`,
+ * which is how code-arcana's svelte-4 vanished on its Svelte 5 migration.
+ *
+ * Mutates `merged` in place: unions saved and current detectedTechFirstSeen
+ * keys (so a retired identity keeps its firstSeen), dates a newly-retired
+ * identity's detectedTechLastSeen to `syncDate` (never overwriting an
+ * existing one, since the first sync to notice the absence is the one that
+ * dates it), and clears lastSeen for an identity that has resurfaced.
+ *
+ * Skipped entirely when `current` carries no detectedTechFirstSeen key at
+ * all: that means the history walk failed or produced nothing, not that
+ * every tracked identity retired at once. Retiring 29 identities on a
+ * transient git failure would be the one genuinely destructive outcome here.
+ *
+ * @param {Record<string, unknown>} saved
+ * @param {Record<string, unknown>} current
+ * @param {Record<string, unknown>} merged - mutated in place
+ * @param {{field: string, was: unknown, now: unknown}[]} changedFields - mutated in place
+ * @param {string} syncDate - ISO date (YYYY-MM-DD)
+ */
+function ratchetTechHistory(saved, current, merged, changedFields, syncDate) {
+	if (!('detectedTechFirstSeen' in current)) return;
+
+	const savedFirstSeen = saved.detectedTechFirstSeen ?? {};
+	const currentFirstSeen = current.detectedTechFirstSeen ?? {};
+	const savedLastSeen = saved.detectedTechLastSeen ?? {};
+
+	const mergedFirstSeen = { ...savedFirstSeen, ...currentFirstSeen };
+	const mergedLastSeen = { ...savedLastSeen };
+
+	for (const identity of Object.keys(mergedFirstSeen)) {
+		if (identity in currentFirstSeen) {
+			// Resurrection: an identity that was retired is detected again.
+			// Clear its lastSeen so the record does not claim a live tech is retired.
+			delete mergedLastSeen[identity];
+		} else if (!(identity in mergedLastSeen)) {
+			// Newly retired this sync: dated to the sync that first noticed the
+			// absence, not the commit that actually removed it (see the
+			// follow-up exact-removal-dating task).
+			mergedLastSeen[identity] = syncDate;
+		}
+	}
+
+	merged.detectedTechFirstSeen = mergedFirstSeen;
+	if (Object.keys(mergedLastSeen).length > 0) {
+		merged.detectedTechLastSeen = mergedLastSeen;
+	} else {
+		// A resurrection can empty mergedLastSeen entirely. `merged` already
+		// carries a stale detectedTechLastSeen from `{ ...saved }` at this
+		// point (mergeFingerprint's own spread, before this function runs),
+		// so the empty case must delete the key, not merely skip assigning it.
+		delete merged.detectedTechLastSeen;
+	}
+
+	// changedFields is keyed on Object.keys(current), and detectedTechLastSeen
+	// is never a key of `current` (getFingerprint does not emit it), so a
+	// retirement would otherwise produce no entry at all — silent both in the
+	// write and in `drift sync --dry-run`'s preview, which shares this
+	// function. Push a synthetic entry so a retirement is visible before write.
+	const wasLastSeen = saved.detectedTechLastSeen;
+	const nowLastSeen = merged.detectedTechLastSeen;
+	if (JSON.stringify(wasLastSeen) !== JSON.stringify(nowLastSeen)) {
+		changedFields.push({
+			field: 'detectedTechLastSeen',
+			was: wasLastSeen ?? null,
+			now: nowLastSeen ?? null
+		});
+	}
+}
+
+/**
  * Pure preview of the sync field-merge. Mirrors the real write loop exactly so
  * the dry-run preview and the actual write cannot produce different results.
  *
@@ -1584,13 +1669,17 @@ function diffFingerprint(saved, current) {
  *
  * @param {Record<string, unknown>} saved   stored fingerprint (may be {})
  * @param {Record<string, unknown>} current live fingerprint from getFingerprint
+ * @param {string} [syncDate] - ISO date (YYYY-MM-DD) used to date a newly-retired
+ *   tech identity (5DR.31). Taken as a parameter rather than read from the
+ *   clock inside this pure, unit-tested function, so tests can pin it.
+ *   Defaults to today at the call sites.
  * @returns {{
  *   merged: Record<string, unknown>,
  *   changedFields: {field: string, was: unknown, now: unknown}[],
  *   preservedFields: string[]
  * }}
  */
-function mergeFingerprint(saved, current) {
+function mergeFingerprint(saved, current, syncDate) {
 	const merged = { ...saved };
 	const preservedFields = [];
 
@@ -1619,6 +1708,8 @@ function mergeFingerprint(saved, current) {
 			if (was !== now) changedFields.push({ field, was: was ?? null, now: now ?? null });
 		}
 	}
+
+	ratchetTechHistory(saved, current, merged, changedFields, syncDate ?? todayISO());
 
 	return { merged, changedFields, preservedFields };
 }
@@ -1802,6 +1893,28 @@ function orderedUnion(...values) {
 	return [...new Set(values.flatMap((value) => value ?? []))];
 }
 
+/**
+ * Merges a per-tech date map (detectedTechFirstSeen or detectedTechLastSeen)
+ * across the primary and every companion, earliest date wins on collision.
+ * Matches dateDetectedTech's own collision rule (earliest introduction date
+ * across a monorepo's workspaces), and mergeFingerprint's ratchet rule for
+ * detectedTechLastSeen ("the first sync to notice the absence dates it").
+ *
+ * @param {Record<string, string>[]} maps
+ * @returns {Record<string, string>}
+ */
+function mergeTechDateMaps(maps) {
+	const merged = {};
+	for (const map of maps) {
+		for (const [identity, date] of Object.entries(map ?? {})) {
+			if (merged[identity] === undefined || date < merged[identity]) {
+				merged[identity] = date;
+			}
+		}
+	}
+	return merged;
+}
+
 /** Merge repository-derived stack metadata while retaining primary metrics. */
 function mergeCompanionFingerprints(primary, companions) {
 	const urlsRepoCompanion = companions
@@ -1823,6 +1936,18 @@ function mergeCompanionFingerprints(primary, companions) {
 		primary.detectedDatabase,
 		...companions.map((item) => item.detectedDatabase)
 	);
+	// 5DR.31: without this, a companion's adoption-history dates are dropped
+	// outright (this function previously had no detectedTechFirstSeen branch
+	// at all, passing everything through ...primary), lost before
+	// mergeFingerprint's ratchet ever sees them.
+	const detectedTechFirstSeen = mergeTechDateMaps([
+		primary.detectedTechFirstSeen,
+		...companions.map((item) => item.detectedTechFirstSeen)
+	]);
+	const detectedTechLastSeen = mergeTechDateMaps([
+		primary.detectedTechLastSeen,
+		...companions.map((item) => item.detectedTechLastSeen)
+	]);
 
 	return {
 		...primary,
@@ -1830,7 +1955,9 @@ function mergeCompanionFingerprints(primary, companions) {
 		...(detectedLanguages.length > 0 && { detectedLanguages }),
 		...(detectedRuntime.length > 0 && { detectedRuntime }),
 		...(detectedFramework.length > 0 && { detectedFramework }),
-		...(detectedDatabase.length > 0 && { detectedDatabase })
+		...(detectedDatabase.length > 0 && { detectedDatabase }),
+		...(Object.keys(detectedTechFirstSeen).length > 0 && { detectedTechFirstSeen }),
+		...(Object.keys(detectedTechLastSeen).length > 0 && { detectedTechLastSeen })
 	};
 }
 
@@ -2858,6 +2985,10 @@ function runNew({ manifest, palette, json, useGum }) {
 function runUpdate({ result, manifest, palette, useGum, args = [], dryRun = false }) {
 	const { fresh, missing } = result;
 	const { GREEN, YELLOW, RED, RESET, DIM } = palette;
+	// Computed once and threaded through both the dry-run preview and the
+	// real write, so a sync spanning midnight cannot date the same
+	// adoption-history retirement (5DR.31) differently in each.
+	const today = todayISO();
 
 	// Per-repo scoping: if slug args were provided, restrict to those slugs only.
 	// Unknown slugs get a soft warning (not an abort) so a typo doesn't block a batch.
@@ -2894,7 +3025,7 @@ function runUpdate({ result, manifest, palette, useGum, args = [], dryRun = fals
 		let firstCard = true;
 		for (const [slug, current] of Object.entries(scopedFresh)) {
 			const saved = manifest.sources[slug] ?? {};
-			const { changedFields, preservedFields } = mergeFingerprint(saved, current);
+			const { changedFields, preservedFields } = mergeFingerprint(saved, current, today);
 			renderDryRunCard({
 				slug,
 				current,
@@ -2929,7 +3060,7 @@ function runUpdate({ result, manifest, palette, useGum, args = [], dryRun = fals
 	console.log('Updating sources.json with current fingerprints...');
 	for (const [slug, current] of Object.entries(scopedFresh)) {
 		const saved = manifest.sources[slug] ?? {};
-		const { merged, preservedFields } = mergeFingerprint(saved, current);
+		const { merged, preservedFields } = mergeFingerprint(saved, current, today);
 		manifest.sources[slug] = merged;
 		if (preservedFields.length > 0) {
 			console.log(
@@ -2937,7 +3068,6 @@ function runUpdate({ result, manifest, palette, useGum, args = [], dryRun = fals
 			);
 		}
 	}
-	const today = new Date().toISOString().slice(0, 10);
 	manifest.lastSyncedAt = today;
 
 	// Only a full (un-scoped) update can declare all commitAnyRoot values authoritative.
