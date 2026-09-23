@@ -1895,19 +1895,30 @@ function orderedUnion(...values) {
 
 /**
  * Merges a per-tech date map (detectedTechFirstSeen or detectedTechLastSeen)
- * across the primary and every companion, earliest date wins on collision.
- * Matches dateDetectedTech's own collision rule (earliest introduction date
- * across a monorepo's workspaces), and mergeFingerprint's ratchet rule for
- * detectedTechLastSeen ("the first sync to notice the absence dates it").
+ * across the primary and every companion.
+ *
+ * The collision rule differs per map, because the two dates answer opposite
+ * questions about a monorepo's workspaces:
+ *
+ * - `earliest` for detectedTechFirstSeen: the family adopted a tech when its
+ *   first workspace did. Matches dateDetectedTech's own rule.
+ * - `latest` for detectedTechLastSeen: the family retired a tech when its
+ *   last remaining workspace did. If workspace A dropped jQuery in January
+ *   and workspace B kept it until June, the family's retirement date is June;
+ *   earliest-wins would claim January and under-report the true lifespan.
  *
  * @param {Record<string, string>[]} maps
+ * @param {'earliest' | 'latest'} collisionRule - which date wins when two
+ *   sources carry the same identity.
  * @returns {Record<string, string>}
  */
-function mergeTechDateMaps(maps) {
+function mergeTechDateMaps(maps, collisionRule) {
 	const merged = {};
 	for (const map of maps) {
 		for (const [identity, date] of Object.entries(map ?? {})) {
-			if (merged[identity] === undefined || date < merged[identity]) {
+			const held = merged[identity];
+			const wins = held === undefined || (collisionRule === 'earliest' ? date < held : date > held);
+			if (wins) {
 				merged[identity] = date;
 			}
 		}
@@ -1940,14 +1951,24 @@ function mergeCompanionFingerprints(primary, companions) {
 	// outright (this function previously had no detectedTechFirstSeen branch
 	// at all, passing everything through ...primary), lost before
 	// mergeFingerprint's ratchet ever sees them.
-	const detectedTechFirstSeen = mergeTechDateMaps([
-		primary.detectedTechFirstSeen,
-		...companions.map((item) => item.detectedTechFirstSeen)
-	]);
-	const detectedTechLastSeen = mergeTechDateMaps([
-		primary.detectedTechLastSeen,
-		...companions.map((item) => item.detectedTechLastSeen)
-	]);
+	const detectedTechFirstSeen = mergeTechDateMaps(
+		[primary.detectedTechFirstSeen, ...companions.map((item) => item.detectedTechFirstSeen)],
+		'earliest'
+	);
+	// Inert on every current code path, deliberately kept. This function runs on
+	// the `current` side, over getFingerprint outputs, and getFingerprint never
+	// emits detectedTechLastSeen: the field is produced one stage downstream, by
+	// ratchetTechHistory, from the `saved` side. So both inputs here are always
+	// undefined today and the conditional spread below always drops the result.
+	// Kept so that a future producer (an exact-removal-dating pass emitting
+	// lastSeen per workspace) finds the companion seam already correct rather
+	// than silently dropping a companion's retirement dates, which is the exact
+	// failure detectedTechFirstSeen suffered before 5DR.31. Latest-wins, per the
+	// rule documented on mergeTechDateMaps.
+	const detectedTechLastSeen = mergeTechDateMaps(
+		[primary.detectedTechLastSeen, ...companions.map((item) => item.detectedTechLastSeen)],
+		'latest'
+	);
 
 	return {
 		...primary,

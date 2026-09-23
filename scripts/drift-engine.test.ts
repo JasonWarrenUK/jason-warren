@@ -467,20 +467,43 @@ describe('mergeCompanionFingerprints', () => {
 	// 5DR.31: previously had no detectedTechFirstSeen branch at all, so a
 	// companion's adoption-history dates were dropped outright (only the
 	// primary's own dates survived, via ...primary).
-	it('unions detectedTechFirstSeen and detectedTechLastSeen across primary and companions, earliest date wins', () => {
-		const primary = {
-			detectedTechFirstSeen: { svelte: '2023-01-01' },
-			detectedTechLastSeen: { jquery: '2024-06-01' }
-		};
-		const companions = [
-			{ detectedTechFirstSeen: { svelte: '2023-06-01', bun: '2024-01-01' } },
-			{ detectedTechLastSeen: { jquery: '2024-01-01' } }
-		];
+	it('unions detectedTechFirstSeen across primary and companions, earliest date wins', () => {
+		const primary = { detectedTechFirstSeen: { svelte: '2023-01-01' } };
+		const companions = [{ detectedTechFirstSeen: { svelte: '2023-06-01', bun: '2024-01-01' } }];
 		const merged = mergeCompanionFingerprints(primary, companions);
-		// svelte: primary's earlier date wins over the companion's later one.
+		// svelte: primary's earlier date wins over the companion's later one,
+		// because the family adopted a tech when its first workspace did.
 		expect(merged.detectedTechFirstSeen).toEqual({ svelte: '2023-01-01', bun: '2024-01-01' });
-		// jquery: the companion's earlier retirement date wins over primary's.
-		expect(merged.detectedTechLastSeen).toEqual({ jquery: '2024-01-01' });
+	});
+
+	// The detectedTechLastSeen branch is inert on every current code path: this
+	// function runs over getFingerprint outputs, which never carry that field
+	// (ratchetTechHistory produces it one stage downstream, from the saved
+	// side). The inputs below are therefore a shape the live producer cannot
+	// currently emit, constructed deliberately to pin the seam's behaviour for
+	// the future producer it exists to serve. Kept rather than dropped so a
+	// companion's retirement dates are not silently discarded the way
+	// detectedTechFirstSeen's were before 5DR.31.
+	it('unions detectedTechLastSeen across primary and companions, latest date wins', () => {
+		const primary = { detectedTechLastSeen: { jquery: '2024-06-01' } };
+		const companions = [{ detectedTechLastSeen: { jquery: '2024-01-01' } }];
+		const merged = mergeCompanionFingerprints(primary, companions);
+		// jquery: the LATER date wins. A family retires a tech when its last
+		// remaining workspace does, so a workspace that dropped jQuery in
+		// January must not shorten the family's true lifespan to January when
+		// another workspace kept it until June.
+		expect(merged.detectedTechLastSeen).toEqual({ jquery: '2024-06-01' });
+	});
+
+	it('does not emit detectedTechLastSeen for getFingerprint-shaped inputs, which never carry it', () => {
+		// Guards the inertness claim above: if a future change makes
+		// getFingerprint emit lastSeen, this test is the one that should be
+		// revisited alongside the comment in mergeCompanionFingerprints.
+		const merged = mergeCompanionFingerprints({ detectedTechFirstSeen: { svelte: '2023-01-01' } }, [
+			{ detectedTechFirstSeen: { bun: '2024-01-01' } }
+		]);
+		expect(merged).not.toHaveProperty('detectedTechLastSeen');
+		expect(merged.detectedTechFirstSeen).toEqual({ svelte: '2023-01-01', bun: '2024-01-01' });
 	});
 
 	it('omits detectedTechFirstSeen/detectedTechLastSeen entirely when neither primary nor any companion has entries', () => {
