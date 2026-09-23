@@ -205,6 +205,58 @@ describe('loadConfig merge semantics', () => {
 		expect(cfg.paths.sources).toBe(join(repoRoot, 'elsewhere/sources.json'));
 	});
 
+	// drift.config.ts is hand-written and untyped at runtime, so a typo reaches
+	// the engine as NaN. Both numeric settings feed expressions where NaN fails
+	// silently and badly: enrichConcurrency spawns zero workers and enrich dies
+	// destructuring a holey array, while a NaN scanDepth makes `depth > scanDepth`
+	// permanently false and the repo walk recurses without a depth guard.
+	describe('numeric coercion at the config boundary', () => {
+		async function loadWith(body: string) {
+			const dir = makeTempDir();
+			vi.stubEnv('DRIFT_CONFIG', writeConfig(dir, `export default ${body};\n`));
+			return loadConfig();
+		}
+
+		it('falls back to the default when a numeric setting is unparseable', async () => {
+			const cfg = await loadWith(`{ scanDepth: 'three', enrichConcurrency: 'four' }`);
+			expect(cfg.scanDepth).toBe(DEFAULTS.scanDepth);
+			expect(cfg.enrichConcurrency).toBe(DEFAULTS.enrichConcurrency);
+		});
+
+		it('falls back to the default for zero, negative and non-finite values', async () => {
+			const zero = await loadWith(`{ scanDepth: 0, enrichConcurrency: 0 }`);
+			expect(zero.scanDepth).toBe(DEFAULTS.scanDepth);
+			expect(zero.enrichConcurrency).toBe(DEFAULTS.enrichConcurrency);
+
+			const negative = await loadWith(`{ scanDepth: -1, enrichConcurrency: -8 }`);
+			expect(negative.scanDepth).toBe(DEFAULTS.scanDepth);
+			expect(negative.enrichConcurrency).toBe(DEFAULTS.enrichConcurrency);
+
+			const infinite = await loadWith(`{ enrichConcurrency: Infinity }`);
+			expect(infinite.enrichConcurrency).toBe(DEFAULTS.enrichConcurrency);
+		});
+
+		it('accepts a numeric string, since the intent is unambiguous', async () => {
+			const cfg = await loadWith(`{ scanDepth: '5', enrichConcurrency: '2' }`);
+			expect(cfg.scanDepth).toBe(5);
+			expect(cfg.enrichConcurrency).toBe(2);
+		});
+
+		it('floors a fractional value rather than passing it through', async () => {
+			// Array.from({ length: 2.5 }) silently yields 2 anyway; flooring at
+			// the boundary means the resolved config says what actually happens.
+			const cfg = await loadWith(`{ scanDepth: 3.7, enrichConcurrency: 2.5 }`);
+			expect(cfg.scanDepth).toBe(3);
+			expect(cfg.enrichConcurrency).toBe(2);
+		});
+
+		it('passes a valid positive integer through untouched', async () => {
+			const cfg = await loadWith(`{ scanDepth: 6, enrichConcurrency: 9 }`);
+			expect(cfg.scanDepth).toBe(6);
+			expect(cfg.enrichConcurrency).toBe(9);
+		});
+	});
+
 	it('passes an absolute `files` override through unchanged', async () => {
 		const dir = makeTempDir();
 		const absoluteTarget = join(dir, 'absolute-sources.json');

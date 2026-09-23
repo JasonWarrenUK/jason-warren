@@ -157,9 +157,42 @@ function resolveDataPath(dataDirAbs, files, logicalName, defaultRelative) {
 // ---------------------------------------------------------------------------
 
 /**
+ * Coerces a user-supplied numeric config value to a usable positive integer,
+ * falling back to the built-in default when it cannot be.
+ *
+ * `drift.config.ts` is hand-written and untyped at runtime, so a typo
+ * (`scanDepth: 'three'`) or an explicitly-undefined key reaches the engine as
+ * NaN. Both numeric settings feed expressions where NaN fails silently and
+ * badly rather than loudly:
+ *
+ * - `enrichConcurrency`: `Math.max(1, Math.min(NaN, total))` is NaN, so
+ *   `Array.from({ length: NaN })` spawns zero workers, the results array stays
+ *   holey, and enrich dies destructuring undefined.
+ * - `scanDepth`: `depth > NaN` is always false, so the repo walk never hits its
+ *   depth guard and recurses until the filesystem stops it.
+ *
+ * Numeric strings are accepted (`'4'` reads as 4) since that is an unambiguous
+ * intent; anything non-finite, non-positive or unparseable falls back.
+ *
+ * @param {unknown} value - the merged user/default value
+ * @param {number} fallback - the built-in default for this key
+ * @returns {number}
+ */
+function coercePositiveInteger(value, fallback) {
+	const parsed = typeof value === 'string' ? Number(value.trim()) : value;
+	if (typeof parsed !== 'number' || !Number.isFinite(parsed) || parsed < 1) {
+		return fallback;
+	}
+	return Math.floor(parsed);
+}
+
+/**
  * Merge a user-supplied config object over DEFAULTS and compute absolute paths.
  * Performs a shallow merge with one explicit nested level for `author`, `theme`,
  * and `files`, so individual nested keys can be overridden without clobbering siblings.
+ *
+ * Numeric settings are coerced and clamped (see coercePositiveInteger): this is
+ * the trust boundary between a hand-edited config file and the engine.
  *
  * @param {import('./drift-config.js').DriftUserConfig | null | undefined} user
  * @returns {import('./drift-config.js').DriftResolvedConfig}
@@ -190,8 +223,8 @@ function buildConfig(user) {
 		repoRoot,
 		paths,
 		scanRoot: merged.scanRoot,
-		scanDepth: merged.scanDepth,
-		enrichConcurrency: merged.enrichConcurrency,
+		scanDepth: coercePositiveInteger(merged.scanDepth, DEFAULTS.scanDepth),
+		enrichConcurrency: coercePositiveInteger(merged.enrichConcurrency, DEFAULTS.enrichConcurrency),
 		author: merged.author,
 		excludedRepoNames: merged.excludedRepoNames,
 		theme: merged.theme
