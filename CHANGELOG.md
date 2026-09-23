@@ -6,6 +6,21 @@ All notable changes to this project are documented here. Format follows [Keep a 
 
 ## [Unreleased]
 
+## [8.3.0] - 2026-09-23
+
+### Added
+
+- `drift new`: reports newly-discovered repos under `scanRoot` without running the full drift/conflict report. Writes nothing, and shares its scan with `drift report`'s own "new repos" section, so the two can never disagree.
+- Adoption history now survives a major tech migration instead of being erased. When a detected technology leaves detection (a Svelte 4 to 5 upgrade, for example), `drift sync` keeps its original `detectedTechFirstSeen` date and adds a `detectedTechLastSeen` date recording when it retired, rather than dropping all record it was ever used.
+
+### Changed
+
+- `drift enrich` fetches GitHub repo metadata concurrently instead of one repo at a time, cutting wall-clock time on a large tracked set. Pool size is configurable via `drift.config.ts`'s new `enrichConcurrency` (default 4).
+
+### Fixed
+
+- `drift.config.ts` values for `scanDepth` and `enrichConcurrency` are now validated: an unparseable, zero, negative or non-finite value falls back to the built-in default instead of silently breaking the repo scan or the enrich pool.
+
 ## [8.2.1] - 2026-09-22
 
 ### Added
@@ -55,7 +70,8 @@ All notable changes to this project are documented here. Format follows [Keep a 
 
 - Graph edges are no longer dropped in a way that fragments the map into disconnected islands. The per-node edge cap now bridges back any cluster it would otherwise sever, so shared-tech, theme, and technology-landscape views stay one connected graph instead of splitting into isolated groups.
 
-[Unreleased]: https://github.com/JasonWarrenUK/jason-warren/compare/v8.2.1...HEAD
+[Unreleased]: https://github.com/JasonWarrenUK/jason-warren/compare/v8.3.0...HEAD
+[8.3.0]: https://github.com/JasonWarrenUK/jason-warren/compare/v8.2.1...v8.3.0
 [8.2.1]: https://github.com/JasonWarrenUK/jason-warren/compare/v8.2.0...v8.2.1
 [8.2.0]: https://github.com/JasonWarrenUK/jason-warren/compare/v8.1.0...v8.2.0
 [8.1.0]: https://github.com/JasonWarrenUK/jason-warren/compare/v8.0.0...v8.1.0
