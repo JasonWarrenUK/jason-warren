@@ -432,7 +432,7 @@
 					{
 						"id": "5DR.28",
 						"description": "Parallelise the per-repo `gh repo view` calls in drift enrich (currently sequential via fetchGhRepoView)",
-						"status": "todo",
+						"status": "done",
 						"dependsOn": [
 							"5DR.22"
 						],
@@ -469,21 +469,21 @@
 					{
 						"id": "5DR.30",
 						"description": "drift CLI: filtered \"new repos only\" verb (e.g. `drift new` or `--new-only`) that reports newly-discovered repos under scanRoot without the full drift/conflict report",
-						"status": "todo",
+						"status": "done",
 						"dependsOn": [],
 						"notes": "New-repo discovery already exists inside the default `drift report`/`--check` path (check-drift.js:2068-2105, 2193, 3190, 7263); this exposes that subset as its own filtered output rather than building discovery from scratch."
 					},
 					{
 						"id": "5DR.31",
 						"description": "Adoption history is append-only in the engine: drift sync keeps a detectedTechFirstSeen entry for an identity that leaves detection and records lastSeen, so a major migration retires the old identity instead of erasing it",
-						"status": "todo",
+						"status": "done",
 						"dependsOn": [],
 						"notes": "code-arcana's Svelte 4 to 5 migration in the 2026-09-17 sync dropped svelte-4 from detectedFramework and from detectedTechFirstSeen (sources.json, code-arcana), leaving no synced record it was ever used, even though check-drift.js:811 dates that exact migration with a per-major regex pickaxe. detectedTechFirstSeen is already skipped by the drift comparison (DRIFT_SKIP_FIELDS, check-drift.js:247), so a ratchet there adds no drift noise. Shape: keep the firstSeen date, add lastSeen (the commit that removed the identity, from the same pickaxe run in reverse, or the sync date as a fallback) and extend sources.schema.json (5DR.5) to match. Present-tense fields (detectedFramework et al.) stay as they are; only the history object ratchets."
 					},
 					{
 						"id": "5DR.32",
 						"description": "Tech universe for lineage and the timeline is present tags plus retired history: tech overlays may declare labels no project carries, with firstUsed and lastUsed; the timeline renders retired tech with an end date; the lineage tests removed in 780a817 return against the union",
-						"status": "blocked",
+						"status": "todo",
 						"dependsOn": [
 							"5DR.31"
 						],
