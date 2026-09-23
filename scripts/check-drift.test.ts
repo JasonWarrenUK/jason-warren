@@ -158,10 +158,22 @@ function makeTempDataDir(inProgressContent: object, sourcesContent?: object) {
 	return dir;
 }
 
-/** Returns the DRIFT_CONFIG env approach: write a temp config file. */
-function makeDriftConfig(dataDir: string): string {
+/**
+ * Returns the DRIFT_CONFIG env approach: write a temp config file.
+ *
+ * `scanRoot`/`scanDepth` are optional and default to today's behaviour
+ * (omitted, so loadConfig falls back to ~/Code): only `drift new` tests
+ * (5DR.30) opt into a sandboxed scan root, so the existing suite's
+ * dependence on the real home directory is unchanged for everyone else.
+ */
+function makeDriftConfig(dataDir: string, scan?: { scanRoot: string; scanDepth?: number }): string {
 	const configPath = join(dataDir, 'drift.config.mjs');
-	writeFileSync(configPath, `export default { dataDir: ${JSON.stringify(dataDir)} };\n`);
+	const config: Record<string, unknown> = { dataDir };
+	if (scan) {
+		config.scanRoot = scan.scanRoot;
+		config.scanDepth = scan.scanDepth ?? 3;
+	}
+	writeFileSync(configPath, `export default ${JSON.stringify(config)};\n`);
 	return configPath;
 }
 
@@ -3070,6 +3082,82 @@ describe('drift sync', () => {
 		// (which only ever had svelte 4).
 		expect(parsed.sources[slug].commitAnyRoot).toBe('2022-01-01');
 		expect(parsed.sources[slug].detectedTechFirstSeen['svelte-5']).toBe('2025-05-01');
+		// svelte-4 is absent from this sync's live detection (the working
+		// tree is now on svelte 5), but this first-ever sync has no prior
+		// saved entry to ratchet against, so nothing has "left detection"
+		// yet from the engine's point of view — svelte-4 was never recorded
+		// as present in the first place. That is the exact bug 5DR.31 fixes:
+		// a second sync is what proves the ratchet, below.
+		expect(parsed.sources[slug].detectedTechFirstSeen['svelte-4']).toBeUndefined();
+	});
+
+	it('adoption-history ratchet (5DR.31): a second sync after a migration keeps the retired identity with a lastSeen date', () => {
+		// First sync: repo starts on svelte 4, exactly as code-arcana did.
+		const repoPath = join(dir, 'repo');
+		rmSync(join(repoPath, '.git'), { recursive: true, force: true });
+		const v4Env = {
+			...makeGitEnv(),
+			GIT_AUTHOR_DATE: '2022-01-01T00:00:00+00:00',
+			GIT_COMMITTER_DATE: '2022-01-01T00:00:00+00:00'
+		};
+		spawnSync('git', ['init', '-b', 'main'], { cwd: repoPath, env: v4Env, encoding: 'utf8' });
+		spawnSync('git', ['config', 'user.email', 'test@example.com'], {
+			cwd: repoPath,
+			env: v4Env,
+			encoding: 'utf8'
+		});
+		spawnSync('git', ['config', 'user.name', 'Test'], {
+			cwd: repoPath,
+			env: v4Env,
+			encoding: 'utf8'
+		});
+		writeFileSync(
+			join(repoPath, 'package.json'),
+			JSON.stringify({ devDependencies: { svelte: '^4.2.0' } })
+		);
+		spawnSync('git', ['add', '-A'], { cwd: repoPath, env: v4Env, encoding: 'utf8' });
+		spawnSync('git', ['commit', '-m', 'init on svelte 4', '--no-gpg-sign'], {
+			cwd: repoPath,
+			env: v4Env,
+			encoding: 'utf8'
+		});
+
+		const firstSync = runSyncWithConfig(dir, []);
+		expect(firstSync.status, firstSync.stderr).toBe(0);
+		const afterFirst = JSON.parse(readFileSync(join(dir, 'sources.json'), 'utf8'));
+		expect(afterFirst.sources[slug].detectedTechFirstSeen['svelte-4']).toBe('2022-01-01');
+		expect(afterFirst.sources[slug].detectedTechLastSeen).toBeUndefined();
+
+		// Second sync, after the Svelte 5 migration commit: svelte-4 leaves
+		// live detection entirely. Before 5DR.31, this is exactly where it
+		// silently vanished from detectedTechFirstSeen.
+		const v5Env = {
+			...makeGitEnv(),
+			GIT_AUTHOR_DATE: '2025-05-01T00:00:00+00:00',
+			GIT_COMMITTER_DATE: '2025-05-01T00:00:00+00:00'
+		};
+		writeFileSync(
+			join(repoPath, 'package.json'),
+			JSON.stringify({ devDependencies: { svelte: '^5.45.6' } })
+		);
+		spawnSync('git', ['add', '-A'], { cwd: repoPath, env: v5Env, encoding: 'utf8' });
+		spawnSync('git', ['commit', '-m', 'migrate to svelte 5', '--no-gpg-sign'], {
+			cwd: repoPath,
+			env: v5Env,
+			encoding: 'utf8'
+		});
+
+		const secondSync = runSyncWithConfig(dir, []);
+		expect(secondSync.status, secondSync.stderr).toBe(0);
+		const afterSecond = JSON.parse(readFileSync(join(dir, 'sources.json'), 'utf8'));
+		const entry = afterSecond.sources[slug];
+
+		// svelte-4 survives in detectedTechFirstSeen (still dated to its real
+		// introduction) and now carries a detectedTechLastSeen, rather than
+		// disappearing the way it did for code-arcana's real sources.json.
+		expect(entry.detectedTechFirstSeen['svelte-4']).toBe('2022-01-01');
+		expect(entry.detectedTechFirstSeen['svelte-5']).toBe('2025-05-01');
+		expect(entry.detectedTechLastSeen['svelte-4']).toMatch(/^\d{4}-\d{2}-\d{2}$/);
 	});
 
 	it('monorepo: takes the earliest date across workspaces for the same identity', () => {
@@ -3363,6 +3451,25 @@ function seedUrlRepo(dir: string, slug: string, urlRepo: string): void {
 }
 
 /**
+ * Seeds several additional tracked slugs onto the sandbox's sources.json,
+ * each with only a urlRepo (5DR.28's enrich pool never reads git state, so
+ * these need no real repo on disk, unlike makeSyncSandbox's original slug).
+ * Used to exercise the enrich pool at N > 1: makeSyncSandbox's single-slug
+ * fixture cannot distinguish sequential from concurrent behaviour.
+ *
+ * @param {string} dir - sandbox dataDir (as returned by makeSyncSandbox)
+ * @param {Record<string, string>} slugsToUrlRepo - slug -> urlRepo
+ */
+function seedExtraSlugs(dir: string, slugsToUrlRepo: Record<string, string>): void {
+	const sourcesPath = join(dir, 'sources.json');
+	const parsed = JSON.parse(readFileSync(sourcesPath, 'utf8'));
+	for (const [slug, urlRepo] of Object.entries(slugsToUrlRepo)) {
+		parsed.sources[slug] = { ...parsed.sources[slug], urlRepo };
+	}
+	writeFileSync(sourcesPath, JSON.stringify(parsed, null, '\t'));
+}
+
+/**
  * Writes a fake `gh` executable into `binDir` and returns a PATH string with
  * `binDir` prepended, so `which gh` and `spawnSync('gh', ...)` both resolve
  * to the fake rather than (or absence of) the real GitHub CLI.
@@ -3421,6 +3528,111 @@ process.exit(1);
 	writeFileSync(ghScriptPath, script, { mode: 0o755 });
 	return `${binDir}:${process.env.PATH}`;
 }
+
+// ---------------------------------------------------------------------------
+// drift new (5DR.30) tests
+// ---------------------------------------------------------------------------
+
+/**
+ * Builds a sandbox for `drift new`: a dataDir with a minimal manifest (no
+ * real git repos needed there, unlike makeSyncSandbox — drift new reads
+ * manifest.sources for knownSlugs only) plus a separate scanRoot temp tree
+ * containing fake `.git` directories to discover.
+ *
+ * Without a sandboxed scanRoot, drift new would fall back to the real
+ * ~/Code and every assertion would depend on whatever happens to be there.
+ */
+function makeNewVerbSandbox(): { dataDir: string; scanRoot: string; configPath: string } {
+	const dataDir = mkdtempSync(join(tmpdir(), 'drift-new-data-'));
+	const scanRoot = mkdtempSync(join(tmpdir(), 'drift-new-scan-'));
+
+	writeFileSync(
+		join(dataDir, 'sources.json'),
+		JSON.stringify(
+			{
+				$schema: '../../scripts/sources.schema.json',
+				sources: { 'already-tracked': { commitHead: 'deadbeef' } }
+			},
+			null,
+			'\t'
+		)
+	);
+	writeFileSync(join(dataDir, 'overrides.json'), JSON.stringify({ overrides: {} }, null, '\t'));
+	writeFileSync(
+		join(dataDir, 'excluded.json'),
+		JSON.stringify({ slugs: [], repoNames: ['excluded-repo'] }, null, '\t')
+	);
+	writeFileSync(join(dataDir, '.drift-cache.json'), JSON.stringify({}, null, '\t'));
+	writeFileSync(join(dataDir, 'in-progress.json'), JSON.stringify({ inProgress: {} }, null, '\t'));
+	const realSchema = join(repoRoot, 'src/lib/data/in-progress.schema.json');
+	cpSync(realSchema, join(dataDir, 'in-progress.schema.json'));
+
+	const configPath = makeDriftConfig(dataDir, { scanRoot });
+	return { dataDir, scanRoot, configPath };
+}
+
+/** Creates a fake git repo (a directory containing a .git subdirectory) under scanRoot. */
+function makeFakeRepo(scanRoot: string, name: string): void {
+	const repoPath = join(scanRoot, name);
+	mkdirSync(join(repoPath, '.git'), { recursive: true });
+}
+
+describe('drift new', () => {
+	let dataDir: string;
+	let scanRoot: string;
+	let configPath: string;
+
+	beforeEach(() => {
+		({ dataDir, scanRoot, configPath } = makeNewVerbSandbox());
+	});
+
+	afterEach(() => {
+		rmSync(dataDir, { recursive: true, force: true });
+		rmSync(scanRoot, { recursive: true, force: true });
+	});
+
+	it('reports a repo under scanRoot absent from the manifest', () => {
+		makeFakeRepo(scanRoot, 'fresh-repo');
+		const result = runVerbInSandbox(configPath, ['new', '--json']);
+		expect(result.status, result.stderr).toBe(0);
+		const payload = JSON.parse(result.stdout);
+		expect(payload.filteredNew).toEqual([
+			{ name: 'fresh-repo', path: join(scanRoot, 'fresh-repo'), normalised: 'fresh-repo' }
+		]);
+	});
+
+	it('omits a repo already tracked in manifest.sources', () => {
+		makeFakeRepo(scanRoot, 'already-tracked');
+		const result = runVerbInSandbox(configPath, ['new', '--json']);
+		expect(result.status, result.stderr).toBe(0);
+		expect(JSON.parse(result.stdout).filteredNew).toEqual([]);
+	});
+
+	it('omits a repo in excludedRepoNames', () => {
+		makeFakeRepo(scanRoot, 'excluded-repo');
+		const result = runVerbInSandbox(configPath, ['new', '--json']);
+		expect(result.status, result.stderr).toBe(0);
+		expect(JSON.parse(result.stdout).filteredNew).toEqual([]);
+	});
+
+	it('plain output lists the repo name and path', () => {
+		makeFakeRepo(scanRoot, 'fresh-repo');
+		const result = runVerbInSandbox(configPath, ['new']);
+		expect(result.status, result.stderr).toBe(0);
+		expect(result.stdout).toContain('New repos not yet in portfolio (1)');
+		expect(result.stdout).toContain('fresh-repo');
+		expect(result.stdout).toContain(join(scanRoot, 'fresh-repo'));
+	});
+
+	it('writes no files', () => {
+		makeFakeRepo(scanRoot, 'fresh-repo');
+		const before = readFileSync(join(dataDir, 'sources.json'), 'utf8');
+		const result = runVerbInSandbox(configPath, ['new']);
+		expect(result.status, result.stderr).toBe(0);
+		const after = readFileSync(join(dataDir, 'sources.json'), 'utf8');
+		expect(after).toBe(before);
+	});
+});
 
 /** Run `drift enrich` (plus any extra args) with a DRIFT_CONFIG pointing at dir and a fake `gh` on PATH. */
 function runEnrichWithConfig(dir: string, extraArgs: string[], ghPath: string) {
@@ -3615,5 +3827,70 @@ describe('drift enrich', () => {
 		const result = runEnrichWithConfig(dir, ['not-a-tracked-slug'], ghPath);
 		expect(result.status, result.stderr).toBe(0);
 		expect(result.stdout).toMatch(/not a tracked source/i);
+	});
+
+	// 5DR.28: the pool below runs several repos concurrently. makeSyncSandbox's
+	// single-slug fixture (all ten cases above) cannot distinguish sequential
+	// from concurrent behaviour, so these two seed extra slugs to exercise the
+	// pool at N > 1.
+	it("concurrent pool: every scoped slug resolves to its own repo, not a neighbour's", () => {
+		seedExtraSlugs(dir, {
+			'enrich-test-repo-b': 'https://github.com/JasonWarrenUK/enrich-test-repo-b',
+			'enrich-test-repo-c': 'https://github.com/JasonWarrenUK/enrich-test-repo-c',
+			'enrich-test-repo-d': 'https://github.com/JasonWarrenUK/enrich-test-repo-d'
+		});
+		const ghPath = makeFakeGh(dir, {
+			repos: {
+				'JasonWarrenUK/enrich-test-repo': { isArchived: false, homepageUrl: 'https://a.example' },
+				'JasonWarrenUK/enrich-test-repo-b': { isArchived: true, homepageUrl: 'https://b.example' },
+				'JasonWarrenUK/enrich-test-repo-c': { isArchived: false, homepageUrl: 'https://c.example' },
+				'JasonWarrenUK/enrich-test-repo-d': { isArchived: true, homepageUrl: 'https://d.example' }
+			}
+		});
+
+		const result = runEnrichWithConfig(dir, [], ghPath);
+		expect(result.status, result.stderr).toBe(0);
+
+		const enriched = JSON.parse(readFileSync(join(dir, 'sources.json'), 'utf8')).enriched;
+		expect(enriched[slug]).toMatchObject({
+			githubArchived: false,
+			githubHomepageUrl: 'https://a.example'
+		});
+		expect(enriched['enrich-test-repo-b']).toMatchObject({
+			githubArchived: true,
+			githubHomepageUrl: 'https://b.example'
+		});
+		expect(enriched['enrich-test-repo-c']).toMatchObject({
+			githubArchived: false,
+			githubHomepageUrl: 'https://c.example'
+		});
+		expect(enriched['enrich-test-repo-d']).toMatchObject({
+			githubArchived: true,
+			githubHomepageUrl: 'https://d.example'
+		});
+	});
+
+	it('concurrent pool: a mid-list unresolvable repo still leaves its siblings enriched', () => {
+		seedExtraSlugs(dir, {
+			'enrich-test-repo-b': 'https://github.com/JasonWarrenUK/enrich-test-repo-b',
+			'enrich-test-repo-c': 'https://github.com/JasonWarrenUK/enrich-test-repo-c'
+		});
+		// enrich-test-repo-b is absent from the fake gh's table, so it resolves
+		// to the "unresolvable" branch while its siblings succeed.
+		const ghPath = makeFakeGh(dir, {
+			repos: {
+				'JasonWarrenUK/enrich-test-repo': { isArchived: false, homepageUrl: '' },
+				'JasonWarrenUK/enrich-test-repo-c': { isArchived: false, homepageUrl: '' }
+			}
+		});
+
+		const result = runEnrichWithConfig(dir, [], ghPath);
+		expect(result.status, result.stderr).toBe(0);
+
+		const enriched = JSON.parse(readFileSync(join(dir, 'sources.json'), 'utf8')).enriched;
+		expect(enriched[slug]).not.toHaveProperty('enrichError');
+		expect(enriched['enrich-test-repo-b'].enrichError).toMatch(/could not resolve/i);
+		expect(enriched['enrich-test-repo-c']).not.toHaveProperty('enrichError');
+		expect(result.stdout).toMatch(/2 resolved, 1 failed/);
 	});
 });

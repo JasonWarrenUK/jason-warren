@@ -191,6 +191,15 @@ export interface SyncedSource {
 	 * after the repo started. Source-grep-only signals are absent here by design.
 	 */
 	detectedTechFirstSeen?: Record<string, string>;
+	/**
+	 * Retirement date (YYYY-MM-DD) per tech identity that has left detection
+	 * (5DR.31), keyed the same way as detectedTechFirstSeen. A sibling map: an
+	 * identity present here keeps its detectedTechFirstSeen entry too, so a
+	 * major migration (e.g. Svelte 4 to 5) retires the old identity instead
+	 * of erasing it. Present only for identities no longer detected. Dated to
+	 * the sync that first noticed the absence, not the removal commit itself.
+	 */
+	detectedTechLastSeen?: Record<string, string>;
 }
 
 // ---------------------------------------------------------------------------

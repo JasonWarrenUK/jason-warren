@@ -12,18 +12,25 @@
  * excludes check-drift.test.ts by name — so it runs in milliseconds, not
  * seconds.
  *
- * Scan orchestration (computeDrift's worker pool over real git worktrees, its
- * ref+TTL cache, its recursive repo scan) is deliberately NOT covered here.
- * Unit-testing that would mean rebuilding the temp-git-repo scaffolding the
- * `sync` and `enrich` subprocess blocks already provide, and would reintroduce
- * the blocking-I/O cost this file exists to avoid. Its observable behaviour
- * stays covered there; the pure helpers it delegates to (diffFingerprint et
- * al.) are what this file covers directly — which is what "drift computation"
- * means at the unit level.
+ * Scan orchestration (computeDrift's worker pool over real git worktrees and
+ * its ref+TTL cache) is deliberately NOT covered here. Unit-testing that would
+ * mean rebuilding the temp-git-repo scaffolding the `sync` and `enrich`
+ * subprocess blocks already provide, and would reintroduce the blocking-I/O
+ * cost this file exists to avoid. Its observable behaviour stays covered
+ * there; the pure helpers it delegates to (diffFingerprint et al.) are what
+ * this file covers directly — which is what "drift computation" means at the
+ * unit level.
+ *
+ * One exception: scanForNewRepos (5DR.30). Its directory walk needs only empty
+ * directories and `.git` marker folders, never a real git repo, so it costs
+ * milliseconds here rather than the seconds a subprocess verb test costs. The
+ * `drift new` subprocess tests in check-drift.test.ts cover the verb; these
+ * cover the walk's own rules (depth limiting, dotfile skipping, not recursing
+ * into a discovered repo) directly.
  */
 
 import { describe, it, expect, afterEach, vi } from 'vitest';
-import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, writeFileSync, rmSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { tmpdir } from 'node:os';
@@ -33,6 +40,7 @@ import {
 	diffFingerprint,
 	mergeFingerprint,
 	mergeCompanionFingerprints,
+	scanForNewRepos,
 	FINGERPRINT_FIELDS,
 	ARRAY_FINGERPRINT_FIELDS,
 	DRIFT_SKIP_FIELDS
@@ -205,6 +213,58 @@ describe('loadConfig merge semantics', () => {
 		expect(cfg.paths.sources).toBe(join(repoRoot, 'elsewhere/sources.json'));
 	});
 
+	// drift.config.ts is hand-written and untyped at runtime, so a typo reaches
+	// the engine as NaN. Both numeric settings feed expressions where NaN fails
+	// silently and badly: enrichConcurrency spawns zero workers and enrich dies
+	// destructuring a holey array, while a NaN scanDepth makes `depth > scanDepth`
+	// permanently false and the repo walk recurses without a depth guard.
+	describe('numeric coercion at the config boundary', () => {
+		async function loadWith(body: string) {
+			const dir = makeTempDir();
+			vi.stubEnv('DRIFT_CONFIG', writeConfig(dir, `export default ${body};\n`));
+			return loadConfig();
+		}
+
+		it('falls back to the default when a numeric setting is unparseable', async () => {
+			const cfg = await loadWith(`{ scanDepth: 'three', enrichConcurrency: 'four' }`);
+			expect(cfg.scanDepth).toBe(DEFAULTS.scanDepth);
+			expect(cfg.enrichConcurrency).toBe(DEFAULTS.enrichConcurrency);
+		});
+
+		it('falls back to the default for zero, negative and non-finite values', async () => {
+			const zero = await loadWith(`{ scanDepth: 0, enrichConcurrency: 0 }`);
+			expect(zero.scanDepth).toBe(DEFAULTS.scanDepth);
+			expect(zero.enrichConcurrency).toBe(DEFAULTS.enrichConcurrency);
+
+			const negative = await loadWith(`{ scanDepth: -1, enrichConcurrency: -8 }`);
+			expect(negative.scanDepth).toBe(DEFAULTS.scanDepth);
+			expect(negative.enrichConcurrency).toBe(DEFAULTS.enrichConcurrency);
+
+			const infinite = await loadWith(`{ enrichConcurrency: Infinity }`);
+			expect(infinite.enrichConcurrency).toBe(DEFAULTS.enrichConcurrency);
+		});
+
+		it('accepts a numeric string, since the intent is unambiguous', async () => {
+			const cfg = await loadWith(`{ scanDepth: '5', enrichConcurrency: '2' }`);
+			expect(cfg.scanDepth).toBe(5);
+			expect(cfg.enrichConcurrency).toBe(2);
+		});
+
+		it('floors a fractional value rather than passing it through', async () => {
+			// Array.from({ length: 2.5 }) silently yields 2 anyway; flooring at
+			// the boundary means the resolved config says what actually happens.
+			const cfg = await loadWith(`{ scanDepth: 3.7, enrichConcurrency: 2.5 }`);
+			expect(cfg.scanDepth).toBe(3);
+			expect(cfg.enrichConcurrency).toBe(2);
+		});
+
+		it('passes a valid positive integer through untouched', async () => {
+			const cfg = await loadWith(`{ scanDepth: 6, enrichConcurrency: 9 }`);
+			expect(cfg.scanDepth).toBe(6);
+			expect(cfg.enrichConcurrency).toBe(9);
+		});
+	});
+
 	it('passes an absolute `files` override through unchanged', async () => {
 		const dir = makeTempDir();
 		const absoluteTarget = join(dir, 'absolute-sources.json');
@@ -350,6 +410,72 @@ describe('mergeFingerprint', () => {
 		expect(changedFields).toHaveLength(1);
 		expect(changedFields[0].field).toBe('commitsAny');
 	});
+
+	// 5DR.31: adoption-history ratchet. Without this, an identity absent from
+	// current.detectedTechFirstSeen simply vanishes from merged — the bug that
+	// dropped code-arcana's svelte-4 on its Svelte 5 migration.
+	describe('adoption-history ratchet (5DR.31)', () => {
+		it('retires an identity absent from current, recording detectedTechLastSeen', () => {
+			const saved = { detectedTechFirstSeen: { 'svelte-4': '2022-01-01' } };
+			const current = { detectedTechFirstSeen: { 'svelte-5': '2025-05-01' } };
+			const { merged } = mergeFingerprint(saved, current, '2025-05-01');
+			expect(merged.detectedTechFirstSeen).toEqual({
+				'svelte-4': '2022-01-01',
+				'svelte-5': '2025-05-01'
+			});
+			expect(merged.detectedTechLastSeen).toEqual({ 'svelte-4': '2025-05-01' });
+		});
+
+		it('does not re-date an identity already retired', () => {
+			const saved = {
+				detectedTechFirstSeen: { 'svelte-4': '2022-01-01' },
+				detectedTechLastSeen: { 'svelte-4': '2025-05-01' }
+			};
+			const current = { detectedTechFirstSeen: { 'svelte-5': '2025-05-01' } };
+			const { merged } = mergeFingerprint(saved, current, '2025-06-01');
+			// The first sync to notice the absence dates it; a later sync must
+			// not overwrite that date even though it runs the ratchet again.
+			expect(merged.detectedTechLastSeen).toEqual({ 'svelte-4': '2025-05-01' });
+		});
+
+		it('resurrection: an identity that returns to detection clears its lastSeen', () => {
+			const saved = {
+				detectedTechFirstSeen: { 'svelte-4': '2022-01-01' },
+				detectedTechLastSeen: { 'svelte-4': '2025-05-01' }
+			};
+			const current = { detectedTechFirstSeen: { 'svelte-4': '2022-01-01' } };
+			const { merged } = mergeFingerprint(saved, current, '2025-08-01');
+			expect(merged.detectedTechFirstSeen).toEqual({ 'svelte-4': '2022-01-01' });
+			expect(merged.detectedTechLastSeen).toBeUndefined();
+		});
+
+		it('retires nothing when current has no detectedTechFirstSeen key at all', () => {
+			// A failed or empty history walk must not read as "every tracked
+			// identity retired" — the one genuinely destructive failure mode.
+			const saved = { detectedTechFirstSeen: { 'svelte-4': '2022-01-01', bun: '2023-01-01' } };
+			const current = { commitsAny: 5 };
+			const { merged } = mergeFingerprint(saved, current, '2025-05-01');
+			expect(merged.detectedTechFirstSeen).toEqual(saved.detectedTechFirstSeen);
+			expect(merged.detectedTechLastSeen).toBeUndefined();
+		});
+
+		it('pushes a synthetic changedFields entry when a retirement fires, since detectedTechLastSeen is never a key of current', () => {
+			const saved = { detectedTechFirstSeen: { 'svelte-4': '2022-01-01' } };
+			const current = { detectedTechFirstSeen: { 'svelte-5': '2025-05-01' } };
+			const { changedFields } = mergeFingerprint(saved, current, '2025-05-01');
+			const entry = changedFields.find((c) => c.field === 'detectedTechLastSeen');
+			expect(entry).toBeDefined();
+			expect(entry?.was).toBeNull();
+			expect(entry?.now).toEqual({ 'svelte-4': '2025-05-01' });
+		});
+
+		it('records no changedFields entry when nothing retires', () => {
+			const saved = { detectedTechFirstSeen: { bun: '2023-01-01' } };
+			const current = { detectedTechFirstSeen: { bun: '2023-01-01' } };
+			const { changedFields } = mergeFingerprint(saved, current, '2025-05-01');
+			expect(changedFields.find((c) => c.field === 'detectedTechLastSeen')).toBeUndefined();
+		});
+	});
 });
 
 describe('mergeCompanionFingerprints', () => {
@@ -397,6 +523,54 @@ describe('mergeCompanionFingerprints', () => {
 		expect(merged).not.toHaveProperty('detectedLanguages');
 		expect(merged).not.toHaveProperty('detectedDatabase');
 	});
+
+	// 5DR.31: previously had no detectedTechFirstSeen branch at all, so a
+	// companion's adoption-history dates were dropped outright (only the
+	// primary's own dates survived, via ...primary).
+	it('unions detectedTechFirstSeen across primary and companions, earliest date wins', () => {
+		const primary = { detectedTechFirstSeen: { svelte: '2023-01-01' } };
+		const companions = [{ detectedTechFirstSeen: { svelte: '2023-06-01', bun: '2024-01-01' } }];
+		const merged = mergeCompanionFingerprints(primary, companions);
+		// svelte: primary's earlier date wins over the companion's later one,
+		// because the family adopted a tech when its first workspace did.
+		expect(merged.detectedTechFirstSeen).toEqual({ svelte: '2023-01-01', bun: '2024-01-01' });
+	});
+
+	// The detectedTechLastSeen branch is inert on every current code path: this
+	// function runs over getFingerprint outputs, which never carry that field
+	// (ratchetTechHistory produces it one stage downstream, from the saved
+	// side). The inputs below are therefore a shape the live producer cannot
+	// currently emit, constructed deliberately to pin the seam's behaviour for
+	// the future producer it exists to serve. Kept rather than dropped so a
+	// companion's retirement dates are not silently discarded the way
+	// detectedTechFirstSeen's were before 5DR.31.
+	it('unions detectedTechLastSeen across primary and companions, latest date wins', () => {
+		const primary = { detectedTechLastSeen: { jquery: '2024-06-01' } };
+		const companions = [{ detectedTechLastSeen: { jquery: '2024-01-01' } }];
+		const merged = mergeCompanionFingerprints(primary, companions);
+		// jquery: the LATER date wins. A family retires a tech when its last
+		// remaining workspace does, so a workspace that dropped jQuery in
+		// January must not shorten the family's true lifespan to January when
+		// another workspace kept it until June.
+		expect(merged.detectedTechLastSeen).toEqual({ jquery: '2024-06-01' });
+	});
+
+	it('does not emit detectedTechLastSeen for getFingerprint-shaped inputs, which never carry it', () => {
+		// Guards the inertness claim above: if a future change makes
+		// getFingerprint emit lastSeen, this test is the one that should be
+		// revisited alongside the comment in mergeCompanionFingerprints.
+		const merged = mergeCompanionFingerprints({ detectedTechFirstSeen: { svelte: '2023-01-01' } }, [
+			{ detectedTechFirstSeen: { bun: '2024-01-01' } }
+		]);
+		expect(merged).not.toHaveProperty('detectedTechLastSeen');
+		expect(merged.detectedTechFirstSeen).toEqual({ svelte: '2023-01-01', bun: '2024-01-01' });
+	});
+
+	it('omits detectedTechFirstSeen/detectedTechLastSeen entirely when neither primary nor any companion has entries', () => {
+		const merged = mergeCompanionFingerprints({}, [{}]);
+		expect(merged).not.toHaveProperty('detectedTechFirstSeen');
+		expect(merged).not.toHaveProperty('detectedTechLastSeen');
+	});
 });
 
 // ---------------------------------------------------------------------------
@@ -427,7 +601,8 @@ describe('fingerprint field constants match the schema', () => {
 		'commitsAny',
 		'commitsMe',
 		'detectedLanguages',
-		'detectedTechFirstSeen'
+		'detectedTechFirstSeen',
+		'detectedTechLastSeen'
 	];
 
 	it('ARRAY_FINGERPRINT_FIELDS matches the schema array properties exactly', () => {
@@ -447,5 +622,115 @@ describe('fingerprint field constants match the schema', () => {
 		// Order is display order for field drift, so it is worth pinning even
 		// though the membership assertions above carry the regression cover.
 		expect(FINGERPRINT_FIELDS).toEqual(Object.keys(props));
+	});
+});
+
+// ---------------------------------------------------------------------------
+// scanForNewRepos (5DR.30)
+//
+// The `drift new` subprocess tests in check-drift.test.ts cover the verb
+// end-to-end. These cover the walk's own rules directly, which that suite
+// cannot reach cheaply: a fake repo here is just a directory containing an
+// empty `.git` folder, so each case costs a mkdir rather than a git init.
+// ---------------------------------------------------------------------------
+
+describe('scanForNewRepos', () => {
+	const scanRoots: string[] = [];
+
+	function makeScanRoot(): string {
+		const root = mkdtempSync(join(tmpdir(), 'drift-scan-unit-'));
+		scanRoots.push(root);
+		return root;
+	}
+
+	/** Creates a repo (a directory carrying a .git marker) at a path under root. */
+	function makeRepo(root: string, relativePath: string): void {
+		mkdirSync(join(root, relativePath, '.git'), { recursive: true });
+	}
+
+	function scan(root: string, scanDepth = 3, known: string[] = [], excluded: string[] = []) {
+		return scanForNewRepos({
+			scanRoot: root,
+			scanDepth,
+			knownSlugs: new Set(known),
+			excludedRepoNames: new Set(excluded)
+		});
+	}
+
+	afterEach(() => {
+		for (const root of scanRoots.splice(0)) {
+			rmSync(root, { recursive: true, force: true });
+		}
+	});
+
+	it('finds a repo at the top level', () => {
+		const root = makeScanRoot();
+		makeRepo(root, 'fresh-repo');
+		expect(scan(root).map((r) => r.name)).toEqual(['fresh-repo']);
+	});
+
+	it('finds a repo nested below the root', () => {
+		const root = makeScanRoot();
+		makeRepo(root, 'work/client/nested-repo');
+		const found = scan(root);
+		expect(found.map((r) => r.name)).toEqual(['nested-repo']);
+		expect(found[0].path).toBe(join(root, 'work/client/nested-repo'));
+	});
+
+	it('stops descending past scanDepth', () => {
+		const root = makeScanRoot();
+		// depth 0 is the root's own entries, so a/b/c/deep-repo sits at depth 3.
+		makeRepo(root, 'a/b/c/deep-repo');
+		expect(scan(root, 3).map((r) => r.name)).toEqual(['deep-repo']);
+		expect(scan(root, 2)).toEqual([]);
+	});
+
+	it('does not recurse into a discovered repo, so a submodule is not reported separately', () => {
+		const root = makeScanRoot();
+		makeRepo(root, 'outer');
+		makeRepo(root, 'outer/vendor/inner');
+		expect(scan(root).map((r) => r.name)).toEqual(['outer']);
+	});
+
+	it('skips dotfile directories', () => {
+		const root = makeScanRoot();
+		makeRepo(root, '.hidden-repo');
+		makeRepo(root, '.cache/buried-repo');
+		expect(scan(root)).toEqual([]);
+	});
+
+	it('normalises underscores and spaces to kebab-case', () => {
+		const root = makeScanRoot();
+		makeRepo(root, 'My_Project Name');
+		expect(scan(root)[0]).toMatchObject({
+			name: 'My_Project Name',
+			normalised: 'my-project-name'
+		});
+	});
+
+	it('omits a repo whose raw name or normalised name is already a known slug', () => {
+		const root = makeScanRoot();
+		makeRepo(root, 'Tracked_Repo');
+		expect(scan(root, 3, ['tracked-repo'])).toEqual([]);
+		expect(scan(root, 3, ['Tracked_Repo'])).toEqual([]);
+	});
+
+	it('omits a repo matching excludedRepoNames by raw or normalised name', () => {
+		const root = makeScanRoot();
+		makeRepo(root, 'Scratch_Pad');
+		expect(scan(root, 3, [], ['scratch-pad'])).toEqual([]);
+		expect(scan(root, 3, [], ['Scratch_Pad'])).toEqual([]);
+	});
+
+	it('returns an empty list for a scanRoot that does not exist', () => {
+		// The walk swallows the readdir failure rather than throwing, so a
+		// misconfigured scanRoot degrades to "nothing new" instead of a crash.
+		expect(scan(join(tmpdir(), 'drift-scan-absent-' + Date.now()))).toEqual([]);
+	});
+
+	it('ignores a plain directory tree with no repos in it', () => {
+		const root = makeScanRoot();
+		mkdirSync(join(root, 'notes/archive'), { recursive: true });
+		expect(scan(root)).toEqual([]);
 	});
 });

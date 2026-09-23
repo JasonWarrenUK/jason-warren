@@ -46,6 +46,15 @@ export default {
 	 */
 	scanDepth: 3,
 
+	/**
+	 * Bounded-concurrency pool size for `drift enrich`'s gh repo view fan-out.
+	 * Fixed and small rather than cpu-count-scaled: this pool crosses the
+	 * network, and GitHub answers a large concurrent burst with secondary
+	 * rate limits.
+	 * Default: 4
+	 */
+	enrichConcurrency: 4,
+
 	author: {
 		/**
 		 * Extended-regexp alternation over your git identities across repos.

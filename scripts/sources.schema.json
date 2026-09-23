@@ -238,6 +238,14 @@
 						"format": "date"
 					},
 					"description": "First-introduced date (YYYY-MM-DD) per detected tech identity, keyed by the same identity strings used in runtime/framework/database arrays (e.g. 'svelte-5', '@sveltejs/kit', 'bun'). Populated by a git pickaxe/file-add search against package.json, lockfiles and config files at drift sync time. Source-grep-only signals (e.g. inkjs when detected only via source import) are intentionally absent here and fall back to commitAnyRoot downstream. Excluded from drift comparison via DRIFT_SKIP_FIELDS (object identity would otherwise always read as drifted)."
+				},
+				"detectedTechLastSeen": {
+					"type": "object",
+					"additionalProperties": {
+						"type": "string",
+						"format": "date"
+					},
+					"description": "Retirement date (YYYY-MM-DD) per tech identity that has left detection, keyed the same way as detectedTechFirstSeen (5DR.31). A sibling map, not a replacement: an identity present here keeps its entry in detectedTechFirstSeen too, so adoption history is append-only rather than erased on a major migration (e.g. Svelte 4 to 5). Present only for identities no longer detected; a live identity never appears here. Dated to the sync that first noticed the identity's absence, not the commit that actually removed it (see the follow-up task for exact removal-dating via a reverse pickaxe). Excluded from drift comparison via DRIFT_SKIP_FIELDS, for the same object-identity reason as detectedTechFirstSeen."
 				}
 			}
 		}

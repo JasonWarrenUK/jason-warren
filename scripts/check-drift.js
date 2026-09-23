@@ -240,11 +240,14 @@ const ARRAY_FINGERPRINT_FIELDS = new Set(
 // Fields excluded from drift comparison even though they live in the schema
 // and persist in sources.json. These are metadata / provenance fields; their
 // changes are surfaced via advisory report sections, not as field drift.
-// detectedTechFirstSeen is an object: the scalar `was !== now` comparison used for
-// non-array fields is always true for object identity, which would flag it
-// as drifted on every single sync. It is still fully persisted and written —
-// only excluded from the drift *report*, same treatment as measuredRef.
-const DRIFT_SKIP_FIELDS = new Set(['measuredRef', 'detectedTechFirstSeen']);
+// detectedTechFirstSeen and detectedTechLastSeen (5DR.31) are objects: the
+// scalar `was !== now` comparison used for non-array fields is always true
+// for object identity, which would flag them as drifted on every single
+// sync. Both are still fully persisted and written — only excluded from the
+// drift *report*, same treatment as measuredRef. This exclusion is report-only:
+// mergeFingerprint (the write-time merge) does not consult DRIFT_SKIP_FIELDS,
+// so the adoption-history ratchet below stays fully in effect.
+const DRIFT_SKIP_FIELDS = new Set(['measuredRef', 'detectedTechFirstSeen', 'detectedTechLastSeen']);
 
 // EXTENSION_LANGUAGE is imported from scripts/tag-taxonomy.js above.
 // That module is the single source of truth shared between the CLI and the app.
@@ -1571,6 +1574,91 @@ function diffFingerprint(saved, current) {
 }
 
 /**
+ * Today's date as ISO YYYY-MM-DD, in the local timezone's UTC-normalised form
+ * already used elsewhere in the engine (runEnrich, runUpdate). Extracted here
+ * as mergeFingerprint's default syncDate, so a caller that does not thread
+ * one through explicitly still gets today rather than an unset value.
+ *
+ * @returns {string}
+ */
+function todayISO() {
+	return new Date().toISOString().slice(0, 10);
+}
+
+/**
+ * Adoption-history ratchet (5DR.31). detectedTechFirstSeen is otherwise
+ * clobbered wholesale by mergeFingerprint's per-field loop: any identity no
+ * longer in `current`'s detection set silently disappears from `merged`,
+ * which is how code-arcana's svelte-4 vanished on its Svelte 5 migration.
+ *
+ * Mutates `merged` in place: unions saved and current detectedTechFirstSeen
+ * keys (so a retired identity keeps its firstSeen), dates a newly-retired
+ * identity's detectedTechLastSeen to `syncDate` (never overwriting an
+ * existing one, since the first sync to notice the absence is the one that
+ * dates it), and clears lastSeen for an identity that has resurfaced.
+ *
+ * Skipped entirely when `current` carries no detectedTechFirstSeen key at
+ * all: that means the history walk failed or produced nothing, not that
+ * every tracked identity retired at once. Retiring 29 identities on a
+ * transient git failure would be the one genuinely destructive outcome here.
+ *
+ * @param {Record<string, unknown>} saved
+ * @param {Record<string, unknown>} current
+ * @param {Record<string, unknown>} merged - mutated in place
+ * @param {{field: string, was: unknown, now: unknown}[]} changedFields - mutated in place
+ * @param {string} syncDate - ISO date (YYYY-MM-DD)
+ */
+function ratchetTechHistory(saved, current, merged, changedFields, syncDate) {
+	if (!('detectedTechFirstSeen' in current)) return;
+
+	const savedFirstSeen = saved.detectedTechFirstSeen ?? {};
+	const currentFirstSeen = current.detectedTechFirstSeen ?? {};
+	const savedLastSeen = saved.detectedTechLastSeen ?? {};
+
+	const mergedFirstSeen = { ...savedFirstSeen, ...currentFirstSeen };
+	const mergedLastSeen = { ...savedLastSeen };
+
+	for (const identity of Object.keys(mergedFirstSeen)) {
+		if (identity in currentFirstSeen) {
+			// Resurrection: an identity that was retired is detected again.
+			// Clear its lastSeen so the record does not claim a live tech is retired.
+			delete mergedLastSeen[identity];
+		} else if (!(identity in mergedLastSeen)) {
+			// Newly retired this sync: dated to the sync that first noticed the
+			// absence, not the commit that actually removed it (see the
+			// follow-up exact-removal-dating task).
+			mergedLastSeen[identity] = syncDate;
+		}
+	}
+
+	merged.detectedTechFirstSeen = mergedFirstSeen;
+	if (Object.keys(mergedLastSeen).length > 0) {
+		merged.detectedTechLastSeen = mergedLastSeen;
+	} else {
+		// A resurrection can empty mergedLastSeen entirely. `merged` already
+		// carries a stale detectedTechLastSeen from `{ ...saved }` at this
+		// point (mergeFingerprint's own spread, before this function runs),
+		// so the empty case must delete the key, not merely skip assigning it.
+		delete merged.detectedTechLastSeen;
+	}
+
+	// changedFields is keyed on Object.keys(current), and detectedTechLastSeen
+	// is never a key of `current` (getFingerprint does not emit it), so a
+	// retirement would otherwise produce no entry at all — silent both in the
+	// write and in `drift sync --dry-run`'s preview, which shares this
+	// function. Push a synthetic entry so a retirement is visible before write.
+	const wasLastSeen = saved.detectedTechLastSeen;
+	const nowLastSeen = merged.detectedTechLastSeen;
+	if (JSON.stringify(wasLastSeen) !== JSON.stringify(nowLastSeen)) {
+		changedFields.push({
+			field: 'detectedTechLastSeen',
+			was: wasLastSeen ?? null,
+			now: nowLastSeen ?? null
+		});
+	}
+}
+
+/**
  * Pure preview of the sync field-merge. Mirrors the real write loop exactly so
  * the dry-run preview and the actual write cannot produce different results.
  *
@@ -1581,13 +1669,17 @@ function diffFingerprint(saved, current) {
  *
  * @param {Record<string, unknown>} saved   stored fingerprint (may be {})
  * @param {Record<string, unknown>} current live fingerprint from getFingerprint
+ * @param {string} [syncDate] - ISO date (YYYY-MM-DD) used to date a newly-retired
+ *   tech identity (5DR.31). Taken as a parameter rather than read from the
+ *   clock inside this pure, unit-tested function, so tests can pin it.
+ *   Defaults to today at the call sites.
  * @returns {{
  *   merged: Record<string, unknown>,
  *   changedFields: {field: string, was: unknown, now: unknown}[],
  *   preservedFields: string[]
  * }}
  */
-function mergeFingerprint(saved, current) {
+function mergeFingerprint(saved, current, syncDate) {
 	const merged = { ...saved };
 	const preservedFields = [];
 
@@ -1616,6 +1708,8 @@ function mergeFingerprint(saved, current) {
 			if (was !== now) changedFields.push({ field, was: was ?? null, now: now ?? null });
 		}
 	}
+
+	ratchetTechHistory(saved, current, merged, changedFields, syncDate ?? todayISO());
 
 	return { merged, changedFields, preservedFields };
 }
@@ -1799,6 +1893,39 @@ function orderedUnion(...values) {
 	return [...new Set(values.flatMap((value) => value ?? []))];
 }
 
+/**
+ * Merges a per-tech date map (detectedTechFirstSeen or detectedTechLastSeen)
+ * across the primary and every companion.
+ *
+ * The collision rule differs per map, because the two dates answer opposite
+ * questions about a monorepo's workspaces:
+ *
+ * - `earliest` for detectedTechFirstSeen: the family adopted a tech when its
+ *   first workspace did. Matches dateDetectedTech's own rule.
+ * - `latest` for detectedTechLastSeen: the family retired a tech when its
+ *   last remaining workspace did. If workspace A dropped jQuery in January
+ *   and workspace B kept it until June, the family's retirement date is June;
+ *   earliest-wins would claim January and under-report the true lifespan.
+ *
+ * @param {Record<string, string>[]} maps
+ * @param {'earliest' | 'latest'} collisionRule - which date wins when two
+ *   sources carry the same identity.
+ * @returns {Record<string, string>}
+ */
+function mergeTechDateMaps(maps, collisionRule) {
+	const merged = {};
+	for (const map of maps) {
+		for (const [identity, date] of Object.entries(map ?? {})) {
+			const held = merged[identity];
+			const wins = held === undefined || (collisionRule === 'earliest' ? date < held : date > held);
+			if (wins) {
+				merged[identity] = date;
+			}
+		}
+	}
+	return merged;
+}
+
 /** Merge repository-derived stack metadata while retaining primary metrics. */
 function mergeCompanionFingerprints(primary, companions) {
 	const urlsRepoCompanion = companions
@@ -1820,6 +1947,28 @@ function mergeCompanionFingerprints(primary, companions) {
 		primary.detectedDatabase,
 		...companions.map((item) => item.detectedDatabase)
 	);
+	// 5DR.31: without this, a companion's adoption-history dates are dropped
+	// outright (this function previously had no detectedTechFirstSeen branch
+	// at all, passing everything through ...primary), lost before
+	// mergeFingerprint's ratchet ever sees them.
+	const detectedTechFirstSeen = mergeTechDateMaps(
+		[primary.detectedTechFirstSeen, ...companions.map((item) => item.detectedTechFirstSeen)],
+		'earliest'
+	);
+	// Inert on every current code path, deliberately kept. This function runs on
+	// the `current` side, over getFingerprint outputs, and getFingerprint never
+	// emits detectedTechLastSeen: the field is produced one stage downstream, by
+	// ratchetTechHistory, from the `saved` side. So both inputs here are always
+	// undefined today and the conditional spread below always drops the result.
+	// Kept so that a future producer (an exact-removal-dating pass emitting
+	// lastSeen per workspace) finds the companion seam already correct rather
+	// than silently dropping a companion's retirement dates, which is the exact
+	// failure detectedTechFirstSeen suffered before 5DR.31. Latest-wins, per the
+	// rule documented on mergeTechDateMaps.
+	const detectedTechLastSeen = mergeTechDateMaps(
+		[primary.detectedTechLastSeen, ...companions.map((item) => item.detectedTechLastSeen)],
+		'latest'
+	);
 
 	return {
 		...primary,
@@ -1827,7 +1976,9 @@ function mergeCompanionFingerprints(primary, companions) {
 		...(detectedLanguages.length > 0 && { detectedLanguages }),
 		...(detectedRuntime.length > 0 && { detectedRuntime }),
 		...(detectedFramework.length > 0 && { detectedFramework }),
-		...(detectedDatabase.length > 0 && { detectedDatabase })
+		...(detectedDatabase.length > 0 && { detectedDatabase }),
+		...(Object.keys(detectedTechFirstSeen).length > 0 && { detectedTechFirstSeen }),
+		...(Object.keys(detectedTechLastSeen).length > 0 && { detectedTechLastSeen })
 	};
 }
 
@@ -1854,6 +2005,59 @@ function mergeCompanionFingerprints(primary, companions) {
 // ---------------------------------------------------------------------------
 
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
+
+/**
+ * Recursively scans `scanRoot` for git repos not yet tracked in the
+ * manifest. A directory containing `.git` is treated as a repo and not
+ * recursed into further; anything else is walked up to `scanDepth`.
+ *
+ * Hoisted out of computeDrift (5DR.30) so `drift new` can call it directly
+ * without paying for a full fingerprint scan of every already-tracked repo.
+ * computeDrift calls it too, so the report's "new repos" section and
+ * `drift new` share one walk with identical filtering.
+ *
+ * @param {{ scanRoot: string, scanDepth: number, knownSlugs: Set<string>, excludedRepoNames: Set<string> }} options
+ * @returns {{ name: string, path: string, normalised: string }[]}
+ */
+function scanForNewRepos({ scanRoot, scanDepth, knownSlugs, excludedRepoNames }) {
+	const newRepos = [];
+
+	function walk(dir, depth = 0) {
+		if (depth > scanDepth) return;
+		let dirEntries;
+		try {
+			dirEntries = readdirSync(dir);
+		} catch {
+			return;
+		}
+		for (const dirEntry of dirEntries) {
+			if (dirEntry.startsWith('.')) continue;
+			const fullPath = join(dir, dirEntry);
+			try {
+				if (!statSync(fullPath).isDirectory()) continue;
+			} catch {
+				continue;
+			}
+			if (existsSync(join(fullPath, '.git'))) {
+				const name = dirEntry;
+				// Normalise: lowercase, convert to kebab-case (basic)
+				const normalised = name.toLowerCase().replace(/[_\s]+/g, '-');
+				if (!knownSlugs.has(normalised) && !knownSlugs.has(name)) {
+					newRepos.push({ name, path: fullPath, normalised });
+				}
+				// Don't recurse into git repos
+			} else {
+				walk(fullPath, depth + 1);
+			}
+		}
+	}
+
+	walk(scanRoot);
+
+	return newRepos.filter(
+		(r) => !excludedRepoNames.has(r.name) && !excludedRepoNames.has(r.normalised)
+	);
+}
 
 async function computeDrift(
 	{ manifest, overrideEntries, localPaths, sourceTopology = {}, cache, inProgress = {} },
@@ -2066,45 +2270,15 @@ async function computeDrift(
 	// Scan for git repos not yet in the manifest.
 	// COUPLING [5DR.3]: resolved — scan root and depth now come from config.
 	// Configure via drift.config.ts → scanRoot / scanDepth.
+	// 5DR.30: the walk itself is hoisted to scanForNewRepos so `drift new` can
+	// call it without paying for the rest of this scan.
 	const knownSlugs = new Set(Object.keys(manifest.sources));
-	const codeRoot = config.scanRoot;
-	const newRepos = [];
-
-	function scanForGitRepos(dir, depth = 0) {
-		if (depth > config.scanDepth) return;
-		let dirEntries;
-		try {
-			dirEntries = readdirSync(dir);
-		} catch {
-			return;
-		}
-		for (const dirEntry of dirEntries) {
-			if (dirEntry.startsWith('.')) continue;
-			const fullPath = join(dir, dirEntry);
-			try {
-				if (!statSync(fullPath).isDirectory()) continue;
-			} catch {
-				continue;
-			}
-			if (existsSync(join(fullPath, '.git'))) {
-				const name = dirEntry;
-				// Normalise: lowercase, convert to kebab-case (basic)
-				const normalised = name.toLowerCase().replace(/[_\s]+/g, '-');
-				if (!knownSlugs.has(normalised) && !knownSlugs.has(name)) {
-					newRepos.push({ name, path: fullPath, normalised });
-				}
-				// Don't recurse into git repos
-			} else {
-				scanForGitRepos(fullPath, depth + 1);
-			}
-		}
-	}
-
-	scanForGitRepos(codeRoot);
-
-	const filteredNew = newRepos.filter(
-		(r) => !excludedRepoNames.has(r.name) && !excludedRepoNames.has(r.normalised)
-	);
+	const filteredNew = scanForNewRepos({
+		scanRoot: config.scanRoot,
+		scanDepth: config.scanDepth,
+		knownSlugs,
+		excludedRepoNames
+	});
 
 	// ---------------------------------------------------------------------------
 	// Graduation detection (Phase 6 staging pipeline).
@@ -2732,6 +2906,94 @@ function runReport({ result, manifest, palette, json, full, useGum }) {
 }
 
 // ---------------------------------------------------------------------------
+// New: report newly-discovered repos under scanRoot without the full
+// drift/conflict report.
+//
+// Write-isolation: writes nothing. Read-only, same as `drift authored`.
+//
+// Needs manifest.sources (for knownSlugs) but not computeDrift's git scan,
+// so it dispatches alongside hide/promote/enrich rather than in the
+// post-scan switch. Shares scanForNewRepos (5DR.30) with computeDrift's own
+// "new repos" report section, so the two surfaces can never disagree.
+// ---------------------------------------------------------------------------
+
+/**
+ * Renders the `drift new` view as markdown (gum path).
+ *
+ * @param {{ name: string, path: string, normalised: string }[]} filteredNew
+ * @returns {string}
+ */
+function renderNewMarkdown(filteredNew) {
+	const lines = [];
+	if (filteredNew.length > 0) {
+		lines.push(`# New repos not yet in portfolio (${filteredNew.length})`);
+		lines.push('');
+		for (const r of filteredNew) {
+			lines.push(`- \`${r.name}\` · ${r.path}`);
+		}
+	} else {
+		lines.push(`No new repos found under \`${config.scanRoot}\`.`);
+	}
+	return lines.join('\n');
+}
+
+/**
+ * Plain ANSI fallback for the `drift new` view.
+ *
+ * @param {{ name: string, path: string, normalised: string }[]} filteredNew
+ * @param {object} palette
+ */
+function runNewPlain(filteredNew, palette) {
+	const { RESET, BOLD, GREEN, CYAN, DIM } = palette;
+	if (filteredNew.length > 0) {
+		console.log(`${GREEN}${BOLD}New repos not yet in portfolio (${filteredNew.length}):${RESET}`);
+		for (const r of filteredNew) {
+			console.log(`  ${CYAN}${r.name}${RESET}  ${DIM}${r.path}${RESET}`);
+		}
+		console.log();
+	} else {
+		console.log(`${DIM}No new repos found under ${config.scanRoot}.${RESET}`);
+	}
+}
+
+/**
+ * drift new: filtered view of newly-discovered repos under scanRoot,
+ * without the full drift/conflict report. Mirrors runAuthored's structure:
+ * --json first, then gum markdown, then plain ANSI.
+ *
+ * @param {{ manifest: object, palette: object, json: boolean, useGum: boolean }} options
+ */
+function runNew({ manifest, palette, json, useGum }) {
+	const { excludedRepoNames } = loadExcluded();
+	const knownSlugs = new Set(Object.keys(manifest.sources ?? {}));
+	const filteredNew = scanForNewRepos({
+		scanRoot: config.scanRoot,
+		scanDepth: config.scanDepth,
+		knownSlugs,
+		excludedRepoNames
+	});
+
+	if (json) {
+		process.stdout.write(JSON.stringify({ filteredNew }, null, 2) + '\n');
+		return;
+	}
+
+	if (useGum && process.stdout.isTTY) {
+		const md = renderNewMarkdown(filteredNew);
+		const out = spawnSync('gum', ['format', '--theme', config.theme.markdownTheme], {
+			input: md,
+			encoding: 'utf8'
+		});
+		if (out.status === 0 && out.stdout) {
+			process.stdout.write('\n' + out.stdout + '\n');
+			return;
+		}
+	}
+
+	runNewPlain(filteredNew, palette);
+}
+
+// ---------------------------------------------------------------------------
 // Sync: rewrite sources.json with current fingerprints.
 // The sanctioned writer of the `sources` section of sources.json. Never
 // touches overrides.json. The sibling `enriched` section belongs to
@@ -2744,6 +3006,10 @@ function runReport({ result, manifest, palette, json, full, useGum }) {
 function runUpdate({ result, manifest, palette, useGum, args = [], dryRun = false }) {
 	const { fresh, missing } = result;
 	const { GREEN, YELLOW, RED, RESET, DIM } = palette;
+	// Computed once and threaded through both the dry-run preview and the
+	// real write, so a sync spanning midnight cannot date the same
+	// adoption-history retirement (5DR.31) differently in each.
+	const today = todayISO();
 
 	// Per-repo scoping: if slug args were provided, restrict to those slugs only.
 	// Unknown slugs get a soft warning (not an abort) so a typo doesn't block a batch.
@@ -2780,7 +3046,7 @@ function runUpdate({ result, manifest, palette, useGum, args = [], dryRun = fals
 		let firstCard = true;
 		for (const [slug, current] of Object.entries(scopedFresh)) {
 			const saved = manifest.sources[slug] ?? {};
-			const { changedFields, preservedFields } = mergeFingerprint(saved, current);
+			const { changedFields, preservedFields } = mergeFingerprint(saved, current, today);
 			renderDryRunCard({
 				slug,
 				current,
@@ -2815,7 +3081,7 @@ function runUpdate({ result, manifest, palette, useGum, args = [], dryRun = fals
 	console.log('Updating sources.json with current fingerprints...');
 	for (const [slug, current] of Object.entries(scopedFresh)) {
 		const saved = manifest.sources[slug] ?? {};
-		const { merged, preservedFields } = mergeFingerprint(saved, current);
+		const { merged, preservedFields } = mergeFingerprint(saved, current, today);
 		manifest.sources[slug] = merged;
 		if (preservedFields.length > 0) {
 			console.log(
@@ -2823,7 +3089,6 @@ function runUpdate({ result, manifest, palette, useGum, args = [], dryRun = fals
 			);
 		}
 	}
-	const today = new Date().toISOString().slice(0, 10);
 	manifest.lastSyncedAt = today;
 
 	// Only a full (un-scoped) update can declare all commitAnyRoot values authoritative.
@@ -2906,23 +3171,35 @@ function parseOwnerRepo(urlRepo) {
  * Fetches isArchived/homepageUrl for one owner/repo via `gh repo view`.
  * Never throws: a resolution failure (deleted, renamed, private, gh not
  * authenticated) is reported back as { error } so one bad repo cannot sink
- * a whole enrich run.
+ * a whole enrich run. Async via execFileAsync (5DR.28) so the enrich pool
+ * below can run several of these concurrently rather than blocking the
+ * event loop per repo.
  *
  * @param {string} ownerRepo
- * @returns {{ isArchived: boolean, homepageUrl: string } | { error: string }}
+ * @returns {Promise<{ isArchived: boolean, homepageUrl: string } | { error: string }>}
  */
-function fetchGhRepoView(ownerRepo) {
-	const out = spawnSync('gh', ['repo', 'view', ownerRepo, '--json', 'isArchived,homepageUrl'], {
-		encoding: 'utf8'
-	});
-	if (out.status !== 0) {
-		return { error: (out.stderr || out.stdout || 'unknown gh error').trim() };
-	}
+async function fetchGhRepoView(ownerRepo) {
 	try {
-		const parsed = JSON.parse(out.stdout);
+		const { stdout } = await execFileAsync('gh', [
+			'repo',
+			'view',
+			ownerRepo,
+			'--json',
+			'isArchived,homepageUrl'
+		]);
+		const parsed = JSON.parse(stdout);
 		return { isArchived: !!parsed.isArchived, homepageUrl: parsed.homepageUrl ?? '' };
-	} catch (err) {
-		return { error: `could not parse gh output: ${err.message}` };
+	} catch (error) {
+		if (error instanceof SyntaxError) {
+			return { error: `could not parse gh output: ${error.message}` };
+		}
+		const message = (
+			error.stderr?.toString() ||
+			error.stdout?.toString() ||
+			error.message ||
+			''
+		).trim();
+		return { error: message || 'unknown gh error' };
 	}
 }
 
@@ -2955,7 +3232,7 @@ function buildEnrichedRecord(ghResult, today) {
  *
  * @param {{ manifest: object, args: string[], values: object, palette: object, useGum: boolean }} options
  */
-function runEnrich({ manifest, args = [], values, palette, useGum }) {
+async function runEnrich({ manifest, args = [], values, palette, useGum }) {
 	const { GREEN, YELLOW, RED, RESET, DIM, BOLD } = palette;
 
 	const gh = ghPath();
@@ -3024,20 +3301,50 @@ function runEnrich({ manifest, args = [], values, palette, useGum }) {
 		if (onProgress) process.stderr.write('\r' + ' '.repeat(60) + '\r');
 	};
 
-	// Fetches every resolved repo, reporting progress as it goes. Shared by the
-	// dry-run preview and the real write so the gum gate (below) can sit before
-	// this cost on the write path without duplicating the loop.
-	const fetchAllWithProgress = () => {
-		const fetched = resolvable.map(({ slug, ownerRepo }, index) => {
-			onProgress?.({ index: index + 1, total: resolvable.length, slug });
-			return { slug, ownerRepo, ghResult: fetchGhRepoView(ownerRepo) };
-		});
+	// Fetches every resolved repo through a bounded-concurrency pool, reporting
+	// progress as it goes. Shared by the dry-run preview and the real write so
+	// the gum gate (below) can sit before this cost on the write path without
+	// duplicating the loop.
+	//
+	// Bounded-concurrency worker pool (5DR.28), the same shared-cursor shape
+	// computeDrift uses for its own git fan-out, but sized from
+	// config.enrichConcurrency (fixed, network-appropriate) rather than cpu
+	// count, since this pool crosses the network and a large concurrent burst
+	// risks GitHub's secondary rate limits. Results are collected index-keyed
+	// so ordering matches `resolvable` regardless of which worker finishes
+	// first; progress is a completion counter, not the loop index, for the
+	// same reason. fetchGhRepoView never throws, but the try/catch keeps one
+	// unexpected failure from taking down its sibling workers.
+	const fetchAllWithProgress = async () => {
+		const total = resolvable.length;
+		const fetched = new Array(total);
+		let completed = 0;
+		let cursor = 0;
+		const concurrency = Math.max(1, Math.min(config.enrichConcurrency, total));
+
+		async function worker() {
+			while (cursor < total) {
+				const i = cursor++;
+				const { slug, ownerRepo } = resolvable[i];
+				let ghResult;
+				try {
+					ghResult = await fetchGhRepoView(ownerRepo);
+				} catch (err) {
+					ghResult = { error: err.message || 'unexpected enrich failure' };
+				}
+				fetched[i] = { slug, ownerRepo, ghResult };
+				completed++;
+				onProgress?.({ index: completed, total, slug });
+			}
+		}
+
+		await Promise.all(Array.from({ length: concurrency }, worker));
 		clearProgress();
 		return fetched;
 	};
 
 	if (values['dry-run']) {
-		const results = fetchAllWithProgress();
+		const results = await fetchAllWithProgress();
 		console.log(
 			`${DIM}Dry run — showing what ${results.length} repo${results.length === 1 ? '' : 's'} would change. Nothing will be written.${RESET}\n`
 		);
@@ -3073,7 +3380,7 @@ function runEnrich({ manifest, args = [], values, palette, useGum }) {
 		}
 	}
 
-	const results = fetchAllWithProgress();
+	const results = await fetchAllWithProgress();
 	console.log("Enriching sources.json's enriched section from GitHub...");
 	manifest.enriched = manifest.enriched ?? {};
 	let errorCount = 0;
@@ -6712,6 +7019,7 @@ Compare synced fingerprints against current git state and surface new repos.
 - \`drift authored [<slug>] [--json] [--no-color]\`
 - \`drift sync [<slug>...] [--dry-run]\`
 - \`drift enrich [<slug>...] [--dry-run]\`
+- \`drift new [--json]\`
 - \`drift keep <slug> <field>\`
 - \`drift keep --all-projects <field>\`
 - \`drift keep-all\`
@@ -6734,6 +7042,7 @@ Compare synced fingerprints against current git state and surface new repos.
 - \`authored\` · show every authored field for every overlay, absent fields marked
 - \`sync\` · rewrite sources.json with current fingerprints
 - \`enrich\` · opt-in, gh-backed: fetch GitHub's archived flag and homepage URL into sources.json's enriched section (requires \`gh\`)
+- \`new\` · report newly-discovered repos under scanRoot without the full drift/conflict report; writes nothing
 - \`keep\` · keep your manual override value, refreshing its synced baseline to dismiss the flag
 - \`keep-all\` · refresh every flagged override baseline at once
 - \`hide\` · append a slug to excluded.json, removing it from the public site
@@ -6817,6 +7126,20 @@ drift enrich
 drift enrich <slug>             # scope to one repo
 drift enrich <slug> <slug2>     # scope to several repos
 drift enrich --dry-run          # preview only, writes nothing
+\`\`\``,
+
+	new: `# drift new · newly-discovered repos under scanRoot
+
+Reports git repos found under \`scanRoot\` that are not yet tracked in
+sources.json, without the full drift/conflict report. Read-only: writes
+nothing. Shares its scan with \`drift report\`'s own "new repos" section,
+so the two can never disagree.
+
+## Usage
+
+\`\`\`
+drift new
+drift new --json
 \`\`\``,
 
 	keep: `# drift keep · dismiss override-drift flags
@@ -7222,6 +7545,7 @@ ${BOLD}Usage:${RESET}
   drift authored [<slug>] [--json] [--no-color]
   drift sync [<slug>...] [--dry-run]
   drift enrich [<slug>...] [--dry-run]
+  drift new [--json]
   drift keep <slug> <field>
   drift keep --all-projects <field>
   drift keep-all
@@ -7243,6 +7567,7 @@ ${BOLD}Verbs:${RESET}
   authored    Show every authored field for every overlay, absent fields marked.
   sync        Rewrite sources.json with current fingerprints.
   enrich      Opt-in, gh-backed: fetch GitHub's archived flag and homepage URL (requires gh).
+  new         Report newly-discovered repos under scanRoot. Writes nothing.
   keep        Keep your manual override value, refreshing its baseline to dismiss the flag.
   keep-all    Refresh every flagged override baseline at once.
   hide        Append a slug to excluded.json, removing it from the public site.
@@ -7297,6 +7622,17 @@ preview without writing. In an interactive terminal with gum, drift asks
 for confirmation before writing.${RESET}
 
   Usage: drift enrich [<slug>...] [--dry-run]`,
+
+		new: `${BOLD}drift new${RESET} - newly-discovered repos under scanRoot
+
+Reports git repos found under scanRoot that are not yet tracked in
+sources.json, without the full drift/conflict report. Read-only: writes
+nothing.
+
+${DIM}Shares its scan with drift report's own "new repos" section, so the two
+can never disagree.${RESET}
+
+  Usage: drift new [--json]`,
 
 		keep: `${BOLD}drift keep <slug> <field>${RESET} - dismiss one override-drift flag
 
@@ -7728,7 +8064,8 @@ async function runInteractiveMenu({ manifests, palette, useGum, onProgress, clea
 				],
 				['Snapshot', 'Every current metric value, changed fields highlighted', 'snapshot'],
 				['Authored', 'Every authored field per overlay, absent fields marked', 'authored'],
-				['Audit', 'Score every authored overlay against the depth rubric', 'audit']
+				['Audit', 'Score every authored overlay against the depth rubric', 'audit'],
+				['New repos', 'Newly-discovered repos under scanRoot, writes nothing', 'new']
 			]
 		},
 		{
@@ -7877,6 +8214,9 @@ async function runInteractiveMenu({ manifests, palette, useGum, onProgress, clea
 			case 'authored':
 				await runAuthored({ args: [], palette, useGum, json: false });
 				break;
+			case 'new':
+				runNew({ manifest: manifests.manifest, palette, json: false, useGum });
+				break;
 			case 'sync':
 				runUpdate({
 					result: await scan(false),
@@ -7888,7 +8228,7 @@ async function runInteractiveMenu({ manifests, palette, useGum, onProgress, clea
 				});
 				break;
 			case 'enrich':
-				runEnrich({
+				await runEnrich({
 					manifest: manifests.manifest,
 					args: [],
 					values: { json: false, 'dry-run': false },
@@ -8593,6 +8933,7 @@ async function main() {
 		'hide',
 		'promote',
 		'enrich',
+		'new',
 		'author',
 		'flag',
 		'relate',
@@ -8694,10 +9035,11 @@ async function main() {
 		return;
 	}
 
-	// hide/promote/enrich do not need a drift scan; run them immediately and
-	// return. enrich needs the manifest (for urlRepo) but not computeDrift's
-	// git scan, so it dispatches here rather than in the pre-manifest tier
-	// above with init/author/etc.
+	// hide/promote/enrich/new do not need a drift scan; run them immediately
+	// and return. enrich needs the manifest (for urlRepo) but not
+	// computeDrift's git scan, so it dispatches here rather than in the
+	// pre-manifest tier above with init/author/etc. new needs the manifest
+	// (for knownSlugs) for the same reason (5DR.30) — it writes nothing.
 	if (verb === 'hide') {
 		runExclude({ args, manifest: manifests.manifest, palette });
 		return;
@@ -8707,7 +9049,11 @@ async function main() {
 		return;
 	}
 	if (verb === 'enrich') {
-		runEnrich({ manifest: manifests.manifest, args, values, palette, useGum });
+		await runEnrich({ manifest: manifests.manifest, args, values, palette, useGum });
+		return;
+	}
+	if (verb === 'new') {
+		runNew({ manifest: manifests.manifest, palette, json: values.json, useGum });
 		return;
 	}
 
@@ -8776,6 +9122,7 @@ export {
 	diffFingerprint,
 	mergeFingerprint,
 	mergeCompanionFingerprints,
+	scanForNewRepos,
 	FINGERPRINT_FIELDS,
 	ARRAY_FINGERPRINT_FIELDS,
 	DRIFT_SKIP_FIELDS
