@@ -9122,6 +9122,7 @@ export {
 	diffFingerprint,
 	mergeFingerprint,
 	mergeCompanionFingerprints,
+	scanForNewRepos,
 	FINGERPRINT_FIELDS,
 	ARRAY_FINGERPRINT_FIELDS,
 	DRIFT_SKIP_FIELDS

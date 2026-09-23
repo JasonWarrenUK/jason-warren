@@ -12,18 +12,25 @@
  * excludes check-drift.test.ts by name — so it runs in milliseconds, not
  * seconds.
  *
- * Scan orchestration (computeDrift's worker pool over real git worktrees, its
- * ref+TTL cache, its recursive repo scan) is deliberately NOT covered here.
- * Unit-testing that would mean rebuilding the temp-git-repo scaffolding the
- * `sync` and `enrich` subprocess blocks already provide, and would reintroduce
- * the blocking-I/O cost this file exists to avoid. Its observable behaviour
- * stays covered there; the pure helpers it delegates to (diffFingerprint et
- * al.) are what this file covers directly — which is what "drift computation"
- * means at the unit level.
+ * Scan orchestration (computeDrift's worker pool over real git worktrees and
+ * its ref+TTL cache) is deliberately NOT covered here. Unit-testing that would
+ * mean rebuilding the temp-git-repo scaffolding the `sync` and `enrich`
+ * subprocess blocks already provide, and would reintroduce the blocking-I/O
+ * cost this file exists to avoid. Its observable behaviour stays covered
+ * there; the pure helpers it delegates to (diffFingerprint et al.) are what
+ * this file covers directly — which is what "drift computation" means at the
+ * unit level.
+ *
+ * One exception: scanForNewRepos (5DR.30). Its directory walk needs only empty
+ * directories and `.git` marker folders, never a real git repo, so it costs
+ * milliseconds here rather than the seconds a subprocess verb test costs. The
+ * `drift new` subprocess tests in check-drift.test.ts cover the verb; these
+ * cover the walk's own rules (depth limiting, dotfile skipping, not recursing
+ * into a discovered repo) directly.
  */
 
 import { describe, it, expect, afterEach, vi } from 'vitest';
-import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, writeFileSync, rmSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { tmpdir } from 'node:os';
@@ -33,6 +40,7 @@ import {
 	diffFingerprint,
 	mergeFingerprint,
 	mergeCompanionFingerprints,
+	scanForNewRepos,
 	FINGERPRINT_FIELDS,
 	ARRAY_FINGERPRINT_FIELDS,
 	DRIFT_SKIP_FIELDS
@@ -614,5 +622,115 @@ describe('fingerprint field constants match the schema', () => {
 		// Order is display order for field drift, so it is worth pinning even
 		// though the membership assertions above carry the regression cover.
 		expect(FINGERPRINT_FIELDS).toEqual(Object.keys(props));
+	});
+});
+
+// ---------------------------------------------------------------------------
+// scanForNewRepos (5DR.30)
+//
+// The `drift new` subprocess tests in check-drift.test.ts cover the verb
+// end-to-end. These cover the walk's own rules directly, which that suite
+// cannot reach cheaply: a fake repo here is just a directory containing an
+// empty `.git` folder, so each case costs a mkdir rather than a git init.
+// ---------------------------------------------------------------------------
+
+describe('scanForNewRepos', () => {
+	const scanRoots: string[] = [];
+
+	function makeScanRoot(): string {
+		const root = mkdtempSync(join(tmpdir(), 'drift-scan-unit-'));
+		scanRoots.push(root);
+		return root;
+	}
+
+	/** Creates a repo (a directory carrying a .git marker) at a path under root. */
+	function makeRepo(root: string, relativePath: string): void {
+		mkdirSync(join(root, relativePath, '.git'), { recursive: true });
+	}
+
+	function scan(root: string, scanDepth = 3, known: string[] = [], excluded: string[] = []) {
+		return scanForNewRepos({
+			scanRoot: root,
+			scanDepth,
+			knownSlugs: new Set(known),
+			excludedRepoNames: new Set(excluded)
+		});
+	}
+
+	afterEach(() => {
+		for (const root of scanRoots.splice(0)) {
+			rmSync(root, { recursive: true, force: true });
+		}
+	});
+
+	it('finds a repo at the top level', () => {
+		const root = makeScanRoot();
+		makeRepo(root, 'fresh-repo');
+		expect(scan(root).map((r) => r.name)).toEqual(['fresh-repo']);
+	});
+
+	it('finds a repo nested below the root', () => {
+		const root = makeScanRoot();
+		makeRepo(root, 'work/client/nested-repo');
+		const found = scan(root);
+		expect(found.map((r) => r.name)).toEqual(['nested-repo']);
+		expect(found[0].path).toBe(join(root, 'work/client/nested-repo'));
+	});
+
+	it('stops descending past scanDepth', () => {
+		const root = makeScanRoot();
+		// depth 0 is the root's own entries, so a/b/c/deep-repo sits at depth 3.
+		makeRepo(root, 'a/b/c/deep-repo');
+		expect(scan(root, 3).map((r) => r.name)).toEqual(['deep-repo']);
+		expect(scan(root, 2)).toEqual([]);
+	});
+
+	it('does not recurse into a discovered repo, so a submodule is not reported separately', () => {
+		const root = makeScanRoot();
+		makeRepo(root, 'outer');
+		makeRepo(root, 'outer/vendor/inner');
+		expect(scan(root).map((r) => r.name)).toEqual(['outer']);
+	});
+
+	it('skips dotfile directories', () => {
+		const root = makeScanRoot();
+		makeRepo(root, '.hidden-repo');
+		makeRepo(root, '.cache/buried-repo');
+		expect(scan(root)).toEqual([]);
+	});
+
+	it('normalises underscores and spaces to kebab-case', () => {
+		const root = makeScanRoot();
+		makeRepo(root, 'My_Project Name');
+		expect(scan(root)[0]).toMatchObject({
+			name: 'My_Project Name',
+			normalised: 'my-project-name'
+		});
+	});
+
+	it('omits a repo whose raw name or normalised name is already a known slug', () => {
+		const root = makeScanRoot();
+		makeRepo(root, 'Tracked_Repo');
+		expect(scan(root, 3, ['tracked-repo'])).toEqual([]);
+		expect(scan(root, 3, ['Tracked_Repo'])).toEqual([]);
+	});
+
+	it('omits a repo matching excludedRepoNames by raw or normalised name', () => {
+		const root = makeScanRoot();
+		makeRepo(root, 'Scratch_Pad');
+		expect(scan(root, 3, [], ['scratch-pad'])).toEqual([]);
+		expect(scan(root, 3, [], ['Scratch_Pad'])).toEqual([]);
+	});
+
+	it('returns an empty list for a scanRoot that does not exist', () => {
+		// The walk swallows the readdir failure rather than throwing, so a
+		// misconfigured scanRoot degrades to "nothing new" instead of a crash.
+		expect(scan(join(tmpdir(), 'drift-scan-absent-' + Date.now()))).toEqual([]);
+	});
+
+	it('ignores a plain directory tree with no repos in it', () => {
+		const root = makeScanRoot();
+		mkdirSync(join(root, 'notes/archive'), { recursive: true });
+		expect(scan(root)).toEqual([]);
 	});
 });
