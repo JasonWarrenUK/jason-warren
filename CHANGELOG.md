@@ -6,6 +6,19 @@ All notable changes to this project are documented here. Format follows [Keep a 
 
 ## [Unreleased]
 
+## [8.4.0] - 2026-09-24
+
+### Added
+
+- Retired technologies keep their lineage instead of disappearing from the adoption timeline. A tech overlay can now declare `lastUsed`, and the timeline and adoption modal render a retirement date for anything that's left the codebase.
+- New `drift tech set --last-used` flag authors a retirement date directly on a tech overlay.
+
+### Fixed
+
+- A retired technology's timeline rail now ends at its actual retirement date instead of running through to the present.
+- Kind resolution for synced-only tech now prefers the carried kind over the taxonomy tiebreak, and a technology that retired with no overlay of its own is anchored correctly.
+- `drift` now refuses a tech-set edit that would break an overlay's date invariants, rather than writing an inconsistent record.
+
 ## [8.3.0] - 2026-09-23
 
 ### Added
