@@ -5515,6 +5515,34 @@ async function runTech({ args, values, palette }) {
 			);
 			process.exit(1);
 		}
+		// Both rail invariants tech-overlays.test.ts enforces on the written
+		// file: a lastUsed needs a firstUsed to anchor the rail start, and must
+		// fall strictly after it. Checked against the merged result of this
+		// write, so raising firstUsed past an existing lastUsed is refused too.
+		// ISO dates compare lexicographically, so string > is the whole check.
+		if (firstUsed !== undefined || lastUsed !== undefined) {
+			const existing = (await readTechOverlaysFile()).find(
+				(o) => o.label.toLowerCase() === label.toLowerCase()
+			);
+			const effectiveFirstUsed = firstUsed ?? existing?.firstUsed;
+			const effectiveLastUsed = lastUsed ?? existing?.lastUsed;
+			if (effectiveLastUsed !== undefined && effectiveFirstUsed === undefined) {
+				process.stderr.write(
+					`${RED}Error: --last-used needs a firstUsed to anchor the rail start. Set --first-used too.${RESET}\n`
+				);
+				process.exit(1);
+			}
+			if (
+				effectiveLastUsed !== undefined &&
+				effectiveFirstUsed !== undefined &&
+				!(effectiveLastUsed > effectiveFirstUsed)
+			) {
+				process.stderr.write(
+					`${RED}Error: lastUsed '${effectiveLastUsed}' must fall after firstUsed '${effectiveFirstUsed}'.${RESET}\n`
+				);
+				process.exit(1);
+			}
+		}
 
 		let changed = false;
 		if (firstUsed !== undefined) {

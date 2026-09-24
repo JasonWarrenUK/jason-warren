@@ -522,6 +522,45 @@ describe('drift tech', () => {
 		expect(result.stderr).toMatch(/nothing to change/i);
 	});
 
+	it('set refuses a lastUsed with no firstUsed anchor, and an inverted pair', () => {
+		const noAnchor = runVerbInSandbox(configPath, [
+			'tech',
+			'set',
+			'Ink',
+			'--last-used',
+			'2021-01-01'
+		]);
+		expect(noAnchor.status).toBe(1);
+		expect(noAnchor.stderr).toMatch(/anchor the rail start/i);
+		// The guard fires before any write.
+		expect(readFileSync(join(dir, 'tech-overlays.ts'), 'utf8')).toBe(EMPTY_TECH_OVERLAYS);
+
+		runVerbInSandbox(configPath, ['tech', 'set', 'Ink', '--first-used', '2024-01-01']);
+		const inverted = runVerbInSandbox(configPath, [
+			'tech',
+			'set',
+			'Ink',
+			'--last-used',
+			'2019-01-01'
+		]);
+		expect(inverted.status).toBe(1);
+		expect(inverted.stderr).toMatch(/must fall after firstUsed/i);
+		expect(readFileSync(join(dir, 'tech-overlays.ts'), 'utf8')).not.toContain('lastUsed');
+
+		// Raising firstUsed past an existing lastUsed is the same invariant from
+		// the other side.
+		runVerbInSandbox(configPath, ['tech', 'set', 'Ink', '--last-used', '2025-01-01']);
+		const raised = runVerbInSandbox(configPath, [
+			'tech',
+			'set',
+			'Ink',
+			'--first-used',
+			'2026-01-01'
+		]);
+		expect(raised.status).toBe(1);
+		expect(raised.stderr).toMatch(/must fall after firstUsed/i);
+	});
+
 	it('set rejects an unknown label and a malformed date', () => {
 		const unknown = runVerbInSandbox(configPath, ['tech', 'set', 'Bogus', '--note', 'x']);
 		expect(unknown.status).toBe(1);
@@ -603,10 +642,12 @@ describe('drift tech', () => {
 		expect(source).not.toContain('Ink');
 	});
 
-	it('unhide preserves a lastUsed-only record rather than deleting it', () => {
-		// A record with only a retirement date and no other overlay field:
+	it('unhide preserves a record carrying a retirement date rather than deleting it', () => {
+		// A record whose only reason to exist is its retirement date (firstUsed
+		// here is just the anchor lastUsed needs, not the property under test):
 		// unhiding it must NOT fall through to the bare-label removal branch,
 		// which would silently drop the retirement history it exists to keep.
+		runVerbInSandbox(configPath, ['tech', 'set', 'Ink', '--first-used', '2019-06-15']);
 		runVerbInSandbox(configPath, ['tech', 'set', 'Ink', '--last-used', '2021-01-15']);
 		runVerbInSandbox(configPath, ['tech', 'hide', 'Ink']);
 		const result = runVerbInSandbox(configPath, ['tech', 'unhide', 'Ink', '--all']);
