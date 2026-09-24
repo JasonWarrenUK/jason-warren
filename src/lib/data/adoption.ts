@@ -103,6 +103,18 @@ export function getTechAdoption(opts?: { kinds?: TagKind[] }): TechAdoption[] {
 	// Techs authored as hidden from the toolkit never accumulate, so their
 	// projects' counts and dates leave no trace on the timeline.
 	const hidden = hiddenTechLabels('toolkit');
+	// A retired label carries no project.tags entry any more, so its synced
+	// retirement (detectedTechLastSeen) has to be collected independently of
+	// the tag loop below, across every project regardless of what it
+	// currently carries. Later date wins: the last project to retire a label
+	// is what actually retires it.
+	const syncedLastUsed = new Map<string, string>();
+	for (const project of projects) {
+		for (const [label, date] of Object.entries(project.detectedTechLastSeen ?? {})) {
+			const existing = syncedLastUsed.get(label);
+			if (existing === undefined || date > existing) syncedLastUsed.set(label, date);
+		}
+	}
 
 	for (const project of projects) {
 		// Dedupe labels within a project so a tag listed under two in-scope kinds
@@ -194,24 +206,37 @@ export function getTechAdoption(opts?: { kinds?: TagKind[] }): TechAdoption[] {
 	// able to render an endpoint the present-tense tags no longer reach. Only
 	// the timeline: stack.ts and tech-graph.ts stay project-tag-only, and
 	// hiddenFrom already keeps a label off the timeline if that is wanted.
-	const retired = retiredTechLabels();
-	for (const overlay of techOverlays) {
-		const lastUsed = retired.get(overlay.label);
-		if (lastUsed === undefined) continue;
+	const overlayLastUsed = retiredTechLabels();
+	const retiredLabels = new Set([...overlayLastUsed.keys(), ...syncedLastUsed.keys()]);
+	for (const label of retiredLabels) {
 		// A label a project still carries is never synthesised here: the derived
 		// pass above already owns it, and an authored retirement must not
 		// override live evidence. A data test also forbids authoring this
 		// combination (tech-overlays.test.ts).
-		if (byLabel.has(overlay.label)) continue;
-		if (overlay.firstUsed === undefined) continue;
-		if (hidden.has(overlay.label)) continue;
-		const kind = resolveTechKind(overlay.label);
+		if (byLabel.has(label)) continue;
+		const overlay = techOverlays.find((o) => o.label === label);
+		const firstUsed = overlay?.firstUsed;
+		if (firstUsed === undefined) continue;
+		if (hidden.has(label)) continue;
+		const kind = resolveTechKind(label);
 		if (kind === undefined || !kinds.has(kind)) continue;
+		// The authored and synced retirement dates are both claims about when
+		// the label left the work; the later one is the honest ceiling, since
+		// the last repo to drop it is what actually retired it. retiredLabels
+		// is built from exactly these two maps, so at least one is defined.
+		const authored = overlayLastUsed.get(label);
+		const synced = syncedLastUsed.get(label);
+		const lastUsed =
+			authored !== undefined && synced !== undefined
+				? authored > synced
+					? authored
+					: synced
+				: (authored ?? synced)!;
 		adoption.push({
-			label: overlay.label,
+			label,
 			kind,
-			firstYear: Number(overlay.firstUsed.slice(0, 4)),
-			firstDate: overlay.firstUsed,
+			firstYear: Number(firstUsed.slice(0, 4)),
+			firstDate: firstUsed,
 			projectCount: 0,
 			dateSource: 'curated',
 			lastUsed

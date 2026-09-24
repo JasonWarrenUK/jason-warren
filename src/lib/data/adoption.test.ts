@@ -270,4 +270,55 @@ describe('getTechAdoption retired-tech emission (mocked overlays)', () => {
 		vi.doUnmock('./tech-overlays.js');
 		vi.resetModules();
 	});
+
+	/**
+	 * Synced retirement (detectedTechLastSeen, 5DR.31) reaches the timeline
+	 * through the project registry rather than through techOverlays directly,
+	 * so this mocks ./index.js instead. Live data has zero such entries today
+	 * (the ratchet is append-only going forward, and code-arcana's svelte-4
+	 * key was erased before it shipped), so this fixture is the only coverage
+	 * this path has.
+	 */
+	it('merges a synced retirement date, later of authored and synced wins', async () => {
+		vi.doMock('./tech-overlays.js', async (importOriginal) => {
+			const original = await importOriginal<typeof import('./tech-overlays.js')>();
+			const techOverlays: import('./types.js').TechOverlay[] = [
+				...original.techOverlays,
+				{
+					label: 'Legacy Toolchain',
+					kind: 'framework',
+					firstUsed: '2019-01-15',
+					lastUsed: '2020-01-01'
+				}
+			];
+			return {
+				...original,
+				techOverlays,
+				retiredTechLabels: (): Map<string, string> => new Map([['Legacy Toolchain', '2020-01-01']])
+			};
+		});
+		vi.doMock('./index.js', async (importOriginal) => {
+			const original = await importOriginal<typeof import('./index.js')>();
+			return {
+				...original,
+				projects: [
+					{
+						...original.projects[0],
+						detectedTechLastSeen: { 'Legacy Toolchain': '2020-06-15' }
+					},
+					...original.projects.slice(1)
+				]
+			};
+		});
+		vi.resetModules();
+		const { getTechAdoption: mockedGetTechAdoption } = await import('./adoption.js');
+		const item = mockedGetTechAdoption().find((i) => i.label === 'Legacy Toolchain');
+		expect(item).toBeDefined();
+		// Synced (2020-06-15) is later than the authored floor (2020-01-01), so
+		// the synced date wins as the honest ceiling.
+		expect((item as { lastUsed?: string })?.lastUsed).toBe('2020-06-15');
+		vi.doUnmock('./tech-overlays.js');
+		vi.doUnmock('./index.js');
+		vi.resetModules();
+	});
 });

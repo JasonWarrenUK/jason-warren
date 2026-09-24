@@ -552,6 +552,13 @@ export interface Project {
 	 * date and falls back to commitAnyRoot for any label absent here.
 	 */
 	detectedTechFirstSeen?: Record<string, string>;
+	/**
+	 * Retirement date (YYYY-MM-DD) per tech-tag label, e.g.
+	 * `{ 'Svelte 4': '2026-08-26' }`. The label-keyed sibling of
+	 * detectedTechFirstSeen (5DR.32); adoption.ts reads this to merge synced
+	 * retirement with any overlay-declared lastUsed, later date wins.
+	 */
+	detectedTechLastSeen?: Record<string, string>;
 	liveUrl?: string;
 	/** 3–5 technically interesting things about this project. */
 	highlights: string[];

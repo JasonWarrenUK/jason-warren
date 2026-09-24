@@ -34,7 +34,12 @@ import sourcesManifest from './sources.json';
 import overridesManifest from './overrides.json';
 import excludedManifest from './excluded.json';
 import inProgressManifest from './in-progress.json';
-import { defaultProjectFromManifest, mergeAuthored, inferTechFirstSeen } from './defaults.js';
+import {
+	defaultProjectFromManifest,
+	mergeAuthored,
+	inferTechFirstSeen,
+	inferTechLastSeen
+} from './defaults.js';
 import { getTechKindOverrides } from './tech-overlays.js';
 import type {
 	Project,
@@ -263,6 +268,10 @@ function withSyncedMetrics(project: Project): Project {
 	// commitAnyLast/commitAnyRoot above) rather than a gap; add override precedence
 	// here if that's ever built.
 	const detectedTechFirstSeen = synced ? inferTechFirstSeen(synced) : project.detectedTechFirstSeen;
+	// Retirement sibling (5DR.32): re-keyed the same way, from the ratcheted
+	// detectedTechLastSeen map the sync engine writes when an identity leaves
+	// detection (5DR.31).
+	const detectedTechLastSeen = synced ? inferTechLastSeen(synced) : project.detectedTechLastSeen;
 
 	return {
 		...project,
@@ -270,6 +279,7 @@ function withSyncedMetrics(project: Project): Project {
 		commitAnyLast: ov?.commitAnyLast?.value ?? synced?.commitAnyLast ?? project.commitAnyLast,
 		commitAnyRoot: ov?.commitAnyRoot?.value ?? synced?.commitAnyRoot ?? project.commitAnyRoot,
 		detectedTechFirstSeen,
+		detectedTechLastSeen,
 		metrics: Object.keys(merged).length > 0 ? merged : undefined
 	};
 }
