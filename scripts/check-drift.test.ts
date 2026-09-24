@@ -538,6 +538,36 @@ describe('drift tech', () => {
 		expect(badDate.stderr).toMatch(/ISO date/i);
 	});
 
+	it('set writes a lastUsed retirement date, validated the same as first-used', () => {
+		const result = runVerbInSandbox(configPath, [
+			'tech',
+			'set',
+			'Ink',
+			'--first-used',
+			'2019-06-15',
+			'--last-used',
+			'2021-01-15'
+		]);
+		expect(result.status, result.stderr).toBe(0);
+		const source = readFileSync(join(dir, 'tech-overlays.ts'), 'utf8');
+		expect(source).toContain('firstUsed: "2019-06-15"');
+		expect(source).toContain('lastUsed: "2021-01-15"');
+
+		const badDate = runVerbInSandbox(configPath, [
+			'tech',
+			'set',
+			'Ink',
+			'--last-used',
+			'2021-13-01'
+		]);
+		expect(badDate.status).toBe(1);
+		expect(badDate.stderr).toMatch(/--last-used must be an ISO date/i);
+
+		const detail = runVerbInSandbox(configPath, ['tech', 'list', 'Ink']);
+		expect(detail.status, detail.stderr).toBe(0);
+		expect(detail.stdout).toMatch(/retired\s+2021-01-15/);
+	});
+
 	it('hide defaults to all four surfaces; unhide peels them back', () => {
 		const hide = runVerbInSandbox(configPath, ['tech', 'hide', 'Ink']);
 		expect(hide.status, hide.stderr).toBe(0);
@@ -571,6 +601,19 @@ describe('drift tech', () => {
 		expect(result.status, result.stderr).toBe(0);
 		const source = readFileSync(join(dir, 'tech-overlays.ts'), 'utf8');
 		expect(source).not.toContain('Ink');
+	});
+
+	it('unhide preserves a lastUsed-only record rather than deleting it', () => {
+		// A record with only a retirement date and no other overlay field:
+		// unhiding it must NOT fall through to the bare-label removal branch,
+		// which would silently drop the retirement history it exists to keep.
+		runVerbInSandbox(configPath, ['tech', 'set', 'Ink', '--last-used', '2021-01-15']);
+		runVerbInSandbox(configPath, ['tech', 'hide', 'Ink']);
+		const result = runVerbInSandbox(configPath, ['tech', 'unhide', 'Ink', '--all']);
+		expect(result.status, result.stderr).toBe(0);
+		const source = readFileSync(join(dir, 'tech-overlays.ts'), 'utf8');
+		expect(source).toContain('label: "Ink"');
+		expect(source).toContain('lastUsed: "2021-01-15"');
 	});
 
 	it('unhide of a label hidden nowhere is a soft no-op', () => {
