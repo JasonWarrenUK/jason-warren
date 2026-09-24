@@ -80,17 +80,21 @@ export function getTechLabelUniverse(): Set<string> {
 
 /**
  * The kind for any label in the universe: an overlay kind override first
- * (the single application point every surface already honours), then the
- * taxonomy, then whatever kind the registry actually carries it under (an
- * authored project tag like 'Graph / Cypher' has no taxonomy entry at all).
- * Undefined when none of the three knows it, which callers read as "not a
- * real label".
+ * (the single application point every surface already honours), then
+ * whatever kind the registry actually carries it under (an authored project
+ * tag like 'Graph / Cypher' has no taxonomy entry at all), then the taxonomy.
+ * The registry wins over the taxonomy because surface-vocabulary.test.ts
+ * already pins "no label is carried under more than one kind", so a carried
+ * label resolves to a set of size one; a taxonomy-only label (Go, Shell) can
+ * genuinely be tabled under two kinds, and picking one there is a real
+ * tiebreak rather than a lookup. Undefined when none of the three knows it,
+ * which callers read as "not a real label".
  */
 export function resolveTechKind(label: string): TagKind | undefined {
 	const overlay = techOverlays.find((o) => o.label === label);
 	if (overlay?.kind !== undefined) return overlay.kind;
-	const taxonomyKinds = getTaxonomyKinds().get(label);
-	if (taxonomyKinds !== undefined) return [...taxonomyKinds][0];
 	const carriedKinds = getCarriedKinds().get(label);
-	return carriedKinds !== undefined ? [...carriedKinds][0] : undefined;
+	if (carriedKinds !== undefined) return [...carriedKinds][0];
+	const taxonomyKinds = getTaxonomyKinds().get(label);
+	return taxonomyKinds !== undefined ? [...taxonomyKinds][0] : undefined;
 }

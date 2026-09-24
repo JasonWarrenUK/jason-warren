@@ -63,8 +63,8 @@ describe('surface kind policy', () => {
 			// so its kind comes from the overlay override or the taxonomy rather
 			// than from a registry tag. Everything else still has to be a tag some
 			// project carries, which resolveTechKind also honours (an overlay
-			// override wins, otherwise the taxonomy, which agrees with the
-			// registry for every carried label).
+			// override wins, otherwise the carried kind, falling back to the
+			// taxonomy only for a label nothing carries).
 			const kind = resolveTechKind(label);
 			expect(kind, `${label} is on the toolkit but no source declares its kind`).toBeDefined();
 			const admitted = kind !== undefined && surfaceAdmitsKind('toolkit', kind);
