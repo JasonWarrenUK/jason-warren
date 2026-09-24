@@ -66,7 +66,13 @@ export interface LayoutGeometry {
  */
 export const HUB_RING_OFFSET = 7;
 
-export interface PlacedNode extends TechAdoption {
+/**
+ * Geometry the layout adds to each timeline entry. Kept as a separate
+ * interface (intersected with TechAdoption below, rather than extending it)
+ * because TechAdoption is a discriminated union on dateSource (5DR.32): an
+ * interface cannot extend a union, only an intersection or object type.
+ */
+export interface PlacedGeometry {
 	x: number;
 	y: number;
 	radius: number;
@@ -85,6 +91,11 @@ export interface PlacedNode extends TechAdoption {
 	 */
 	railSegments: RailSegment[] | null;
 }
+
+/** A timeline entry with its rendered geometry. The intersection distributes
+ *  over TechAdoption's union, so `dateSource === 'derived'` still narrows a
+ *  PlacedNode exactly as it narrows a bare TechAdoption. */
+export type PlacedNode = TechAdoption & PlacedGeometry;
 
 /**
  * One colour segment of a rail. `kind` null means "the tech's own kind colour"
