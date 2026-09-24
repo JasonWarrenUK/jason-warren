@@ -354,6 +354,14 @@ export interface TechOverlay {
 	 * not a trump: a derived date at or before it wins (see adoption.ts).
 	 */
 	firstUsed?: string;
+	/**
+	 * Retirement date (ISO YYYY-MM-DD). Declares the label historical: it left
+	 * the work on this date and marks the timeline's rail end for it (5DR.32).
+	 * May not be declared for a label a project still carries: if the label
+	 * returns, delete the date rather than reconcile two dates, the same stance
+	 * the sync engine's ratchet takes on a resurrection (see check-drift.js).
+	 */
+	lastUsed?: string;
 	/** One authored sentence about the tech, shown in the toolkit modal. */
 	note?: string;
 	/** Overrides the taxonomy/authored kind everywhere tags are assembled. */

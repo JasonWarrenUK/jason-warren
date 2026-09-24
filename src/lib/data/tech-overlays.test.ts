@@ -66,6 +66,44 @@ describe('tech overlays', () => {
 		}
 	});
 
+	it('lastUsed dates are ISO YYYY-MM-DD with a real month', () => {
+		for (const overlay of techOverlays) {
+			if (overlay.lastUsed === undefined) continue;
+			expect(overlay.lastUsed, overlay.label).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+			const month = Number(overlay.lastUsed.slice(5, 7));
+			expect(month, overlay.label).toBeGreaterThanOrEqual(1);
+			expect(month, overlay.label).toBeLessThanOrEqual(12);
+		}
+	});
+
+	it('lastUsed always has a firstUsed to anchor the rail start', () => {
+		const offenders = techOverlays
+			.filter((o) => o.lastUsed !== undefined && o.firstUsed === undefined)
+			.map((o) => o.label);
+		expect(offenders, `retired with no firstUsed: ${offenders.join(', ')}`).toEqual([]);
+	});
+
+	it('lastUsed is after firstUsed', () => {
+		for (const overlay of techOverlays) {
+			if (overlay.lastUsed === undefined || overlay.firstUsed === undefined) continue;
+			expect(
+				overlay.lastUsed > overlay.firstUsed,
+				`${overlay.label}: lastUsed ${overlay.lastUsed} must be after firstUsed ${overlay.firstUsed}`
+			).toBe(true);
+		}
+	});
+
+	it('no overlay declares lastUsed for a label a project still carries', () => {
+		const carried = new Set(projects.flatMap((p) => p.tags.map((t) => t.label)));
+		const offenders = techOverlays
+			.filter((o) => o.lastUsed !== undefined && carried.has(o.label))
+			.map((o) => o.label);
+		expect(
+			offenders,
+			`carried but declared retired: ${offenders.join(', ')}. Delete lastUsed instead of reconciling two dates.`
+		).toEqual([]);
+	});
+
 	it('hiddenFrom values are valid surfaces, kinds are valid TagKinds', () => {
 		for (const overlay of techOverlays) {
 			for (const surface of overlay.hiddenFrom ?? []) {
