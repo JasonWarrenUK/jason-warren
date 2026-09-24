@@ -32,7 +32,14 @@ export const techOverlays: TechOverlay[] = [
 	{ label: 'Express', firstUsed: '2022-11-15' },
 	{ label: 'Tailwind CSS v4', firstUsed: '2025-01-15' },
 	{ label: 'Oak', firstUsed: '2025-07-15' },
-	{ label: 'Svelte 4', firstUsed: '2024-11-01' },
+	// No project carries this tag any more (code-arcana was the last to move
+	// to Svelte 5). Retired rather than deleted (5DR.32, reverting 3dc0fb7's
+	// deletion): the two lineage edges through it are statements about
+	// history and can outlive the migration they describe. lastUsed is the
+	// verified repo-wide retirement date, from a reverse pickaxe against
+	// every tracked repo's package.json: rhea dropped it 2025-10-20,
+	// code-arcana (the last holdout) dropped it 2026-08-26 (commit b686aa4).
+	{ label: 'Svelte 4', firstUsed: '2024-11-01', lastUsed: '2026-08-26' },
 	{ label: 'Tailwind CSS', hiddenFrom: ['toolkit', 'map', 'stack', 'relate'] },
 	{ label: '.NET', hiddenFrom: ['toolkit', 'map', 'stack', 'relate'] },
 	{ label: 'C', hiddenFrom: ['toolkit', 'map', 'stack', 'relate'] },
@@ -108,6 +115,15 @@ export function hiddenTechLabels(surface: TechSurface): Set<string> {
 		if (overlay.hiddenFrom?.includes(surface)) hidden.add(overlay.label);
 	}
 	return hidden;
+}
+
+/** label → retirement date, for labels an overlay declares historical (5DR.32). */
+export function retiredTechLabels(): Map<string, string> {
+	const retired = new Map<string, string>();
+	for (const overlay of techOverlays) {
+		if (overlay.lastUsed !== undefined) retired.set(overlay.label, overlay.lastUsed);
+	}
+	return retired;
 }
 
 /** label → overridden kind, for the single application point in index.ts. */

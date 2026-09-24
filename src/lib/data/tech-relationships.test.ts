@@ -1,19 +1,33 @@
 /**
  * Data integrity tests for the authored tech lineage edges.
  *
- * Structural, not behavioural: every edge must point at real tag labels, every
- * edge must resolve on at least one of the two surfaces that can render it
- * (tech constellation or adoption timeline), and the graph-style dispatch
- * helpers must agree with the authored vocabulary.
+ * Structural, not behavioural: every edge must point at a real tag label
+ * (present, taxonomy-inferable, or overlay-declared as retired history, since
+ * a lineage edge is a statement about the past and can outlive the migration
+ * it describes, 5DR.32), every edge must resolve on at least one of the two
+ * surfaces that can render it (tech constellation or adoption timeline), and
+ * the graph-style dispatch helpers must agree with the authored vocabulary.
  */
 
 import { describe, it, expect } from 'vitest';
 import { techRelationships } from './tech-relationships.js';
 import { getTechNodes } from './tech-graph.js';
 import { getTechAdoption } from './adoption.js';
+import { getTechLabelUniverse } from './tech-universe.js';
 import { edgeTypeColour, edgeTypeLabel, isLineageKind } from '$lib/components/graph/graph-style.js';
 
+const allLabels = getTechLabelUniverse();
+
 describe('tech lineage relationships', () => {
+	it('every source and target is a real tag label', () => {
+		const offenders: string[] = [];
+		for (const rel of techRelationships) {
+			if (!allLabels.has(rel.source)) offenders.push(`source "${rel.source}" (${rel.kind})`);
+			if (!allLabels.has(rel.target)) offenders.push(`target "${rel.target}" (${rel.kind})`);
+		}
+		expect(offenders, `Unknown tech labels:\n${offenders.join('\n')}`).toHaveLength(0);
+	});
+
 	it('has no self-loops', () => {
 		const selfLoops = techRelationships.filter((rel) => rel.source === rel.target);
 		expect(
@@ -38,6 +52,22 @@ describe('tech lineage relationships', () => {
 		for (const rel of techRelationships) {
 			expect(['leads-to', 'replaced-by']).toContain(rel.kind);
 		}
+	});
+
+	it('every edge resolves on at least one surface (constellation or timeline)', () => {
+		const techLabels = new Set(getTechNodes().map((n) => n.label));
+		const dated = new Set(getTechAdoption().map((a) => a.label));
+		const unrenderable: string[] = [];
+		for (const rel of techRelationships) {
+			const resolvesOnConstellation = techLabels.has(rel.source) && techLabels.has(rel.target);
+			const resolvesOnTimeline = dated.has(rel.source) && dated.has(rel.target);
+			if (!resolvesOnConstellation && !resolvesOnTimeline) {
+				unrenderable.push(`${rel.source} → ${rel.target} (${rel.kind})`);
+			}
+		}
+		expect(unrenderable, `Unrenderable on both surfaces:\n${unrenderable.join('\n')}`).toHaveLength(
+			0
+		);
 	});
 
 	it('constellation resolution: JavaScript → TypeScript has an excluded endpoint', () => {

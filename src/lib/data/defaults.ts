@@ -158,6 +158,41 @@ export function inferTechFirstSeen(manifest: SyncedSource): Record<string, strin
 	return dates;
 }
 
+/**
+ * Re-keys the manifest's identity-keyed `detectedTechLastSeen` (e.g.
+ * `'svelte-4'`) to the tag-label-keyed form the app reads (e.g. `'Svelte
+ * 4'`), the retirement sibling of inferTechFirstSeen (5DR.32).
+ *
+ * Differs from inferTechFirstSeen in the loop it drives: a retired identity
+ * has, by definition, left the present-tense detection arrays
+ * (detectedRuntime/detectedFramework/detectedDatabase), so it iterates
+ * detectedTechLastSeen's own keys directly and resolves each identity
+ * against all three taxonomy tables in turn, rather than walking arrays that
+ * can never contain it.
+ *
+ * Later date wins on a label collision, since the last identity to retire is
+ * what actually retires the label (the mirror of inferTechFirstSeen's
+ * earlier-wins, which is why the two are kept as separate functions rather
+ * than one parameterised by comparator).
+ */
+export function inferTechLastSeen(manifest: SyncedSource): Record<string, string> {
+	const dates: Record<string, string> = {};
+	const lastSeen = manifest.detectedTechLastSeen ?? {};
+
+	for (const [identity, date] of Object.entries(lastSeen)) {
+		const tag = (RUNTIME_TAGS[identity] ?? FRAMEWORK_TAGS[identity] ?? DATABASE_TAGS[identity]) as
+			| TechTag
+			| undefined;
+		if (!tag) continue;
+		const existing = dates[tag.label];
+		if (existing === undefined || date > existing) {
+			dates[tag.label] = date;
+		}
+	}
+
+	return dates;
+}
+
 // ---------------------------------------------------------------------------
 // Contribution inference
 // ---------------------------------------------------------------------------

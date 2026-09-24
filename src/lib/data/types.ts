@@ -354,6 +354,14 @@ export interface TechOverlay {
 	 * not a trump: a derived date at or before it wins (see adoption.ts).
 	 */
 	firstUsed?: string;
+	/**
+	 * Retirement date (ISO YYYY-MM-DD). Declares the label historical: it left
+	 * the work on this date and marks the timeline's rail end for it (5DR.32).
+	 * May not be declared for a label a project still carries: if the label
+	 * returns, delete the date rather than reconcile two dates, the same stance
+	 * the sync engine's ratchet takes on a resurrection (see check-drift.js).
+	 */
+	lastUsed?: string;
 	/** One authored sentence about the tech, shown in the toolkit modal. */
 	note?: string;
 	/** Overrides the taxonomy/authored kind everywhere tags are assembled. */
@@ -544,6 +552,13 @@ export interface Project {
 	 * date and falls back to commitAnyRoot for any label absent here.
 	 */
 	detectedTechFirstSeen?: Record<string, string>;
+	/**
+	 * Retirement date (YYYY-MM-DD) per tech-tag label, e.g.
+	 * `{ 'Svelte 4': '2026-08-26' }`. The label-keyed sibling of
+	 * detectedTechFirstSeen (5DR.32); adoption.ts reads this to merge synced
+	 * retirement with any overlay-declared lastUsed, later date wins.
+	 */
+	detectedTechLastSeen?: Record<string, string>;
 	liveUrl?: string;
 	/** 3–5 technically interesting things about this project. */
 	highlights: string[];

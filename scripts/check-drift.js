@@ -4569,7 +4569,7 @@ function findStringElementIndex(ts, arrayLit, value) {
  * copies need no resolvable './types.js'. Returns [] when the file is
  * missing (callers that require it error separately).
  *
- * @returns {Promise<Array<{ label: string, firstUsed?: string, note?: string, kind?: string, hiddenFrom?: string[] }>>}
+ * @returns {Promise<Array<{ label: string, firstUsed?: string, lastUsed?: string, note?: string, kind?: string, hiddenFrom?: string[] }>>}
  */
 async function readTechOverlaysFile() {
 	if (!existsSync(techOverlaysPath)) return [];
@@ -4592,6 +4592,7 @@ async function readTechOverlaysFile() {
 		overlays.push({
 			label,
 			firstUsed: readRelationshipField(ts, sf, element, 'firstUsed'),
+			lastUsed: readRelationshipField(ts, sf, element, 'lastUsed'),
 			note: readRelationshipField(ts, sf, element, 'note'),
 			kind: readRelationshipField(ts, sf, element, 'kind'),
 			hiddenFrom: readArrayField(ts, sf, element, 'hiddenFrom')
@@ -5277,10 +5278,11 @@ async function runRelate({ args, values, palette }) {
 // tech verb (5DR.19)
 //
 // Authored per-tech overlays (tech-overlays.ts): first-used floor date,
-// modal note, kind override and per-surface visibility.
+// lastUsed retirement date, modal note, kind override and per-surface
+// visibility.
 //
 //   drift tech list [<label>]
-//   drift tech set <label> [--first-used YYYY-MM-DD] [--note "..."] [--kind <tag-kind>]
+//   drift tech set <label> [--first-used YYYY-MM-DD] [--last-used YYYY-MM-DD] [--note "..."] [--kind <tag-kind>]
 //   drift tech hide <label> [--from toolkit,map,stack,relate]
 //   drift tech unhide <label> [--from ... | --all]
 //
@@ -5405,7 +5407,7 @@ async function runTech({ args, values, palette }) {
 	const usage =
 		'Usage:\n' +
 		'  drift tech list [<label>]\n' +
-		'  drift tech set <label> [--first-used YYYY-MM-DD] [--note "..."] [--kind <tag-kind>]\n' +
+		'  drift tech set <label> [--first-used YYYY-MM-DD] [--last-used YYYY-MM-DD] [--note "..."] [--kind <tag-kind>]\n' +
 		'  drift tech hide <label> [--from toolkit,map,stack,relate]\n' +
 		'  drift tech unhide <label> [--from ... | --all]\n' +
 		'  Labels are case-insensitive and resolve to canonical tag casing.';
@@ -5420,6 +5422,7 @@ async function runTech({ args, values, palette }) {
 		const describeOverlay = (overlay) => {
 			const parts = [];
 			if (overlay.firstUsed !== undefined) parts.push(`first used ${overlay.firstUsed}`);
+			if (overlay.lastUsed !== undefined) parts.push(`retired ${overlay.lastUsed}`);
 			if (overlay.kind !== undefined) parts.push(`kind → ${overlay.kind}`);
 			if (overlay.note !== undefined) parts.push('note ✓');
 			if (overlay.hiddenFrom !== undefined && overlay.hiddenFrom.length > 0) {
@@ -5441,6 +5444,9 @@ async function runTech({ args, values, palette }) {
 			} else {
 				if (overlay.firstUsed !== undefined) {
 					process.stdout.write(`first used  ${overlay.firstUsed}\n`);
+				}
+				if (overlay.lastUsed !== undefined) {
+					process.stdout.write(`retired     ${overlay.lastUsed}\n`);
 				}
 				if (overlay.kind !== undefined) process.stdout.write(`kind        ${overlay.kind}\n`);
 				if (overlay.note !== undefined) process.stdout.write(`note        ${overlay.note}\n`);
@@ -5478,34 +5484,75 @@ async function runTech({ args, values, palette }) {
 
 	if (action === 'set') {
 		const firstUsed = values['first-used'];
+		const lastUsed = values['last-used'];
 		const note = values.note?.trim() || undefined;
 		const kind = values.kind?.trim() || undefined;
-		if (firstUsed === undefined && note === undefined && kind === undefined) {
+		if (
+			firstUsed === undefined &&
+			lastUsed === undefined &&
+			note === undefined &&
+			kind === undefined
+		) {
 			process.stderr.write(
-				`${RED}Error: tech set needs --first-used, --note and/or --kind — nothing to change.${RESET}\n`
+				`${RED}Error: tech set needs --first-used, --last-used, --note and/or --kind — nothing to change.${RESET}\n`
 			);
 			process.exit(1);
 		}
-		if (firstUsed !== undefined) {
-			const month = Number(firstUsed.slice(5, 7));
-			if (!/^\d{4}-\d{2}-\d{2}$/.test(firstUsed) || month < 1 || month > 12) {
+		const validateIsoDate = (value, flag) => {
+			const month = Number(value.slice(5, 7));
+			if (!/^\d{4}-\d{2}-\d{2}$/.test(value) || month < 1 || month > 12) {
 				process.stderr.write(
-					`${RED}Error: --first-used must be an ISO date (YYYY-MM-DD), got '${firstUsed}'.${RESET}\n`
+					`${RED}Error: --${flag} must be an ISO date (YYYY-MM-DD), got '${value}'.${RESET}\n`
 				);
 				process.exit(1);
 			}
-		}
+		};
+		if (firstUsed !== undefined) validateIsoDate(firstUsed, 'first-used');
+		if (lastUsed !== undefined) validateIsoDate(lastUsed, 'last-used');
 		if (kind !== undefined && !TECH_TAG_KINDS.has(kind)) {
 			process.stderr.write(
 				`${RED}Error: invalid --kind '${kind}'. Use one of: ${[...TECH_TAG_KINDS].join(', ')}.${RESET}\n`
 			);
 			process.exit(1);
 		}
+		// Both rail invariants tech-overlays.test.ts enforces on the written
+		// file: a lastUsed needs a firstUsed to anchor the rail start, and must
+		// fall strictly after it. Checked against the merged result of this
+		// write, so raising firstUsed past an existing lastUsed is refused too.
+		// ISO dates compare lexicographically, so string > is the whole check.
+		if (firstUsed !== undefined || lastUsed !== undefined) {
+			const existing = (await readTechOverlaysFile()).find(
+				(o) => o.label.toLowerCase() === label.toLowerCase()
+			);
+			const effectiveFirstUsed = firstUsed ?? existing?.firstUsed;
+			const effectiveLastUsed = lastUsed ?? existing?.lastUsed;
+			if (effectiveLastUsed !== undefined && effectiveFirstUsed === undefined) {
+				process.stderr.write(
+					`${RED}Error: --last-used needs a firstUsed to anchor the rail start. Set --first-used too.${RESET}\n`
+				);
+				process.exit(1);
+			}
+			if (
+				effectiveLastUsed !== undefined &&
+				effectiveFirstUsed !== undefined &&
+				!(effectiveLastUsed > effectiveFirstUsed)
+			) {
+				process.stderr.write(
+					`${RED}Error: lastUsed '${effectiveLastUsed}' must fall after firstUsed '${effectiveFirstUsed}'.${RESET}\n`
+				);
+				process.exit(1);
+			}
+		}
 
 		let changed = false;
 		if (firstUsed !== undefined) {
 			changed =
 				(await setTechOverlayProperty(label, 'firstUsed', JSON.stringify(firstUsed), palette)) ||
+				changed;
+		}
+		if (lastUsed !== undefined) {
+			changed =
+				(await setTechOverlayProperty(label, 'lastUsed', JSON.stringify(lastUsed), palette)) ||
 				changed;
 		}
 		if (note !== undefined) {
@@ -5579,7 +5626,7 @@ async function runTech({ args, values, palette }) {
 	}
 	// An emptied hiddenFrom drops the property; a record reduced to a bare
 	// label drops entirely (it authors nothing).
-	const hasOtherFields = ['firstUsed', 'note', 'kind'].some(
+	const hasOtherFields = ['firstUsed', 'lastUsed', 'note', 'kind'].some(
 		(field) => readRelationshipField(ts, sf, found.element, field) !== undefined
 	);
 	let splicedText;
@@ -7332,13 +7379,15 @@ per-tech data, via the same TypeScript-compiler splices \`relate\` uses.
 Labels are case-insensitive and resolve to canonical tag casing.
 
 - \`drift tech list [<label>]\` · every canonical tag label with its overlay
-  state (first-used date, note, kind override, hidden surfaces); with a
-  label, full detail for one tech. Writes nothing.
-- \`drift tech set <label> [--first-used YYYY-MM-DD] [--note "..."] [--kind <tag-kind>]\`
+  state (first-used date, retirement date, note, kind override, hidden
+  surfaces); with a label, full detail for one tech. Writes nothing.
+- \`drift tech set <label> [--first-used YYYY-MM-DD] [--last-used YYYY-MM-DD] [--note "..."] [--kind <tag-kind>]\`
   · upserts overlay fields. \`--first-used\` is a FLOOR date (a derived date
-  at or before it wins on the timeline); \`--note\` shows in the toolkit
-  modal; \`--kind\` overrides the tag's kind everywhere. At least one flag
-  is required.
+  at or before it wins on the timeline); \`--last-used\` declares the label
+  retired history, so a lineage edge through it can still render even once
+  no project carries the label; \`--note\` shows in the toolkit modal;
+  \`--kind\` overrides the tag's kind everywhere. At least one flag is
+  required.
 - \`drift tech hide <label> [--from toolkit,map,stack,relate]\` · hides the
   label from the given aggregate surfaces (all four when \`--from\` is
   omitted). Project detail chips are never hidden — that would misrepresent
@@ -7739,7 +7788,7 @@ Rebuild the site to apply.${RESET}
 
 ${BOLD}Usage:${RESET}
   drift tech list [<label>]
-  drift tech set <label> [--first-used YYYY-MM-DD] [--note "..."] [--kind <tag-kind>]
+  drift tech set <label> [--first-used YYYY-MM-DD] [--last-used YYYY-MM-DD] [--note "..."] [--kind <tag-kind>]
   drift tech hide <label> [--from toolkit,map,stack,relate]
   drift tech unhide <label> [--from ... | --all]
 
@@ -8353,6 +8402,7 @@ async function runInteractiveMenu({ manifests, palette, useGum, onProgress, clea
 				if (label === null) continue outer;
 				const field = choosePlain('Which field?', [
 					['First used', 'Floor adoption date, YYYY-MM-DD', 'first-used'],
+					['Last used', 'Retirement date, YYYY-MM-DD', 'last-used'],
 					['Note', 'One sentence shown in the toolkit modal', 'note'],
 					['Kind override', 'Reclassify the tag everywhere', 'kind']
 				]);
@@ -8360,7 +8410,9 @@ async function runInteractiveMenu({ manifests, palette, useGum, onProgress, clea
 				const value =
 					field === 'kind'
 						? chooseString('New kind:', [...TECH_TAG_KINDS])
-						: promptText(field === 'first-used' ? 'YYYY-MM-DD' : 'note text');
+						: field === 'first-used' || field === 'last-used'
+							? promptText('YYYY-MM-DD')
+							: promptText('note text');
 				if (value === null) continue outer;
 				await runTech({ args: ['set', label], values: { [field]: value }, palette });
 				break;
@@ -8907,8 +8959,10 @@ async function main() {
 				remove: { type: 'boolean', default: false },
 				edit: { type: 'boolean', default: false },
 				kind: { type: 'string' },
-				// `drift tech`: authored first-used floor date and surface scoping.
+				// `drift tech`: authored first-used floor date, retirement date and
+				// surface scoping.
 				'first-used': { type: 'string' },
+				'last-used': { type: 'string' },
 				from: { type: 'string' },
 				all: { type: 'boolean', default: false },
 				// `drift theme`: display name, blurb and member slugs (repeatable).

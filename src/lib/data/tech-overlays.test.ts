@@ -11,24 +11,15 @@ import { describe, it, expect } from 'vitest';
 import { techOverlays, hiddenTechLabels, getTechKindOverrides } from './tech-overlays.js';
 import { CURATED_FIRST_USED, getTechAdoption } from './adoption.js';
 import { projects } from './index.js';
-import {
-	LANGUAGE_TAGS,
-	RUNTIME_TAGS,
-	FRAMEWORK_TAGS,
-	DATABASE_TAGS
-} from '../../../scripts/tag-taxonomy.js';
+import { getTechLabelUniverse } from './tech-universe.js';
 import type { TagKind, TechSurface } from './types.js';
 
 // The label universe drift itself recognises: every label a project currently
-// carries PLUS every label the taxonomy can infer. A versionless fallback
-// label (e.g. 'Tailwind CSS') is real even when no project happens to carry it
-// today — authoring an overlay for it (to hide it, say) is legitimate.
-const allLabels = new Set([
-	...projects.flatMap((p) => p.tags.map((t) => t.label)),
-	...[LANGUAGE_TAGS, RUNTIME_TAGS, FRAMEWORK_TAGS, DATABASE_TAGS].flatMap((table) =>
-		Object.values(table).map((tag) => (tag as { label: string }).label)
-	)
-]);
+// carries PLUS every label the taxonomy can infer PLUS every overlay-declared
+// label. A versionless fallback label (e.g. 'Tailwind CSS') is real even when
+// no project happens to carry it today — authoring an overlay for it (to hide
+// it, say) is legitimate.
+const allLabels = getTechLabelUniverse();
 const VALID_SURFACES: TechSurface[] = ['toolkit', 'map', 'stack', 'relate'];
 const VALID_KINDS: TagKind[] = [
 	'language',
@@ -64,6 +55,44 @@ describe('tech overlays', () => {
 			expect(month, overlay.label).toBeGreaterThanOrEqual(1);
 			expect(month, overlay.label).toBeLessThanOrEqual(12);
 		}
+	});
+
+	it('lastUsed dates are ISO YYYY-MM-DD with a real month', () => {
+		for (const overlay of techOverlays) {
+			if (overlay.lastUsed === undefined) continue;
+			expect(overlay.lastUsed, overlay.label).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+			const month = Number(overlay.lastUsed.slice(5, 7));
+			expect(month, overlay.label).toBeGreaterThanOrEqual(1);
+			expect(month, overlay.label).toBeLessThanOrEqual(12);
+		}
+	});
+
+	it('lastUsed always has a firstUsed to anchor the rail start', () => {
+		const offenders = techOverlays
+			.filter((o) => o.lastUsed !== undefined && o.firstUsed === undefined)
+			.map((o) => o.label);
+		expect(offenders, `retired with no firstUsed: ${offenders.join(', ')}`).toEqual([]);
+	});
+
+	it('lastUsed is after firstUsed', () => {
+		for (const overlay of techOverlays) {
+			if (overlay.lastUsed === undefined || overlay.firstUsed === undefined) continue;
+			expect(
+				overlay.lastUsed > overlay.firstUsed,
+				`${overlay.label}: lastUsed ${overlay.lastUsed} must be after firstUsed ${overlay.firstUsed}`
+			).toBe(true);
+		}
+	});
+
+	it('no overlay declares lastUsed for a label a project still carries', () => {
+		const carried = new Set(projects.flatMap((p) => p.tags.map((t) => t.label)));
+		const offenders = techOverlays
+			.filter((o) => o.lastUsed !== undefined && carried.has(o.label))
+			.map((o) => o.label);
+		expect(
+			offenders,
+			`carried but declared retired: ${offenders.join(', ')}. Delete lastUsed instead of reconciling two dates.`
+		).toEqual([]);
 	});
 
 	it('hiddenFrom values are valid surfaces, kinds are valid TagKinds', () => {

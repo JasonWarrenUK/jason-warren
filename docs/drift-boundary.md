@@ -188,8 +188,12 @@ see `docs/drift-engine-reference.md` for the full data-model breakdown.
 all. It is computed entirely by `mergeFingerprint` at merge time, from the saved and
 current `detectedTechFirstSeen` maps, since a retired identity has by definition left
 `getFingerprint`'s live detection and can only be recovered from what was already
-saved. It is deliberately absent from `Project`/`SyncedMetricKey`: no consumer needs
-it yet.
+saved. It reaches the site through a different seam than the "three coordinated
+edits" rule above: `Project` gains its own `detectedTechLastSeen` (label-keyed, not
+identity-keyed), and `inferTechLastSeen` (`defaults.ts`) re-keys it through the
+taxonomy tables, the retirement sibling of `inferTechFirstSeen` (5DR.32). It is still
+absent from `SyncedMetricKey`: no metric consumer needs it, only the toolkit adoption
+timeline via `adoption.ts`.
 
 ---
 

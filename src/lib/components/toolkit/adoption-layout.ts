@@ -66,7 +66,13 @@ export interface LayoutGeometry {
  */
 export const HUB_RING_OFFSET = 7;
 
-export interface PlacedNode extends TechAdoption {
+/**
+ * Geometry the layout adds to each timeline entry. Kept as a separate
+ * interface (intersected with TechAdoption below, rather than extending it)
+ * because TechAdoption is a discriminated union on dateSource (5DR.32): an
+ * interface cannot extend a union, only an intersection or object type.
+ */
+export interface PlacedGeometry {
 	x: number;
 	y: number;
 	radius: number;
@@ -85,6 +91,11 @@ export interface PlacedNode extends TechAdoption {
 	 */
 	railSegments: RailSegment[] | null;
 }
+
+/** A timeline entry with its rendered geometry. The intersection distributes
+ *  over TechAdoption's union, so `dateSource === 'derived'` still narrows a
+ *  PlacedNode exactly as it narrows a bare TechAdoption. */
+export type PlacedNode = TechAdoption & PlacedGeometry;
 
 /**
  * One colour segment of a rail. `kind` null means "the tech's own kind colour"
@@ -160,6 +171,8 @@ interface NodeGeom {
 	/** Outermost rendered ring radius (see RailPoint.outerRadius). */
 	outerRadius: number;
 	labelRight: number;
+	/** x of an authored retirement date, when the item declares one (5DR.32). */
+	lastX: number | null;
 }
 
 /** A year's pixel band on the x-axis: [startX, endX). */
@@ -181,6 +194,22 @@ const YEAR_MIN_WIDTH = 70; // floor: an empty year still shows a gridline gap
 const YEAR_MAX_WIDTH = 240; // ceiling: one busy year cannot dominate the axis
 
 /**
+ * The last year the axis must cover: the latest adoption date, or a
+ * retirement date past it (5DR.32). Without this, a lastUsed later than
+ * every firstDate clamps to plotRight via xFor's year-overflow guard,
+ * rendering a retired rail pixel-identical to one still in use.
+ */
+function axisLastYear(items: TechAdoption[]): number {
+	let last = items[items.length - 1].firstDate;
+	for (const item of items) {
+		if (item.dateSource === 'curated' && item.lastUsed !== undefined && item.lastUsed > last) {
+			last = item.lastUsed;
+		}
+	}
+	return Number(last.slice(0, 4));
+}
+
+/**
  * Splits the plot into one contiguous pixel band per calendar year in
  * [firstYear, lastYear], each sized by that year's technology count. Widths
  * are clamped (to keep the ratios sane) then normalised so the bands sum to
@@ -194,7 +223,7 @@ export function computeYearBands(
 ): Map<number, YearBand> {
 	const plotWidth = plotRight - plotLeft;
 	const firstYear = Number(items[0].firstDate.slice(0, 4));
-	const lastYear = Number(items[items.length - 1].firstDate.slice(0, 4));
+	const lastYear = axisLastYear(items);
 
 	// Count technologies per year, seeding every year in range so empty years
 	// still earn a (floor-width) band rather than collapsing their gridline.
@@ -257,7 +286,7 @@ function measure(
 	// the year gridline sits).
 	const bands = computeYearBands(items, plotLeft, plotRight);
 	const firstYear = Number(items[0].firstDate.slice(0, 4));
-	const lastYear = Number(items[items.length - 1].firstDate.slice(0, 4));
+	const lastYear = axisLastYear(items);
 
 	const xFor = (iso: string): number => {
 		const year = Number(iso.slice(0, 4));
@@ -276,7 +305,9 @@ function measure(
 		const radius = nodeRadius(item.projectCount);
 		const outerRadius = radius + (item.dateSource === 'curated' ? HUB_RING_OFFSET : 0);
 		const labelRight = x + radius + 6 + item.label.length * geo.charWidth;
-		geomByLabel.set(item.label, { label: item.label, x, radius, outerRadius, labelRight });
+		const lastX =
+			item.dateSource === 'curated' && item.lastUsed !== undefined ? xFor(item.lastUsed) : null;
+		geomByLabel.set(item.label, { label: item.label, x, radius, outerRadius, labelRight, lastX });
 	}
 
 	return { geomByLabel, xFor, plotRight };
@@ -369,13 +400,26 @@ function buildFamilies(
 interface RailEnd {
 	/** x where the rail line stops. */
 	railEndX: number;
+	/**
+	 * Why the rail ends where it does (5DR.32):
+	 *   'successor' — merges into its last replaced-by target's dot
+	 *   'lastUsed'  — reaches an authored retirement date and stops
+	 *   'present'   — runs to the plot edge, still in use, fading
+	 */
+	reason: 'successor' | 'lastUsed' | 'present';
 	/** True when the rail reaches the plot edge (no replacement recorded). */
 	fades: boolean;
 	/** The last replaced-by successor — the rail ends at this tech's dot. */
 	lastSuccessor: string | null;
 }
 
-/** A retired rail ends at its last replacement's dot edge; others run to the plot edge. */
+/**
+ * A retired rail ends at its last replacement's dot edge; an authored
+ * retirement date (5DR.32) can push that end further right still, since the
+ * two are independent claims (a successor's adoption date is a proxy for
+ * when the predecessor left; an authored lastUsed is the direct claim, and
+ * wins when it is later). A rail with neither runs to the plot edge, fading.
+ */
 function computeRailEnds(
 	railLabels: Set<string>,
 	edges: ResolvedEdge[],
@@ -388,12 +432,35 @@ function computeRailEnds(
 			.filter((e) => e.kind === 'replaced-by' && e.source === label)
 			.map((e) => geomByLabel.get(e.target)!)
 			.sort((a, b) => a.x - b.x || a.label.localeCompare(b.label));
+		const lastX = geomByLabel.get(label)!.lastX;
+
 		if (successors.length === 0) {
-			ends.set(label, { railEndX: plotRight, fades: true, lastSuccessor: null });
-		} else {
-			const last = successors[successors.length - 1];
+			if (lastX !== null) {
+				ends.set(label, { railEndX: lastX, reason: 'lastUsed', fades: false, lastSuccessor: null });
+			} else {
+				ends.set(label, {
+					railEndX: plotRight,
+					reason: 'present',
+					fades: true,
+					lastSuccessor: null
+				});
+			}
+			continue;
+		}
+
+		const last = successors[successors.length - 1];
+		const successorEndX = last.x - last.radius - 2;
+		if (lastX !== null && lastX > successorEndX) {
 			ends.set(label, {
-				railEndX: last.x - last.radius - 2,
+				railEndX: lastX,
+				reason: 'lastUsed',
+				fades: false,
+				lastSuccessor: last.label
+			});
+		} else {
+			ends.set(label, {
+				railEndX: successorEndX,
+				reason: 'successor',
 				fades: false,
 				lastSuccessor: last.label
 			});
@@ -1745,7 +1812,10 @@ function computeAllRailSegments(
 		const end = railEnds.get(label)!;
 		const x0 = point.x;
 		const xEnd = end.railEndX;
-		const retired = !end.fades; // a retired rail merges into a replaced-by successor
+		// Only a successor-merged rail paints replaced-by on its terminal
+		// segment; a rail stopped by an authored lastUsed with no successor has
+		// no merge to claim (5DR.32), so it keeps its own kind colour.
+		const retired = end.reason === 'successor';
 
 		const departures = departuresBySource.get(label);
 		const lastLeadsToX = departures !== undefined ? Math.max(...departures) : x0;
@@ -1881,7 +1951,7 @@ export function computeAdoptionLayout(
 	const height = axisY + geo.axisGap;
 
 	const firstYear = Number(items[0].firstDate.slice(0, 4));
-	const lastYear = Number(items[items.length - 1].firstDate.slice(0, 4));
+	const lastYear = axisLastYear(items);
 	const ticks: YearTick[] = [];
 	for (let year = firstYear; year <= lastYear; year++) {
 		ticks.push({ year, x: xFor(`${year}-01-01`) });

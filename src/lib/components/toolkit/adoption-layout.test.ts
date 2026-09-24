@@ -71,6 +71,25 @@ function tech(
 	};
 }
 
+/** A retired label with no carrying project (5DR.32): curated, projectCount 0,
+ *  the shape getTechAdoption's overlay-emission pass produces. */
+function retiredTech(
+	label: string,
+	kind: TechAdoption['kind'],
+	firstDate: string,
+	lastUsed: string
+): TechAdoption {
+	return {
+		label,
+		kind,
+		firstDate,
+		firstYear: Number(firstDate.slice(0, 4)),
+		projectCount: 0,
+		dateSource: 'curated',
+		lastUsed
+	};
+}
+
 /** The outermost rendered ring radius: curated nodes earn a hub ring beyond
  *  `radius`, derived nodes do not. Mirrors the component and the layout's own
  *  arrival maths. HUB_RING_OFFSET is re-declared here rather than imported to
@@ -1086,5 +1105,108 @@ describe('computeAdoptionLayout', () => {
 		expect(result.connectors.length).toBeGreaterThan(0);
 		expectNoRailPiercesForeignNode(result);
 		expectNoRailReversesDirection(result);
+	});
+
+	/**
+	 * Svelte 4's lastUsed (2026-08-26) is later than every project's adoption
+	 * date, but both fall in 2026, so xFor's year-overflow guard does not
+	 * clamp it on today's data regardless of whether the axis considers
+	 * retirement dates. The Gamma Framework fixture below is what actually
+	 * proves the axis-widening: it crosses a real year boundary.
+	 */
+	it('ends the Svelte 4 rail at its retirement date, not clamped to the plot edge', () => {
+		const items = getTechAdoption();
+		const result = computeAdoptionLayout(items, techRelationships, PROD_GEO);
+		const svelte4 = result.placed.find((p) => p.label === 'Svelte 4');
+		const svelte5 = result.placed.find((p) => p.label === 'Svelte 5');
+		expect(svelte4, 'Svelte 4 missing from the layout').toBeDefined();
+		expect(svelte5, 'Svelte 5 missing from the layout').toBeDefined();
+
+		// A hard stop, not a fade: an authored retirement date is a claim about
+		// history, not an open-ended "still in use".
+		expect(svelte4?.railFades).toBe(false);
+		expect(svelte4?.railEndX).not.toBeNull();
+
+		// The rail must not clamp to the plot's right edge (the bug this test
+		// guards against): it should be strictly left of the widest label's
+		// reserved margin.
+		expect(svelte4!.railEndX!).toBeLessThan(PROD_GEO.width - PROD_GEO.rightPad);
+
+		// Svelte 4 was retired after Svelte 5 was already adopted (the two
+		// genuinely overlapped 15 months), so its rail must extend past
+		// Svelte 5's own dot rather than stopping there.
+		expect(svelte4!.railEndX!).toBeGreaterThan(svelte5!.x);
+	});
+
+	it('ends a retired rail with no successor at its lastUsed date, not the plot edge', () => {
+		const items: TechAdoption[] = [
+			tech('Alpha', 'language', '2020-01-01'),
+			retiredTech('Gamma Framework', 'framework', '2020-06-01', '2021-06-01')
+		];
+		const result = computeAdoptionLayout(items, [], GEO);
+		const gamma = result.placed.find((p) => p.label === 'Gamma Framework');
+		expect(gamma).toBeDefined();
+		// No lineage at all means no rail (isolated techs pack into the strip),
+		// so railEndX is null here — this fixture proves the item still places
+		// and carries its retirement date, not the rail-end mechanics.
+		expect(gamma?.section).toBe('strip');
+	});
+
+	it('a retired rail with lastUsed but no successor stops hard, no merge colour claimed', () => {
+		const items: TechAdoption[] = [
+			tech('Alpha', 'language', '2020-01-01'),
+			retiredTech('Gamma Framework', 'framework', '2020-06-01', '2021-06-01')
+		];
+		const edges: TechRelationship[] = [
+			{ kind: 'leads-to', source: 'Alpha', target: 'Gamma Framework' }
+		];
+		const result = computeAdoptionLayout(items, edges, GEO);
+		const gamma = result.placed.find((p) => p.label === 'Gamma Framework');
+		expect(gamma).toBeDefined();
+		expect(gamma?.railFades).toBe(false);
+		expect(gamma?.railEndX).toBeGreaterThan(gamma!.x);
+		// No replaced-by successor exists, so no segment may claim the
+		// replaced-by (merge) colour: that colour asserts a real successor.
+		expect(gamma?.railSegments?.every((s) => s.kind !== 'replaced-by')).toBe(true);
+	});
+
+	/**
+	 * Gamma's lastUsed (2021-06-01) crosses into the year after every
+	 * adoption date in this fixture (Alpha and Gamma both adopted in 2020),
+	 * so without widening the axis range to consider retirement dates,
+	 * xFor's year-overflow guard would clamp Gamma's rail end to plotRight,
+	 * identical to a rail that is still in use. This is the assertion the
+	 * live-data test above cannot make (Svelte 4's lastUsed and the newest
+	 * adoption date happen to share a year, so that test passes whether or
+	 * not axisLastYear exists): reverting axisLastYear to
+	 * `Number(items[items.length - 1].firstDate.slice(0, 4))` makes THIS
+	 * test fail, because plotRight and Gamma's clamped x would then be equal
+	 * rather than strictly less.
+	 */
+	it('does not clamp a retired rail whose lastUsed crosses a year boundary the axis would otherwise miss', () => {
+		const items: TechAdoption[] = [
+			tech('Alpha', 'language', '2020-01-01'),
+			// A still-in-use rail (a lineage edge earns it one) with nothing
+			// anchoring it past 2020, so it genuinely fades to plotRight. Its
+			// railEndX is this fixture's ground truth for "the clamp fired".
+			tech('Beta', 'language', '2020-03-01'),
+			retiredTech('Gamma Framework', 'framework', '2020-06-01', '2021-06-01')
+		];
+		const edges: TechRelationship[] = [
+			{ kind: 'leads-to', source: 'Alpha', target: 'Gamma Framework' },
+			{ kind: 'leads-to', source: 'Alpha', target: 'Beta' }
+		];
+		const result = computeAdoptionLayout(items, edges, GEO);
+		const beta = result.placed.find((p) => p.label === 'Beta');
+		const gamma = result.placed.find((p) => p.label === 'Gamma Framework');
+		expect(beta).toBeDefined();
+		expect(gamma).toBeDefined();
+		// Beta fades to plotRight: this fixture's ground truth for "the clamp
+		// fired". Gamma's retirement date is a real, distinct 2021 x position;
+		// were the axis not widened to consider it, xFor's year-overflow guard
+		// would clamp Gamma to that same plotRight value instead.
+		expect(beta?.railFades).toBe(true);
+		expect(gamma?.railFades).toBe(false);
+		expect(gamma!.railEndX!).not.toBe(beta!.railEndX!);
 	});
 });

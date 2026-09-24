@@ -483,7 +483,7 @@
 					{
 						"id": "5DR.32",
 						"description": "Tech universe for lineage and the timeline is present tags plus retired history: tech overlays may declare labels no project carries, with firstUsed and lastUsed; the timeline renders retired tech with an end date; the lineage tests removed in 780a817 return against the union",
-						"status": "todo",
+						"status": "done",
 						"dependsOn": [
 							"5DR.31"
 						],
