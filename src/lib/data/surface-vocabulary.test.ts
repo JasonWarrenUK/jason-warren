@@ -15,7 +15,12 @@ import { describe, it, expect } from 'vitest';
 import { getTechNodes, getTechCoEdges } from './tech-graph.js';
 import { getTechAdoption } from './adoption.js';
 import { techRelationships } from './tech-relationships.js';
-import { SURFACE_KINDS, hiddenTechLabels, surfaceAdmitsKind } from './tech-overlays.js';
+import {
+	SURFACE_KINDS,
+	hiddenTechLabels,
+	retiredTechLabels,
+	surfaceAdmitsKind
+} from './tech-overlays.js';
 import { getCarriedKinds, resolveTechKind } from './tech-universe.js';
 import type { TechSurface } from './types.js';
 
@@ -87,6 +92,37 @@ describe('label kind is unambiguous', () => {
 });
 
 describe('lineage edges resolve or are deliberately out of scope', () => {
+	/**
+	 * The map excludes language-kind labels by policy, and now (5DR.32) also a
+	 * retired endpoint no project carries any more: the map is a present-tense
+	 * co-occurrence graph, so a label that has left the work cannot be a node
+	 * there, while the lineage edge describing its replacement still renders
+	 * on the timeline, the surface that carries history. An endpoint no
+	 * source recognises at all is NOT excused here: that is a typo or a stale
+	 * label, and tech-relationships.test.ts fails on it.
+	 */
+	it('every dropped map edge has a declared reason: language, hidden or retired', () => {
+		const hidden = hiddenTechLabels('map');
+		const retired = retiredTechLabels();
+		const unexplained: string[] = [];
+
+		for (const relationship of techRelationships) {
+			for (const endpoint of [relationship.source, relationship.target]) {
+				if (mapLabels.has(endpoint)) continue;
+
+				const isLanguage = resolveTechKind(endpoint) === 'language';
+				if (isLanguage || hidden.has(endpoint) || retired.has(endpoint)) continue;
+
+				unexplained.push(`${relationship.source} -> ${relationship.target} (missing: ${endpoint})`);
+			}
+		}
+
+		expect(
+			unexplained,
+			`lineage edges dropped from the map for no declared reason: ${unexplained.join('; ')}`
+		).toEqual([]);
+	});
+
 	it('every lineage endpoint the toolkit admits actually renders there', () => {
 		const hidden = hiddenTechLabels('toolkit');
 		const missing: string[] = [];

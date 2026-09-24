@@ -54,6 +54,22 @@ describe('tech lineage relationships', () => {
 		}
 	});
 
+	it('every edge resolves on at least one surface (constellation or timeline)', () => {
+		const techLabels = new Set(getTechNodes().map((n) => n.label));
+		const dated = new Set(getTechAdoption().map((a) => a.label));
+		const unrenderable: string[] = [];
+		for (const rel of techRelationships) {
+			const resolvesOnConstellation = techLabels.has(rel.source) && techLabels.has(rel.target);
+			const resolvesOnTimeline = dated.has(rel.source) && dated.has(rel.target);
+			if (!resolvesOnConstellation && !resolvesOnTimeline) {
+				unrenderable.push(`${rel.source} → ${rel.target} (${rel.kind})`);
+			}
+		}
+		expect(unrenderable, `Unrenderable on both surfaces:\n${unrenderable.join('\n')}`).toHaveLength(
+			0
+		);
+	});
+
 	it('constellation resolution: JavaScript → TypeScript has an excluded endpoint', () => {
 		const techLabels = new Set(getTechNodes().map((n) => n.label));
 		const edge = techRelationships.find(
