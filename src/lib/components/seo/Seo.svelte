@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/stores';
-	import { SITE_URL } from '$lib/config.js';
+	import { SITE_URL, OG_IMAGE_WIDTH, OG_IMAGE_HEIGHT } from '$lib/config.js';
 
 	interface Props {
 		/** Full document title, including the "| Jason Warren" suffix. */
@@ -32,5 +32,7 @@
 	<meta property="og:description" content={description} />
 	<meta property="og:url" content={canonical} />
 	<meta property="og:image" content={image} />
+	<meta property="og:image:width" content={String(OG_IMAGE_WIDTH)} />
+	<meta property="og:image:height" content={String(OG_IMAGE_HEIGHT)} />
 	<meta property="og:type" content={type} />
 </svelte:head>

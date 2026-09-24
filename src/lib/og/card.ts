@@ -48,6 +48,7 @@ import {
 	siJulia
 } from 'simple-icons';
 import type { Project, ProjectKind } from '$lib/data/types.js';
+import { OG_IMAGE_WIDTH, OG_IMAGE_HEIGHT } from '$lib/config.js';
 
 const require = createRequire(import.meta.url);
 
@@ -109,8 +110,8 @@ const fonts = [
 	}
 ] as const;
 
-const WIDTH = 1200;
-const HEIGHT = 630;
+const WIDTH = OG_IMAGE_WIDTH;
+const HEIGHT = OG_IMAGE_HEIGHT;
 
 // ---------------------------------------------------------------------------
 // Dimension 1: background colour ← project kind.

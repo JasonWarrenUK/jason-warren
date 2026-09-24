@@ -21,3 +21,11 @@ export const BLUESKY_HANDLE = '@neurosocialist.bsky.social';
 /** Fallback description for pages that do not set their own. */
 export const DEFAULT_DESCRIPTION =
 	'Developer at Tandem Creative Dev. TypeScript, Go, SvelteKit, PostgreSQL, Neo4j and Bun; everything from terminal tools to graph-native applications.';
+
+/**
+ * Fixed dimensions of every OG card (see $lib/og/card.ts). Lives here, not
+ * in card.ts, so the client-safe Seo component can read them without pulling
+ * in card.ts's build-time-only font loading (node:fs, createRequire).
+ */
+export const OG_IMAGE_WIDTH = 1200;
+export const OG_IMAGE_HEIGHT = 630;
