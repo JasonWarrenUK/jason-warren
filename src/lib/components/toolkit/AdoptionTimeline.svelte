@@ -148,17 +148,24 @@
 
 	// Returns the accessible description for an item, shared between the
 	// SVG <title> tooltip and the aria-label so the two never drift.
+	//
+	// A derived date is a guess (the earliest commit touching the tag), not an
+	// authored fact, so it stays year-only: a month would claim a precision
+	// the evidence doesn't have. A curated date is authored, so it gets the
+	// month `formatMonthYear` gives every other curated date on this chart.
 	function describe(item: PlacedNode): string {
 		const origin = item.dateSource === 'derived' ? ` in ${item.firstProjectName}` : '';
+		const firstUsed =
+			item.dateSource === 'derived' ? `${item.firstYear}` : formatMonthYear(item.firstDate);
 		// A retired label (5DR.32) carries no projects today, so "now in 0
 		// projects" would be wrong: past tense, and the count clause drops
 		// entirely rather than read "in 0 projects".
 		const retired = item.dateSource === 'curated' && item.lastUsed !== undefined;
 		if (retired) {
-			return `${item.label}: first used ${item.firstYear}${origin}, retired ${item.lastUsed!.slice(0, 4)}`;
+			return `${item.label}: first used ${firstUsed}${origin}, retired ${formatMonthYear(item.lastUsed!)}`;
 		}
 		const plural = item.projectCount === 1 ? '' : 's';
-		return `${item.label}: first used ${item.firstYear}${origin}, now in ${item.projectCount} project${plural}`;
+		return `${item.label}: first used ${firstUsed}${origin}, now in ${item.projectCount} project${plural}`;
 	}
 
 	// --- Reveal animation ---------------------------------------------------
