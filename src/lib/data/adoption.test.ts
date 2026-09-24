@@ -6,7 +6,7 @@
  * rather than faked.
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { getTechAdoption, CURATED_FIRST_USED } from './adoption.js';
 import { projects } from './index.js';
 import { techRelationships } from './tech-relationships.js';
@@ -165,6 +165,9 @@ describe('getTechAdoption', () => {
 
 	it('the introducing project carries the tag (and its firstDate when derived)', () => {
 		for (const item of adoption) {
+			// A retired label (5DR.32) has no carrying project at all: its date is
+			// an authored floor, not an inference from any repo.
+			if (item.dateSource === 'curated' && item.firstProjectSlug === undefined) continue;
 			const project = projects.find((p) => p.slug === item.firstProjectSlug);
 			expect(project).toBeDefined();
 			expect(project?.tags.some((t) => t.label === item.label)).toBe(true);
@@ -189,5 +192,82 @@ describe('getTechAdoption', () => {
 
 	it('is deterministic across repeated calls', () => {
 		expect(getTechAdoption()).toEqual(adoption);
+	});
+});
+
+/**
+ * Retired-tech emission (5DR.32). The shipped overlays retire nothing besides
+ * Svelte 4, which already has a taxonomy kind and a carrying-project-free
+ * history; these mock a wider set of shapes to prove each guard in the
+ * emission pass actually earns its keep, following hidden-surfaces.test.ts's
+ * pattern of mocking tech-overlays.js rather than editing real data.
+ */
+describe('getTechAdoption retired-tech emission (mocked overlays)', () => {
+	it('emits an overlay-declared retired label no project carries', async () => {
+		vi.doMock('./tech-overlays.js', async (importOriginal) => {
+			const original = await importOriginal<typeof import('./tech-overlays.js')>();
+			const techOverlays: import('./types.js').TechOverlay[] = [
+				...original.techOverlays,
+				// A kind override, exactly like the real Vite/Go overlays: a label
+				// with no taxonomy entry and no carrier still resolves its kind.
+				{
+					label: 'Nostalgia Framework',
+					kind: 'framework',
+					firstUsed: '2020-01-15',
+					lastUsed: '2021-06-15'
+				}
+			];
+			return {
+				...original,
+				techOverlays,
+				retiredTechLabels: (): Map<string, string> =>
+					new Map([['Nostalgia Framework', '2021-06-15']])
+			};
+		});
+		vi.resetModules();
+		const { getTechAdoption: mockedGetTechAdoption } = await import('./adoption.js');
+		const item = mockedGetTechAdoption().find((i) => i.label === 'Nostalgia Framework');
+		expect(item).toBeDefined();
+		expect(item?.dateSource).toBe('curated');
+		expect(item?.firstDate).toBe('2020-01-15');
+		expect((item as { lastUsed?: string })?.lastUsed).toBe('2021-06-15');
+		expect(item?.projectCount).toBe(0);
+		vi.doUnmock('./tech-overlays.js');
+		vi.resetModules();
+	});
+
+	it('never synthesises a retired entry for a label a project still carries', async () => {
+		vi.doMock('./tech-overlays.js', async (importOriginal) => {
+			const original = await importOriginal<typeof import('./tech-overlays.js')>();
+			return {
+				...original,
+				// TypeScript is carried by many projects; a retirement date for it
+				// must never override the live derived entry.
+				retiredTechLabels: (): Map<string, string> => new Map([['TypeScript', '2020-01-01']])
+			};
+		});
+		vi.resetModules();
+		const { getTechAdoption: mockedGetTechAdoption } = await import('./adoption.js');
+		const item = mockedGetTechAdoption().find((i) => i.label === 'TypeScript');
+		expect(item?.dateSource).toBe('derived');
+		expect((item as { lastUsed?: string })?.lastUsed).toBeUndefined();
+		vi.doUnmock('./tech-overlays.js');
+		vi.resetModules();
+	});
+
+	it('drops a retired label with no firstUsed to anchor it', async () => {
+		vi.doMock('./tech-overlays.js', async (importOriginal) => {
+			const original = await importOriginal<typeof import('./tech-overlays.js')>();
+			return {
+				...original,
+				retiredTechLabels: (): Map<string, string> =>
+					new Map([['Unanchored Framework', '2021-01-01']])
+			};
+		});
+		vi.resetModules();
+		const { getTechAdoption: mockedGetTechAdoption } = await import('./adoption.js');
+		expect(mockedGetTechAdoption().find((i) => i.label === 'Unanchored Framework')).toBeUndefined();
+		vi.doUnmock('./tech-overlays.js');
+		vi.resetModules();
 	});
 });

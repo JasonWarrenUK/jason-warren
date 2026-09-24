@@ -13,27 +13,53 @@
 
 import { projects } from './index.js';
 import { techRelationships } from './tech-relationships.js';
-import { techOverlays, hiddenTechLabels, SURFACE_KINDS } from './tech-overlays.js';
+import {
+	techOverlays,
+	hiddenTechLabels,
+	retiredTechLabels,
+	SURFACE_KINDS
+} from './tech-overlays.js';
+import { resolveTechKind } from './tech-universe.js';
 import type { ProjectSlug, TagKind } from './types.js';
 
-export interface TechAdoption {
+interface TechAdoptionBase {
 	/** Tag label, e.g. "TypeScript". */
 	label: string;
-	/** Tag kind of the introducing project, used for colour mapping. */
+	/** Tag kind, used for colour mapping. */
 	kind: TagKind;
 	/** Adoption year (YYYY): the earliest of the curated floor and the derived date. */
 	firstYear: number;
 	/** ISO date (YYYY-MM-DD) of adoption: the earliest of the curated floor and the derived date. */
 	firstDate: string;
+	/** How many projects use this tag (drives dot weight); 0 for retired tech no project carries. */
+	projectCount: number;
+}
+
+/** A tech dated by repo evidence: some project carries it and anchors the date. */
+export interface DerivedTechAdoption extends TechAdoptionBase {
+	dateSource: 'derived';
 	/** The earliest project carrying this tag (deterministic tiebreak). */
 	firstProjectSlug: ProjectSlug;
 	/** The earliest project's display name. */
 	firstProjectName: string;
-	/** How many projects use this tag (drives dot weight). */
-	projectCount: number;
-	/** 'derived' when repo evidence anchors the date; 'curated' when the authored floor predates any repo. */
-	dateSource: 'curated' | 'derived';
 }
+
+/**
+ * A tech dated by an authored floor. May still be carried (HTML, CSS and Ink
+ * are curated floors on labels projects also carry today), which is why the
+ * project fields stay optional here rather than absent. `lastUsed` is present
+ * only when the label is retired history: an overlay declares it and no
+ * project carries it any more (5DR.32).
+ */
+export interface CuratedTechAdoption extends TechAdoptionBase {
+	dateSource: 'curated';
+	firstProjectSlug?: ProjectSlug;
+	firstProjectName?: string;
+	/** ISO retirement date, when the tech has left the work. */
+	lastUsed?: string;
+}
+
+export type TechAdoption = DerivedTechAdoption | CuratedTechAdoption;
 
 /**
  * Authored first-used floor dates, derived from the tech overlays (the single
@@ -137,15 +163,58 @@ export function getTechAdoption(opts?: { kinds?: TagKind[] }): TechAdoption[] {
 		if (curated === undefined && derived === undefined) continue;
 		const useDerived = derived !== undefined && (curated === undefined || derived <= curated);
 		const firstDate = useDerived ? derived : (curated as string);
+		if (useDerived) {
+			adoption.push({
+				label: entry.label,
+				kind: entry.kind,
+				firstYear: Number(firstDate.slice(0, 4)),
+				firstDate,
+				firstProjectSlug: entry.firstProjectSlug,
+				firstProjectName: entry.firstProjectName,
+				projectCount: entry.projectCount,
+				dateSource: 'derived'
+			});
+		} else {
+			adoption.push({
+				label: entry.label,
+				kind: entry.kind,
+				firstYear: Number(firstDate.slice(0, 4)),
+				firstDate,
+				firstProjectSlug: entry.firstProjectSlug,
+				firstProjectName: entry.firstProjectName,
+				projectCount: entry.projectCount,
+				dateSource: 'curated'
+			});
+		}
+	}
+
+	// Retired tech: an overlay may declare a label no project carries, with a
+	// firstUsed floor and a lastUsed retirement (5DR.32). Lineage is a claim
+	// about history (Svelte 4 replaced-by Svelte 5), so the timeline has to be
+	// able to render an endpoint the present-tense tags no longer reach. Only
+	// the timeline: stack.ts and tech-graph.ts stay project-tag-only, and
+	// hiddenFrom already keeps a label off the timeline if that is wanted.
+	const retired = retiredTechLabels();
+	for (const overlay of techOverlays) {
+		const lastUsed = retired.get(overlay.label);
+		if (lastUsed === undefined) continue;
+		// A label a project still carries is never synthesised here: the derived
+		// pass above already owns it, and an authored retirement must not
+		// override live evidence. A data test also forbids authoring this
+		// combination (tech-overlays.test.ts).
+		if (byLabel.has(overlay.label)) continue;
+		if (overlay.firstUsed === undefined) continue;
+		if (hidden.has(overlay.label)) continue;
+		const kind = resolveTechKind(overlay.label);
+		if (kind === undefined || !kinds.has(kind)) continue;
 		adoption.push({
-			label: entry.label,
-			kind: entry.kind,
-			firstYear: Number(firstDate.slice(0, 4)),
-			firstDate,
-			firstProjectSlug: entry.firstProjectSlug,
-			firstProjectName: entry.firstProjectName,
-			projectCount: entry.projectCount,
-			dateSource: useDerived ? 'derived' : 'curated'
+			label: overlay.label,
+			kind,
+			firstYear: Number(overlay.firstUsed.slice(0, 4)),
+			firstDate: overlay.firstUsed,
+			projectCount: 0,
+			dateSource: 'curated',
+			lastUsed
 		});
 	}
 
