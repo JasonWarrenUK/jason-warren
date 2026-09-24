@@ -79,13 +79,18 @@ export function getTechLabelUniverse(): Set<string> {
 }
 
 /**
- * The kind for a label with no carrier: an overlay kind override first, then
- * the taxonomy. Undefined when neither knows it, which callers read as "not
- * a real label".
+ * The kind for any label in the universe: an overlay kind override first
+ * (the single application point every surface already honours), then the
+ * taxonomy, then whatever kind the registry actually carries it under (an
+ * authored project tag like 'Graph / Cypher' has no taxonomy entry at all).
+ * Undefined when none of the three knows it, which callers read as "not a
+ * real label".
  */
 export function resolveTechKind(label: string): TagKind | undefined {
 	const overlay = techOverlays.find((o) => o.label === label);
 	if (overlay?.kind !== undefined) return overlay.kind;
 	const taxonomyKinds = getTaxonomyKinds().get(label);
-	return taxonomyKinds !== undefined ? [...taxonomyKinds][0] : undefined;
+	if (taxonomyKinds !== undefined) return [...taxonomyKinds][0];
+	const carriedKinds = getCarriedKinds().get(label);
+	return carriedKinds !== undefined ? [...carriedKinds][0] : undefined;
 }

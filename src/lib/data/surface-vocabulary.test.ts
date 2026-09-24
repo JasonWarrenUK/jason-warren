@@ -12,28 +12,24 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { projects } from './index.js';
 import { getTechNodes, getTechCoEdges } from './tech-graph.js';
 import { getTechAdoption } from './adoption.js';
 import { techRelationships } from './tech-relationships.js';
 import { SURFACE_KINDS, hiddenTechLabels, surfaceAdmitsKind } from './tech-overlays.js';
-import type { TagKind, TechSurface } from './types.js';
+import { getCarriedKinds, resolveTechKind } from './tech-universe.js';
+import type { TechSurface } from './types.js';
 
 const mapLabels = new Set(getTechNodes().map((node) => node.label));
 const toolkitLabels = new Set(getTechAdoption().map((entry) => entry.label));
 
-/** Every label in the registry, with every kind it is ever carried under. */
-const kindsByLabel = new Map<string, Set<TagKind>>();
-for (const project of projects) {
-	for (const tag of project.tags) {
-		let kinds = kindsByLabel.get(tag.label);
-		if (!kinds) {
-			kinds = new Set();
-			kindsByLabel.set(tag.label, kinds);
-		}
-		kinds.add(tag.kind);
-	}
-}
+/**
+ * Every label a project currently carries, with every kind it is carried
+ * under. Kept to carried tags specifically (not the wider taxonomy union) for
+ * the ambiguity check below: Go and Shell are each both `language` and
+ * `runtime` in the taxonomy, which would make that check fail for reasons
+ * unrelated to what the registry actually carries.
+ */
+const kindsByLabel = getCarriedKinds();
 
 describe('surface kind policy', () => {
 	it('declares a kind list for every surface', () => {
@@ -58,9 +54,15 @@ describe('surface kind policy', () => {
 			expect(admitted, `${label} is on the map but its kind is not admitted`).toBe(true);
 		}
 		for (const label of toolkitLabels) {
-			const kinds = kindsByLabel.get(label);
-			expect(kinds, `${label} is on the toolkit but carries no registry tag`).toBeDefined();
-			const admitted = [...(kinds ?? [])].some((kind) => surfaceAdmitsKind('toolkit', kind));
+			// A retired label (5DR.32) is on the timeline with no carrying project,
+			// so its kind comes from the overlay override or the taxonomy rather
+			// than from a registry tag. Everything else still has to be a tag some
+			// project carries, which resolveTechKind also honours (an overlay
+			// override wins, otherwise the taxonomy, which agrees with the
+			// registry for every carried label).
+			const kind = resolveTechKind(label);
+			expect(kind, `${label} is on the toolkit but no source declares its kind`).toBeDefined();
+			const admitted = kind !== undefined && surfaceAdmitsKind('toolkit', kind);
 			expect(admitted, `${label} is on the toolkit but its kind is not admitted`).toBe(true);
 		}
 	});
