@@ -33,7 +33,7 @@ describe('OG card coverage', () => {
 
 	it('agrees with the project page entry list, so the meta-tag path (SITE_URL) and the on-page <img> path (base) can never diverge', async () => {
 		const ogSlugs = new Set((await ogEntries()).map((e) => e.slug));
-		const pageSlugs = new Set(projectPageEntries().map((e) => e.slug));
+		const pageSlugs = new Set((await projectPageEntries()).map((e) => e.slug));
 		const ogProjectSlugs = new Set([...ogSlugs].filter((slug) => slug !== 'default'));
 		expect(ogProjectSlugs).toEqual(pageSlugs);
 	});
