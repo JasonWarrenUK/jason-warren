@@ -107,12 +107,20 @@ export function getTechAdoption(opts?: { kinds?: TagKind[] }): TechAdoption[] {
 	// retirement (detectedTechLastSeen) has to be collected independently of
 	// the tag loop below, across every project regardless of what it
 	// currently carries. Later date wins: the last project to retire a label
-	// is what actually retires it.
+	// is what actually retires it. The retiring project is kept alongside the
+	// date (not just the date) because it is also where a synced-only label's
+	// firstUsed anchor lives: detectedTechFirstSeen keeps a retired identity's
+	// entry rather than erasing it (types.ts), and only the project that
+	// detected the retirement is guaranteed to still carry it.
 	const syncedLastUsed = new Map<string, string>();
+	const syncedRetiringProject = new Map<string, (typeof projects)[number]>();
 	for (const project of projects) {
 		for (const [label, date] of Object.entries(project.detectedTechLastSeen ?? {})) {
 			const existing = syncedLastUsed.get(label);
-			if (existing === undefined || date > existing) syncedLastUsed.set(label, date);
+			if (existing === undefined || date > existing) {
+				syncedLastUsed.set(label, date);
+				syncedRetiringProject.set(label, project);
+			}
 		}
 	}
 
@@ -215,7 +223,14 @@ export function getTechAdoption(opts?: { kinds?: TagKind[] }): TechAdoption[] {
 		// combination (tech-overlays.test.ts).
 		if (byLabel.has(label)) continue;
 		const overlay = techOverlays.find((o) => o.label === label);
-		const firstUsed = overlay?.firstUsed;
+		// An authored overlay is the primary anchor. A label with no overlay at
+		// all can still be retired purely by sync (5DR.31): the retiring
+		// project's own detectedTechFirstSeen keeps that identity's date rather
+		// than erasing it, so it is the honest fallback anchor rather than a
+		// dropped entry. Without either, there is genuinely nothing to date it
+		// from, and it is correctly excluded.
+		const firstUsed =
+			overlay?.firstUsed ?? syncedRetiringProject.get(label)?.detectedTechFirstSeen?.[label];
 		if (firstUsed === undefined) continue;
 		if (hidden.has(label)) continue;
 		const kind = resolveTechKind(label);

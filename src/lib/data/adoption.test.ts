@@ -321,4 +321,80 @@ describe('getTechAdoption retired-tech emission (mocked overlays)', () => {
 		vi.doUnmock('./index.js');
 		vi.resetModules();
 	});
+
+	/**
+	 * The shape the PR body describes the synced path as existing for: a
+	 * future sync retires something with no hand-authored overlay at all. The
+	 * retiring project's own detectedTechFirstSeen is the fallback anchor,
+	 * since it keeps a retired identity's date rather than erasing it.
+	 * resolveTechKind is mocked too so the made-up label resolves to a real
+	 * kind, isolating the anchor fallback from the separate kind-resolution
+	 * gate.
+	 */
+	it('anchors a synced-only retirement from the retiring project, with no overlay', async () => {
+		vi.doMock('./tech-universe.js', async (importOriginal) => {
+			const original = await importOriginal<typeof import('./tech-universe.js')>();
+			return {
+				...original,
+				resolveTechKind: (label: string) =>
+					label === 'Overlay-less Framework' ? 'framework' : original.resolveTechKind(label)
+			};
+		});
+		vi.doMock('./index.js', async (importOriginal) => {
+			const original = await importOriginal<typeof import('./index.js')>();
+			return {
+				...original,
+				projects: [
+					{
+						...original.projects[0],
+						detectedTechFirstSeen: {
+							...original.projects[0].detectedTechFirstSeen,
+							'Overlay-less Framework': '2021-03-01'
+						},
+						detectedTechLastSeen: { 'Overlay-less Framework': '2022-09-15' }
+					},
+					...original.projects.slice(1)
+				]
+			};
+		});
+		vi.resetModules();
+		const { getTechAdoption: mockedGetTechAdoption } = await import('./adoption.js');
+		const item = mockedGetTechAdoption().find((i) => i.label === 'Overlay-less Framework');
+		expect(item).toBeDefined();
+		expect(item?.firstDate).toBe('2021-03-01');
+		expect((item as { lastUsed?: string })?.lastUsed).toBe('2022-09-15');
+		vi.doUnmock('./tech-universe.js');
+		vi.doUnmock('./index.js');
+		vi.resetModules();
+	});
+
+	it('still drops a synced-only retirement when the retiring project has no matching firstSeen entry', async () => {
+		vi.doMock('./tech-universe.js', async (importOriginal) => {
+			const original = await importOriginal<typeof import('./tech-universe.js')>();
+			return {
+				...original,
+				resolveTechKind: (label: string) =>
+					label === 'Unanchored Sync' ? 'framework' : original.resolveTechKind(label)
+			};
+		});
+		vi.doMock('./index.js', async (importOriginal) => {
+			const original = await importOriginal<typeof import('./index.js')>();
+			return {
+				...original,
+				projects: [
+					{
+						...original.projects[0],
+						detectedTechLastSeen: { 'Unanchored Sync': '2022-09-15' }
+					},
+					...original.projects.slice(1)
+				]
+			};
+		});
+		vi.resetModules();
+		const { getTechAdoption: mockedGetTechAdoption } = await import('./adoption.js');
+		expect(mockedGetTechAdoption().find((i) => i.label === 'Unanchored Sync')).toBeUndefined();
+		vi.doUnmock('./tech-universe.js');
+		vi.doUnmock('./index.js');
+		vi.resetModules();
+	});
 });
