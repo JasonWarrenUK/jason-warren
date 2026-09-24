@@ -58,7 +58,7 @@ The site is live and substantially built: full routes, the graph/timeline/map/to
 
 - [ ] **4QU.1** — Accessibility audit: keyboard nav, ARIA, contrast, SVG view semantics _(blocked — depends on 4QU.5)_
 - [ ] **4QU.3** — SEO pass: structured data, meta completeness, sitemap; light perf sanity-check _(blocked — depends on 4QU.1)_
-- [ ] **4QU.4** — Confirm OG image coverage for every route and project _(depends on M3)_
+- [x] **4QU.4** — Confirm OG image coverage for every route and project
 - [ ] **4QU.5** — Component / interaction test coverage for the connection views _(depends on M3)_
 - [ ] **4QU.7** — a11y regression pass on the tech-stack constellation _(blocked — depends on 4QU.1)_
 - [x] **4QU.8** — Analyse and reconcile where the map's Technologies mode and the Toolkit get their data: overlapping tech vocabularies from different sources should agree
@@ -145,7 +145,7 @@ The site is live and substantially built: full routes, the graph/timeline/map/to
 
 **Goal:** The standing home for aesthetic work after the visual direction settled in M3: refinements to how the site and its generated artefacts look, taken up once the functional milestones they depend on have landed.
 
-- [ ] **8DE.1** — Spike: investigate enhancements to the procedural OG card generation, and record the options with a recommendation _(blocked — depends on 4QU.4)_
+- [ ] **8DE.1** — Spike: investigate enhancements to the procedural OG card generation, and record the options with a recommendation
   - Note: Supersedes the parked "Generative OG variants per theme" idea, which was one avenue among several. src/lib/og/card.ts derives each card from project data, but keys its motif on runtime alone via runtimeArchetype(), so 23 of 33 projects collapse into two archetypes (bun 12, node 11) and 5 fall through to the generic dot. Avenues to weigh: widening the archetype signal beyond runtime; theme-driven variants (themes currently feed nothing in card.ts); using signal the card already receives and ignores (kind, track, role, tags, lineage); and the motif mechanics themselves (one fixed 132px tiling, hash-seeded rotation and phase). Output is a written comparison with a recommendation, not an implementation; follow-up tasks land after it is read.
 - [ ] **5DR.23** — Derive the site's retired and deployed axes from enriched manifest data, replacing the authored placeholders _(depends on 5DR.22)_
 - [ ] **5DR.27** — Use the intra-span activity metrics in the timeline and/or graph visuals so a sparse multi-year project no longer renders identically to one sustained continuously _(depends on 5DR.25)_
@@ -497,7 +497,7 @@ graph LR
 	11LC.10 --> M11
 	M11 --> 5DR.29
 	5DR.29 --> M9
-	class 10EX.1,11LC.1,11LC.14,11LC.2,11LC.7,11LC.8,4QU.4,4QU.5,5DR.23,5DR.27,5DR.32,7DR.1 todo
-	class 10EX.2,10EX.3,10EX.4,10EX.5,10EX.6,11LC.10,11LC.11,11LC.12,11LC.13,11LC.3,11LC.4,11LC.5,11LC.6,11LC.9,4QU.1,4QU.3,4QU.7,5DR.29,7DR.10,7DR.11,7DR.2,7DR.3,7DR.4,7DR.5,7DR.6,7DR.7,7DR.8,7DR.9,8DE.1 blocked
-	class 1CO.1,1CO.10,1CO.2,1CO.3,1CO.4,1CO.5,1CO.6,1CO.7,1CO.8,1CO.9,2FE.1,2FE.2,2FE.3,2FE.4,2FE.5,2FE.6,2FE.7,2FE.8,3DE.0,3DE.1,3DE.2,3DE.3,3DE.4,3DE.5,3DE.6,4QU.8,5DR.0,5DR.1,5DR.10,5DR.11,5DR.12,5DR.13,5DR.14,5DR.15,5DR.16,5DR.17,5DR.18,5DR.19,5DR.2,5DR.20,5DR.21,5DR.22,5DR.24,5DR.25,5DR.26,5DR.28,5DR.3,5DR.30,5DR.31,5DR.4,5DR.5,5DR.6,5DR.7,5DR.8,5DR.9 done
+	class 10EX.1,11LC.1,11LC.14,11LC.2,11LC.7,11LC.8,4QU.5,5DR.23,5DR.27,7DR.1,8DE.1 todo
+	class 10EX.2,10EX.3,10EX.4,10EX.5,10EX.6,11LC.10,11LC.11,11LC.12,11LC.13,11LC.3,11LC.4,11LC.5,11LC.6,11LC.9,4QU.1,4QU.3,4QU.7,5DR.29,7DR.10,7DR.11,7DR.2,7DR.3,7DR.4,7DR.5,7DR.6,7DR.7,7DR.8,7DR.9 blocked
+	class 1CO.1,1CO.10,1CO.2,1CO.3,1CO.4,1CO.5,1CO.6,1CO.7,1CO.8,1CO.9,2FE.1,2FE.2,2FE.3,2FE.4,2FE.5,2FE.6,2FE.7,2FE.8,3DE.0,3DE.1,3DE.2,3DE.3,3DE.4,3DE.5,3DE.6,4QU.4,4QU.8,5DR.0,5DR.1,5DR.10,5DR.11,5DR.12,5DR.13,5DR.14,5DR.15,5DR.16,5DR.17,5DR.18,5DR.19,5DR.2,5DR.20,5DR.21,5DR.22,5DR.24,5DR.25,5DR.26,5DR.28,5DR.3,5DR.30,5DR.31,5DR.32,5DR.4,5DR.5,5DR.6,5DR.7,5DR.8,5DR.9 done
 ```

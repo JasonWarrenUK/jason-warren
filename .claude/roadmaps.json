@@ -235,7 +235,7 @@
 					{
 						"id": "4QU.4",
 						"description": "Confirm OG image coverage for every route and project",
-						"status": "todo",
+						"status": "done",
 						"dependsOn": [
 							"M3"
 						]
@@ -646,7 +646,7 @@
 					{
 						"id": "8DE.1",
 						"description": "Spike: investigate enhancements to the procedural OG card generation, and record the options with a recommendation",
-						"status": "blocked",
+						"status": "todo",
 						"dependsOn": [
 							"4QU.4"
 						],
