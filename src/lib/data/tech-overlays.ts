@@ -110,6 +110,15 @@ export function hiddenTechLabels(surface: TechSurface): Set<string> {
 	return hidden;
 }
 
+/** label → retirement date, for labels an overlay declares historical (5DR.32). */
+export function retiredTechLabels(): Map<string, string> {
+	const retired = new Map<string, string>();
+	for (const overlay of techOverlays) {
+		if (overlay.lastUsed !== undefined) retired.set(overlay.label, overlay.lastUsed);
+	}
+	return retired;
+}
+
 /** label → overridden kind, for the single application point in index.ts. */
 export function getTechKindOverrides(): Map<string, TagKind> {
 	const overrides = new Map<string, TagKind>();
