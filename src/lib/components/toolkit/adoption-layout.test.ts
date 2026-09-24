@@ -71,6 +71,25 @@ function tech(
 	};
 }
 
+/** A retired label with no carrying project (5DR.32): curated, projectCount 0,
+ *  the shape getTechAdoption's overlay-emission pass produces. */
+function retiredTech(
+	label: string,
+	kind: TechAdoption['kind'],
+	firstDate: string,
+	lastUsed: string
+): TechAdoption {
+	return {
+		label,
+		kind,
+		firstDate,
+		firstYear: Number(firstDate.slice(0, 4)),
+		projectCount: 0,
+		dateSource: 'curated',
+		lastUsed
+	};
+}
+
 /** The outermost rendered ring radius: curated nodes earn a hub ring beyond
  *  `radius`, derived nodes do not. Mirrors the component and the layout's own
  *  arrival maths. HUB_RING_OFFSET is re-declared here rather than imported to
@@ -1086,5 +1105,67 @@ describe('computeAdoptionLayout', () => {
 		expect(result.connectors.length).toBeGreaterThan(0);
 		expectNoRailPiercesForeignNode(result);
 		expectNoRailReversesDirection(result);
+	});
+
+	/**
+	 * Svelte 4's lastUsed (2026-08-26) is later than every project's adoption
+	 * date in the current data, so without widening the axis range to consider
+	 * retirement dates too, xFor's year-overflow guard would clamp it to
+	 * plotRight: pixel-identical to a rail still in use (5DR.32).
+	 */
+	it('ends the Svelte 4 rail at its retirement date, not clamped to the plot edge', () => {
+		const items = getTechAdoption();
+		const result = computeAdoptionLayout(items, techRelationships, PROD_GEO);
+		const svelte4 = result.placed.find((p) => p.label === 'Svelte 4');
+		const svelte5 = result.placed.find((p) => p.label === 'Svelte 5');
+		expect(svelte4, 'Svelte 4 missing from the layout').toBeDefined();
+		expect(svelte5, 'Svelte 5 missing from the layout').toBeDefined();
+
+		// A hard stop, not a fade: an authored retirement date is a claim about
+		// history, not an open-ended "still in use".
+		expect(svelte4?.railFades).toBe(false);
+		expect(svelte4?.railEndX).not.toBeNull();
+
+		// The rail must not clamp to the plot's right edge (the bug this test
+		// guards against): it should be strictly left of the widest label's
+		// reserved margin.
+		expect(svelte4!.railEndX!).toBeLessThan(PROD_GEO.width - PROD_GEO.rightPad);
+
+		// Svelte 4 was retired after Svelte 5 was already adopted (the two
+		// genuinely overlapped 15 months), so its rail must extend past
+		// Svelte 5's own dot rather than stopping there.
+		expect(svelte4!.railEndX!).toBeGreaterThan(svelte5!.x);
+	});
+
+	it('ends a retired rail with no successor at its lastUsed date, not the plot edge', () => {
+		const items: TechAdoption[] = [
+			tech('Alpha', 'language', '2020-01-01'),
+			retiredTech('Gamma Framework', 'framework', '2020-06-01', '2021-06-01')
+		];
+		const result = computeAdoptionLayout(items, [], GEO);
+		const gamma = result.placed.find((p) => p.label === 'Gamma Framework');
+		expect(gamma).toBeDefined();
+		// No lineage at all means no rail (isolated techs pack into the strip),
+		// so railEndX is null here — this fixture proves the item still places
+		// and carries its retirement date, not the rail-end mechanics.
+		expect(gamma?.section).toBe('strip');
+	});
+
+	it('a retired rail with lastUsed but no successor stops hard, no merge colour claimed', () => {
+		const items: TechAdoption[] = [
+			tech('Alpha', 'language', '2020-01-01'),
+			retiredTech('Gamma Framework', 'framework', '2020-06-01', '2021-06-01')
+		];
+		const edges: TechRelationship[] = [
+			{ kind: 'leads-to', source: 'Alpha', target: 'Gamma Framework' }
+		];
+		const result = computeAdoptionLayout(items, edges, GEO);
+		const gamma = result.placed.find((p) => p.label === 'Gamma Framework');
+		expect(gamma).toBeDefined();
+		expect(gamma?.railFades).toBe(false);
+		expect(gamma?.railEndX).toBeGreaterThan(gamma!.x);
+		// No replaced-by successor exists, so no segment may claim the
+		// replaced-by (merge) colour: that colour asserts a real successor.
+		expect(gamma?.railSegments?.every((s) => s.kind !== 'replaced-by')).toBe(true);
 	});
 });
