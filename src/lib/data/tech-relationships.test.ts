@@ -1,19 +1,33 @@
 /**
  * Data integrity tests for the authored tech lineage edges.
  *
- * Structural, not behavioural: every edge must point at real tag labels, every
- * edge must resolve on at least one of the two surfaces that can render it
- * (tech constellation or adoption timeline), and the graph-style dispatch
- * helpers must agree with the authored vocabulary.
+ * Structural, not behavioural: every edge must point at a real tag label
+ * (present, taxonomy-inferable, or overlay-declared as retired history, since
+ * a lineage edge is a statement about the past and can outlive the migration
+ * it describes, 5DR.32), every edge must resolve on at least one of the two
+ * surfaces that can render it (tech constellation or adoption timeline), and
+ * the graph-style dispatch helpers must agree with the authored vocabulary.
  */
 
 import { describe, it, expect } from 'vitest';
 import { techRelationships } from './tech-relationships.js';
 import { getTechNodes } from './tech-graph.js';
 import { getTechAdoption } from './adoption.js';
+import { getTechLabelUniverse } from './tech-universe.js';
 import { edgeTypeColour, edgeTypeLabel, isLineageKind } from '$lib/components/graph/graph-style.js';
 
+const allLabels = getTechLabelUniverse();
+
 describe('tech lineage relationships', () => {
+	it('every source and target is a real tag label', () => {
+		const offenders: string[] = [];
+		for (const rel of techRelationships) {
+			if (!allLabels.has(rel.source)) offenders.push(`source "${rel.source}" (${rel.kind})`);
+			if (!allLabels.has(rel.target)) offenders.push(`target "${rel.target}" (${rel.kind})`);
+		}
+		expect(offenders, `Unknown tech labels:\n${offenders.join('\n')}`).toHaveLength(0);
+	});
+
 	it('has no self-loops', () => {
 		const selfLoops = techRelationships.filter((rel) => rel.source === rel.target);
 		expect(
