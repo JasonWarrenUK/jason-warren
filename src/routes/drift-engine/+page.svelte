@@ -40,21 +40,21 @@
 	const driftLayers = [
 		{
 			id: 'engine',
-			label: 'Core engine',
+			label: 'Drift Engine',
 			path: 'scripts/check-drift.js',
 			detail:
-				'Framework-agnostic. Fingerprints repos, owns the data files, knows nothing about Svelte.'
+				'Framework-agnostic. Fingerprints repos, owns the data files and the overlay contract, knows nothing about Svelte.'
 		},
 		{
 			id: 'contract',
 			label: 'Schema contract',
 			path: 'scripts/sources.schema.json',
 			detail:
-				'JSON Schema draft-07, additionalProperties: false. The engine validates every record before writing.'
+				'JSON Schema draft-07, additionalProperties: false. The Engine validates every record before writing.'
 		},
 		{
 			id: 'integration',
-			label: 'Integration layer',
+			label: 'Drift Framework',
 			path: 'src/lib/data/',
 			detail:
 				'Build-time registry. Reads files as static JSON, assembles typed Project objects for the site.'
@@ -319,8 +319,7 @@
 		{#snippet stationSplit()}
 			<h3 id="drift-split-heading">The split</h3>
 			<p class="drift__station-lede">
-				Two things with a contract between them. The engine measures; the integration layer
-				presents.
+				Two things with a contract between them. The Engine measures; the Framework presents.
 			</p>
 			<p class="prose">
 				Drift started as a single script that did everything: walked the repos, measured them, wrote
@@ -328,18 +327,16 @@
 				with presentation, so neither could move without the other.
 			</p>
 			<p class="prose">
-				It is now two things with a contract between them. The engine (<code
+				It is now two things with a contract between them. The Drift Engine (<code
 					>scripts/check-drift.js</code
-				>) is a framework-agnostic Bun script: it fingerprints repos, owns the four data files, and
-				knows nothing about Svelte. The integration layer (<code>src/lib/data/</code>) is build-time
-				SvelteKit code: it reads those files as static JSON imports and assembles the typed
-				<code>Project</code> objects the site is built from. The engine could be lifted out as a standalone
-				package and nothing on the site would notice.
+				>) is a framework-agnostic Bun script: it fingerprints repos, owns the four data files and
+				the overlay contract, and knows nothing about Svelte. The Drift Framework (<code
+					>src/lib/data/</code
+				>) is build-time SvelteKit code: it reads those files as static JSON imports and assembles
+				the typed <code>Project</code> objects the site is built from. Copying just the Engine into another
+				repo still works today; it is the Engine as a published package that is not built yet.
 			</p>
-			<figure
-				class="drift__arch"
-				aria-label="Architecture: engine, schema contract, integration layer"
-			>
+			<figure class="drift__arch" aria-label="Architecture: Engine, schema contract, Framework">
 				<div class="arch__layers">
 					{#each driftLayers as layer, i (layer.id)}
 						<div class="arch__layer arch__layer--{layer.id}">
@@ -355,8 +352,7 @@
 					{/each}
 				</div>
 				<figcaption>
-					The engine owns measurement; the integration layer owns presentation. The schema is the
-					seam.
+					The Engine owns measurement; the Framework owns presentation. The schema is the seam.
 				</figcaption>
 			</figure>
 			<figure class="drift__split-visual" aria-label="Before and after the decoupling">
@@ -387,7 +383,7 @@
 							<span class="split__schema-label">schema</span>
 						</div>
 						<div class="split__box split__box--integration">
-							<span class="split__box-title">integration</span>
+							<span class="split__box-title">framework</span>
 							<ul class="split__box-items" role="list">
 								<li>assemble Projects</li>
 								<li>render output</li>
@@ -405,17 +401,17 @@
 				writes nothing.
 			</p>
 			<p class="prose">
-				Between the engine and the integration layer sits <code>sources.schema.json</code>: a JSON
-				Schema draft-07 definition with <code>additionalProperties: false</code>. The engine
-				validates every assembled record against it before writing anything. A violation is a
-				programming error in the engine, not a user-data problem, so the response is blunt: throw,
-				write nothing. A half-correct manifest never reaches disk.
+				Between the Engine and the Framework sits <code>sources.schema.json</code>: a JSON Schema
+				draft-07 definition with <code>additionalProperties: false</code>. The Engine validates
+				every assembled record against it before writing anything. A violation is a programming
+				error in the Engine, not a user-data problem, so the response is blunt: throw, write
+				nothing. A half-correct manifest never reaches disk.
 			</p>
 			<p class="prose">
 				This makes adding a new metric a deliberate three-step act. Declare the property in the
 				schema. Add it to the <code>SyncedSource</code> interface in <code>index.ts</code>. Return
-				it from <code>getFingerprint</code> in the engine. Miss one and the build tells you, either
-				at <code>bun run check</code> or when the engine throws on its next sync. The boundary is not
+				it from <code>getFingerprint</code> in the Engine. Miss one and the build tells you, either
+				at <code>bun run check</code> or when the Engine throws on its next sync. The boundary is not
 				a convention I am trusting myself to respect; it is enforced.
 			</p>
 			<figure class="code">
@@ -423,8 +419,8 @@
 				<figcaption>scripts/check-drift.js: validation gate</figcaption>
 			</figure>
 			<aside class="callout">
-				<strong>Fail-closed invariant:</strong> the engine throws and writes nothing on a schema violation.
-				The Svelte integration layer never sees a partial or off-contract manifest.
+				<strong>Fail-closed invariant:</strong> the Engine throws and writes nothing on a schema violation.
+				The Framework never sees a partial or off-contract manifest.
 			</aside>
 		{/snippet}
 
@@ -480,9 +476,10 @@
 				<code>baseOnMain</code> counterpart for context.
 			</p>
 			<p class="prose">
-				The integration layer's <code>withSyncedMetrics</code> applies a three-tier precedence
-				across every metric field. Manual overrides win; real synced figures come next; provisional
-				values from <code>in-progress.json</code> are the floor. Once a branch lands and
+				The Framework's <code>withSyncedMetrics</code> applies a three-tier precedence across every
+				metric field. Manual overrides win; real synced figures come next; provisional values from
+				<code>in-progress.json</code>
+				are the floor. Once a branch lands and
 				<code>drift sync</code> picks up real numbers, the synced value naturally shadows the provisional
 				one. Promotion is self-healing: no stale figures leak through.
 			</p>
