@@ -6,6 +6,14 @@ All notable changes to this project are documented here. Format follows [Keep a 
 
 ## [Unreleased]
 
+## [8.4.1] - 2026-09-25
+
+### Fixed
+
+- `/hire` is now listed in the sitemap. It was prerendered and indexable but missing from the hand-maintained static path list.
+- Open Graph images now declare their width, height and type, so link previews render at the correct size instead of guessing.
+- An overridden Open Graph image no longer claims the default card's dimensions when its own differ.
+
 ## [8.4.0] - 2026-09-24
 
 ### Added
