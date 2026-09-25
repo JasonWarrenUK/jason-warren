@@ -409,7 +409,7 @@
 			</p>
 			<p class="prose">
 				This makes adding a new metric a deliberate three-step act. Declare the property in the
-				schema. Add it to the <code>SyncedSource</code> interface in <code>index.ts</code>. Return
+				schema. Add it to the <code>SyncedSource</code> interface in <code>types.ts</code>. Return
 				it from <code>getFingerprint</code> in the Engine. Miss one and the build tells you, either
 				at <code>bun run check</code> or when the Engine throws on its next sync. The boundary is not
 				a convention I am trusting myself to respect; it is enforced.

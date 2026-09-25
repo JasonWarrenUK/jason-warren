@@ -93,9 +93,11 @@ for yours, so this only bites if you skip `init` and run bare.
 `tech-graph.ts`, `adoption.ts`, `stack.ts`, `theme-queries.ts`,
 `threads.ts`, plus the JSON data files and their schemas. `types.ts` is
 shared today: `Project` and its derived types are Framework-owned, but the
-overlay contract, tech identity types and `Theme` also live there until
-10EX.7/10EX.8 move them to the Engine. Two framework-free helpers sit one
-level up: `src/lib/url-state.ts` and `src/lib/audience.ts`.
+overlay contract, tech identity types, `Theme` in `themes.ts`, and the four
+data-file mirrors (`SyncedSource`, `EnrichedSource`, `TrackedField`,
+`InProgressEntry`) also live there until 10EX.7/10EX.8 move them to the
+Engine. Two framework-free helpers sit one level up: `src/lib/url-state.ts`
+and `src/lib/audience.ts`.
 
 **What is clean:**
 
@@ -118,13 +120,14 @@ level up: `src/lib/url-state.ts` and `src/lib/audience.ts`.
   bundler means replacing the discovery mechanism. ADR-001 records this as
   a blocker for the packaging milestone (12PK.1), not for M10, since the
   Framework stays in this repository through Stage 1.
-- **Mechanism, policy and Portfolio content share files.** `tech-overlays.ts`
-  holds all three artefacts at once: the `TechOverlay` shape is Engine-owned,
-  `SURFACE_KINDS` is a Framework policy table layered on it, and the
-  `techOverlays` array is Jason's editorial content. `themes.ts` splits the
-  same way: `Theme` (Engine), `theme-queries.ts` (Framework), the `themes`
-  array (Portfolio). Adopting the Framework means keeping the Engine and
-  Framework layers and authoring your own content.
+- **Mechanism, policy and Portfolio content share files.** `themes.ts`
+  holds all three artefacts at once: `Theme` is Engine-owned,
+  `ThemeWithProjects` is Framework-owned and the `themes` array is Jason's
+  editorial content. `tech-overlays.ts` holds two: `SURFACE_KINDS` is a
+  Framework policy table layered on the Engine's `TechSurface` and
+  `TagKind` types, and the `techOverlays` array is Jason's editorial
+  content. Adopting the Framework means keeping the Engine and Framework
+  layers and authoring your own content.
 - **"Me" means the configured author.** Every `*Me` metric and the
   scoring that prefers `commitsMe` reflect whoever `author.pattern`
   matches. The semantics are portable; the Portfolio's copy
