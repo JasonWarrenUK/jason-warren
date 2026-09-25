@@ -179,8 +179,9 @@ Milestone 10 does not turn the first option into a package install: Stage 1
 of ADR-001 is a bare copy of `scripts/` that runs `drift init`, `drift
 sync` and `drift author` on its own, with the scaffolded overlay
 type-checking against the Engine's own types and no `src/lib/data/`
-present. An actual install, as a published package, is Stage 2's packaging
-milestone, unbuilt and untriggered.
+present. An actual install, as a published package, is Milestone 12
+(Packaging), with its own ADR still unwritten; it is separate from
+ADR-001's deferred Stage 2.
 
 ---
 
