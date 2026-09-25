@@ -144,7 +144,7 @@ the policy point for surface visibility:
 ## Site-level helpers
 
 Framework-free, unit-tested, safe anywhere. These are the non-component
-`$lib/` modules the reference site's routes and components actually import;
+`$lib/` modules the Portfolio's routes and components actually import;
 copy them alongside `src/lib/data/` (Phase 0 in
 [`05-build-guide.md`](./05-build-guide.md#phase-0-repo-setup)) or reauthor
 their equivalents, since roster rows depend on them:
@@ -176,7 +176,7 @@ clicked)` gives click-to-toggle semantics (clicking the pinned value
   A value is typed as a closed union, written to `localStorage` under a
   named key on change, and parsed back defensively so an absent, cleared or
   hand-edited stored value falls back to a stated default rather than
-  crashing or rendering blank. The reference site's `Audience` type
+  crashing or rendering blank. The Portfolio's `Audience` type
   (`'developer' | 'everyone'`, under `AUDIENCE_STORAGE_KEY`,
   `'home-audience'`) is one instance of this pattern for its own
   developer/plain-English home page; a different audience taxonomy, or no
