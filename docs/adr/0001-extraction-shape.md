@@ -39,7 +39,7 @@ The nine verbs stay in the Engine. The label "portfolio-shaped" is retired: they
 
 A type belongs to the Engine when the Engine writes or validates it. A type belongs to the Framework when it only exists after the merge. On that rule the contract moves out of `src/lib/data/types.ts` and into the Engine.
 
-The contract is a JSON Schema, and the TypeScript types are its projection. This is how `sources.schema.json` already works: the Engine reads the schema at startup, derives `FINGERPRINT_FIELDS` from it and validates every record against it before writing. The overlay contract follows the same pattern for a reason the Engine cannot avoid: it is plain JavaScript and cannot read a `.d.ts` at runtime, so with types as the source of truth it keeps hand-mirrored enum lists (five today, each commented "keep in sync with types.ts"). With the schema canonical, those lists are derived, and `drift audit` and `drift authored` validate the overlay values they import.
+The contract is a JSON Schema, and the TypeScript types are its projection. This is how `sources.schema.json` already works: the Engine reads the schema at startup, derives `FINGERPRINT_FIELDS` from it and validates every record against it before writing. The overlay contract follows the same pattern for a reason the Engine cannot avoid: it is plain JavaScript and cannot read a `.d.ts` at runtime, so with types as the source of truth it keeps hand-mirrored enum lists (five today, and only `AUTHORED_FIELDS` even admits in a comment that it mirrors `types.ts`). With the schema canonical, those lists are derived, and `drift audit` and `drift authored` validate the overlay values they import.
 
 The Engine ships `overlay.schema.json` and a `.d.ts` beside it, mirrored by hand and held to the schema by a parity test, the way `SyncedSource` is held to `sources.schema.json` today. The `.d.ts` is an Engine file because the scaffold imports from it and an Engine-only user has no Framework for that import to resolve against. The Framework imports the types; it translates nothing. The types that move:
 
@@ -164,18 +164,18 @@ Effect on the open M10 tasks:
 
 New work this decision creates:
 
-1. Write `scripts/overlay.schema.json` for the types listed above, with `oneOf` for `AuthoredContribution`, and a `.d.ts` beside it with a parity test. Derive the Engine's five hand-mirrored lists from the schema. Remove the moved types from `types.ts`, update the Framework's imports and `tag-taxonomy.d.ts`, and move the schema conformance tests (`sources.schema.test.ts`, `in-progress.schema.test.ts`) from `src/lib/data/` to the Engine's suite.
-2. Add `authored` to the verb list wherever the nine are enumerated (boundary doc, entanglement ledger, this milestone).
-3. Make the nine verbs exit cleanly, with a message, when the overlay paths are unconfigured or absent.
-4. Record the Framework's Vite-bound loading as a blocker on the packaging milestone.
+1. Write `scripts/overlay.schema.json` for the types listed above, with `oneOf` for `AuthoredContribution`, and a `.d.ts` beside it with a parity test. Derive the Engine's five hand-mirrored lists from the schema (10EX.7). Remove the moved types from `types.ts`, update the Framework's imports and `tag-taxonomy.d.ts`, and move the schema conformance tests (`sources.schema.test.ts`, `in-progress.schema.test.ts`) from `src/lib/data/` to the Engine's suite (10EX.8).
+2. Add `authored` to the verb list wherever the nine are enumerated: boundary doc, entanglement ledger, the CLI reference's editorial table and this milestone (10EX.6).
+3. Make the nine verbs exit cleanly, with a message, when the overlay paths are unconfigured or absent. `drift report` is a tenth site: its coverage line counts overlay files by listing `projectsDir`, and a missing directory must count as zero rather than throw (10EX.9).
+4. Record the Framework's Vite-bound loading as a blocker on the packaging milestone (12PK.1).
 
-Ordering: the type split (1) comes first, because 10EX.4 and the `tag-taxonomy.d.ts` fix both depend on the Engine having types to export.
+Ordering: the schema and its `.d.ts` (10EX.7) come first, because 10EX.4 needs a type to import and the type split (10EX.8), which closes the `tag-taxonomy.d.ts` reach, needs a file to repoint at.
 
 ---
 
 ## Verification
 
-The M10 acceptance test, run by hand until it is scripted: copy `scripts/` into an empty git repository with a `drift.config.ts` pointing at an empty data directory, run `drift init`, `drift sync` and `drift author <slug>`, then type-check the scaffolded overlay with `tsc --noEmit`. It passes with no `src/lib/data/` present. The same copy runs `drift report` without touching the nine verbs' files.
+The M10 acceptance test, run by hand until it is scripted: copy `scripts/` into an empty git repository with a `drift.config.ts` pointing at an empty data directory, run `drift init`, `drift sync` and `drift author <slug>`, then type-check the scaffolded overlay with `tsc --noEmit`. It passes with no `src/lib/data/` present. The same copy runs `drift report` with no overlay directory at all: today that throws, because the report's coverage line lists `projectsDir` to count overlays (`buildCoverageStats`, check-drift.js:2526), and 10EX.9 makes a missing directory count as zero.
 
 The decision was wrong if a real second consumer appears and the first thing they need is a different overlay shape. That is stage 2's trigger, and it is cheap to detect: they will say so.
 
@@ -183,7 +183,7 @@ The decision was wrong if a real second consumer appears and the first thing the
 
 ## Related Decisions
 
-- Roadmap M10 (10EX.1 to 10EX.6); 7DR.4 and 11LC.8 soft-depend on this spike for where new overlay verbs grow (answer: the Engine)
+- Roadmap M10 (10EX.1 to 10EX.10); 7DR.4 depends on this spike for where new overlay verbs grow (answer: the Engine), and 11LC.7 soft-depends on it for where `drift card` gets its merge (answer: open, picked when the task starts)
 - ADR-002, unwritten: host-declared overlay schema, if stage 2 triggers
 - The packaging milestone's ADR, unwritten: physical split into packages and repositories
 
