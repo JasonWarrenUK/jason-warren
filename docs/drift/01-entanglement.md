@@ -162,11 +162,16 @@ taxonomy as a second file that must stay shared between the two.
 
 ## What adoption means today
 
-- **Engine only** (keep your own data pipeline): copy `scripts/`, run
-  `drift init`, point `dataDir` wherever you like. You get `sources.json`
-  and the report loop. The nine overlay verbs assume `config.paths.projects`
-  and its three sibling files exist; 10EX.9 makes a missing path exit with
-  a message rather than a stack trace, but until then simply do not use them.
+- **Engine only** (keep your own data pipeline): copy `scripts/`, create a
+  data directory and point `dataDir` at it in `drift.config.ts` before
+  running `drift init` (the default, `src/lib/data`, does not exist in an
+  empty repo, so `init` fails). `drift sync` only fingerprints slugs already
+  in `sources.json`, so seed that file by hand with `lastSyncedAt` and one
+  entry per repo. `drift` and `drift sync` then run. `drift report --full`
+  and the nine overlay verbs assume `config.paths.projects` and its three
+  sibling files exist; until 10EX.9 lands a missing path ends in a bare
+  ENOENT, so create an empty projects directory and leave the overlay verbs
+  alone.
 - **Engine + Framework** (the supported path, and what
   [`05-build-guide.md`](./05-build-guide.md) sequences): copy `scripts/`
   and `src/lib/data/`, keep the relative taxonomy import intact, empty the

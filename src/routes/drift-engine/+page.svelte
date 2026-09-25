@@ -334,7 +334,8 @@
 					>src/lib/data/</code
 				>) is build-time SvelteKit code: it reads those files as static JSON imports and assembles
 				the typed <code>Project</code> objects the site is built from. Copying just the Engine into another
-				repo still works today; it is the Engine as a published package that is not built yet.
+				repo measures today, once its manifest is seeded by hand; making that copy stand alone is the
+				next milestone, and a published package comes after that.
 			</p>
 			<figure class="drift__arch" aria-label="Architecture: Engine, schema contract, Framework">
 				<div class="arch__layers">
