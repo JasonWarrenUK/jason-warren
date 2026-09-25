@@ -567,7 +567,7 @@
 							"10EX.1",
 							"11LC.8"
 						],
-						"notes": "The menu is verb-first (pick a verb, then a target). This inverts it for the browse path; the verb-first sections stay for anyone who already knows what they want. Gated on 10EX.1 because that spike settles the extraction shape for the portfolio-shaped verbs this task grows; decided extraction-first in the roadmap-review session that scoped M10 against M7."
+						"notes": "The menu is verb-first (pick a verb, then a target). This inverts it for the browse path; the verb-first sections stay for anyone who already knows what they want. Gated on 10EX.1 because that spike settles the extraction shape for the portfolio-shaped verbs this task grows; decided extraction-first in the roadmap-review session that scoped M10 against M7. Resolved by ADR-001: the overlay verbs are Engine verbs, so new ones this task grows are Engine code."
 					},
 					{
 						"id": "7DR.5",
@@ -694,22 +694,22 @@
 			{
 				"id": "M10",
 				"name": "Drift Extraction",
-				"goal": "Make the core engine genuinely consumable by a different app, not just internally boundaried, correcting the boundary doc's unverified extraction claim and closing the three mechanical gaps a real host would hit.",
+				"goal": "Make the Drift Engine genuinely consumable on its own: ADR-001 names three artefacts (Engine, Framework, Portfolio) with the Engine owning the overlay contract as JSON Schema. Done when a bare copy of scripts/ in an empty repo runs drift init, sync and author and the scaffolded overlay type-checks against the Engine's own types with no src/lib/data present.",
 				"tasks": [
 					{
 						"id": "10EX.1",
-						"description": "Spike: decide the extraction shape for the 8 portfolio-shaped verbs (author, flag, tag, relate project, tech, relate tech, theme, audit) — a core+portfolio-adapter package split, or generalising them behind a host-declared overlay schema contract",
-						"status": "todo",
+						"description": "Spike: decide the extraction shape for the overlay verbs (author, flag, tag, relate project, tech, relate tech, theme, audit, authored)",
+						"status": "done",
 						"dependsOn": [],
 						"softDependsOn": [
 							"M5"
 						],
-						"notes": "M5 gate demoted from hard to soft: M5's only open task (5DR.28, parallelise gh repo view calls) has no bearing on extraction. The 'after decoupling settles' intent is real but not an artefact dependency, so it's recorded here rather than blocking the spike. Decided in the roadmap-review session that scoped M10 against M7."
+						"notes": "Decided in docs/adr/0001-extraction-shape.md (ADR-001, accepted 2026-09-25). Three artefacts: Engine (every verb, including the nine overlay verbs; authored is the ninth the task list missed), Framework (Svelte-consumer utilities), Portfolio (one example site). The Engine owns the overlay contract, canonical as scripts/overlay.schema.json with a mirrored .d.ts held by a parity test, the same pattern as sources.schema.json. Neither shape the spike offered was taken: the adapter split duplicated the Engine's own schema, and the host-declared schema contract is stage 2, deferred until a named consumer with a data model of their own exists. M5 gate demoted from hard to soft: M5's only open task (5DR.28, parallelise gh repo view calls) has no bearing on extraction. The 'after decoupling settles' intent is real but not an artefact dependency, so it's recorded here rather than blocking the spike. Decided in the roadmap-review session that scoped M10 against M7."
 					},
 					{
 						"id": "10EX.2",
 						"description": "Inject repoRoot instead of deriving it from the engine's own script location, so a package consumer's host repo resolves correctly",
-						"status": "blocked",
+						"status": "todo",
 						"dependsOn": [
 							"10EX.1",
 							"5DR.8"
@@ -719,7 +719,7 @@
 					{
 						"id": "10EX.3",
 						"description": "Add config.paths entries for tech-relationships.ts, tech-overlays.ts and themes.ts, currently derived as undeclared siblings of projectsDir",
-						"status": "blocked",
+						"status": "todo",
 						"dependsOn": [
 							"10EX.1"
 						],
@@ -727,17 +727,18 @@
 					},
 					{
 						"id": "10EX.4",
-						"description": "Stop the engine emitting `import type { AuthoredProject } from '../types.js'` into scaffolded overlays; replace with whatever type contract the spike (10EX.1) settles on",
+						"description": "Emit the scaffold's AuthoredProject import from the Engine's own .d.ts rather than '../types.js', per ADR-001",
 						"status": "blocked",
 						"dependsOn": [
-							"10EX.1"
+							"10EX.1",
+							"10EX.7"
 						],
-						"notes": "check-drift.js:3603. The engine generates source code typed by a module the boundary doc's own ownership table assigns to the integration layer."
+						"notes": "check-drift.js:3910. ADR-001 makes the type an Engine export, so the import is legitimate once it resolves against scripts/ rather than the Framework. Gated on 10EX.7 because the .d.ts has to exist before the scaffold can name it."
 					},
 					{
 						"id": "10EX.5",
 						"description": "Declare typescript and prettier as real package dependencies; degrade gracefully when gum is absent rather than failing the interactive surface outright",
-						"status": "blocked",
+						"status": "todo",
 						"dependsOn": [
 							"10EX.1"
 						],
@@ -745,12 +746,52 @@
 					},
 					{
 						"id": "10EX.6",
-						"description": "Correct docs/drift-boundary.md's claim that the engine \"can in principle be extracted into a standalone package\"; replace with the honest blocker list as the extraction spec",
-						"status": "blocked",
+						"description": "Rewrite docs/drift-boundary.md and docs/drift/01-entanglement.md around ADR-001's three artefacts: flip the ownership rows the contract move changes, drop the \"can in principle be extracted\" claim, list authored as the ninth overlay verb; retire the portfolio-shaped label from docs/drift/02-cli.md's editorial table",
+						"status": "todo",
 						"dependsOn": [
 							"10EX.1"
 						],
-						"notes": "Boundary doc line 270. Verified false on three counts: repoRoot (10EX.2), the three unconfigured .ts paths (10EX.3), and the emitted AuthoredProject import (10EX.4). Raised in the roadmap-review session that scoped M5 against the decoupling question."
+						"notes": "Boundary doc line 270 verified false on three counts (10EX.2, 10EX.3, 10EX.4). Rows that flip owner: AuthoredProject / Project types (split: overlay contract to Engine, Project stays Framework), Themes / visual data (Theme shape to Engine, theme queries stay), tech surface scope (TechSurface to Engine, SURFACE_KINDS policy stays). The entanglement ledger's blocker table gains the new M10 tasks and its verb count goes from eight to nine."
+					},
+					{
+						"id": "10EX.7",
+						"description": "Overlay contract as schema: write scripts/overlay.schema.json for the types ADR-001 moves to the Engine, a .d.ts beside it and a parity test; derive the Engine's five hand-mirrored lists from the schema; validate overlay values in drift audit and drift authored",
+						"status": "todo",
+						"dependsOn": [
+							"10EX.1"
+						],
+						"notes": "Hand-mirrored lists today: AUTHOR_FIELD_ENUMS (check-drift.js:4007), PROJECT_RELATIONSHIP_KINDS and TECH_RELATIONSHIP_KINDS (4280-4281), TECH_TAG_KINDS (5292), TECH_SURFACES (5301), AUTHORED_FIELDS (6842). Precedent for derivation: FINGERPRINT_FIELDS from sources.schema.json (231). AuthoredContribution is a discriminated union and needs oneOf. Field doc comments become description strings the .d.ts repeats."
+					},
+					{
+						"id": "10EX.8",
+						"description": "Type split: remove the moved types from src/lib/data/types.ts, repoint the Framework's imports and scripts/tag-taxonomy.d.ts at the Engine's .d.ts, move sources.schema.test.ts and in-progress.schema.test.ts into the Engine's suite",
+						"status": "blocked",
+						"dependsOn": [
+							"10EX.7"
+						],
+						"notes": "tag-taxonomy.d.ts currently imports TechTag from ../src/lib/data/types.js, an Engine file reaching into the Framework; this closes it. The Framework's relative reach into scripts/ (already present for the taxonomy) grows until the packaging milestone."
+					},
+					{
+						"id": "10EX.9",
+						"description": "The nine overlay verbs exit cleanly with a message when config.paths.projects or the three sibling files are unconfigured or absent, so an Engine-only user sees a reason rather than a stack trace",
+						"status": "blocked",
+						"dependsOn": [
+							"10EX.3"
+						],
+						"notes": "Today every overlay verb assumes the paths exist. An Engine-only adopter (docs/drift/01-entanglement.md, 'CLI only') has no overlay directory at all. Tenth site: drift report's coverage line lists projectsDir to count overlays (buildCoverageStats, check-drift.js:2526) and throws when it is absent; that one counts as zero rather than exiting, since report is the verb an Engine-only user runs most."
+					},
+					{
+						"id": "10EX.10",
+						"description": "Script the M10 acceptance test from ADR-001: a bare copy of scripts/ in an empty git repo runs drift init, drift sync and drift author, and the scaffolded overlay passes tsc --noEmit with no src/lib/data present",
+						"status": "blocked",
+						"dependsOn": [
+							"10EX.2",
+							"10EX.4",
+							"10EX.5",
+							"10EX.8",
+							"10EX.9"
+						],
+						"notes": "Milestone sink. drift report must also run without touching the overlay verbs' files."
 					}
 				]
 			},
@@ -822,7 +863,7 @@
 						"softDependsOn": [
 							"10EX.1"
 						],
-						"notes": "ProjectCard.svelte shows name, the role badge, tagline, blurb (expanded), the first four tags, the live link and the stage badge. Rendering those for a synced-only project needs the manifest-to-Project defaults merge in src/lib/data/defaults.ts, which is integration-layer code, so this verb is portfolio-shaped in the same way drift audit is (Bun's native ESM import of .ts) and its extraction shape is decided by the 10EX.1 spike; hence the soft edge. drift authored <slug> is not this view: it shows authored fields only and exits non-zero when no overlay exists, which is precisely the case scenario 4 needs to see. 7DR.2 later wraps this card in the full per-field provenance view."
+						"notes": "ProjectCard.svelte shows name, the role badge, tagline, blurb (expanded), the first four tags, the live link and the stage badge. Rendering those for a synced-only project needs the manifest-to-Project defaults merge in src/lib/data/defaults.ts, which is integration-layer code, so this verb is portfolio-shaped in the same way drift audit is (Bun's native ESM import of .ts) and its extraction shape is decided by the 10EX.1 spike; hence the soft edge. drift authored <slug> is not this view: it shows authored fields only and exits non-zero when no overlay exists, which is precisely the case scenario 4 needs to see. 7DR.2 later wraps this card in the full per-field provenance view. ADR-001 resolved the soft edge: the manifest-plus-overlay merge stays Framework code, so drift card either reimplements the defaults merge in the Engine or imports it the way drift audit imports overlays (Bun only). Pick when the task starts."
 					},
 					{
 						"id": "11LC.8",
@@ -894,6 +935,22 @@
 							"11LC.14"
 						],
 						"notes": "Milestone sink. A scripted walkthrough against a temporary scanRoot fixture (two fresh repos, one companion, one to ignore, one that moves mid-walkthrough and one deleted locally) driving drift register, drift sync, drift projects, drift card, drift author <field>, drift approve, drift hide, drift relocate and drift unregister in sequence, asserting the lifecycle state after each step and that the admitted slug reaches the registry. Docs to bring into line: docs/drift/02-cli.md (bootstrap steps 2 and 3 and the verb tables), docs/drift-authoring.md (\"Adding a new project, end to end\", and \"Four ways to hide something\" gaining the scan-level ignore and approval) and the write-isolation contract in docs/drift-boundary.md."
+					}
+				]
+			},
+			{
+				"id": "M12",
+				"name": "Drift: Packaging",
+				"goal": "Split Engine, Framework and Portfolio into installable packages and separate repositories, each with its own docs directory, along the lines ADR-001 fixed.",
+				"tasks": [
+					{
+						"id": "12PK.1",
+						"description": "Replace the Framework's Vite-bound loading (import.meta.glob overlay discovery and static JSON imports in src/lib/data/index.ts) with a plain loader that works outside a Vite build",
+						"status": "blocked",
+						"dependsOn": [
+							"M10"
+						],
+						"notes": "Recorded here by ADR-001 rather than on M10: while the Framework stays in this repository the Vite dependence blocks nothing, and it becomes the first blocker the moment the Framework is a package. The packaging ADR (unwritten) and the repo split join this milestone later."
 					}
 				]
 			}

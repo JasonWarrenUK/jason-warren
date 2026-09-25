@@ -1,6 +1,6 @@
 # Portfolio MVP Roadmap
 
-The site is live and substantially built: full routes, the graph/timeline/map/toolkit views, 30+ typed projects and the Drift CLI. This phase deepens the site as an artefact and decouples Drift's engine from its portfolio-specific couplings. Content (M1), features (M2), design (M3) and Drift's tests-and-docs (M6) are done, and the Drift engine work (M5) is complete bar two follow-up verbs; quality (M4), total data control from the CLI menu (M7), ongoing aesthetics (M8), extraction (M10) and the project lifecycle chain (M11) remain.
+The site is live and substantially built: full routes, the graph/timeline/map/toolkit views, 30+ typed projects and the Drift CLI. This phase deepens the site as an artefact and decouples Drift's engine from its portfolio-specific couplings. Content (M1), features (M2), design (M3) and Drift's tests-and-docs (M6) are done, and the Drift engine work (M5) is complete bar two follow-up verbs; quality (M4), total data control from the CLI menu (M7), ongoing aesthetics (M8), extraction (M10), the project lifecycle chain (M11) and packaging (M12) remain.
 
 **Critical path:** on the site side `4QU.5 → 4QU.1 → 4QU.3` still gates M4. On the Drift side the urgent run is `11LC.2 → 11LC.3`: `drift register` then sync admission, both standing outside the resolver so they can ship first, because the assumption that `drift report --full` registered repos was never true. The longest run is `11LC.1 → 11LC.12 → 11LC.13 → 11LC.10`: the lifecycle resolver, the missing-path split, relocate and unregister, then M11's sink, the scripted acceptance of its five scenarios. M7's browse, act-in-context and config work now waits on M11's card view, field editing, list and approve verbs.
 
@@ -125,7 +125,7 @@ The site is live and substantially built: full routes, the graph/timeline/map/to
 - [ ] **7DR.2** — Project detail view: every field for one project on a single screen, each with its provenance _(blocked: depends on 7DR.1, 11LC.7)_
 - [ ] **7DR.3** — Tech, tag and theme detail views on the same pattern as the project view _(blocked — depends on 7DR.1)_
 - [ ] **7DR.4** — Act in context: invoke the relevant verbs from a detail view without re-picking the target _(blocked: depends on 7DR.2, 7DR.3, 10EX.1, 11LC.8)_
-  - Note: The menu is verb-first (pick a verb, then a target). This inverts it for the browse path; the verb-first sections stay for anyone who already knows what they want. Gated on 10EX.1 because that spike settles the extraction shape for the portfolio-shaped verbs this task grows, and on 11LC.8 because acting in context needs a verb behind every card-visible field.
+  - Note: The menu is verb-first (pick a verb, then a target). This inverts it for the browse path; the verb-first sections stay for anyone who already knows what they want. Gated on 10EX.1 because that spike settles the extraction shape for the portfolio-shaped verbs this task grows, and on 11LC.8 because acting in context needs a verb behind every card-visible field. Resolved by ADR-001: the overlay verbs are Engine verbs, so new ones this task grows are Engine code.
 - [ ] **7DR.5** — Reach audit: confirm every field in every data file has a menu path, and fill the gaps _(blocked: depends on 5DR.24, 7DR.4, 11LC.2)_
   - Note: Only meaningful once 5DR.24 has settled the field set and 7DR.4's detail-view menu paths exist to audit. Covers all eight configured data paths: sources, topology, local, overrides, excluded, cache, projects, in-progress.
 - [ ] **7DR.6** — Search across projects, tech, tags and themes from one entry point _(blocked — depends on 7DR.2, 7DR.3)_
@@ -161,21 +161,30 @@ The site is live and substantially built: full routes, the graph/timeline/map/to
 
 ---
 
-## Milestone 10 — Drift Extraction
+## Milestone 10: Drift Extraction
 
-**Goal:** Make the core engine genuinely consumable by a different app, not just internally boundaried, correcting the boundary doc's unverified extraction claim and closing the three mechanical gaps a real host would hit.
+**Goal:** Make the Drift Engine genuinely consumable on its own: ADR-001 names three artefacts (Engine, Framework, Portfolio) with the Engine owning the overlay contract as JSON Schema. Done when a bare copy of scripts/ in an empty repo runs drift init, sync and author and the scaffolded overlay type-checks against the Engine's own types with no src/lib/data present.
 
-- [ ] **10EX.1** — Spike: decide the extraction shape for the 8 portfolio-shaped verbs (author, flag, tag, relate project, tech, relate tech, theme, audit) — a core+portfolio-adapter package split, or generalising them behind a host-declared overlay schema contract
-- [ ] **10EX.2** — Inject repoRoot instead of deriving it from the engine's own script location, so a package consumer's host repo resolves correctly _(blocked: depends on 10EX.1)_
-  - Note: scripts/drift-config.js:31, resolve(scriptDir, '..') — installed at node_modules/drift/scripts/ this currently resolves to the package directory, not the host repo. DRIFT_CONFIG (drift-config.js:209) resolves relative to repoRoot too, so it is not an escape hatch.
-- [ ] **10EX.3** — Add config.paths entries for tech-relationships.ts, tech-overlays.ts and themes.ts, currently derived as undeclared siblings of projectsDir _(blocked: depends on 10EX.1)_
+- [x] **10EX.1**: Spike: decide the extraction shape for the overlay verbs (author, flag, tag, relate project, tech, relate tech, theme, audit, authored)
+  - Note: Decided in docs/adr/0001-extraction-shape.md (ADR-001, accepted 2026-09-25). Three artefacts: Engine (every verb, including the nine overlay verbs; authored is the ninth the task list missed), Framework (Svelte-consumer utilities), Portfolio (one example site). The Engine owns the overlay contract, canonical as scripts/overlay.schema.json with a mirrored .d.ts held by a parity test, the same pattern as sources.schema.json. Neither shape the spike offered was taken: the adapter split duplicated the Engine's own schema, and the host-declared schema contract is stage 2, deferred until a named consumer with a data model of their own exists.
+- [ ] **10EX.2**: Inject repoRoot instead of deriving it from the engine's own script location, so a package consumer's host repo resolves correctly _(depends on 10EX.1, 5DR.8)_
+  - Note: scripts/drift-config.js:31, resolve(scriptDir, '..'): installed at node_modules/drift/scripts/ this currently resolves to the package directory, not the host repo. DRIFT_CONFIG (drift-config.js:209) resolves relative to repoRoot too, so it is not an escape hatch.
+- [ ] **10EX.3**: Add config.paths entries for tech-relationships.ts, tech-overlays.ts and themes.ts, currently derived as undeclared siblings of projectsDir _(depends on 10EX.1)_
   - Note: check-drift.js:111-115. A comment there already admits these three have no dedicated config.paths entry.
-- [ ] **10EX.4** — Stop the engine emitting `import type { AuthoredProject } from '../types.js'` into scaffolded overlays; replace with whatever type contract the spike (10EX.1) settles on _(blocked: depends on 10EX.1)_
-  - Note: check-drift.js:3603. The engine generates source code typed by a module the boundary doc's own ownership table assigns to the integration layer.
-- [ ] **10EX.5** — Declare typescript and prettier as real package dependencies; degrade gracefully when gum is absent rather than failing the interactive surface outright _(blocked: depends on 10EX.1)_
+- [ ] **10EX.4**: Emit the scaffold's AuthoredProject import from the Engine's own .d.ts rather than '../types.js', per ADR-001 _(blocked: depends on 10EX.1, 10EX.7)_
+  - Note: check-drift.js:3910. ADR-001 makes the type an Engine export, so the import is legitimate once it resolves against scripts/ rather than the Framework. Gated on 10EX.7 because the .d.ts has to exist before the scaffold can name it.
+- [ ] **10EX.5**: Declare typescript and prettier as real package dependencies; degrade gracefully when gum is absent rather than failing the interactive surface outright _(depends on 10EX.1)_
   - Note: gum has 108 references in check-drift.js. drift audit also relies on Bun's native ESM loader, worth documenting as a runtime prerequisite alongside this.
-- [ ] **10EX.6** — Correct docs/drift-boundary.md's claim that the engine "can in principle be extracted into a standalone package"; replace with the honest blocker list as the extraction spec _(blocked: depends on 10EX.1)_
-  - Note: Boundary doc line 270. Verified false on three counts: repoRoot (10EX.2), the three unconfigured .ts paths (10EX.3), and the emitted AuthoredProject import (10EX.4). Raised in the roadmap-review session that scoped M5 against the decoupling question.
+- [ ] **10EX.6**: Rewrite docs/drift-boundary.md and docs/drift/01-entanglement.md around ADR-001's three artefacts: flip the ownership rows the contract move changes, drop the "can in principle be extracted" claim, list authored as the ninth overlay verb; retire the portfolio-shaped label from docs/drift/02-cli.md's editorial table _(depends on 10EX.1)_
+  - Note: Boundary doc line 270 verified false on three counts (10EX.2, 10EX.3, 10EX.4). Rows that flip owner: AuthoredProject / Project types (split: overlay contract to Engine, Project stays Framework), Themes / visual data (Theme shape to Engine, theme queries stay), tech surface scope (TechSurface to Engine, SURFACE_KINDS policy stays). The entanglement ledger's blocker table gains the new M10 tasks and its verb count goes from eight to nine.
+- [ ] **10EX.7**: Overlay contract as schema: write scripts/overlay.schema.json for the types ADR-001 moves to the Engine, a .d.ts beside it and a parity test; derive the Engine's five hand-mirrored lists from the schema; validate overlay values in drift audit and drift authored _(depends on 10EX.1)_
+  - Note: Hand-mirrored lists today: AUTHOR_FIELD_ENUMS (check-drift.js:4007), PROJECT_RELATIONSHIP_KINDS and TECH_RELATIONSHIP_KINDS (4280-4281), TECH_TAG_KINDS (5292), TECH_SURFACES (5301), AUTHORED_FIELDS (6842). Precedent for derivation: FINGERPRINT_FIELDS from sources.schema.json (231). AuthoredContribution is a discriminated union and needs oneOf. Field doc comments become description strings the .d.ts repeats.
+- [ ] **10EX.8**: Type split: remove the moved types from src/lib/data/types.ts, repoint the Framework's imports and scripts/tag-taxonomy.d.ts at the Engine's .d.ts, move sources.schema.test.ts and in-progress.schema.test.ts into the Engine's suite _(blocked: depends on 10EX.7)_
+  - Note: tag-taxonomy.d.ts currently imports TechTag from ../src/lib/data/types.js, an Engine file reaching into the Framework; this closes it. The Framework's relative reach into scripts/ (already present for the taxonomy) grows until the packaging milestone.
+- [ ] **10EX.9**: The nine overlay verbs exit cleanly with a message when config.paths.projects or the three sibling files are unconfigured or absent, so an Engine-only user sees a reason rather than a stack trace _(blocked: depends on 10EX.3)_
+  - Note: Today every overlay verb assumes the paths exist. An Engine-only adopter (docs/drift/01-entanglement.md, 'CLI only') has no overlay directory at all. Tenth site: drift report's coverage line lists projectsDir to count overlays (buildCoverageStats, check-drift.js:2526) and throws when it is absent; that one counts as zero rather than exiting, since report is the verb an Engine-only user runs most.
+- [ ] **10EX.10**: Script the M10 acceptance test from ADR-001: a bare copy of scripts/ in an empty git repo runs drift init, drift sync and drift author, and the scaffolded overlay passes tsc --noEmit with no src/lib/data present _(blocked: depends on 10EX.2, 10EX.4, 10EX.5, 10EX.8, 10EX.9)_
+  - Note: Milestone sink. drift report must also run without touching the overlay verbs' files.
 
 ---
 
@@ -196,7 +205,7 @@ The site is live and substantially built: full routes, the graph/timeline/map/to
 - [ ] **11LC.6**: drift ignore verb: dismiss a discovered repo at scan level by writing excludedRepoNames, so deliberate hiding is reachable from the CLI before registration as well as after sync _(blocked: depends on 11LC.2)_
   - Note: Scan-level hiding lives in drift.config.ts excludedRepoNames (moved out of excluded.json when it was paired to scanRoot), which only a hand edit reaches today. Write it with the TypeScript-compiler splice the overlay verbs already use, since the config is a .ts module; the alternative is a gitignored JSON sidecar beside sources.local.json, which avoids writing config but splits the ignore list across two files. Offer the action from the same discovered-repo picker as drift register, so every discovered repo has two exits: register or ignore.
 - [ ] **11LC.7**: drift card <slug>: render the fields the site's ProjectCard shows, resolved through the same manifest-plus-overlay merge as the site, so a synced-only project's derived card is visible before anyone authors it
-  - Note: ProjectCard.svelte shows name, the role badge, tagline, blurb (expanded), the first four tags, the live link and the stage badge. Rendering those for a synced-only project needs the manifest-to-Project defaults merge in src/lib/data/defaults.ts, which is integration-layer code, so this verb is portfolio-shaped in the same way drift audit is (Bun's native ESM import of .ts) and its extraction shape is decided by the 10EX.1 spike; hence the soft edge. drift authored <slug> is not this view: it shows authored fields only and exits non-zero when no overlay exists, which is precisely the case scenario 4 needs to see. 7DR.2 later wraps this card in the full per-field provenance view.
+  - Note: ProjectCard.svelte shows name, the role badge, tagline, blurb (expanded), the first four tags, the live link and the stage badge. Rendering those for a synced-only project needs the manifest-to-Project defaults merge in src/lib/data/defaults.ts, which is integration-layer code, so this verb is portfolio-shaped in the same way drift audit is (Bun's native ESM import of .ts) and its extraction shape is decided by the 10EX.1 spike; hence the soft edge. drift authored <slug> is not this view: it shows authored fields only and exits non-zero when no overlay exists, which is precisely the case scenario 4 needs to see. 7DR.2 later wraps this card in the full per-field provenance view. ADR-001 resolved the soft edge: the manifest-plus-overlay merge stays Framework code, so drift card either reimplements the defaults merge in the Engine or imports it the way drift audit imports overlays (Bun only). Pick when the task starts.
 - [ ] **11LC.8**: Edit every card-visible field from the CLI: extend author-edit to contribution role and note, highlights, released, retired, track and hideFromPlainIntro, with multi-line prose via gum write or $EDITOR and the redundancy guard applied on write _(depends on 5DR.24)_
   - Note: AUTHOR_EDITABLE_FIELDS (check-drift.js:3691) covers name, tagline, blurb, plainBlurb, description, kind and liveUrl. Card-visible fields with no CLI edit path today: contribution.role and contribution.note, highlights, released, retired, track and hideFromPlainIntro; tags and pin/hide already have drift tag and drift flag. Multi-line prose goes through gum write or $EDITOR on the single field, never a whole-file rewrite (docs/drift-authoring.md, "What will overwrite me"). Every write must run the same redundancy check data.test.ts applies, refusing an authored value that merely restates the inference, otherwise this verb becomes the fastest way to fail the test suite.
 - [ ] **11LC.9**: Synced-only workbench: browse the projects that exist by sync alone, each with its derived card and four exits in place (author, approve, hide, leave) _(blocked: depends on 11LC.4, 11LC.7, 11LC.11)_
@@ -214,11 +223,21 @@ The site is live and substantially built: full routes, the graph/timeline/map/to
 
 ---
 
+## Milestone 12: Drift: Packaging
+
+**Goal:** Split Engine, Framework and Portfolio into installable packages and separate repositories, each with its own docs directory, along the lines ADR-001 fixed.
+
+- [ ] **12PK.1**: Replace the Framework's Vite-bound loading (import.meta.glob overlay discovery and static JSON imports in src/lib/data/index.ts) with a plain loader that works outside a Vite build _(blocked: depends on M10)_
+  - Note: Recorded here by ADR-001 rather than on M10: while the Framework stays in this repository the Vite dependence blocks nothing, and it becomes the first blocker the moment the Framework is a package. The packaging ADR (unwritten) and the repo split join this milestone later.
+
+---
+
 ## Dependency Diagram
 
 ```mermaid
 graph LR
 	classDef todo fill:#f6f6f6,stroke:#6f6f6f,color:#6f6f6f
+	classDef inProgress fill:#e8f2ff,stroke:#0071af,color:#0071af
 	classDef blocked fill:#fff8f6,stroke:#e0002b,color:#e0002b,stroke-width:2px
 	classDef paused fill:#fdf4ff,stroke:#b01fe3,color:#b01fe3,stroke-dasharray:4 3
 	classDef deferred fill:#fff8f3,stroke:#ac5c00,color:#ac5c00,stroke-dasharray:2 4,font-style:italic
@@ -303,9 +322,13 @@ graph LR
 	10EX.1["10EX.1: Spike: decide the extraction shape for…"]
 	10EX.2["10EX.2: Inject repoRoot instead of deriving it…"]
 	10EX.3["10EX.3: Add config.paths entries for tech-relat…"]
-	10EX.4["10EX.4: Stop the engine emitting `import type {…"]
 	10EX.5["10EX.5: Declare typescript and prettier as real…"]
-	10EX.6["10EX.6: Correct docs/drift-boundary.md's claim…"]
+	10EX.6["10EX.6: Rewrite docs/drift-boundary.md and docs…"]
+	10EX.7["10EX.7: Overlay contract as schema: write scrip…"]
+	10EX.4["10EX.4: Emit the scaffold's AuthoredProject imp…"]
+	10EX.8["10EX.8: Type split: remove the moved types from…"]
+	10EX.9["10EX.9: The nine overlay verbs exit cleanly wit…"]
+	10EX.10["10EX.10: Script the M10 acceptance test from AD…"]
 	M10["M10: Drift Extraction"]:::mile
 	11LC.1["11LC.1: Project lifecycle resolver: classify ev…"]
 	11LC.2["11LC.2: drift register verb: add a discovered r…"]
@@ -333,6 +356,8 @@ graph LR
 	M11["M11: Drift: Project Lifecycle"]:::mile
 	5DR.29["5DR.29: Spike whether sync+enrich should be cha…"]
 	M9["M9: Drift: Extended Features"]:::mile
+	12PK.1["12PK.1: Replace the Framework's Vite-bound load…"]
+	M12["M12: Drift: Packaging"]:::mile
 	1CO.1 --> 1CO.2
 	1CO.1 --> 1CO.6
 	1CO.2 --> 1CO.8
@@ -448,17 +473,24 @@ graph LR
 	5DR.27 --> M8
 	10EX.1 --> 10EX.2
 	10EX.1 --> 10EX.3
-	10EX.1 --> 10EX.4
 	10EX.1 --> 10EX.5
 	10EX.1 --> 10EX.6
+	10EX.1 --> 10EX.7
+	10EX.1 --> 10EX.4
 	10EX.1 -.-> 11LC.7
 	10EX.1 --> 7DR.4
-	10EX.2 --> M10
-	10EX.3 --> M10
-	10EX.4 --> M10
-	10EX.5 --> M10
+	10EX.2 --> 10EX.10
+	10EX.3 --> 10EX.9
+	10EX.5 --> 10EX.10
 	10EX.6 --> M10
+	10EX.7 --> 10EX.4
+	10EX.7 --> 10EX.8
+	10EX.4 --> 10EX.10
+	10EX.8 --> 10EX.10
+	10EX.9 --> 10EX.10
+	10EX.10 --> M10
 	M10 --> 5DR.29
+	M10 --> 12PK.1
 	11LC.1 --> 11LC.4
 	11LC.1 --> 11LC.11
 	11LC.1 --> 11LC.12
@@ -497,7 +529,8 @@ graph LR
 	11LC.10 --> M11
 	M11 --> 5DR.29
 	5DR.29 --> M9
-	class 10EX.1,11LC.1,11LC.14,11LC.2,11LC.7,11LC.8,4QU.5,5DR.23,5DR.27,7DR.1,8DE.1 todo
-	class 10EX.2,10EX.3,10EX.4,10EX.5,10EX.6,11LC.10,11LC.11,11LC.12,11LC.13,11LC.3,11LC.4,11LC.5,11LC.6,11LC.9,4QU.1,4QU.3,4QU.7,5DR.29,7DR.10,7DR.11,7DR.2,7DR.3,7DR.4,7DR.5,7DR.6,7DR.7,7DR.8,7DR.9 blocked
-	class 1CO.1,1CO.10,1CO.2,1CO.3,1CO.4,1CO.5,1CO.6,1CO.7,1CO.8,1CO.9,2FE.1,2FE.2,2FE.3,2FE.4,2FE.5,2FE.6,2FE.7,2FE.8,3DE.0,3DE.1,3DE.2,3DE.3,3DE.4,3DE.5,3DE.6,4QU.4,4QU.8,5DR.0,5DR.1,5DR.10,5DR.11,5DR.12,5DR.13,5DR.14,5DR.15,5DR.16,5DR.17,5DR.18,5DR.19,5DR.2,5DR.20,5DR.21,5DR.22,5DR.24,5DR.25,5DR.26,5DR.28,5DR.3,5DR.30,5DR.31,5DR.32,5DR.4,5DR.5,5DR.6,5DR.7,5DR.8,5DR.9 done
+	12PK.1 --> M12
+	class 10EX.2,10EX.3,10EX.5,10EX.6,10EX.7,11LC.1,11LC.14,11LC.2,11LC.7,11LC.8,4QU.5,5DR.23,5DR.27,7DR.1,8DE.1 todo
+	class 10EX.10,10EX.4,10EX.8,10EX.9,11LC.10,11LC.11,11LC.12,11LC.13,11LC.3,11LC.4,11LC.5,11LC.6,11LC.9,12PK.1,4QU.1,4QU.3,4QU.7,5DR.29,7DR.10,7DR.11,7DR.2,7DR.3,7DR.4,7DR.5,7DR.6,7DR.7,7DR.8,7DR.9 blocked
+	class 10EX.1,1CO.1,1CO.10,1CO.2,1CO.3,1CO.4,1CO.5,1CO.6,1CO.7,1CO.8,1CO.9,2FE.1,2FE.2,2FE.3,2FE.4,2FE.5,2FE.6,2FE.7,2FE.8,3DE.0,3DE.1,3DE.2,3DE.3,3DE.4,3DE.5,3DE.6,4QU.4,4QU.8,5DR.0,5DR.1,5DR.10,5DR.11,5DR.12,5DR.13,5DR.14,5DR.15,5DR.16,5DR.17,5DR.18,5DR.19,5DR.2,5DR.20,5DR.21,5DR.22,5DR.24,5DR.25,5DR.26,5DR.28,5DR.3,5DR.30,5DR.31,5DR.32,5DR.4,5DR.5,5DR.6,5DR.7,5DR.8,5DR.9 done
 ```
