@@ -225,8 +225,9 @@ timeline via `adoption.ts`.
 
 ## Resolved couplings
 
-The 5DR-era boundary violations are resolved. ADR-001 opened two new reaches the other
-direction, tracked below rather than claimed resolved.
+The 5DR-era boundary violations are resolved. Two Engine-to-Framework reaches remain
+open, both older than ADR-001 and tracked below: ADR-001 assigns their types to the
+Engine, which settles how each one closes.
 
 ### Coupling [5DR.4] — tag taxonomy import (resolved)
 
