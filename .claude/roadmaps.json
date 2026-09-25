@@ -698,7 +698,7 @@
 				"tasks": [
 					{
 						"id": "10EX.1",
-						"description": "Spike: decide the extraction shape for the 8 portfolio-shaped verbs (author, flag, tag, relate project, tech, relate tech, theme, audit) — a core+portfolio-adapter package split, or generalising them behind a host-declared overlay schema contract",
+						"description": "Spike: decide the extraction shape for the overlay verbs (author, flag, tag, relate project, tech, relate tech, theme, audit, authored)",
 						"status": "done",
 						"dependsOn": [],
 						"softDependsOn": [
@@ -746,7 +746,7 @@
 					},
 					{
 						"id": "10EX.6",
-						"description": "Rewrite docs/drift-boundary.md and docs/drift/01-entanglement.md around ADR-001's three artefacts: flip the ownership rows the contract move changes, drop the \"can in principle be extracted\" claim, list authored as the ninth overlay verb",
+						"description": "Rewrite docs/drift-boundary.md and docs/drift/01-entanglement.md around ADR-001's three artefacts: flip the ownership rows the contract move changes, drop the \"can in principle be extracted\" claim, list authored as the ninth overlay verb; retire the portfolio-shaped label from docs/drift/02-cli.md's editorial table",
 						"status": "todo",
 						"dependsOn": [
 							"10EX.1"
@@ -778,7 +778,7 @@
 						"dependsOn": [
 							"10EX.3"
 						],
-						"notes": "Today every overlay verb assumes the paths exist. An Engine-only adopter (docs/drift/01-entanglement.md, 'CLI only') has no overlay directory at all."
+						"notes": "Today every overlay verb assumes the paths exist. An Engine-only adopter (docs/drift/01-entanglement.md, 'CLI only') has no overlay directory at all. Tenth site: drift report's coverage line lists projectsDir to count overlays (buildCoverageStats, check-drift.js:2526) and throws when it is absent; that one counts as zero rather than exiting, since report is the verb an Engine-only user runs most."
 					},
 					{
 						"id": "10EX.10",
