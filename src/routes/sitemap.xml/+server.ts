@@ -4,7 +4,16 @@ import { SITE_URL } from '$lib/config.js';
 
 export const prerender = true;
 
-const staticPaths = ['/', '/projects', '/map', '/timeline', '/toolkit', '/about', '/drift-engine'];
+const staticPaths = [
+	'/',
+	'/projects',
+	'/map',
+	'/timeline',
+	'/toolkit',
+	'/about',
+	'/hire',
+	'/drift-engine'
+];
 
 export const GET: RequestHandler = () => {
 	const projectPaths = getAllProjects().map((project) => ({

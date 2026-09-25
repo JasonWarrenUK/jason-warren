@@ -9,7 +9,7 @@
 	import RelatedProjects from '$lib/components/project/RelatedProjects.svelte';
 	import ExternalLink from '$lib/components/ui/ExternalLink.svelte';
 	import Seo from '$lib/components/seo/Seo.svelte';
-	import { AUTHOR, SITE_URL } from '$lib/config.js';
+	import { AUTHOR, SITE_URL, OG_IMAGE_WIDTH, OG_IMAGE_HEIGHT } from '$lib/config.js';
 	import { viewHref } from '$lib/selection.js';
 
 	let { data } = $props();
@@ -34,6 +34,8 @@
 	title="{data.project.name} | Jason Warren"
 	description={data.project.tagline}
 	image="{SITE_URL}/og/{data.project.slug}.png"
+	imageWidth={OG_IMAGE_WIDTH}
+	imageHeight={OG_IMAGE_HEIGHT}
 	type="article"
 />
 
