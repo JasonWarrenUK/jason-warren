@@ -55,6 +55,12 @@ describe('sitemap route coverage', () => {
 		const routesDir = join(fileURLToPath(import.meta.url), '../../../routes');
 		const found: string[] = [];
 
+		// The walk only descends into subdirectories, so the root route's own
+		// +page.svelte is invisible to it. Seed '/' explicitly.
+		if (readdirSync(routesDir).includes('+page.svelte')) {
+			found.push('/');
+		}
+
 		function walk(dir: string, relative: string): void {
 			for (const entry of readdirSync(dir)) {
 				const entryRelative = relative ? `${relative}/${entry}` : entry;
