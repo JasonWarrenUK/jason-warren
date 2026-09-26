@@ -1,13 +1,13 @@
 ---
 name: 'Verify: CLI'
-description: "Drive the Drift CLI engine (scripts/check-drift.js) against an isolated sandbox: tech/tag/author/audit overlays, plus what report/sync need that a sandbox can't provide"
+description: "Drive the Drift Engine (scripts/check-drift.js) against an isolated sandbox: tech/tag/author/audit overlays, plus what report/sync need that a sandbox can't provide"
 when_to_use: 'When a change touches scripts/check-drift.js and needs exercising as a real subprocess, not just its own test suite. Not for the portfolio site — see verify-portfolio.'
 model: sonnet
 effort: low
 disable-model-invocation: true
 ---
 
-# Verifying changes in the Drift CLI
+# Verifying changes in the Drift Engine
 
 For the portfolio site itself, use `verify-portfolio`. For both surfaces in
 one pass, use `verify-all`.

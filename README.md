@@ -1,12 +1,12 @@
 # Drift Suite
 
-Drift keeps portfolio data honest. The suite is three things: a CLI engine that fingerprints the git repos behind every project, a SvelteKit framework layer that turns those fingerprints into typed data a site can render and a reference consumer, [jason-warren.vercel.app](https://jason-warren.vercel.app), Jason Warren's portfolio, where the code itself is part of the exhibit. Built with SvelteKit 2, Svelte 5 (runes) and TypeScript in strict mode.
+Drift keeps portfolio data honest. The suite is three things: the Drift Engine, a CLI that fingerprints the git repos behind every project; the Drift Framework, a SvelteKit layer that turns those fingerprints into typed data a site can render; and the Portfolio, [jason-warren.vercel.app](https://jason-warren.vercel.app), Jason Warren's site, where the code itself is part of the exhibit. Built with SvelteKit 2, Svelte 5 (runes) and TypeScript in strict mode.
 
-Adopting Drift rather than reading about it? Start at [`docs/drift/`](./docs/drift/README.md): the consumer-facing suite covering the CLI, the Framework, their current entanglement and a feature-parity build guide.
+Adopting Drift rather than reading about it? Start at [`docs/drift/`](./docs/drift/README.md): the consumer-facing suite covering the Engine, the Framework, their current entanglement and a feature-parity build guide.
 
 ## Contents
 
-- [Drift CLI](#drift-cli)
+- [Drift Engine](#drift-engine)
   - [What it does](#what-it-does)
   - [The boundary](#the-boundary)
   - [Data files](#data-files)
@@ -16,7 +16,7 @@ Adopting Drift rather than reading about it? Start at [`docs/drift/`](./docs/dri
   - [The data model](#the-data-model)
   - [Derived structures](#derived-structures)
 - [Adding a project](#adding-a-project)
-- [The reference site](#the-reference-site)
+- [The Portfolio](#the-portfolio)
 - [Commands](#commands)
   - [Site](#site)
   - [Drift](#drift)
@@ -26,7 +26,7 @@ Adopting Drift rather than reading about it? Start at [`docs/drift/`](./docs/dri
 
 ---
 
-## Drift CLI
+## Drift Engine
 
 ### What it does
 
@@ -36,10 +36,10 @@ It is a plain Node/Bun script with no framework dependency.
 
 ### The boundary
 
-The engine/integration split is physically enforced and documented in [`docs/drift-boundary.md`](./docs/drift-boundary.md), which is the source of truth for which layer owns what.
+The Engine/Framework split is physically enforced and documented in [`docs/drift-boundary.md`](./docs/drift-boundary.md), which is the source of truth for which artefact owns what.
 
-- **The engine** (`scripts/check-drift.js`) fingerprints repos, manages the manifest and provides the interactive surface. It knows nothing about how fingerprints render.
-- **The Framework** (`src/lib/data/`) is build-time code that turns raw fingerprints into fully-typed `Project` objects. It owns `types.ts`, `defaults.ts`, `index.ts` and the authored overlays.
+- **The Engine** (`scripts/check-drift.js`) fingerprints repos, manages the manifest, provides the interactive surface and owns the overlay contract (ADR-001). It knows nothing about how fingerprints render.
+- **The Framework** (`src/lib/data/`) is build-time code that turns raw fingerprints into fully-typed `Project` objects. It owns `defaults.ts`, `index.ts` and the merge pipeline; `types.ts` is shared until 10EX.7/10EX.8 move the overlay contract into the Engine.
 
 The tag taxonomy sits at the boundary in `scripts/tag-taxonomy.js`, shared by both.
 
@@ -54,7 +54,7 @@ The tag taxonomy sits at the boundary in `scripts/tag-taxonomy.js`, shared by bo
 | `source-topology.json` | Hand-authored                   | Companion-repo groupings                  |
 | `sources.local.json`   | `drift init`                    | Per-machine paths; not committed          |
 
-Each has a JSON Schema alongside it, and `sources.schema.json` is the engine's public data contract.
+Each has a JSON Schema alongside it, and `sources.schema.json` is the Engine's public data contract.
 
 ### Verbs
 
@@ -103,7 +103,7 @@ The model lives in `src/lib/data/types.ts` and leans on the type system to keep 
 
 `src/lib/data/queries.ts` holds pure query helpers; `graph.ts` normalises the relationship data into a single graph (collapsing reciprocal edges) and computes a deterministic layout; scoring, technology adoption and stack breadth are all derived rather than claimed. Everything is covered by structural tests in `src/lib/data/*.test.ts`.
 
-The reference site's connection views show what these structures support in practice:
+The Portfolio's connection views show what these structures support in practice:
 
 - **`/map`** plots every project into themed territories, with extraction lineage and related links as edges; a Technologies mode maps the tools themselves, sized by usage and linked by co-occurrence or authored lineage.
 - **`/timeline`** orders projects by activity and draws extraction lineages as ribbons across time.
@@ -124,9 +124,9 @@ See [`docs/drift-authoring.md`](./docs/drift-authoring.md) for the full per-fiel
 
 ---
 
-## The reference site
+## The Portfolio
 
-[jason-warren.vercel.app](https://jason-warren.vercel.app) is the worked example: one portfolio built on the Framework, whose behaviours are catalogued as an implementation-agnostic parity roster in [`docs/drift/05-build-guide.md`](./docs/drift/05-build-guide.md). The site is fully prerendered and ships a no-JavaScript content baseline; every interactive view renders as static SVG first, and JavaScript only enhances it.
+[jason-warren.vercel.app](https://jason-warren.vercel.app) is the worked example: one site built on the Framework, whose behaviours are catalogued as an implementation-agnostic parity roster in [`docs/drift/05-build-guide.md`](./docs/drift/05-build-guide.md). The site is fully prerendered and ships a no-JavaScript content baseline; every interactive view renders as static SVG first, and JavaScript only enhances it.
 
 Its stack:
 
@@ -179,8 +179,8 @@ British English throughout, tabs for indentation, Conventional Commits. See [`CL
 
 ### Documentation
 
-- [`docs/drift/`](./docs/drift/README.md): the consumer-facing Drift suite: CLI vs Framework, the coupling ledger, data contracts, the Framework API and a feature-parity build guide
-- [`docs/drift-boundary.md`](./docs/drift-boundary.md): the engine/integration contract
+- [`docs/drift/`](./docs/drift/README.md): the consumer-facing Drift suite: Engine vs Framework, the coupling ledger, data contracts, the Framework API and a feature-parity build guide
+- [`docs/drift-boundary.md`](./docs/drift-boundary.md): the Engine/Framework contract
 - [`docs/drift-authoring.md`](./docs/drift-authoring.md): per-field authoring guide, where overrides live
 - [`docs/drift-engine-reference.md`](./docs/drift-engine-reference.md): config reference, data model, metric-precedence lifecycle
 - [`docs/design/`](./docs/design/): visual direction and colour system

@@ -1,6 +1,6 @@
 # Data contracts
 
-> Every file that crosses the CLI/Framework boundary, and the pipeline
+> Every file that crosses the Engine/Framework boundary, and the pipeline
 > that merges them into `Project` objects. Canonical shapes live in
 > `scripts/sources.schema.json` and `src/lib/data/types.ts`; this document
 > is the map, not the territory.
@@ -36,7 +36,7 @@ exclusive: nothing else may write that file.
 | `themes.ts`             | Hand; `drift theme`       | Authored theme territories (id, name, blurb, member slugs) | Yes        |
 
 Each JSON file has a schema beside it; `sources.schema.json` (in
-`scripts/`) is the engine's public contract and is enforced at write time.
+`scripts/`) is the Engine's public contract and is enforced at write time.
 
 ## sources.json
 

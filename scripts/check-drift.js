@@ -9169,9 +9169,10 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
 }
 
 // Exported for scripts/drift-engine.test.ts (5DR.8). Deliberately in place rather
-// than split into a sibling module: 10EX.1 is the open spike deciding the
-// extraction shape for these portfolio-shaped verbs, and moving fingerprint
-// internals now would prejudge that decision under an unrelated task.
+// than split into a sibling module: ADR-001 (10EX.1) keeps the nine overlay verbs
+// in the Engine, but the type split that moves their contract out of types.ts
+// (10EX.7/10EX.8) hasn't landed, so moving fingerprint internals now would still
+// prejudge file layout under an unrelated task.
 export {
 	diffFingerprint,
 	mergeFingerprint,
