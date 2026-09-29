@@ -1,4 +1,4 @@
-# Drift CLI
+# Drift Engine
 
 > Running the engine: prerequisites, bootstrap, configuration and the verb
 > surface. Config keys are summarised here and specified in full in
@@ -19,14 +19,14 @@
 
 ## Prerequisites
 
-| Dependency       | Needed for                                          | Without it                                               |
-| ---------------- | --------------------------------------------------- | -------------------------------------------------------- |
-| Node or Bun      | Everything                                          | n/a                                                      |
-| Bun specifically | `drift audit` (native ESM import of `.ts` overlays) | `audit` fails; all else runs                             |
-| `gum`            | Interactive menu, pickers, formatted output         | Plain-text fallback for every verb                       |
-| `gh` (authed)    | `drift enrich` only                                 | `enrich` fails; sync stays fully offline                 |
-| PCRE git         | `commitsHuman` / `authorsDistinctHuman` measurement | Those fields null; role inference degrades, never errors |
-| `prettier`       | Formatting every JSON write (via `npx`)             | Writes land unformatted                                  |
+| Dependency       | Needed for                                                               | Without it                                               |
+| ---------------- | ------------------------------------------------------------------------ | -------------------------------------------------------- |
+| Node or Bun      | Everything                                                               | n/a                                                      |
+| Bun specifically | `drift audit` and `drift authored` (native ESM import of `.ts` overlays) | Both fail; all else runs                                 |
+| `gum`            | Interactive menu, pickers, formatted output                              | Plain-text fallback for every verb                       |
+| `gh` (authed)    | `drift enrich` only                                                      | `enrich` fails; sync stays fully offline                 |
+| PCRE git         | `commitsHuman` / `authorsDistinctHuman` measurement                      | Those fields null; role inference degrades, never errors |
+| `prettier`       | Formatting every JSON write (via `npx`)                                  | Writes land unformatted                                  |
 
 ## Bootstrap
 
@@ -90,7 +90,7 @@ Purpose per verb. Writes are one file per verb; the authoritative
 verb-to-file table is the
 [write-isolation contract](../drift-boundary.md#write-isolation-contract).
 
-**Measurement (the portable core):**
+**Measurement:**
 
 | Verb                                | Does                                                                   |
 | ----------------------------------- | ---------------------------------------------------------------------- |
@@ -105,7 +105,7 @@ verb-to-file table is the
 | `drift promote <slug>`              | Tidy away a landed in-progress entry                                   |
 | `drift init`                        | Scaffold config and local paths                                        |
 
-**Editorial (portfolio-shaped; expect Framework-shaped `.ts` files):**
+**Overlay (write the Engine's own overlay files under `config.paths`):**
 
 | Verb                              | Does                                                                       |
 | --------------------------------- | -------------------------------------------------------------------------- |

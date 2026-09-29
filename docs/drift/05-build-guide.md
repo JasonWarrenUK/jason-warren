@@ -1,7 +1,7 @@
 # Build guide: a portfolio with feature parity
 
 > A sequenced plan for building a Drift-backed portfolio whose pages and
-> components look nothing like the reference site. Features are specified
+> components look nothing like the Portfolio. Features are specified
 > against the data API ([`04-framework.md`](./04-framework.md)), never
 > against components, so any page structure that satisfies the
 > [parity roster](#the-feature-parity-roster) is a complete rebuild.
@@ -25,7 +25,7 @@
 - **Parity is behavioural.** A feature holds when the roster row's
   behaviour is observable, whatever markup produces it.
 - **The roster is complete.** A behaviour not on it is not required for
-  parity; if you find one on the reference site that is missing here, the
+  parity; if you find one on the Portfolio that is missing here, the
   roster has a bug.
 - **Dependency order is real.** Each phase consumes the previous one's
   output; skipping ahead means building against data you cannot render.
@@ -35,7 +35,7 @@
 1. Scaffold a SvelteKit 2 / Svelte 5 / TypeScript-strict project with
    Vite. Set `prerender = true` in the root layout; the whole site is
    static.
-2. Copy `scripts/` (the CLI) and `src/lib/data/` (the Framework) from the
+2. Copy `scripts/` (the Engine) and `src/lib/data/` (the Framework) from the
    Drift repo, preserving the relative path between them: the Framework
    imports `scripts/tag-taxonomy.js` by relative path
    ([`01-entanglement.md`](./01-entanglement.md#shared-boundary-code)).
@@ -197,7 +197,7 @@ is the acceptance test.
 ### Narrative pages
 
 About and hire pages are yours entirely: no data dependency, no parity
-obligation. A Drift deep-dive page (the reference site's `/drift-engine`)
+obligation. A Drift deep-dive page (the Portfolio's `/drift-engine`)
 is optional; if built, highlight snippets at build time and pull the
 manifest excerpt live from `sources.json` so the example can never go
 stale.

@@ -31,15 +31,15 @@ Three things share this repository. The distinction matters because they
 are at different stages of separation, and this suite names them
 consistently:
 
-| Artefact            | What it is                                                                                                            | Lives at                              |
-| ------------------- | --------------------------------------------------------------------------------------------------------------------- | ------------------------------------- |
-| **Drift CLI**       | The engine: fingerprints git repos, writes the data files, reports drift. Plain Node/Bun script, no framework code.   | `scripts/check-drift.js` and siblings |
-| **Drift Framework** | The SvelteKit consumer layer: turns the data files into typed `Project` objects and derived structures at build time. | `src/lib/data/`                       |
-| **Reference site**  | Jason Warren's portfolio: routes and components consuming the Framework. Not part of Drift; it is the worked example. | `src/routes/`, `src/lib/components/`  |
+| Artefact            | What it is                                                                                                                                                                 | Lives at                                                |
+| ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------- |
+| **Drift Engine**    | Fingerprints git repos, writes the data files, reports drift and owns the overlay contract (ADR-001). Plain Node/Bun script, no framework code.                            | `scripts/check-drift.js` and siblings                   |
+| **Drift Framework** | The SvelteKit consumer layer: turns the data files and the Engine's overlay contract into typed `Project` objects and derived structures at build time.                    | `src/lib/data/` mechanism files                         |
+| **Portfolio**       | Jason Warren's site: routes and components consuming the Framework, plus the editorial content in the Engine's overlay shape. Not part of Drift; it is the worked example. | `src/routes/`, `src/lib/components/`, the content files |
 
-Neither the CLI nor the Framework is published as a package. Adopting
+Neither the Engine nor the Framework is published as a package. Adopting
 either today means copying files. [`01-entanglement.md`](./01-entanglement.md)
-states exactly what is separated, what is coupled, and what is still
+states exactly what is separated, what is coupled and what is still
 Jason-specific.
 
 ## The model, in five facts
@@ -47,7 +47,7 @@ Jason-specific.
 1. **The manifest decides what exists.** Every non-excluded entry in
    `sources.json` appears on the site. Projects are not registered by hand;
    `drift sync` discovers and fingerprints them.
-2. **Measurement and editorial never share a field.** The CLI writes
+2. **Measurement and editorial never share a field.** The Engine writes
    measurements (commits, churn, dates, detected tech). Humans write
    editorial fields (tagline, highlights, role judgement) in overlay files.
    No field has two writers.
@@ -55,7 +55,7 @@ Jason-specific.
    override beats a synced measurement, which beats a provisional figure
    for unmerged work. Overlays carry no metrics or dates at all, so an
    overlay can never hold a stale number.
-4. **Every write is isolated.** Each CLI verb writes exactly one file (one
+4. **Every write is isolated.** Each Engine verb writes exactly one file (one
    section-scoped exception inside `sources.json`). The Framework writes
    nothing.
 5. **Builds are deterministic.** The Framework derives everything (scores,
@@ -71,8 +71,8 @@ Read in file order. Each document assumes the ones before it.
    adopting, and its current coupling state. Read first; it sets honest
    expectations for everything after.
 2. [`02-cli.md`](./02-cli.md): install, bootstrap, configure and run the
-   Drift CLI.
-3. [`03-data-contracts.md`](./03-data-contracts.md): every file the CLI
+   Drift Engine.
+3. [`03-data-contracts.md`](./03-data-contracts.md): every file the Engine
    writes and the Framework reads, and the merge pipeline between them.
 4. [`04-framework.md`](./04-framework.md): the Framework's query and
    derivation API, which is what your pages consume.
@@ -82,14 +82,14 @@ Read in file order. Each document assumes the ones before it.
 
 ## Document roster
 
-| Document               | Owns                                                                                 |
-| ---------------------- | ------------------------------------------------------------------------------------ |
-| This file              | Vocabulary (CLI / Framework / reference site), the five-fact model, suite navigation |
-| `01-entanglement.md`   | The coupling ledger: separation status and known blockers, per artefact              |
-| `02-cli.md`            | CLI prerequisites, bootstrap, verb purposes, report semantics                        |
-| `03-data-contracts.md` | The file-by-file data contract and the merge pipeline summary                        |
-| `04-framework.md`      | The Framework module API: what each module computes and guarantees                   |
-| `05-build-guide.md`    | Rebuild sequencing and the feature-parity roster                                     |
+| Document               | Owns                                                                               |
+| ---------------------- | ---------------------------------------------------------------------------------- |
+| This file              | Vocabulary (Engine / Framework / Portfolio), the five-fact model, suite navigation |
+| `01-entanglement.md`   | The coupling ledger: separation status and known blockers, per artefact            |
+| `02-cli.md`            | Engine prerequisites, bootstrap, verb purposes, report semantics                   |
+| `03-data-contracts.md` | The file-by-file data contract and the merge pipeline summary                      |
+| `04-framework.md`      | The Framework module API: what each module computes and guarantees                 |
+| `05-build-guide.md`    | Rebuild sequencing and the feature-parity roster                                   |
 
 ## Precedence
 

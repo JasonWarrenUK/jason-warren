@@ -1,7 +1,7 @@
 ---
 name: 'Verify: Portfolio'
 description: 'Launch and drive the SvelteKit portfolio site end-to-end: dev server, routes, screenshots, console noise'
-when_to_use: 'When a change touches the portfolio site (src/, routes, components) and needs verifying in a real running browser, not just type-checked or unit-tested. Not for the Drift CLI engine — see verify-cli.'
+when_to_use: 'When a change touches the portfolio site (src/, routes, components) and needs verifying in a real running browser, not just type-checked or unit-tested. Not for the Drift Engine: see verify-cli.'
 model: sonnet
 effort: low
 disable-model-invocation: true
@@ -9,7 +9,7 @@ disable-model-invocation: true
 
 # Verifying changes in the portfolio site
 
-For the Drift CLI engine (`scripts/check-drift.js`), use `verify-cli` instead.
+For the Drift Engine (`scripts/check-drift.js`), use `verify-cli` instead.
 For both surfaces in one pass, use `verify-all`.
 
 ## Launch
@@ -62,8 +62,8 @@ authentication.
   but it is not a substitute for actually looking at the rendered page.
 - `bun run lint` (`prettier --check .`) checks the whole repo, not just your
   diff — run it before opening a PR even if your files pass a scoped check.
-- Verifying the Drift CLI itself (not this app) is a separate surface — see
-  `verify-cli`.
+- Verifying the Drift Engine itself (not this app) is a separate surface:
+  see `verify-cli`.
 
 ## Cleanup
 

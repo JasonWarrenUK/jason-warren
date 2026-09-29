@@ -1,5 +1,5 @@
 #!/bin/zsh
-# Drift CLI sandbox driver.
+# Drift Engine sandbox driver.
 #
 # Creates an isolated dataDir (own projects/, tech-overlays.ts, sources.json,
 # overrides.json, excluded.json, in-progress.json) and runs a `drift` verb

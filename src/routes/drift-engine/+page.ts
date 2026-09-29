@@ -89,8 +89,8 @@ const threadsSnippet = `export function getEngineThreads(): EngineThread[] {
 // The validation gate: the engine assembles a full SyncedSource record,
 // validates it against sources.schema.json (draft-07, additionalProperties:
 // false) and only then writes. A violation is a programming error in the
-// engine — so it throws and writes nothing (fail-closed). The Svelte
-// integration layer never sees a partial or off-contract manifest.
+// engine, so it throws and writes nothing (fail-closed). The Framework
+// never sees a partial or off-contract manifest.
 const driftSnippet = `// Validate the fully-assembled manifest against the engine's public schema
 // before the single sanctioned write. A violation is a programming error:
 // throw and write nothing (fail-closed).
