@@ -6,6 +6,12 @@ All notable changes to this project are documented here. Format follows [Keep a 
 
 ## [Unreleased]
 
+## [8.4.2] - 2026-09-29
+
+### Changed
+
+- The `/drift-engine` page now uses the ADR-001 names for the split: Drift Engine and Drift Framework replace "core engine" and "integration layer". It also states what copying the Engine into another repo gets you today, and what has to land before a published package.
+
 ## [8.4.1] - 2026-09-25
 
 ### Fixed
@@ -91,7 +97,10 @@ All notable changes to this project are documented here. Format follows [Keep a 
 
 - Graph edges are no longer dropped in a way that fragments the map into disconnected islands. The per-node edge cap now bridges back any cluster it would otherwise sever, so shared-tech, theme, and technology-landscape views stay one connected graph instead of splitting into isolated groups.
 
-[Unreleased]: https://github.com/JasonWarrenUK/jason-warren/compare/v8.3.0...HEAD
+[Unreleased]: https://github.com/JasonWarrenUK/jason-warren/compare/v8.4.2...HEAD
+[8.4.2]: https://github.com/JasonWarrenUK/jason-warren/compare/v8.4.1...v8.4.2
+[8.4.1]: https://github.com/JasonWarrenUK/jason-warren/compare/v8.4.0...v8.4.1
+[8.4.0]: https://github.com/JasonWarrenUK/jason-warren/compare/v8.3.0...v8.4.0
 [8.3.0]: https://github.com/JasonWarrenUK/jason-warren/compare/v8.2.1...v8.3.0
 [8.2.1]: https://github.com/JasonWarrenUK/jason-warren/compare/v8.2.0...v8.2.1
 [8.2.0]: https://github.com/JasonWarrenUK/jason-warren/compare/v8.1.0...v8.2.0
