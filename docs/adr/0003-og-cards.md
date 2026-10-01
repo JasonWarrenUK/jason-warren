@@ -218,7 +218,7 @@ Proposed follow-up tasks, for `roadmap-update-tasks` once this ADR is accepted:
 | 8DE.4 | Stage ink on the emblem, resolved by the `StageBadge` rule                                                                                                                                 |
 | 8DE.5 | Byte-stable snapshot test over a fixed card set                                                                                                                                            |
 
-8DE.3 and 8DE.4 depend on 8DE.2; 8DE.5 can land with 8DE.2 and catch everything after it.
+The chain runs 8DE.2, then 8DE.3, then 8DE.4, since stage ink needs the emblem 8DE.3 builds. 8DE.5 needs only this spike: it snapshots the current card first, so each later task shows as a deliberate snapshot change in review.
 
 ---
 
