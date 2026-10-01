@@ -653,6 +653,45 @@
 						"notes": "Supersedes the parked \"Generative OG variants per theme\" idea, which was one avenue among several. src/lib/og/card.ts derives each card from project data, but keys its motif on runtime alone via runtimeArchetype(), so 23 of 33 projects collapse into two archetypes (bun 12, node 11) and 5 fall through to the generic dot. Avenues to weigh: widening the archetype signal beyond runtime; theme-driven variants (themes currently feed nothing in card.ts); using signal the card already receives and ignores (kind, track, role, tags, lineage); and the motif mechanics themselves (one fixed 132px tiling, hash-seeded rotation and phase). Output is a written comparison with a recommendation, not an implementation; follow-up tasks land after it is read."
 					},
 					{
+						"id": "8DE.2",
+						"description": "Atlas plate foundation for the OG card: derived token module with a tokens.css parity test; paper, graticule and double neatline; plate layout; Atlas type roles and mono legend; drop the kind palette, Inter and the brand glyphs",
+						"status": "blocked",
+						"dependsOn": [
+							"8DE.1"
+						],
+						"notes": "ADR-003 (docs/adr/0003-og-cards.md), Decision: the sheet, Typography, Language glyphs. simple-icons and @fontsource/inter have no other consumer and leave package.json.",
+						"assignee": "Jason"
+					},
+					{
+						"id": "8DE.3",
+						"description": "OG card kind contour symbology and runtime summit emblems, with the seeded no-runtime polygon, measured names and keep-out zones",
+						"status": "blocked",
+						"dependsOn": [
+							"8DE.2"
+						],
+						"notes": "ADR-003 Implementation Notes 1 and 2. Known faults to close: Those Who Came Before (second summit in the wrapped-name band) and Flyt (emblem crosses the neatline). Starting point: renderAtlasCard in docs/adr/assets/0003/prototype/proto.ts.",
+						"assignee": "Jason"
+					},
+					{
+						"id": "8DE.4",
+						"description": "Ink the OG card emblem by stage, resolved by the StageBadge rule (released, progress, retired fade); the default card keeps oxide",
+						"status": "blocked",
+						"dependsOn": [
+							"8DE.3"
+						],
+						"assignee": "Jason"
+					},
+					{
+						"id": "8DE.5",
+						"description": "Byte-stable snapshot test over a fixed set of rendered OG cards",
+						"status": "blocked",
+						"dependsOn": [
+							"8DE.1"
+						],
+						"notes": "Lands before 8DE.2 so each later task shows as a deliberate snapshot change in review.",
+						"assignee": "Jason"
+					},
+					{
 						"id": "5DR.23",
 						"description": "Derive the site's retired and deployed axes from enriched manifest data, replacing the authored placeholders",
 						"status": "todo",
